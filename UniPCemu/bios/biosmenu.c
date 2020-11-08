@@ -9129,7 +9129,7 @@ void BIOS_CPUIDmode()
 		*(getarchCPUIDmode()) = current; //Safety!
 		BIOS_Changed = 1; //Changed!
 	}
-	int file = ExecuteList(21, 4, itemlist[current], 256, NULL, 0); //Show options for the installed CPU!
+	int file = ExecuteList(12, 4, itemlist[current], 256, NULL, 0); //Show options for the installed CPU!
 	switch (file) //Which file?
 	{
 	case FILELIST_CANCEL: //Cancelled?
