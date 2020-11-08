@@ -69,6 +69,7 @@ typedef struct
 	uint_32 TurboCPUspeed; //Turbo CPU speed
 	byte useTurboCPUSpeed; //Are we to use Turbo CPU speed?
 	byte clockingmode; //Are we using the IPS clock instead of cycle-accurate clock?
+	byte CPUIDmode; //CPU ID mode!
 } CMOSDATA;
 
 typedef struct

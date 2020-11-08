@@ -206,6 +206,37 @@ byte* getarchemulated_CPUs() //Get the memory field for the current architecture
 	//Now, give the selected CMOS's memory field!
 	return &currentCMOS->emulated_CPUs; //Give the memory field for the current architecture!
 }
+byte* getarchCPUIDmode() //Get the memory field for the current architecture!
+{
+	//First, determine the current CMOS!
+	CMOSDATA* currentCMOS;
+	if (is_i430fx == 2) //i440fx?
+	{
+		currentCMOS = &BIOS_Settings.i440fxCMOS; //We've used!
+	}
+	else if (is_i430fx == 1) //i430fx?
+	{
+		currentCMOS = &BIOS_Settings.i430fxCMOS; //We've used!
+	}
+	else if (is_PS2) //PS/2?
+	{
+		currentCMOS = &BIOS_Settings.PS2CMOS; //We've used!
+	}
+	else if (is_Compaq)
+	{
+		currentCMOS = &BIOS_Settings.CompaqCMOS; //We've used!
+	}
+	else if (is_XT)
+	{
+		currentCMOS = &BIOS_Settings.XTCMOS; //We've used!
+	}
+	else //AT?
+	{
+		currentCMOS = &BIOS_Settings.ATCMOS; //We've used!
+	}
+	//Now, give the selected CMOS's memory field!
+	return &currentCMOS->CPUIDmode; //Give the CPUID mode field for the current architecture!
+}
 byte* getarchDataBusSize() //Get the memory field for the current architecture!
 {
 	//First, determine the current CMOS!
@@ -1137,6 +1168,7 @@ void loadBIOSCMOS(CMOSDATA *CMOS, char *section, INI_FILE *i)
 	CMOS->TurboCPUspeed = (uint_32)get_private_profile_uint64(section, "turbocpuspeed", BIOS_Settings.TurboCPUSpeed, i);
 	CMOS->useTurboCPUSpeed = LIMITRANGE((byte)get_private_profile_uint64(section, "useturbocpuspeed", BIOS_Settings.useTurboSpeed, i),0,1); //Are we to use Turbo CPU speed?
 	CMOS->clockingmode = LIMITRANGE((byte)get_private_profile_uint64(section, "clockingmode", BIOS_Settings.clockingmode, i),0,1); //Are we using the IPS clock?
+	CMOS->CPUIDmode = LIMITRANGE((byte)get_private_profile_uint64(section, "CPUIDmode", DEFAULT_CPUIDMODE, i), 0, 2); //Are we using the CPUID mode?
 
 	for (index=0;index<NUMITEMS(CMOS->DATA80.data);++index) //Process extra RAM data!
 	{
@@ -1394,6 +1426,7 @@ void backupCMOSglobalsettings(CMOSDATA *CMOS, CMOSGLOBALBACKUPDATA *backupdata)
 	backupdata->useTurboCPUSpeedbackup = CMOS->useTurboCPUSpeed; //Are we to use Turbo CPU speed?
 	backupdata->clockingmodebackup = CMOS->clockingmode; //Are we using the IPS clock instead of cycle-accurate clock?
 	backupdata->DataBusSizebackup = CMOS->DataBusSize; //The size of the emulated BUS. 0=Normal bus, 1=8-bit bus when available for the CPU!
+	backupdata->CPUIDmodebackup = CMOS->CPUIDmode; //CPU ID mode?
 }
 
 void restoreCMOSglobalsettings(CMOSDATA *CMOS, CMOSGLOBALBACKUPDATA *backupdata)
@@ -1406,6 +1439,7 @@ void restoreCMOSglobalsettings(CMOSDATA *CMOS, CMOSGLOBALBACKUPDATA *backupdata)
 	CMOS->useTurboCPUSpeed = backupdata->useTurboCPUSpeedbackup; //Are we to use Turbo CPU speed?
 	CMOS->clockingmode = backupdata->clockingmodebackup; //Are we using the IPS clock instead of cycle-accurate clock?
 	CMOS->DataBusSize = backupdata->DataBusSizebackup; //The size of the emulated BUS. 0=Normal bus, 1=8-bit bus when available for the CPU!
+	CMOS->CPUIDmode = backupdata->CPUIDmodebackup; //CPU ID mode?
 }
 
 byte saveBIOSCMOS(CMOSDATA *CMOS, char *section, char *section_comment, INI_FILE *i)
@@ -1428,6 +1462,7 @@ byte saveBIOSCMOS(CMOSDATA *CMOS, char *section, char *section_comment, INI_FILE
 	if (!write_private_profile_uint64(section, section_comment, "turbocpuspeed", CMOS->TurboCPUspeed, i)) return 0;
 	if (!write_private_profile_uint64(section, section_comment, "useturbocpuspeed", CMOS->useTurboCPUSpeed, i)) return 0; //Are we to use Turbo CPU speed?
 	if (!write_private_profile_uint64(section, section_comment, "clockingmode", CMOS->clockingmode, i)) return 0; //Are we using the IPS clock?
+	if (!write_private_profile_uint64(section, section_comment, "CPUIDmode", CMOS->CPUIDmode, i)) return 0; //Are we using the CPUID mode?
 	for (index=0;index<NUMITEMS(CMOS->DATA80.data);++index) //Process extra RAM data!
 	{
 		snprintf(field,sizeof(field),"RAM%02X",index); //The field!
@@ -1787,7 +1822,8 @@ int BIOS_SaveData() //Save BIOS settings!
 	safestrcat(cmos_comment, sizeof(cmos_comment), "cpuspeed: 0=default, otherwise, limited to n cycles(>=0)\n");
 	safestrcat(cmos_comment, sizeof(cmos_comment), "turbocpuspeed: 0=default, otherwise, limit to n cycles(>=0)\n");
 	safestrcat(cmos_comment, sizeof(cmos_comment), "useturbocpuspeed: 0=Don't use, 1=Use\n");
-	safestrcat(cmos_comment, sizeof(cmos_comment), "clockingmode: 0=Cycle-accurate clock, 1=IPS clock");
+	safestrcat(cmos_comment, sizeof(cmos_comment), "clockingmode: 0=Cycle-accurate clock, 1=IPS clock\n");
+	safestrcat(cmos_comment, sizeof(cmos_comment), "CPUIDmode: 0=Modern mode, 1=Limited to leaf 1, 2=Set to DX on start");
 
 	char *cmos_commentused=NULL;
 	if (cmos_comment[0]) cmos_commentused = &cmos_comment[0];

@@ -384,6 +384,7 @@ uint_32 initEMUmemory = 0;
 TicksHolder CPU_timing; //CPU timing counter!
 
 extern byte CPU_databussize; //0=16/32-bit bus! 1=8-bit bus when possible (8088/80188)!
+extern byte CPUID_mode; //CPUID mode!
 
 extern byte allcleared;
 
@@ -640,6 +641,7 @@ void initEMU(int full) //Init!
 	debugrow("Initializing CPU...");
 	CPU_databussize = *(getarchDataBusSize()); //Apply the bus to use for our emulation!
 	useIPSclock = *(getarchclockingmode()); //Are we using the IPS clock instead?
+	CPUID_mode = *(getarchCPUIDmode()); //CPUID mode!
 	BIU_buslocked = 0; //BUS locked?
 	BUSactive = 0; //Are we allowed to control the BUS? 0=Inactive, 1=CPU, 2=DMA
 	for (activeCPU = 0; activeCPU < MAXCPUS; ++activeCPU)

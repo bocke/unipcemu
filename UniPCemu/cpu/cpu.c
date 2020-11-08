@@ -370,11 +370,17 @@ uint_64 signextend64(uint_64 val, byte bits)
 	return val; //Give the result!
 }
 
+byte CPUID_mode = 0; //CPUID mode! 0=Modern mode, 1=Limited to leaf 1, 2=Set to DX on start
+
 void CPU_CPUID()
 {
 	switch (REG_EAX)
 	{
 	case 0x00: //Highest function parameter!
+		if (CPUID_mode == 2) //DX?
+		{
+			goto handleCPUIDDX; //DX on start!
+		}
 		switch (EMULATED_CPU)
 		{
 		default: //Lowest decominator!
@@ -393,6 +399,11 @@ void CPU_CPUID()
 		REG_ECX = 0x6c65746e;
 		break;
 	case 0x01: //Standard level 1: Processor type/family/model/stepping and Feature flags
+		if (CPUID_mode == 2) //DX?
+		{
+			goto handleCPUIDDX; //DX on start!
+		}
+		handleleaf1:
 		switch (EMULATED_CPU)
 		{
 		default: //Lowest decominator!
@@ -451,6 +462,14 @@ void CPU_CPUID()
 		}
 		break;
 	case 0x02: //Cache and TLB information
+		if (CPUID_mode == 2) //DX?
+		{
+			goto handleCPUIDDX; //DX on start!
+		}
+		else if (CPUID_mode == 1) //Limited to leaf 1?
+		{
+			goto handleleaf1;
+		}
 		switch (EMULATED_CPU)
 		{
 		case CPU_PENTIUMPRO: //Pentium Pro?
@@ -471,22 +490,34 @@ void CPU_CPUID()
 		}
 		break;
 	default: //Unknown? Return CPU reset DX in AX!
-		handleCPUIDdefault:
-		switch (EMULATED_CPU)
+	handleCPUIDdefault:
+		if (CPUID_mode == 0) //Modern type?
 		{
-		case CPU_PENTIUM: //Pentium?
-			REG_EAX = 0x0521; //Reset DX!
-			break;
-		case CPU_PENTIUMPRO: //Pentium Pro?
-			REG_EAX = 0x0621|((CPU[activeCPU].registers->genericMSR[MSRnumbers[0x1B] - 1].lo&0x800)>>2); //Reset DX! Set bit 9(APIC emulated and enabled is reported on bit 9)!
-			break;
-		case CPU_PENTIUM2: //Pentium 2?
-			REG_EAX = 0x0721; //Reset DX!
-			break;
-		default: //Lowest decominator!
-		case CPU_80486: //80486?
-			REG_EAX = 0x0421; //Reset DX!
-			break;
+			REG_EAX = REG_EBX = REG_ECX = REG_EDX = 0; //Nothing!
+		}
+		else if (CPUID_mode == 1) //Limited to leaf 1?
+		{
+			goto handleleaf1;
+		}
+		else //Compatibility mode?
+		{
+		handleCPUIDDX:
+			switch (EMULATED_CPU)
+			{
+			case CPU_PENTIUM: //Pentium?
+				REG_EAX = 0x0521; //Reset DX!
+				break;
+			case CPU_PENTIUMPRO: //Pentium Pro?
+				REG_EAX = 0x0621 | ((CPU[activeCPU].registers->genericMSR[MSRnumbers[0x1B] - 1].lo & 0x800) >> 2); //Reset DX! Set bit 9(APIC emulated and enabled is reported on bit 9)!
+				break;
+			case CPU_PENTIUM2: //Pentium 2?
+				REG_EAX = 0x0721; //Reset DX!
+				break;
+			default: //Lowest decominator!
+			case CPU_80486: //80486?
+				REG_EAX = 0x0421; //Reset DX!
+				break;
+			}
 		}
 		break;
 	}

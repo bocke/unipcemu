@@ -238,6 +238,7 @@ void BIOS_GenerateIMDFloppyDisk(); //Generate an IMD floppy disk image!
 void BIOS_LoadEjectCDROM0(); //Load/Eject CD-ROM 0!
 void BIOS_LoadEjectCDROM1(); //Load/Eject CD-ROM 1!
 void BIOS_EmulatedCPUs(); //How many emulated CPUs!
+void BIOS_CPUIDmode(); //CPUID mode!
 
 //First, global handler!
 Handler BIOS_Menus[] =
@@ -325,6 +326,7 @@ Handler BIOS_Menus[] =
 	,BIOS_LoadEjectCDROM1 //Load/Eject CD-ROM 1 is #80!
 	,BIOS_FSBreakpoint //Task breakpoint is #81!
 	,BIOS_EmulatedCPUs //Emulated CPUs is #82!
+	,BIOS_CPUIDmode //CPUID mode is #83!
 };
 
 //Not implemented?
@@ -477,6 +479,8 @@ extern byte CDROM_DiskChanged;
 extern IODISK disks[0x100]; //All disks available, up go 256 (drive 0-255) disks!
 CharacterType oldcdrom0[256];
 CharacterType oldcdrom1[256];
+
+extern byte CPUID_mode; //CPUID mode!
 
 void BIOS_MenuChooser(); //The menu chooser prototype for runBIOS!
 byte runBIOS(byte showloadingtext) //Run the BIOS menu (whether in emulation or boot is by EMU_RUNNING)!
@@ -632,6 +636,7 @@ byte runBIOS(byte showloadingtext) //Run the BIOS menu (whether in emulation or 
 	updateEMUSingleStep(3); //Update the single-step breakpoint!
 	updateEMUSingleStep(4); //Update the single-step breakpoint!
 
+	CPUID_mode = *(getarchCPUIDmode()); //CPUID mode!
 	unlock(LOCK_MAINTHREAD); //Continue!
 
 	return (reboot_needed&2) || ((reboot_needed&1) && (BIOS_SaveStat && BIOS_Changed)); //Do we need to reboot: when required or chosen!
@@ -5535,7 +5540,7 @@ void BIOS_InitCPUText()
 {
 	advancedoptions = 0; //Init!
 	int i;
-	for (i = 0; i<19; i++) //Clear all possibilities!
+	for (i = 0; i<20; i++) //Clear all possibilities!
 	{
 		cleardata(&menuoptions[i][0], sizeof(menuoptions[i])); //Init!
 	}
@@ -6000,6 +6005,23 @@ setInboardInitialWaitstates: //For fixing it!
 		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "<UNKNOWN. CHECK SETTINGS VERSION>"); //Set filename from options!
 		break;
 	}
+	optioninfo[advancedoptions] = 28; //We're CPUID mode setting!
+	safestrcpy(menuoptions[advancedoptions], sizeof(menuoptions[0]), "CPUID mode: ");
+	switch (*(getarchCPUIDmode()))
+	{
+	case 0: //Modern mode?
+		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Modern mode"); //Set filename from options!
+		break;
+	case 1: //Limited to leaf 1
+		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Limited to leaf 1"); //Set filename from options!
+		break;
+	case 2: //Set to DX on start
+		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Set to DX on start"); //Set filename from options!
+		break;
+	default:
+		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "<UNKNOWN. CHECK SETTINGS VERSION>"); //Set filename from options!
+		break;
+	}
 }
 
 byte BPindex; //What breakpoint to use?
@@ -6041,7 +6063,9 @@ void BIOS_CPU() //CPU menu!
 	case 23:
 	case 24:
 	case 25:
-	case 26: //Valid option?
+	case 26:
+	case 27:
+	case 28: //Valid option?
 		switch (optioninfo[menuresult]) //What option has been chosen, since we are dynamic size?
 		{
 		//CPU settings
@@ -6300,6 +6324,12 @@ void BIOS_CPU() //CPU menu!
 					BIOS_Changed = 1; //We've changed!
 				}
 				unlock(LOCK_CPU); //Finished with the CPU!
+			}
+			break;
+		case 28: //CPUID mode?
+			if (Menu_Stat == BIOSMENU_STAT_OK) //Plain select?
+			{
+				BIOS_Menu = 83; //CPUID mode selection!
 			}
 			break;
 		default:
@@ -9063,4 +9093,61 @@ void BIOS_floppy1_nodisk_type()
 		BIOS_Settings.ATCMOS.floppy1_nodisk_type = result; //Reverse!
 		BIOS_Settings.got_ATCMOS = 1; //We hav gotten a CMOS!
 	}
+}
+
+void BIOS_CPUIDmode()
+{
+	BIOS_Title("CPUID mode");
+	EMU_locktext();
+	EMU_gotoxy(0, 4); //Goto 4th row!
+	EMU_textcolor(BIOS_ATTR_INACTIVE); //We're using inactive color for label!
+	GPU_EMU_printscreen(0, 4, "CPUID mode: "); //Show selection init!
+	EMU_unlocktext();
+	int i = 0; //Counter!
+	numlist = 3; //Amount of Synchronization modes!
+	for (i = 0; i < numlist; i++) //Process options!
+	{
+		cleardata(&itemlist[i][0], sizeof(itemlist[i])); //Reset!
+	}
+	safestrcpy(itemlist[0], sizeof(itemlist[0]), "Modern mode"); //Set filename from options!
+	safestrcpy(itemlist[1], sizeof(itemlist[0]), "Limited to leaf 1"); //Set filename from options!
+	safestrcpy(itemlist[2], sizeof(itemlist[0]), "Set to DX on start"); //Set filename from options!
+	int current = 0;
+	switch (*(getarchCPUIDmode())) //What setting?
+	{
+	case 0: //Valid
+	case 1: //Valid
+	case 2: //Valid
+		current = *(getarchCPUIDmode()); //Valid: use!
+		break;
+	default: //Invalid
+		current = DEFAULT_CPUIDMODE; //Default: none!
+		break;
+	}
+	if (*(getarchCPUIDmode()) != current) //Invalid?
+	{
+		*(getarchCPUIDmode()) = current; //Safety!
+		BIOS_Changed = 1; //Changed!
+	}
+	int file = ExecuteList(21, 4, itemlist[current], 256, NULL, 0); //Show options for the installed CPU!
+	switch (file) //Which file?
+	{
+	case FILELIST_CANCEL: //Cancelled?
+		//We do nothing with the selected disk!
+		break; //Just calmly return!
+	case FILELIST_DEFAULT: //Default?
+		file = DEFAULT_CPUIDMODE; //Default setting: Disabled!
+
+	case 0:
+	case 1:
+	case 2:
+	default: //Changed?
+		if (file != current) //Not current?
+		{
+			BIOS_Changed = 1; //Changed!
+			*(getarchCPUIDmode()) = file; //Select Data bus size setting!
+		}
+		break;
+	}
+	BIOS_Menu = 35; //Goto CPU menu!
 }

@@ -317,6 +317,8 @@ enum BIOSROMMode {
 #define DEFAULT_BACKGROUNDPOLICY BACKGROUNDPOLICY_FULLHALT
 #define DEFAULT_ADVANCEDLOG 0
 
+#define DEFAULT_CPUIDMODE 0
+
 typedef struct
 {
 	uint_32 memorybackup;
@@ -327,6 +329,7 @@ typedef struct
 	byte useTurboCPUSpeedbackup; //Are we to use Turbo CPU speed?
 	byte clockingmodebackup; //Are we using the IPS clock instead of cycle-accurate clock?
 	byte DataBusSizebackup; //The size of the emulated BUS. 0=Normal bus, 1=8-bit bus when available for the CPU!
+	byte CPUIDmodebackup; //CPU ID mode!
 } CMOSGLOBALBACKUPDATA;
 
 void backupCMOSglobalsettings(CMOSDATA *CMOS, CMOSGLOBALBACKUPDATA *backupdata);
@@ -351,6 +354,7 @@ uint_32* getarchCPUSpeed(); //Get the memory field for the current architecture!
 uint_32* getarchTurboCPUSpeed(); //Get the memory field for the current architecture!
 byte* getarchuseTurboCPUSpeed(); //Get the memory field for the current architecture!
 byte* getarchclockingmode(); //Get the memory field for the current architecture!
+byte* getarchCPUIDmode(); //Get the memory field for the current architecture!
 
 //Retrieve the MMU size to use!
 uint_32 BIOS_GetMMUSize(); //For MMU!
