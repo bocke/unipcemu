@@ -374,7 +374,26 @@ byte CPUID_mode = 0; //CPUID mode! 0=Modern mode, 1=Limited to leaf 1, 2=Set to 
 
 void CPU_CPUID()
 {
-	switch (REG_EAX)
+	byte leaf;
+	leaf = REG_EAX; //What leaf?
+	if (CPUID_mode == 1) //Limited to leaf 1 or 2?
+	{
+		switch (EMULATED_CPU)
+		{
+		default: //Lowest decominator!
+		case CPU_80486: //80486?
+		case CPU_PENTIUM: //Pentium?
+			REG_EAX = 1; //One function parameters supported!
+			if (leaf > 1) leaf = 1; //Limit to leaf 1!
+			break;
+		case CPU_PENTIUMPRO: //Pentium Pro?
+		case CPU_PENTIUM2: //Pentium 2?
+			if (leaf > 2) leaf = 2; //Limit to leaf 2!
+			break;
+		}
+	}
+	//Otherwise, DX mode or unlimited!
+	switch (leaf)
 	{
 	case 0x00: //Highest function parameter!
 		if (CPUID_mode == 2) //DX?
@@ -403,7 +422,6 @@ void CPU_CPUID()
 		{
 			goto handleCPUIDDX; //DX on start!
 		}
-		handleleaf1:
 		switch (EMULATED_CPU)
 		{
 		default: //Lowest decominator!
@@ -466,10 +484,6 @@ void CPU_CPUID()
 		{
 			goto handleCPUIDDX; //DX on start!
 		}
-		else if (CPUID_mode == 1) //Limited to leaf 1?
-		{
-			goto handleleaf1;
-		}
 		switch (EMULATED_CPU)
 		{
 		case CPU_PENTIUMPRO: //Pentium Pro?
@@ -491,13 +505,9 @@ void CPU_CPUID()
 		break;
 	default: //Unknown? Return CPU reset DX in AX!
 	handleCPUIDdefault:
-		if (CPUID_mode == 0) //Modern type?
+		if ((CPUID_mode == 0) || (CPUID_mode==1)) //Modern type result?
 		{
 			REG_EAX = REG_EBX = REG_ECX = REG_EDX = 0; //Nothing!
-		}
-		else if (CPUID_mode == 1) //Limited to leaf 1?
-		{
-			goto handleleaf1;
 		}
 		else //Compatibility mode?
 		{
