@@ -383,7 +383,6 @@ void CPU_CPUID()
 		default: //Lowest decominator!
 		case CPU_80486: //80486?
 		case CPU_PENTIUM: //Pentium?
-			REG_EAX = 1; //One function parameters supported!
 			if (leaf > 1) leaf = 1; //Limit to leaf 1!
 			break;
 		case CPU_PENTIUMPRO: //Pentium Pro?
