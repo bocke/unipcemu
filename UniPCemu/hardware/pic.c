@@ -1196,7 +1196,10 @@ void LAPIC_pollRequests(byte whichCPU)
 	}
 	if ((LAPIC[whichCPU].LVTLINT0Register & (1 << 12)) && (LAPIC[whichCPU].LVTLINT0RegisterDirty == 0)) //LINT0 is pending?
 	{
-		lastLAPICAccepted[whichCPU] = LAPIC_executeVector(whichCPU, &LAPIC[whichCPU].LVTLINT0Register, 0xFF, 0); //Start the LINT0 interrupt!
+		if ((LAPIC[whichCPU].LVTLINT0Register & 0x700) != 0x700) //Not direct PIC mode?
+		{
+			lastLAPICAccepted[whichCPU] = LAPIC_executeVector(whichCPU, &LAPIC[whichCPU].LVTLINT0Register, 0xFF, 0); //Start the LINT0 interrupt!
+		}
 	}
 	if ((LAPIC[whichCPU].LVTLINT1Register & (1 << 12)) && (LAPIC[whichCPU].LVTLINT1RegisterDirty == 0)) //LINT1 is pending?
 	{
@@ -2356,6 +2359,14 @@ byte PICInterrupt() //We have an interrupt ready to process? This is the primary
 	if (APIC_currentintnr[activeCPU] != -1) //Interrupt pending to fire?
 	{
 		return 2; //APIC IRQ is pending to fire!
+	}
+
+	if ((LAPIC[activeCPU].LVTLINT0Register & (1 << 12)) && (LAPIC[activeCPU].LVTLINT0RegisterDirty == 0)) //LINT0 is pending?
+	{
+		if ((LAPIC[activeCPU].LVTLINT0Register & 0x700) == 0x700) //Direct PIC mode?
+		{
+			lastLAPICAccepted[activeCPU] = LAPIC_executeVector(activeCPU, &LAPIC[activeCPU].LVTLINT0Register, 0xFF, 0); //Start the LINT0 interrupt!
+		}
 	}
 
 	if (LAPIC[activeCPU].LAPIC_extIntPending != -1) //ExtInt pending?
