@@ -1388,7 +1388,12 @@ void BIU_handleRequestsIPS() //Handle all pending requests at once!
 			BIU[activeCPU].BUSactive = 0; //Inactive BUS!
 			checkBIUBUSrelease(); //Check for release!
 			BIU[activeCPU].requestready = 1; //The request is ready to be served!
+			if (BIU[activeCPU]._lock == 2) //Waiting for the BUS to be unlocked? Abort this handling!
+			{
+				goto handleBusLockPending; //Handle the bus locking pending!
+			}
 		}
+		handleBusLockPending: //Bus lock is pending?
 		BIU[activeCPU].BUSactive = 0; //Inactive BUS!
 		checkBIUBUSrelease(); //Check for release!
 		BIU[activeCPU].requestready = 1; //The request is ready to be served!
