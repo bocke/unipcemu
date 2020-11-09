@@ -27,6 +27,7 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 #include "headers/mmu/mmuhandler.h" //RAM layout updating support!
 #include "headers/hardware/ide.h" //IDE PCI support!
 #include "headers/hardware/pic.h" //APIC support!
+#include "headers/emu/emucore.h" //RESET line support!
 
 extern byte is_i430fx; //Are we an i430fx motherboard?
 byte i430fx_memorymappings_read[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}; //All read memory/PCI! Set=DRAM, clear=PCI!
@@ -362,7 +363,7 @@ void i430fx_PCIConfigurationChangeHandler(uint_32 address, byte device, byte fun
 					i430fx_hardreset(); //Perform a full hard reset of the hardware!
 					//CPU bist mode can be enabled as well(bit 3 of this register) with a hard reset!
 				}
-				CPU[activeCPU].resetPending = 1 | 4; //Start pending reset!
+				emu_raise_resetline(1 | 4); //Start pending reset!
 				i430fx_configuration[0x93] &= ~4; //Cannot be read as a 1, according to documentation!
 			}
 		}

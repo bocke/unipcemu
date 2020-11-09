@@ -28,6 +28,7 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 #include "headers/cpu/cpu.h" //CPU reset support!
 #include "headers/hardware/i430fx.h" //i430fx support!
 #include "headers/mmu/mmuhandler.h" //MMU support!
+#include "headers/emu/emucore.h" //RESET line support!
 
 //Are we disabled?
 #define __HW_DISABLED 0

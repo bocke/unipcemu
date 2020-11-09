@@ -35,6 +35,7 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 #include "headers/cpu/protecteddebugging.h" //Protected mode debugger support!
 #include "headers/cpu/flags.h" //Flag support!
 #include "headers/cpu/cpu_stack.h" //Stack support!
+#include "headers/emu/emucore.h" //RESET line support!
 
 //Log Virtual 8086 mode calls basic information?
 //#define LOG_VIRTUALMODECALLS
@@ -60,7 +61,7 @@ byte motherboard_responds_to_shutdown = 1; //Motherboard responds to shutdown?
 void CPU_triplefault()
 {
 	CPU[activeCPU].faultraised_lasttype = 0xFF; //Full on reset has been raised!
-	CPU[activeCPU].resetPending = (motherboard_responds_to_shutdown?1:2); //Start pending a reset! Respond to the shutdown cycle if allowed by the motherboard!
+	emu_raise_resetline(motherboard_responds_to_shutdown ? 1 : 2); //Start pending a reset! Respond to the shutdown cycle if allowed by the motherboard!
 	CPU[activeCPU].faultraised = 1; //We're continuing being a fault!
 	CPU[activeCPU].executed = 1; //We're finishing to execute!
 	if ((MMU_logging == 1) && advancedlog) //Are we logging?

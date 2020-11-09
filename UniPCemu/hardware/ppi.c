@@ -22,7 +22,7 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 #include "headers/hardware/ports.h" //I/O support!
 #include "headers/cpu/mmu.h" //MMU support!
 #include "headers/hardware/vga/vga.h" //VGA/EGA/CGA/MDA support!
-#include "headers/emu/emucore.h" //Speed change support!
+#include "headers/emu/emucore.h" //Speed change and RESET line support!
 #include "headers/emu/debugger/debugger.h" //Debugging support for logging POST codes!
 #include "headers/support/log.h" //For logging POST codes!
 #include "headers/hardware/pic.h" //Interrupt support!
