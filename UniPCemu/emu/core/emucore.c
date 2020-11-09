@@ -1391,7 +1391,7 @@ OPTINLINE byte coreHandler()
 		}
 		else
 		{
-			instructiontime = CPU[activeCPU].executed*CPU_speed_cycle; //Increase timing with the instruction time!
+			instructiontime = ((CPU[activeCPU].executed)|((BIU[activeCPU]._lock==2)&1))*CPU_speed_cycle; //Increase timing with the instruction time or bus lock in IPS clocking mode!
 		}
 
 		effectiveinstructiontime = MAX(effectiveinstructiontime,instructiontime); //Maximum CPU time passed!
