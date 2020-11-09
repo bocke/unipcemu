@@ -744,6 +744,10 @@ byte LAPIC_executeVector(byte whichCPU, uint_32* vectorlo, byte IR, byte isIOAPI
 		activeCPU = backupactiveCPU; //Restore backup!
 		break;
 	case 7: //extINT?
+		if (isIOAPIC) //IOAPIC in Virtual Wire mode? Don't accept it, let the CPU handle this!
+		{
+			return 0; //Don't accept the INTA request, because the CPU needs to handle this!
+		}
 		if (LAPIC[whichCPU].enabled != 1) return 0; //Don't accept if disabled!
 		if (LAPIC[whichCPU].LAPIC_extIntPending != -1) return 0; //Don't accept if it's already pending!
 		APIC_intnr = (sword)i8259_INTA(whichCPU, 1); //Perform an INTA-style interrupt retrieval!
@@ -1207,7 +1211,7 @@ void LAPIC_pollRequests(byte whichCPU)
 	}
 }
 
-void IOAPIC_pollRequests()
+void IOAPIC_pollRequests(byte enableExtInt, byte extIntCPU)
 {
 	uint_32 receiver; //Up to 32 receiving CPUs!
 	byte destinationCPU; //What CPU is the destination?
@@ -1262,10 +1266,13 @@ void IOAPIC_pollRequests()
 						APIC_requestbithighestpriority = APIC_requestbit; //What bit was the highest priority?
 						break;
 					case 7: //extINT?
-						APIC_highestpriority = (int)(IOAPIC.IOAPIC_redirectionentry[IR][0] & 0xF0U); //New highest priority!
-						APIC_highestpriorityIR = IR; //What IR has the highest priority now!
-						APIC_requestbithighestpriority = APIC_requestbit; //What bit was the highest priority?
-						goto handleExtIntPriority; //Top priority!
+						if (enableExtInt) //Allowed to acnowledge ExtINT type packets?
+						{
+							APIC_highestpriority = (int)(IOAPIC.IOAPIC_redirectionentry[IR][0] & 0xF0U); //New highest priority!
+							APIC_highestpriorityIR = IR; //What IR has the highest priority now!
+							APIC_requestbithighestpriority = APIC_requestbit; //What bit was the highest priority?
+							goto handleExtIntPriority; //Top priority!
+						}
 						break;
 					}
 				}
@@ -1332,6 +1339,13 @@ void IOAPIC_pollRequests()
 			{
 				if (receiver & (1 << destinationCPU)) //To receive?
 				{
+					if ((IOAPIC.IOAPIC_redirectionentry[IR][0] & 0x700) == 0x700) //ExtINT type?
+					{
+						if ((destinationCPU != extIntCPU) || (!enableExtInt)) //ExtInt can't be delivered right now to this (active) CPU?
+						{
+							continue; //Can't receive the ExtInt!
+						}
+					}
 					if (LAPIC_executeVector(destinationCPU, &IOAPIC.IOAPIC_redirectionentry[IR][0], IR, 1)) //Execute this vector from IO APIC!
 					{
 						//Properly received! Clear the sources!
@@ -2270,7 +2284,7 @@ performRecheck:
 	{
 		IOAPIC_raisepending(); //Raise all pending!
 		LAPIC_pollRequests(activeCPU); //Poll the APIC for possible requests!
-		IOAPIC_pollRequests(); //Poll the APIC for possible requests!
+		IOAPIC_pollRequests(0,0); //Poll the APIC for possible requests!
 		if (getunprocessedinterrupt(1)) //Slave connected to master?
 		{
 			raiseirq(0x802); //Slave raises INTRQ!
@@ -2360,6 +2374,8 @@ byte PICInterrupt() //We have an interrupt ready to process? This is the primary
 	{
 		return 2; //APIC IRQ is pending to fire!
 	}
+
+	IOAPIC_pollRequests(1,activeCPU); //Poll the extInt type requests on the IO APIC!
 
 	if ((LAPIC[activeCPU].LVTLINT0Register & (1 << 12)) && (LAPIC[activeCPU].LVTLINT0RegisterDirty == 0)) //LINT0 is pending?
 	{
