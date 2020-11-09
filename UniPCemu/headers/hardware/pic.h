@@ -97,5 +97,6 @@ void APIC_raisedIRQ(byte PIC, byte irqnum);
 void APIC_loweredIRQ(byte PIC, byte irqnum);
 void APIC_enableIOAPIC(byte enabled); //Enable the IO APIC?
 void resetLAPIC(byte whichCPU, byte isHardReset); //Soft or hard reset of the APIC!
+void resetIOAPIC(byte isHardReset); //Soft or hard reset of the I/O APIC!
 
 #endif

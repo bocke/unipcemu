@@ -413,7 +413,21 @@ extern byte numemulatedcpus; //Amount of emulated CPUs!
 
 void emu_raise_resetline(byte resetPendingFlags)
 {
-	CPU[activeCPU].resetPending = resetPendingFlags; //Start pending reset!
+	byte whichCPU;
+	//Affect all CPUs!
+	for (whichCPU = 0; whichCPU < numemulatedcpus; ++whichCPU)
+	{
+		if (whichCPU) //MP?
+		{
+			CPU[whichCPU].resetPending = (resetPendingFlags&(~4)); //Start pending reset MP!
+		}
+		else
+		{
+			CPU[whichCPU].resetPending = resetPendingFlags; //Start pending reset BSP!
+		}
+	}
+	//Affect the I/O APIC as well!
+	resetIOAPIC(1); //Hard reset on the I/O APIC!
 }
 
 void initEMU(int full) //Init!
