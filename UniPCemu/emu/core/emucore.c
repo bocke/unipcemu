@@ -411,6 +411,11 @@ extern byte BIU_buslocked; //BUS locked?
 extern byte BUSactive; //Are we allowed to control the BUS? 0=Inactive, 1=CPU, 2=DMA
 extern byte numemulatedcpus; //Amount of emulated CPUs!
 
+void emu_raise_resetline(byte resetPendingFlags)
+{
+	CPU[activeCPU].resetPending = resetPendingFlags; //Start pending reset!
+}
+
 void initEMU(int full) //Init!
 {
 	char soundfont[256];

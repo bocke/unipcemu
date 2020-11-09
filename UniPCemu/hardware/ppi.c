@@ -269,7 +269,7 @@ byte PPI_writeIO(word port, byte value)
 		checkPPIA20(); //Fast A20
 		if (value&1) //Fast reset?
 		{
-			CPU[activeCPU].resetPending = 1; //Start pending reset!
+			emu_raise_resetline(1); //Raise the RESET line!
 		}
 		return 1;
 		break;
