@@ -694,9 +694,11 @@ byte i8259_INTA(byte whichCPU, byte fromAPIC); //Prototype for the vector execut
 //Execute a requested vector on the Local APIC! Specify IR=0xFF for no actual IR! Result: 1=Accepted, 0=Not accepted!
 byte LAPIC_executeVector(byte whichCPU, uint_32* vectorlo, byte IR, byte isIOAPIC)
 {
+	byte resultadd;
 	byte backupactiveCPU;
 	byte APIC_intnr;
 	APIC_intnr = (*vectorlo & 0xFF); //What interrupt number?
+	resultadd = 0; //Nothing to add!
 	switch ((*vectorlo >> 8) & 7) //What destination mode?
 	{
 	case 0: //Interrupt?
@@ -744,7 +746,7 @@ byte LAPIC_executeVector(byte whichCPU, uint_32* vectorlo, byte IR, byte isIOAPI
 		activeCPU = backupactiveCPU; //Restore backup!
 		break;
 	case 7: //extINT?
-		if (isIOAPIC) //IOAPIC in Virtual Wire mode? Don't accept it, let the CPU handle this!
+		if ((isIOAPIC&3)==1) //IOAPIC in Virtual Wire mode? Don't accept it, let the CPU handle this! The only exception being if this is the CPU acnowledging the interrupt(bit 2 is also set)!
 		{
 			return 0; //Don't accept the INTA request, because the CPU needs to handle this!
 		}
@@ -753,6 +755,7 @@ byte LAPIC_executeVector(byte whichCPU, uint_32* vectorlo, byte IR, byte isIOAPI
 		APIC_intnr = (sword)i8259_INTA(whichCPU, 1); //Perform an INTA-style interrupt retrieval!
 		//Execute immediately!
 		LAPIC[whichCPU].LAPIC_extIntPending = (sword)APIC_intnr; //We're pending now!
+		resultadd |= 2; //INTA processed!
 		break;
 	default: //Unsupported yet?
 		break;
@@ -766,7 +769,7 @@ byte LAPIC_executeVector(byte whichCPU, uint_32* vectorlo, byte IR, byte isIOAPI
 			*vectorlo |= (1 << 14); //The IO or Local APIC has received the request for servicing!
 		}
 	}
-	return 1; //Accepted!
+	return (1|resultadd); //Accepted!
 }
 
 void updateAPIC(uint_64 clockspassed, float timepassed)
@@ -1211,8 +1214,9 @@ void LAPIC_pollRequests(byte whichCPU)
 	}
 }
 
-void IOAPIC_pollRequests(byte enableExtInt, byte extIntCPU)
+byte IOAPIC_pollRequests(byte enableExtInt, byte extIntCPU)
 {
+	byte result,result2;
 	uint_32 receiver; //Up to 32 receiving CPUs!
 	byte destinationCPU; //What CPU is the destination?
 
@@ -1224,11 +1228,13 @@ void IOAPIC_pollRequests(byte enableExtInt, byte extIntCPU)
 	uint_32 APIC_IRQsrequested, APIC_requestbit, APIC_requestsleft, APIC_requestbithighestpriority;
 	APIC_IRQsrequested = IOAPIC.IOAPIC_IRRset & (~IOAPIC.IOAPIC_IMRset); //What can we handle!
 
+	result = 0; //Default the result!
+
 	updateAPICliveIRRs(); //Update the live IRRs!
 
-	if (LAPIC[activeCPU].LAPIC_extIntPending != -1) return; //Prevent any more interrupts until the extInt is properly parsed!
+	if (LAPIC[activeCPU].LAPIC_extIntPending != -1) return 0; //Prevent any more interrupts until the extInt is properly parsed!
 
-	if (likely(APIC_IRQsrequested == 0)) return; //Nothing to do?
+	if (likely(APIC_IRQsrequested == 0)) return 0; //Nothing to do?
 //First, determine the highest priority IR to use!
 	APIC_requestbit = 1; //What bit is requested first!
 	APIC_requestsleft = 24; //How many are left!
@@ -1330,7 +1336,7 @@ void IOAPIC_pollRequests(byte enableExtInt, byte extIntCPU)
 				goto receiveIOLAPICCommandRegister; //Receive it!
 			}
 		}
-		return; //Abort: invalid destination!
+		return 0; //Abort: invalid destination!
 	receiveIOLAPICCommandRegister:
 		//Received something from the IO APIC redirection targetting the main CPU?
 		if (receiver) //Local APIC received?
@@ -1343,11 +1349,12 @@ void IOAPIC_pollRequests(byte enableExtInt, byte extIntCPU)
 					{
 						if ((destinationCPU != extIntCPU) || (!enableExtInt)) //ExtInt can't be delivered right now to this (active) CPU?
 						{
-							continue; //Can't receive the ExtInt!
+							continue; //Can't receive the ExtInt on this CPU!
 						}
 					}
-					if (LAPIC_executeVector(destinationCPU, &IOAPIC.IOAPIC_redirectionentry[IR][0], IR, 1)) //Execute this vector from IO APIC!
+					if ((result2 = LAPIC_executeVector(destinationCPU, &IOAPIC.IOAPIC_redirectionentry[IR][0], IR, 1+(enableExtInt<<1)))!=0) //Execute this vector from IO APIC!
 					{
+						result |= (result2 & 2); //INTA received?
 						//Properly received! Clear the sources!
 						APIC_IRQsrequested &= ~APIC_requestbit; //Clear the request bit!
 						IOAPIC.IOAPIC_IRRset &= ~APIC_requestbit; //Clear the request, because we're firing it up now!
@@ -1363,6 +1370,7 @@ void IOAPIC_pollRequests(byte enableExtInt, byte extIntCPU)
 			LAPIC_reportErrorStatus(0,(1 << 3),0); //Report an receive accept error!
 		}
 	}
+	return result; //Give the result!
 }
 
 //Acnowledge an INTA style interrupt from the local APIC!
@@ -2273,6 +2281,7 @@ OPTINLINE byte getunprocessedinterrupt(byte PIC)
 }
 
 void IOAPIC_raisepending(); //Prototype!
+byte dummyIOAPICPollRequests = 0;
 void acnowledgeirrs()
 {
 	byte nonedirty; //None are dirtied?
@@ -2284,7 +2293,7 @@ performRecheck:
 	{
 		IOAPIC_raisepending(); //Raise all pending!
 		LAPIC_pollRequests(activeCPU); //Poll the APIC for possible requests!
-		IOAPIC_pollRequests(0,0); //Poll the APIC for possible requests!
+		dummyIOAPICPollRequests = IOAPIC_pollRequests(0,0); //Poll the APIC for possible requests!
 		if (getunprocessedinterrupt(1)) //Slave connected to master?
 		{
 			raiseirq(0x802); //Slave raises INTRQ!
@@ -2375,7 +2384,10 @@ byte PICInterrupt() //We have an interrupt ready to process? This is the primary
 		return 2; //APIC IRQ is pending to fire!
 	}
 
-	IOAPIC_pollRequests(1,activeCPU); //Poll the extInt type requests on the IO APIC!
+	if (IOAPIC_pollRequests(1, activeCPU) == 2) //Poll the extInt type requests on the IO APIC! Acnowledged a INTA from the IO APIC?
+	{
+		goto handleIOAPIC_INTA; //Start to handle the IO APIC INTA request!
+	}
 
 	if ((LAPIC[activeCPU].LVTLINT0Register & (1 << 12)) && (LAPIC[activeCPU].LVTLINT0RegisterDirty == 0)) //LINT0 is pending?
 	{
@@ -2385,6 +2397,7 @@ byte PICInterrupt() //We have an interrupt ready to process? This is the primary
 		}
 	}
 
+	handleIOAPIC_INTA:
 	if (LAPIC[activeCPU].LAPIC_extIntPending != -1) //ExtInt pending?
 	{
 		APIC_currentintnr[activeCPU] = LAPIC[activeCPU].LAPIC_extIntPending; //Acnowledge!
