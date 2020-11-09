@@ -834,6 +834,7 @@ byte CPU_PORT_OUT_B(word base, word port, byte data)
 	}
 	if (CPU[activeCPU].internalinstructionstep==(base+1))
 	{
+		BIU_handleRequestsPending(); //Handle all pending requests at once when to be processed!
 		if (BIU_readResultb(&dummy)==0) //Not ready?
 		{
 			CPU[activeCPU].cycles_OP += 1; //Take 1 cycle only!
@@ -875,6 +876,7 @@ byte CPU_PORT_OUT_W(word base, word port, word data)
 	}
 	if (CPU[activeCPU].internalinstructionstep==(base+1))
 	{
+		BIU_handleRequestsPending(); //Handle all pending requests at once when to be processed!
 		if (BIU_readResultw(&dummy)==0) //Not ready?
 		{
 			CPU[activeCPU].cycles_OP += 1; //Take 1 cycle only!
@@ -926,6 +928,7 @@ byte CPU_PORT_OUT_D(word base, word port, uint_32 data)
 	}
 	if (CPU[activeCPU].internalinstructionstep==(base+1))
 	{
+		BIU_handleRequestsPending(); //Handle all pending requests at once when to be processed!
 		if (BIU_readResultdw(&dummy)==0) //Not ready?
 		{
 			CPU[activeCPU].cycles_OP += 1; //Take 1 cycle only!
@@ -961,6 +964,7 @@ byte CPU_PORT_IN_B(word base, word port, byte *result)
 	}
 	if (CPU[activeCPU].internalinstructionstep==(base+1))
 	{
+		BIU_handleRequestsPending(); //Handle all pending requests at once when to be processed!
 		if (BIU_readResultb(result)==0) //Not ready?
 		{
 			CPU[activeCPU].cycles_OP += 1; //Take 1 cycle only!
@@ -1001,6 +1005,7 @@ byte CPU_PORT_IN_W(word base, word port, word *result)
 	}
 	if (CPU[activeCPU].internalinstructionstep==(base+1))
 	{
+		BIU_handleRequestsPending(); //Handle all pending requests at once when to be processed!
 		if (BIU_readResultw(result)==0) //Not ready?
 		{
 			CPU[activeCPU].cycles_OP += 1; //Take 1 cycle only!
@@ -1051,6 +1056,7 @@ byte CPU_PORT_IN_D(word base, word port, uint_32 *result)
 	}
 	if (CPU[activeCPU].internalinstructionstep==(base+1))
 	{
+		BIU_handleRequestsPending(); //Handle all pending requests at once when to be processed!
 		if (BIU_readResultdw(result)==0) //Not ready?
 		{
 			CPU[activeCPU].cycles_OP += 1; //Take 1 cycle only!

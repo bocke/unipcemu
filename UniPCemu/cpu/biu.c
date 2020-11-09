@@ -139,6 +139,7 @@ void CPU_initBIU()
 	{
 		memset(&CompaqWrapping, 0, sizeof(CompaqWrapping)); //Wrapping applied always!
 	}
+	BIU[activeCPU].handlerequestPending = &BIU_handleRequestsNOP; //Nothing is actively being handled!
 }
 
 void CPU_doneBIU()
@@ -1390,14 +1391,21 @@ void BIU_handleRequestsIPS() //Handle all pending requests at once!
 			BIU[activeCPU].requestready = 1; //The request is ready to be served!
 			if (BIU[activeCPU]._lock == 2) //Waiting for the BUS to be unlocked? Abort this handling!
 			{
+				BIU[activeCPU].handlerequestPending = &BIU_handleRequestsIPS; //We're keeping pending to handle!
 				goto handleBusLockPending; //Handle the bus locking pending!
 			}
 		}
+		BIU[activeCPU].handlerequestPending = NULL; //Nothing is pending anymore!
 		handleBusLockPending: //Bus lock is pending?
 		BIU[activeCPU].BUSactive = 0; //Inactive BUS!
 		checkBIUBUSrelease(); //Check for release!
 		BIU[activeCPU].requestready = 1; //The request is ready to be served!
 	}
+}
+
+void BIU_handleRequestsPending()
+{
+	BIU[activeCPU].handlerequestPending(); //Handle all pending requests if they exist!
 }
 
 void BIU_handleRequestsNOP()

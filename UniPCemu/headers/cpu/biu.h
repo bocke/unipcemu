@@ -66,6 +66,7 @@ typedef struct
 	CPU_CycleTimingInfo* currentcycleinfo;
 	byte temp, temp2;
 	word resultw1, resultw2;
+	Handler handlerequestPending; //Pending request?
 } BIU_type;
 
 void CPU_initBIU(); //Initialize the BIU!
@@ -129,5 +130,7 @@ void BIU_terminatemem(); //Terminate memory access!
 #ifndef IS_BIU
 extern Handler BIU_handleRequests; //Handle all pending requests at once when to be processed!
 #endif
+
+void BIU_handleRequestsPending(); //Handle all pending requests!
 
 #endif

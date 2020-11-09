@@ -240,6 +240,7 @@ byte CPU8086_PUSHw(word base, word *data, byte is32instruction)
 	}
 	if (CPU[activeCPU].instructionstep==(base+1))
 	{
+		BIU_handleRequestsPending(); //Handle all pending requests at once when to be processed!
 		if (BIU_readResultw(&temp)==0) //Not ready?
 		{
 			CPU[activeCPU].cycles_OP += 1; //Take 1 cycle only!
@@ -267,6 +268,7 @@ byte CPU8086_internal_PUSHw(word base, word *data, byte is32instruction)
 	}
 	if (CPU[activeCPU].internalinstructionstep==(base+1))
 	{
+		BIU_handleRequestsPending(); //Handle all pending requests at once when to be processed!
 		if (BIU_readResultw(&temp)==0) //Not ready?
 		{
 			CPU[activeCPU].cycles_OP += 1; //Take 1 cycle only!
@@ -294,6 +296,7 @@ byte CPU8086_internal_interruptPUSHw(word base, word *data, byte is32instruction
 	}
 	if (CPU[activeCPU].internalinterruptstep==(base+1))
 	{
+		BIU_handleRequestsPending(); //Handle all pending requests at once when to be processed!
 		if (BIU_readResultw(&temp)==0) //Not ready?
 		{
 			CPU[activeCPU].cycles_OP += 1; //Take 1 cycle only!
@@ -321,6 +324,7 @@ byte CPU8086_PUSHb(word base, byte *data, byte is32instruction)
 	}
 	if (CPU[activeCPU].instructionstep==(base+1))
 	{
+		BIU_handleRequestsPending(); //Handle all pending requests at once when to be processed!
 		if (BIU_readResultb(&temp)==0) //Not ready?
 		{
 			CPU[activeCPU].cycles_OP += 1; //Take 1 cycle only!
@@ -348,6 +352,7 @@ byte CPU8086_internal_PUSHb(word base, byte *data, byte is32instruction)
 	}
 	if (CPU[activeCPU].internalinstructionstep==(base+1))
 	{
+		BIU_handleRequestsPending(); //Handle all pending requests at once when to be processed!
 		if (BIU_readResultb(&temp)==0) //Not ready?
 		{
 			CPU[activeCPU].cycles_OP += 1; //Take 1 cycle only!
@@ -374,6 +379,7 @@ byte CPU8086_POPw(word base, word *result, byte is32instruction)
 	}
 	if (CPU[activeCPU].instructionstep==(base+1))
 	{
+		BIU_handleRequestsPending(); //Handle all pending requests at once when to be processed!
 		if (BIU_readResultw(result)==0) //Not ready?
 		{
 			CPU[activeCPU].cycles_OP += 1; //Take 1 cycle only!
@@ -400,6 +406,7 @@ byte CPU8086_internal_POPw(word base, word *result, byte is32instruction)
 	}
 	if (CPU[activeCPU].internalinstructionstep==(base+1))
 	{
+		BIU_handleRequestsPending(); //Handle all pending requests at once when to be processed!
 		if (BIU_readResultw(result)==0) //Not ready?
 		{
 			CPU[activeCPU].cycles_OP += 1; //Take 1 cycle only!
@@ -427,6 +434,7 @@ byte CPU8086_POPSP(word base)
 	}
 	if (CPU[activeCPU].instructionstep==(base+1))
 	{
+		BIU_handleRequestsPending(); //Handle all pending requests at once when to be processed!
 		if (BIU_readResultw(&REG_SP)==0) //Not ready?
 		{
 			CPU[activeCPU].cycles_OP += 1; //Take 1 cycle only!
@@ -463,6 +471,7 @@ byte CPU8086_POPb(word base, byte *result, byte is32instruction)
 	}
 	if (CPU[activeCPU].instructionstep==(base+1))
 	{
+		BIU_handleRequestsPending(); //Handle all pending requests at once when to be processed!
 		if (BIU_readResultb(result)==0) //Not ready?
 		{
 			CPU[activeCPU].cycles_OP += 1; //Take 1 cycle only!
@@ -611,6 +620,7 @@ byte CPU8086_instructionstepreadmodrmb(word base, byte *result, byte paramnr) //
 	}
 	if (CPU[activeCPU].modrmstep==(base+1))
 	{
+		BIU_handleRequestsPending(); //Handle all pending requests at once when to be processed!
 		if (BIU_readResultb(result)==0) //Not ready?
 		{
 			CPU[activeCPU].cycles_OP += 1; //Take 1 cycle only!
@@ -645,6 +655,7 @@ byte CPU8086_instructionstepreadmodrmw(word base, word *result, byte paramnr)
 	}
 	if (CPU[activeCPU].modrmstep==(base+1))
 	{
+		BIU_handleRequestsPending(); //Handle all pending requests at once when to be processed!
 		if (BIU_readResultw(result)==0) //Not ready?
 		{
 			CPU[activeCPU].cycles_OP += 1; //Take 1 cycle only!
@@ -680,6 +691,7 @@ byte CPU8086_instructionstepwritemodrmb(word base, byte value, byte paramnr) //B
 	}
 	if (CPU[activeCPU].modrmstep==(base+1))
 	{
+		BIU_handleRequestsPending(); //Handle all pending requests at once when to be processed!
 		if (BIU_readResultb(&dummy)==0) //Not ready?
 		{
 			CPU[activeCPU].cycles_OP += 1; //Take 1 cycle only!
@@ -715,6 +727,7 @@ byte CPU8086_instructionstepwritemodrmw(word base, word value, byte paramnr, byt
 	}
 	if (CPU[activeCPU].modrmstep==(base+1))
 	{
+		BIU_handleRequestsPending(); //Handle all pending requests at once when to be processed!
 		if (BIU_readResultw(&dummy)==0) //Not ready?
 		{
 			CPU[activeCPU].cycles_OP += 1; //Take 1 cycle only!
@@ -742,6 +755,7 @@ byte CPU8086_instructionstepwritedirectb(word base, sword segment, word segval, 
 	}
 	if (CPU[activeCPU].modrmstep == (base + 1))
 	{
+		BIU_handleRequestsPending(); //Handle all pending requests at once when to be processed!
 		if (BIU_readResultb(&dummy) == 0) //Not ready?
 		{
 			CPU[activeCPU].cycles_OP += 1; //Take 1 cycle only!
@@ -769,6 +783,7 @@ byte CPU8086_instructionstepwritedirectw(word base, sword segment, word segval, 
 	}
 	if (CPU[activeCPU].modrmstep == (base + 1))
 	{
+		BIU_handleRequestsPending(); //Handle all pending requests at once when to be processed!
 		if (BIU_readResultw(&dummy) == 0) //Not ready?
 		{
 			CPU[activeCPU].cycles_OP += 1; //Take 1 cycle only!
@@ -795,6 +810,7 @@ byte CPU8086_instructionstepreaddirectb(word base, sword segment, word segval, u
 	}
 	if (CPU[activeCPU].modrmstep == (base + 1))
 	{
+		BIU_handleRequestsPending(); //Handle all pending requests at once when to be processed!
 		if (BIU_readResultb(result) == 0) //Not ready?
 		{
 			CPU[activeCPU].cycles_OP += 1; //Take 1 cycle only!
@@ -821,6 +837,7 @@ byte CPU8086_instructionstepreaddirectw(word base, sword segment, word segval, u
 	}
 	if (CPU[activeCPU].modrmstep == (base + 1))
 	{
+		BIU_handleRequestsPending(); //Handle all pending requests at once when to be processed!
 		if (BIU_readResultw(result) == 0) //Not ready?
 		{
 			CPU[activeCPU].cycles_OP += 1; //Take 1 cycle only!
@@ -856,6 +873,7 @@ byte CPU8086_internal_stepreadmodrmb(word base, byte *result, byte paramnr) //Ba
 	}
 	if (CPU[activeCPU].internalmodrmstep==(base+1))
 	{
+		BIU_handleRequestsPending(); //Handle all pending requests at once when to be processed!
 		if (BIU_readResultb(result)==0) //Not ready?
 		{
 			CPU[activeCPU].cycles_OP += 1; //Take 1 cycle only!
@@ -890,6 +908,7 @@ byte CPU8086_internal_stepreadmodrmw(word base, word *result, byte paramnr)
 	}
 	if (CPU[activeCPU].internalmodrmstep==(base+1))
 	{
+		BIU_handleRequestsPending(); //Handle all pending requests at once when to be processed!
 		if (BIU_readResultw(result)==0) //Not ready?
 		{
 			CPU[activeCPU].cycles_OP += 1; //Take 1 cycle only!
@@ -925,6 +944,7 @@ byte CPU8086_internal_stepwritemodrmb(word base, byte value, byte paramnr) //Bas
 	}
 	if (CPU[activeCPU].internalmodrmstep==(base+1))
 	{
+		BIU_handleRequestsPending(); //Handle all pending requests at once when to be processed!
 		if (BIU_readResultb(&dummy)==0) //Not ready?
 		{
 			CPU[activeCPU].cycles_OP += 1; //Take 1 cycle only!
@@ -952,6 +972,7 @@ byte CPU8086_internal_stepwritedirectb(word base, sword segment, word segval, ui
 	}
 	if (CPU[activeCPU].internalmodrmstep==(base+1))
 	{
+		BIU_handleRequestsPending(); //Handle all pending requests at once when to be processed!
 		if (BIU_readResultb(&dummy)==0) //Not ready?
 		{
 			CPU[activeCPU].cycles_OP += 1; //Take 1 cycle only!
@@ -979,6 +1000,7 @@ byte CPU8086_internal_stepwritedirectw(word base, sword segment, word segval, ui
 	}
 	if (CPU[activeCPU].internalmodrmstep==(base+1))
 	{
+		BIU_handleRequestsPending(); //Handle all pending requests at once when to be processed!
 		if (BIU_readResultw(&dummy)==0) //Not ready?
 		{
 			CPU[activeCPU].cycles_OP += 1; //Take 1 cycle only!
@@ -1005,6 +1027,7 @@ byte CPU8086_internal_stepreaddirectb(word base, sword segment, word segval, uin
 	}
 	if (CPU[activeCPU].internalmodrmstep==(base+1))
 	{
+		BIU_handleRequestsPending(); //Handle all pending requests at once when to be processed!
 		if (BIU_readResultb(result)==0) //Not ready?
 		{
 			CPU[activeCPU].cycles_OP += 1; //Take 1 cycle only!
@@ -1031,6 +1054,7 @@ byte CPU8086_internal_stepreaddirectw(word base, sword segment, word segval, uin
 	}
 	if (CPU[activeCPU].internalmodrmstep==(base+1))
 	{
+		BIU_handleRequestsPending(); //Handle all pending requests at once when to be processed!
 		if (BIU_readResultw(result)==0) //Not ready?
 		{
 			CPU[activeCPU].cycles_OP += 1; //Take 1 cycle only!
@@ -1057,6 +1081,7 @@ byte CPU8086_internal_stepreadinterruptw(word base, sword segment, word segval, 
 	}
 	if (CPU[activeCPU].internalinterruptstep==(base+1))
 	{
+		BIU_handleRequestsPending(); //Handle all pending requests at once when to be processed!
 		if (BIU_readResultw(result)==0) //Not ready?
 		{
 			CPU[activeCPU].cycles_OP += 1; //Take 1 cycle only!
@@ -1092,6 +1117,7 @@ byte CPU8086_internal_stepwritemodrmw(word base, word value, byte paramnr, byte 
 	}
 	if (CPU[activeCPU].internalmodrmstep==(base+1))
 	{
+		BIU_handleRequestsPending(); //Handle all pending requests at once when to be processed!
 		if (BIU_readResultw(&dummy)==0) //Not ready?
 		{
 			CPU[activeCPU].cycles_OP += 1; //Take 1 cycle only!
