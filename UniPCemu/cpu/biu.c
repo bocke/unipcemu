@@ -1395,7 +1395,7 @@ void BIU_handleRequestsIPS() //Handle all pending requests at once!
 				goto handleBusLockPending; //Handle the bus locking pending!
 			}
 		}
-		BIU[activeCPU].handlerequestPending = NULL; //Nothing is pending anymore!
+		BIU[activeCPU].handlerequestPending = &BIU_handleRequestsNOP; //Nothing is pending anymore!
 		handleBusLockPending: //Bus lock is pending?
 		BIU[activeCPU].BUSactive = 0; //Inactive BUS!
 		checkBIUBUSrelease(); //Check for release!
