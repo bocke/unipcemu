@@ -1006,6 +1006,7 @@ byte receiveCommandRegister(byte whichCPU, uint_32 destinationCPU, uint_32 *comm
 		if (isIOAPIC) return 1; //Not on IO APIC!
 		if (APICNMIQueued[destinationCPU]) //Already queued?
 		{
+			return 0; //Don't accept it yet!
 			//*commandregister |= 0x1000; //Retry!
 		}
 		else //Accepted?
