@@ -33,6 +33,8 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 //Are we disabled?
 #define __HW_DISABLED 0
 
+#define DELIVERYPENDING (1<<12)
+
 byte numemulatedcpus = 1; //Amount of emulated CPUs!
 
 PIC i8259;
@@ -544,7 +546,7 @@ void LAPIC_handletermination() //Handle termination on the APIC!
 	finishupEOI: //Finish up an EOI comand: continue onwards!
 	if (LAPIC[activeCPU].needstermination & 4) //Needs termination due to sending a command?
 	{
-		LAPIC[activeCPU].InterruptCommandRegisterLo |= (1 << 12); //Start to become pending!
+		LAPIC[activeCPU].InterruptCommandRegisterLo |= DELIVERYPENDING; //Start to become pending!
 		LAPIC[activeCPU].InterruptCommandRegisterPendingIOAPIC = ~0; //Any possible pending!
 		LAPIC[activeCPU].InterruptCommandRegisterPendingReceiver = ~0; //Any possible pending!
 	}
@@ -761,7 +763,7 @@ byte LAPIC_executeVector(byte whichCPU, uint_32* vectorlo, byte IR, byte isIOAPI
 		break;
 	}
 
-	*vectorlo &= ~(1 << 12); //The IO or Local APIC has received the request!
+	*vectorlo &= ~DELIVERYPENDING; //The IO or Local APIC has received the request!
 	if (isIOAPIC) //IO APIC?
 	{
 		if (*vectorlo & 0x8000) //Level triggered?
@@ -817,9 +819,9 @@ void updateAPIC(uint_64 clockspassed, float timepassed)
 			{
 				if ((LAPIC[activeCPU].LVTTimerRegister & 0x10000)==0) //Not masked?
 				{
-					if ((LAPIC[activeCPU].LVTTimerRegister & (1 << 12)) == 0) //The IO or Local APIC can receive the request!
+					if ((LAPIC[activeCPU].LVTTimerRegister & DELIVERYPENDING) == 0) //The IO or Local APIC can receive the request!
 					{
-						LAPIC[activeCPU].LVTTimerRegister |= (1 << 12); //Start pending!
+						LAPIC[activeCPU].LVTTimerRegister |= DELIVERYPENDING; //Start pending!
 					}
 				}
 			}
@@ -831,9 +833,9 @@ byte APIC_errorTrigger(byte whichCPU) //Error has been triggered!
 {
 	if ((LAPIC[whichCPU].LVTErrorRegister & 0x10000)==0) //Not masked?
 	{
-		if ((LAPIC[whichCPU].LVTErrorRegister & (1 << 12)) == 0) //The IO or Local APIC can receive the request!
+		if ((LAPIC[whichCPU].LVTErrorRegister & DELIVERYPENDING) == 0) //The IO or Local APIC can receive the request!
 		{
-			LAPIC[whichCPU].LVTErrorRegister |= (1 << 12); //Start pending!
+			LAPIC[whichCPU].LVTErrorRegister |= DELIVERYPENDING; //Start pending!
 			return 1; //Pending!
 		}
 	}
@@ -1070,12 +1072,12 @@ void LAPIC_pollRequests(byte whichCPU)
 	{
 		if (NMIQueued && (LAPIC[whichCPU].LVTLINT1RegisterDirty == 0)) //NMI has been queued?
 		{
-			if ((LAPIC[whichCPU].LVTLINT1Register & (1 << 12)) == 0) //Not waiting to be delivered!
+			if ((LAPIC[whichCPU].LVTLINT1Register & DELIVERYPENDING) == 0) //Not waiting to be delivered!
 			{
 				if ((LAPIC[whichCPU].LVTLINT1Register & 0x10000) == 0) //Not masked?
 				{
 					NMIQueued = 0; //Not queued anymore!
-					LAPIC[whichCPU].LVTLINT1Register |= (1 << 12); //Start pending!
+					LAPIC[whichCPU].LVTLINT1Register |= DELIVERYPENDING; //Start pending!
 					//Edge: raised when set(done here already). Lowered has weird effects for level-sensitive modes? So ignore them!
 				}
 			}
@@ -1194,22 +1196,22 @@ void LAPIC_pollRequests(byte whichCPU)
 		}
 	}
 
-	if ((LAPIC[whichCPU].LVTErrorRegister & (1 << 12)) && ((LAPIC[activeCPU].LVTErrorRegister & 0x10000) == 0) && (LAPIC[whichCPU].LVTErrorRegisterDirty == 0)) //Timer is pending?
+	if ((LAPIC[whichCPU].LVTErrorRegister & DELIVERYPENDING) && ((LAPIC[activeCPU].LVTErrorRegister & 0x10000) == 0) && (LAPIC[whichCPU].LVTErrorRegisterDirty == 0)) //Error is pending?
 	{
 		lastLAPICAccepted[whichCPU] = LAPIC_executeVector(whichCPU, &LAPIC[whichCPU].LVTErrorRegister, 0xFF, 0); //Start the error interrupt!
 	}
-	if ((LAPIC[whichCPU].LVTTimerRegister & (1 << 12)) && ((LAPIC[activeCPU].LVTTimerRegister & 0x10000) == 0) && (LAPIC[whichCPU].LVTTimerRegisterDirty == 0)) //Timer is pending?
+	if ((LAPIC[whichCPU].LVTTimerRegister & DELIVERYPENDING) && ((LAPIC[activeCPU].LVTTimerRegister & 0x10000) == 0) && (LAPIC[whichCPU].LVTTimerRegisterDirty == 0)) //Timer is pending?
 	{
 		lastLAPICAccepted[whichCPU] = LAPIC_executeVector(whichCPU, &LAPIC[whichCPU].LVTTimerRegister, 0xFF, 0); //Start the timer interrupt!
 	}
-	if ((LAPIC[whichCPU].LVTLINT0Register & (1 << 12)) && ((LAPIC[activeCPU].LVTLINT0Register & 0x10000) == 0) && (LAPIC[whichCPU].LVTLINT0RegisterDirty == 0)) //LINT0 is pending?
+	if ((LAPIC[whichCPU].LVTLINT0Register & DELIVERYPENDING) && ((LAPIC[activeCPU].LVTLINT0Register & 0x10000) == 0) && (LAPIC[whichCPU].LVTLINT0RegisterDirty == 0)) //LINT0 is pending?
 	{
 		if ((LAPIC[whichCPU].LVTLINT0Register & 0x700) != 0x700) //Not direct PIC mode?
 		{
 			lastLAPICAccepted[whichCPU] = LAPIC_executeVector(whichCPU, &LAPIC[whichCPU].LVTLINT0Register, 0xFF, 0); //Start the LINT0 interrupt!
 		}
 	}
-	if ((LAPIC[whichCPU].LVTLINT1Register & (1 << 12)) && ((LAPIC[activeCPU].LVTLINT1Register & 0x10000) == 0) && (LAPIC[whichCPU].LVTLINT1RegisterDirty == 0)) //LINT1 is pending?
+	if ((LAPIC[whichCPU].LVTLINT1Register & DELIVERYPENDING) && ((LAPIC[activeCPU].LVTLINT1Register & 0x10000) == 0) && (LAPIC[whichCPU].LVTLINT1RegisterDirty == 0)) //LINT1 is pending?
 	{
 		lastLAPICAccepted[whichCPU] = LAPIC_executeVector(whichCPU, &LAPIC[whichCPU].LVTLINT1Register, 0xFF, 0); //Start the LINT0 interrupt!
 	}
@@ -1611,7 +1613,7 @@ byte APIC_memIO_wb(uint_32 offset, byte value)
 			break;
 		case 0x2F0:
 			whatregister = &LAPIC[activeCPU].LVTCorrectedMachineCheckInterruptRegister; //02F0
-			ROMbits = (1<<12); //Fully writable!
+			ROMbits = DELIVERYPENDING; //Fully writable!
 			if (LAPIC[activeCPU].enabled == 0) //Soft disabled?
 			{
 				ROMbits |= (1 << 16); //The mask is ROM!
@@ -1619,7 +1621,7 @@ byte APIC_memIO_wb(uint_32 offset, byte value)
 			break;
 		case 0x300:
 			whatregister = &LAPIC[activeCPU].InterruptCommandRegisterLo; //0300
-			ROMbits = (1<<12)|(1<<17); //Fully writable! Pending to send isn't writable! Remote read status isn't writable!
+			ROMbits = DELIVERYPENDING|(1<<17); //Fully writable! Pending to send isn't writable! Remote read status isn't writable!
 			break;
 		case 0x310:
 			whatregister = &LAPIC[activeCPU].InterruptCommandRegisterHi; //0310
@@ -1627,7 +1629,7 @@ byte APIC_memIO_wb(uint_32 offset, byte value)
 			break;
 		case 0x320:
 			whatregister = &LAPIC[activeCPU].LVTTimerRegister; //0320
-			ROMbits = (1<<12); //Fully writable!
+			ROMbits = DELIVERYPENDING; //Fully writable!
 			LAPIC[activeCPU].LVTTimerRegisterDirty = 1; //Dirty!
 			LAPIC[activeCPU].needstermination |= 0x100; //Needs termination!
 			if (LAPIC[activeCPU].enabled == 0) //Soft disabled?
@@ -1637,7 +1639,7 @@ byte APIC_memIO_wb(uint_32 offset, byte value)
 			break;
 		case 0x330:
 			whatregister = &LAPIC[activeCPU].LVTThermalSensorRegister; //0330
-			ROMbits = (1<<12); //Fully writable!
+			ROMbits = DELIVERYPENDING; //Fully writable!
 			if (LAPIC[activeCPU].enabled == 0) //Soft disabled?
 			{
 				ROMbits |= (1 << 16); //The mask is ROM!
@@ -1645,7 +1647,7 @@ byte APIC_memIO_wb(uint_32 offset, byte value)
 			break;
 		case 0x340:
 			whatregister = &LAPIC[activeCPU].LVTPerformanceMonitoringCounterRegister; //0340
-			ROMbits = (1<<12); //Fully writable!
+			ROMbits = DELIVERYPENDING; //Fully writable!
 			if (LAPIC[activeCPU].enabled == 0) //Soft disabled?
 			{
 				ROMbits |= (1 << 16); //The mask is ROM!
@@ -1653,7 +1655,7 @@ byte APIC_memIO_wb(uint_32 offset, byte value)
 			break;
 		case 0x350:
 			whatregister = &LAPIC[activeCPU].LVTLINT0Register; //0350
-			ROMbits = (1<<12); //Fully writable!
+			ROMbits = DELIVERYPENDING; //Fully writable!
 			LAPIC[activeCPU].LVTLINT0RegisterDirty = 1; //Dirty!
 			LAPIC[activeCPU].needstermination |= 0x100; //Needs termination!
 			if (LAPIC[activeCPU].enabled == 0) //Soft disabled?
@@ -1663,7 +1665,7 @@ byte APIC_memIO_wb(uint_32 offset, byte value)
 			break;
 		case 0x360:
 			whatregister = &LAPIC[activeCPU].LVTLINT1Register; //0560
-			ROMbits = (1<<12); //Fully writable!
+			ROMbits = DELIVERYPENDING; //Fully writable!
 			LAPIC[activeCPU].LVTLINT1RegisterDirty = 1; //Dirty!
 			LAPIC[activeCPU].needstermination |= 0x100; //Needs termination!
 			if (LAPIC[activeCPU].enabled == 0) //Soft disabled?
@@ -1673,7 +1675,7 @@ byte APIC_memIO_wb(uint_32 offset, byte value)
 			break;
 		case 0x370:
 			whatregister = &LAPIC[activeCPU].LVTErrorRegister; //0370
-			ROMbits = (1<<12); //Fully writable!
+			ROMbits = DELIVERYPENDING; //Fully writable!
 			LAPIC[activeCPU].LVTErrorRegisterDirty = 1; //Dirty!
 			LAPIC[activeCPU].needstermination |= 0x100; //Needs termination!
 			if (LAPIC[activeCPU].enabled == 0) //Soft disabled?
@@ -1730,7 +1732,7 @@ byte APIC_memIO_wb(uint_32 offset, byte value)
 		}
 		else if (address == 0x300) //Needs to send a command?
 		{
-			LAPIC[activeCPU].InterruptCommandRegisterLo &= ~(1 << 12); //Not sent yet is kept cleared!
+			LAPIC[activeCPU].InterruptCommandRegisterLo &= ~DELIVERYPENDING; //Not sent yet is kept cleared!
 			LAPIC[activeCPU].needstermination |= 4; //Handle a command?
 		}
 		else if (address == 0x280) //Error status register?
@@ -2390,7 +2392,7 @@ byte PICInterrupt() //We have an interrupt ready to process? This is the primary
 		goto handleIOAPIC_INTA; //Start to handle the IO APIC INTA request!
 	}
 
-	if ((LAPIC[activeCPU].LVTLINT0Register & (1 << 12)) && ((LAPIC[activeCPU].LVTLINT0Register & 0x10000) == 0) && (LAPIC[activeCPU].LVTLINT0RegisterDirty == 0)) //LINT0 is pending?
+	if ((LAPIC[activeCPU].LVTLINT0Register & DELIVERYPENDING) && ((LAPIC[activeCPU].LVTLINT0Register & 0x10000) == 0) && (LAPIC[activeCPU].LVTLINT0RegisterDirty == 0)) //LINT0 is pending?
 	{
 		if ((LAPIC[activeCPU].LVTLINT0Register & 0x700) == 0x700) //Direct PIC mode?
 		{
@@ -2560,39 +2562,37 @@ byte nextintr()
 
 void LINT0_raiseIRQ(byte updatelivestatus)
 {
-	if (LAPIC[activeCPU].LVTLINT0RegisterDirty || (LAPIC[activeCPU].enabled!=1)) return; //Not ready to handle?
-	if ((LAPIC[activeCPU].LVTLINT0Register & 0x10000) == 0) //Not masked?
+	if (LAPIC[activeCPU].enabled != 1) return; //Not ready to handle?
+	//Always set the LINT0 register bit!
+	switch ((LAPIC[activeCPU].LVTLINT0Register >> 8) & 7) //What mode?
 	{
-		switch ((LAPIC[activeCPU].LVTLINT0Register >> 8) & 7) //What mode?
+	case 0: //Interrupt? Also named Fixed!
+	case 1: //Lowest priority?
+		if ((LAPIC[activeCPU].LVTLINT0Register & 0x8000) == 0) //Edge-triggered? Supported!
 		{
-		case 0: //Interrupt? Also named Fixed!
-		case 1: //Lowest priority?
-			if ((LAPIC[activeCPU].LVTLINT0Register & 0x8000) == 0) //Edge-triggered? Supported!
-			{
-				if ((IOAPIC.IOAPIC_liveIRR & 1) == 0) //Not yet raised? Rising edge!
-				{
-					LAPIC[activeCPU].LVTLINT0Register |= (1 << 12); //Perform LINT0!
-				}
-			}
-			else
-			{
-				LAPIC[activeCPU].LVTLINT0Register |= (1 << 12); //Perform LINT0!
-			}
-			break;
-		case 2: //SMI?
-		case 4: //NMI?
-		case 5: //INIT or INIT deassert?
-			//Edge mode only! Don't do anything when lowered!
 			if ((IOAPIC.IOAPIC_liveIRR & 1) == 0) //Not yet raised? Rising edge!
 			{
-				LAPIC[activeCPU].LVTLINT0Register |= (1 << 12); //Perform LINT0!
+				LAPIC[activeCPU].LVTLINT0Register |= DELIVERYPENDING; //Perform LINT0!
 			}
-			break;
-		case 7: //extINT? Level only!
-			//Always assume that the live IRR doesn't match to keep it live on the triggering!
-			LAPIC[activeCPU].LVTLINT0Register |= (1 << 12); //Perform LINT0!
-			break;
 		}
+		else
+		{
+			LAPIC[activeCPU].LVTLINT0Register |= DELIVERYPENDING; //Perform LINT0!
+		}
+		break;
+	case 2: //SMI?
+	case 4: //NMI?
+	case 5: //INIT or INIT deassert?
+		//Edge mode only! Don't do anything when lowered!
+		if ((IOAPIC.IOAPIC_liveIRR & 1) == 0) //Not yet raised? Rising edge!
+		{
+			LAPIC[activeCPU].LVTLINT0Register |= DELIVERYPENDING; //Perform LINT0!
+		}
+		break;
+	case 7: //extINT? Level only!
+		//Always assume that the live IRR doesn't match to keep it live on the triggering!
+		LAPIC[activeCPU].LVTLINT0Register |= DELIVERYPENDING; //Perform LINT0!
+		break;
 	}
 	if (updatelivestatus)
 	{
@@ -2627,10 +2627,10 @@ void APIC_raisedIRQ(byte PIC, byte irqnum)
 			{
 				if ((IOAPIC.IOAPIC_redirectionentry[irqnum & 0xF][0] & 0x10000) == 0) //Not masked?
 				{
-					IOAPIC.IOAPIC_redirectionentry[irqnum & 0xF][0] |= (1 << 12); //Waiting to be delivered!
+					IOAPIC.IOAPIC_redirectionentry[irqnum & 0xF][0] |= DELIVERYPENDING; //Waiting to be delivered!
 					if (!(IOAPIC.IOAPIC_IRRset & (1 << (irqnum & 0xF)))) //Not already pending?
 					{
-						IOAPIC.IOAPIC_redirectionentry[irqnum & 0xF][0] &= ~(1 << 12); //Not waiting to be delivered!
+						IOAPIC.IOAPIC_redirectionentry[irqnum & 0xF][0] &= ~DELIVERYPENDING; //Not waiting to be delivered!
 						IOAPIC.IOAPIC_IRRset |= (1 << (irqnum & 0xF)); //Set the IRR?
 						IOAPIC.IOAPIC_IRRreq &= ~(1 << (irqnum & 0xF)); //Acnowledged if pending!
 					}
@@ -2645,10 +2645,10 @@ void APIC_raisedIRQ(byte PIC, byte irqnum)
 		{
 			if ((IOAPIC.IOAPIC_redirectionentry[irqnum & 0xF][0] & 0x10000) == 0) //Not masked?
 			{
-				IOAPIC.IOAPIC_redirectionentry[irqnum & 0xF][0] |= (1 << 12); //Waiting to be delivered!
+				IOAPIC.IOAPIC_redirectionentry[irqnum & 0xF][0] |= DELIVERYPENDING; //Waiting to be delivered!
 				if (!(IOAPIC.IOAPIC_IRRset & (1 << (irqnum & 0xF)))) //Not already pending?
 				{
-					IOAPIC.IOAPIC_redirectionentry[irqnum & 0xF][0] &= ~(1 << 12); //Not waiting to be delivered!
+					IOAPIC.IOAPIC_redirectionentry[irqnum & 0xF][0] &= ~DELIVERYPENDING; //Not waiting to be delivered!
 					IOAPIC.IOAPIC_IRRset |= (1 << (irqnum & 0xF)); //Set the IRR?
 					IOAPIC.IOAPIC_IRRreq &= ~(1 << (irqnum & 0xF)); //Acnowledged if pending!
 				}
@@ -2667,10 +2667,10 @@ void APIC_raisedIRQ(byte PIC, byte irqnum)
 		{
 			if ((IOAPIC.IOAPIC_redirectionentry[irqnum & 0xF][0] & 0x10000) == 0) //Not masked?
 			{
-				IOAPIC.IOAPIC_redirectionentry[irqnum & 0xF][0] |= (1 << 12); //Waiting to be delivered!
+				IOAPIC.IOAPIC_redirectionentry[irqnum & 0xF][0] |= DELIVERYPENDING; //Waiting to be delivered!
 				if (!(IOAPIC.IOAPIC_IRRset & (1 << (irqnum & 0xF)))) //Not already pending?
 				{
-					IOAPIC.IOAPIC_redirectionentry[irqnum & 0xF][0] &= ~(1 << 12); //Not waiting to be delivered!
+					IOAPIC.IOAPIC_redirectionentry[irqnum & 0xF][0] &= ~DELIVERYPENDING; //Not waiting to be delivered!
 					IOAPIC.IOAPIC_IRRset |= (1 << (irqnum & 0xF)); //Set the IRR?
 					IOAPIC.IOAPIC_IRRreq &= ~(1 << (irqnum & 0xF)); //Acnowledged if pending!
 				}
@@ -2685,10 +2685,10 @@ void APIC_raisedIRQ(byte PIC, byte irqnum)
 		//Always assume that the live IRR doesn't match to keep it live on the triggering!
 		if ((IOAPIC.IOAPIC_redirectionentry[irqnum & 0xF][0] & 0x10000) == 0) //Not masked?
 		{
-			IOAPIC.IOAPIC_redirectionentry[irqnum & 0xF][0] |= (1 << 12); //Waiting to be delivered!
+			IOAPIC.IOAPIC_redirectionentry[irqnum & 0xF][0] |= DELIVERYPENDING; //Waiting to be delivered!
 			if (!(IOAPIC.IOAPIC_IRRset & (1 << (irqnum & 0xF)))) //Not already pending?
 			{
-				IOAPIC.IOAPIC_redirectionentry[irqnum & 0xF][0] &= ~(1 << 12); //Not waiting to be delivered!
+				IOAPIC.IOAPIC_redirectionentry[irqnum & 0xF][0] &= ~DELIVERYPENDING; //Not waiting to be delivered!
 				IOAPIC.IOAPIC_IRRset |= (1 << (irqnum & 0xF)); //Set the IRR?
 				IOAPIC.IOAPIC_IRRreq &= ~(1 << (irqnum & 0xF)); //Acnowledged if pending!
 			}
@@ -2710,7 +2710,7 @@ void IOAPIC_raisepending()
 	{
 		if (IOAPIC.IOAPIC_requirestermination[irqnum & 0xF]) continue; //Can't handle while busy!
 		//Don't need to take the mode into account!
-		if (IOAPIC.IOAPIC_redirectionentry[irqnum & 0xF][0] & (1 << 12)) //Waiting to be delivered!
+		if (IOAPIC.IOAPIC_redirectionentry[irqnum & 0xF][0] & DELIVERYPENDING) //Waiting to be delivered!
 		{
 			if ((IOAPIC.IOAPIC_redirectionentry[irqnum & 0xF][0] & 0x10000) == 0) //Not masked?
 			{
@@ -2718,7 +2718,7 @@ void IOAPIC_raisepending()
 				{
 					if ((IOAPIC.IOAPIC_IRRreq & (1 << (irqnum & 0xF)))) //Pending requested?
 					{
-						IOAPIC.IOAPIC_redirectionentry[irqnum & 0xF][0] &= ~(1 << 12); //Not waiting to be delivered!
+						IOAPIC.IOAPIC_redirectionentry[irqnum & 0xF][0] &= ~DELIVERYPENDING; //Not waiting to be delivered!
 						IOAPIC.IOAPIC_IRRset |= (1 << (irqnum & 0xF)); //Set the IRR?
 						IOAPIC.IOAPIC_IRRreq &= ~(1 << (irqnum & 0xF)); //Requested to fire!
 					}
@@ -2737,7 +2737,7 @@ void LINT0_lowerIRQ()
 	case 1: //Lowest priority?
 		if (LAPIC[activeCPU].LVTLINT0Register & 0x8000) //Level-triggered? Supported!
 		{
-			LAPIC[activeCPU].LVTLINT0Register &= ~(1 << 12); //Clear LINT0!
+			LAPIC[activeCPU].LVTLINT0Register &= ~DELIVERYPENDING; //Clear LINT0!
 		}
 		break;
 	case 2: //SMI?
@@ -2747,7 +2747,7 @@ void LINT0_lowerIRQ()
 		break;
 	case 7: //extINT? Level only!
 		//Always assume that the live IRR doesn't match to keep it live on the triggering!
-		LAPIC[activeCPU].LVTLINT0Register &= ~(1 << 12); //Clear LINT0!
+		LAPIC[activeCPU].LVTLINT0Register &= ~DELIVERYPENDING; //Clear LINT0!
 		break;
 	}
 	IOAPIC.IOAPIC_liveIRR &= ~1; //Live status!
@@ -2778,7 +2778,7 @@ void APIC_loweredIRQ(byte PIC, byte irqnum)
 			//Always assume that the live IRR doesn't match to keep it live on the triggering!
 			if (IOAPIC.IOAPIC_IRRset & (1 << (irqnum & 0xF))) //Waiting to be delivered?
 			{
-				IOAPIC.IOAPIC_redirectionentry[irqnum & 0xF][0] &= ~(1 << 12); //Not waiting to be delivered!
+				IOAPIC.IOAPIC_redirectionentry[irqnum & 0xF][0] &= ~DELIVERYPENDING; //Not waiting to be delivered!
 				IOAPIC.IOAPIC_IRRset &= ~(1 << (irqnum & 0xF)); //Clear the IRR?
 			}
 			break;
@@ -2790,7 +2790,7 @@ void APIC_loweredIRQ(byte PIC, byte irqnum)
 		{
 		case 0: //Interrupt? Also named Fixed!
 		case 1: //Lowest priority?
-			IOAPIC.IOAPIC_redirectionentry[irqnum & 0xF][0] &= ~(1 << 12); //Not waiting to be delivered!
+			IOAPIC.IOAPIC_redirectionentry[irqnum & 0xF][0] &= ~DELIVERYPENDING; //Not waiting to be delivered!
 			IOAPIC.IOAPIC_IRRset &= ~(1 << (irqnum & 0xF)); //Clear the IRR?
 			break;
 		case 2: //SMI?
@@ -2800,7 +2800,7 @@ void APIC_loweredIRQ(byte PIC, byte irqnum)
 			break;
 		case 7: //extINT? Level only!
 			//Always assume that the live IRR doesn't match to keep it live on the triggering!
-			IOAPIC.IOAPIC_redirectionentry[irqnum & 0xF][0] &= ~(1 << 12); //Not waiting to be delivered!
+			IOAPIC.IOAPIC_redirectionentry[irqnum & 0xF][0] &= ~DELIVERYPENDING; //Not waiting to be delivered!
 			IOAPIC.IOAPIC_IRRset &= ~(1 << (irqnum & 0xF)); //Clear the IRR?
 			break;
 		}
