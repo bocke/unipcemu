@@ -1194,22 +1194,22 @@ void LAPIC_pollRequests(byte whichCPU)
 		}
 	}
 
-	if ((LAPIC[whichCPU].LVTErrorRegister & (1 << 12)) && (LAPIC[whichCPU].LVTErrorRegisterDirty == 0)) //Timer is pending?
+	if ((LAPIC[whichCPU].LVTErrorRegister & (1 << 12)) && ((LAPIC[activeCPU].LVTErrorRegister & 0x10000) == 0) && (LAPIC[whichCPU].LVTErrorRegisterDirty == 0)) //Timer is pending?
 	{
 		lastLAPICAccepted[whichCPU] = LAPIC_executeVector(whichCPU, &LAPIC[whichCPU].LVTErrorRegister, 0xFF, 0); //Start the error interrupt!
 	}
-	if ((LAPIC[whichCPU].LVTTimerRegister & (1 << 12)) && (LAPIC[whichCPU].LVTTimerRegisterDirty == 0)) //Timer is pending?
+	if ((LAPIC[whichCPU].LVTTimerRegister & (1 << 12)) && ((LAPIC[activeCPU].LVTTimerRegister & 0x10000) == 0) && (LAPIC[whichCPU].LVTTimerRegisterDirty == 0)) //Timer is pending?
 	{
 		lastLAPICAccepted[whichCPU] = LAPIC_executeVector(whichCPU, &LAPIC[whichCPU].LVTTimerRegister, 0xFF, 0); //Start the timer interrupt!
 	}
-	if ((LAPIC[whichCPU].LVTLINT0Register & (1 << 12)) && (LAPIC[whichCPU].LVTLINT0RegisterDirty == 0)) //LINT0 is pending?
+	if ((LAPIC[whichCPU].LVTLINT0Register & (1 << 12)) && ((LAPIC[activeCPU].LVTLINT0Register & 0x10000) == 0) && (LAPIC[whichCPU].LVTLINT0RegisterDirty == 0)) //LINT0 is pending?
 	{
 		if ((LAPIC[whichCPU].LVTLINT0Register & 0x700) != 0x700) //Not direct PIC mode?
 		{
 			lastLAPICAccepted[whichCPU] = LAPIC_executeVector(whichCPU, &LAPIC[whichCPU].LVTLINT0Register, 0xFF, 0); //Start the LINT0 interrupt!
 		}
 	}
-	if ((LAPIC[whichCPU].LVTLINT1Register & (1 << 12)) && (LAPIC[whichCPU].LVTLINT1RegisterDirty == 0)) //LINT1 is pending?
+	if ((LAPIC[whichCPU].LVTLINT1Register & (1 << 12)) && ((LAPIC[activeCPU].LVTLINT1Register & 0x10000) == 0) && (LAPIC[whichCPU].LVTLINT1RegisterDirty == 0)) //LINT1 is pending?
 	{
 		lastLAPICAccepted[whichCPU] = LAPIC_executeVector(whichCPU, &LAPIC[whichCPU].LVTLINT1Register, 0xFF, 0); //Start the LINT0 interrupt!
 	}
@@ -2390,7 +2390,7 @@ byte PICInterrupt() //We have an interrupt ready to process? This is the primary
 		goto handleIOAPIC_INTA; //Start to handle the IO APIC INTA request!
 	}
 
-	if ((LAPIC[activeCPU].LVTLINT0Register & (1 << 12)) && (LAPIC[activeCPU].LVTLINT0RegisterDirty == 0)) //LINT0 is pending?
+	if ((LAPIC[activeCPU].LVTLINT0Register & (1 << 12)) && ((LAPIC[activeCPU].LVTLINT0Register & 0x10000) == 0) && (LAPIC[activeCPU].LVTLINT0RegisterDirty == 0)) //LINT0 is pending?
 	{
 		if ((LAPIC[activeCPU].LVTLINT0Register & 0x700) == 0x700) //Direct PIC mode?
 		{
