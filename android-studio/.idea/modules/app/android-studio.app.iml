@@ -34,6 +34,9 @@
     <output url="file://$MODULE_DIR$/../../../app/build/intermediates/javac/productRelease/classes" />
     <output-test url="file://$MODULE_DIR$/../../../app/build/intermediates/javac/productReleaseUnitTest/classes" />
     <exclude-output />
+    <content url="file://C:/androidsdk/ndk/21.0.6113669/sources/android/cpufeatures">
+      <sourceFolder url="file://C:/androidsdk/ndk/21.0.6113669/sources/android/cpufeatures" isTestSource="false" />
+    </content>
     <content url="file://$MODULE_DIR$/../../../../UniPCemu/basicio">
       <sourceFolder url="file://$MODULE_DIR$/../../../../UniPCemu/basicio" isTestSource="false" />
     </content>
