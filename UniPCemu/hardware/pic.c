@@ -2760,6 +2760,10 @@ void APIC_loweredIRQ(byte PIC, byte irqnum)
 	//INTR is also on APIC line 0!
 	//A line has been lowered!
 	IOAPIC.IOAPIC_currentliveIRR &= ~(1 << (irqnum & 0xF)); //Live status!
+	if (irqnum == 0) //Since we're also connected to the CPU, raise LINT properly!
+	{
+		LINT0_lowerIRQ();
+	}
 	if (IOAPIC.IOAPIC_requirestermination[irqnum & 0xF]) return; //Can't handle while busy! Don't update the live IRR, because we can't handle it yet!
 	if ((IOAPIC.IOAPIC_redirectionentry[irqnum & 0xF][0] & 0x8000) == 0) //Edge-triggered? Supported!
 	{
@@ -2807,10 +2811,6 @@ void APIC_loweredIRQ(byte PIC, byte irqnum)
 			IOAPIC.IOAPIC_IRRreq &= ~(1 << (irqnum & 0xF)); //Not requested to fire!
 			break;
 		}
-	}
-	if (irqnum == 0) //Since we're also connected to the CPU, raise LINT properly!
-	{
-		LINT0_lowerIRQ();
 	}
 	IOAPIC.IOAPIC_liveIRR &= ~(1 << (irqnum & 0xF)); //Live status!
 }
