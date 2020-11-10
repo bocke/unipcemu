@@ -2780,6 +2780,7 @@ void APIC_loweredIRQ(byte PIC, byte irqnum)
 			{
 				IOAPIC.IOAPIC_redirectionentry[irqnum & 0xF][0] &= ~DELIVERYPENDING; //Not waiting to be delivered!
 				IOAPIC.IOAPIC_IRRset &= ~(1 << (irqnum & 0xF)); //Clear the IRR?
+				IOAPIC.IOAPIC_IRRreq &= ~(1 << (irqnum & 0xF)); //Not requested to fire!
 			}
 			break;
 		}
@@ -2792,6 +2793,7 @@ void APIC_loweredIRQ(byte PIC, byte irqnum)
 		case 1: //Lowest priority?
 			IOAPIC.IOAPIC_redirectionentry[irqnum & 0xF][0] &= ~DELIVERYPENDING; //Not waiting to be delivered!
 			IOAPIC.IOAPIC_IRRset &= ~(1 << (irqnum & 0xF)); //Clear the IRR?
+			IOAPIC.IOAPIC_IRRreq &= ~(1 << (irqnum & 0xF)); //Not requested to fire!
 			break;
 		case 2: //SMI?
 		case 4: //NMI?
@@ -2802,6 +2804,7 @@ void APIC_loweredIRQ(byte PIC, byte irqnum)
 			//Always assume that the live IRR doesn't match to keep it live on the triggering!
 			IOAPIC.IOAPIC_redirectionentry[irqnum & 0xF][0] &= ~DELIVERYPENDING; //Not waiting to be delivered!
 			IOAPIC.IOAPIC_IRRset &= ~(1 << (irqnum & 0xF)); //Clear the IRR?
+			IOAPIC.IOAPIC_IRRreq &= ~(1 << (irqnum & 0xF)); //Not requested to fire!
 			break;
 		}
 	}
