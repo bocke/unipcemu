@@ -1445,7 +1445,7 @@ OPTINLINE byte coreHandler()
 			}
 		} while (++activeCPU < numemulatedcpus); //More CPUs left to handle?
 
-		if (buslocksrequested) //BUS locks have been requested?
+		if (buslocksrequested && (BIU_buslocked==0) && (BUSactive!=2)) //BUS locks have been requested and pending?
 		{
 			if (buslocksrequested==1) //Only 1 CPU requested?
 			{
