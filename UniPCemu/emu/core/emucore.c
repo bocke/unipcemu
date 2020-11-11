@@ -85,7 +85,7 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 #include "headers/support/mid.h" //MIDI player support!
 
 #include "headers/hardware/inboard.h" //Inboard support!
-#include "headers/cpu/biu.h" //For checking if we're able to HLT!
+#include "headers/cpu/biu.h" //For checking if we're able to HLT and lock!
 #include "headers/hardware/modem.h" //Modem support!
 #include "headers/hardware/i430fx.h" //i430fx support!
 
@@ -1142,6 +1142,9 @@ void calcGenericSinglestep(byte index)
 
 OPTINLINE byte coreHandler()
 {
+	byte multilockack;
+	byte lockcounter;
+	byte buslocksrequested;
 	word destCS;
 	uint_32 MHZ14passed; //14 MHZ clock passed?
 	byte BIOSMenuAllowed = 1; //Are we allowed to open the BIOS menu?
@@ -1431,6 +1434,52 @@ OPTINLINE byte coreHandler()
 				updateAPIC(clocks, effectiveinstructiontime); //Clock the APIC as well!
 			} while (++activeCPU < numemulatedcpus); //More CPUs left to handle?
 		}
+
+		buslocksrequested = 0; //No locks requested!
+		activeCPU = 0;
+		do
+		{
+			if (BIU[activeCPU].BUSlockrequested==1) //Requested bus lock?
+			{
+				++buslocksrequested; //A lock has been requested!
+			}
+		} while (++activeCPU < numemulatedcpus); //More CPUs left to handle?
+
+		if (buslocksrequested) //BUS locks have been requested?
+		{
+			if (buslocksrequested==1) //Only 1 CPU requested?
+			{
+				activeCPU = 0;
+				do
+				{
+					if (BIU[activeCPU].BUSlockrequested==1) //Requested bus lock?
+					{
+						BIU[activeCPU].BUSlockrequested = 2; //Acnowledged!
+						CPU_exec(); //Run CPU!
+					}
+				} while (++activeCPU < numemulatedcpus); //More CPUs left to handle?
+			}
+			else //Multiple CPUs locking?
+			{
+				activeCPU = 0;
+				lockcounter = 0;
+				multilockack = (byte)RandomFloat(0.0f,(float)(numemulatedcpus-1)); //Random lock ack, equal chance!
+				do
+				{
+					if (BIU[activeCPU].BUSlockrequested==1) //Requested bus lock?
+					{
+						if (lockcounter==multilockack) //Chosen?
+						{
+							BIU[activeCPU].BUSlockrequested = 2; //Acnowledged!
+							CPU_exec(); //Run CPU!
+							goto finishLocked; //Finish up!
+						}
+						++lockcounter; //Next locked test!
+					}
+				} while (++activeCPU < numemulatedcpus); //More CPUs left to handle?
+			}
+		}
+		finishLocked:
 
 		activeCPU = 0; //Return to the BSP!
 		//Now, ticking the hardware!

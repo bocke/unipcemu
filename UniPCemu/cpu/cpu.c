@@ -2442,6 +2442,7 @@ void CPU_exec() //Processes the opcode at CS:EIP (386) or CS:IP (8086).
 		{
 			BIU_buslocked = 0; //Not anymore!
 			BIU[activeCPU].BUSlockowned = 0; //Not owning it anymore!
+			BIU[activeCPU].BUSlockrequested = 0; //Don't request the lock from the bus!								
 		}
 		BIU[activeCPU]._lock = 0; //Unlock!
 		//Prepare for the next (fetched or repeated) instruction to start executing!

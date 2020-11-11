@@ -1042,9 +1042,18 @@ OPTINLINE byte BIU_processRequests(byte memory_waitstates, byte bus_waitstates)
 						}
 						else
 						{
-							BIU[activeCPU]._lock = 3; //Lock obtained!
-							BIU_buslocked = 1; //A BIU has locked the bus!
-							BIU[activeCPU].BUSlockowned = 1; //We own the lock!
+							if (BIU[activeCPU].BUSlockrequested==2) //Acnowledged?
+							{
+								BIU[activeCPU]._lock = 3; //Lock obtained!
+								BIU_buslocked = 1; //A BIU has locked the bus!
+								BIU[activeCPU].BUSlockowned = 1; //We own the lock!
+							}
+							else
+							{
+								BIU[activeCPU].BUSlockrequested = 1; //Request the lock from the bus!
+								BIU[activeCPU]._lock = 2; //Waiting for the lock to release!
+								return 1; //Waiting for the lock to be obtained!
+							}
 						}
 					}
 					BIU[activeCPU].newtransfer = 1; //We're a new transfer!
@@ -1118,9 +1127,18 @@ OPTINLINE byte BIU_processRequests(byte memory_waitstates, byte bus_waitstates)
 						}
 						else
 						{
-							BIU[activeCPU]._lock = 3; //Lock obtained!
-							BIU_buslocked = 1; //A BIU has locked the bus!
-							BIU[activeCPU].BUSlockowned = 1; //We own the lock!
+							if (BIU[activeCPU].BUSlockrequested==2) //Acnowledged?
+							{
+								BIU[activeCPU]._lock = 3; //Lock obtained!
+								BIU_buslocked = 1; //A BIU has locked the bus!
+								BIU[activeCPU].BUSlockowned = 1; //We own the lock!
+							}
+							else
+							{
+								BIU[activeCPU].BUSlockrequested = 1; //Request the lock from the bus!
+								BIU[activeCPU]._lock = 2; //Waiting for the lock to release!
+								return 1; //Waiting for the lock to be obtained!
+							}
 						}
 					}
 					BIU[activeCPU].newtransfer = 1; //We're a new transfer!
