@@ -40,6 +40,7 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 #include "headers/mmu/mmuhandler.h" //MMU handler support!
 #include "headers/bios/biosmenu.h" //For running the BIOS!
 #include "headers/cpu/easyregs.h" //Easy register support!
+#include "headers/emu/emu_misc.h" //RandomShort support!
 
 //All graphics now!
 #include "headers/interrupts/interrupt10.h" //Interrupt 10h support!
@@ -1463,7 +1464,7 @@ OPTINLINE byte coreHandler()
 			{
 				activeCPU = 0;
 				lockcounter = 0;
-				multilockack = (byte)RandomFloat(0.0f,(float)(buslocksrequested-1)); //Random lock ack, equal chance!
+				multilockack = (byte)RandomShort(0,(buslocksrequested-1)); //Random lock ack, equal chance!
 				do
 				{
 					if (BIU[activeCPU].BUSlockrequested==1) //Requested bus lock?
