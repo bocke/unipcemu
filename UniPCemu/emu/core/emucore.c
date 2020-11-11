@@ -1463,7 +1463,7 @@ OPTINLINE byte coreHandler()
 			{
 				activeCPU = 0;
 				lockcounter = 0;
-				multilockack = (byte)RandomFloat(0.0f,(float)(buslocksrequested)); //Random lock ack, equal chance!
+				multilockack = (byte)RandomFloat(0.0f,(float)(buslocksrequested-1)); //Random lock ack, equal chance!
 				do
 				{
 					if (BIU[activeCPU].BUSlockrequested==1) //Requested bus lock?
