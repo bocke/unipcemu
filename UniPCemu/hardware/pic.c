@@ -705,7 +705,6 @@ byte LAPIC_executeVector(byte whichCPU, uint_32* vectorlo, byte IR, byte isIOAPI
 	{
 	case 0: //Interrupt?
 	case 1: //Lowest priority?
-		if ((isIOAPIC&3) == 1) return 1; //Not on IO APIC!
 		if (LAPIC[whichCPU].enabled != 1) return 0; //Don't accept if disabled!
 	//Now, we have selected the highest priority IR! Start using it!
 		if (APIC_intnr < 0x10) //Invalid?
@@ -731,12 +730,10 @@ byte LAPIC_executeVector(byte whichCPU, uint_32* vectorlo, byte IR, byte isIOAPI
 		//The IO APIC ignores the received message?
 		break;
 	case 2: //SMI?
-		if ((isIOAPIC & 3) == 1) return 1; //Not on IO APIC!
 		//Not implemented yet!
 		//Can't be masked, bypasses IRR/ISR!
 		break;
 	case 4: //NMI?
-		if ((isIOAPIC & 3) == 1) return 1; //Not on IO APIC!
 		if (APICNMIQueued[whichCPU]) //Already pending?
 		{
 			return 0; //Don't accept it!
@@ -745,7 +742,6 @@ byte LAPIC_executeVector(byte whichCPU, uint_32* vectorlo, byte IR, byte isIOAPI
 		//Can't be masked, bypasses IRR/ISR!
 		break;
 	case 5: //INIT?
-		if ((isIOAPIC & 3) == 1) return 1; //Not on IO APIC!
 		backupactiveCPU = activeCPU; //Backup!
 		activeCPU = whichCPU; //Active for reset!
 		resetCPU(0x80); //Special reset of the CPU: INIT only!
