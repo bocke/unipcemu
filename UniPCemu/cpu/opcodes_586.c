@@ -195,6 +195,12 @@ void CPU586_OP0FC7() //CMPXCHG8B r/m32
 		return;
 	}
 
+	if (modrm_isregister(CPU[activeCPU].params)) //ModR/M may only be referencing memory?
+	{
+		CPU_unkOP(); //Raise #UD!
+		return; //Abort!
+	}
+
 	if (unlikely(CPU[activeCPU].cpudebugger)) //Debugger on?
 	{
 		modrm_generateInstructionTEXT("CMPXCHG8B", 32, 0, PARAM_MODRM_0);
