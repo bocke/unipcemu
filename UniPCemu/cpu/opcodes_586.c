@@ -207,27 +207,19 @@ void CPU586_OP0FC7() //CMPXCHG8B r/m32
 	}
 
 	CPU[activeCPU].modrm_addoffset = 0; //Low dword
-	if (modrm_check32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, 1 | 0x40)) return;
+	if (modrm_check32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, 0 | 0x40)) return;
 	CPU[activeCPU].modrm_addoffset = 4; //High dword
-	if (modrm_check32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, 1 | 0x40)) return;
+	if (modrm_check32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, 0 | 0x40)) return;
 	CPU[activeCPU].modrm_addoffset = 0; //Low dword
-	if (modrm_check32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, 1 | 0xA0)) return;
+	if (modrm_check32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, 0 | 0xA0)) return;
 	CPU[activeCPU].modrm_addoffset = 4; //High dword
-	if (modrm_check32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, 1 | 0xA0)) return;
+	if (modrm_check32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, 0 | 0xA0)) return;
 	CPU[activeCPU].modrm_addoffset = 0; //Low dword
 	templo = modrm_read32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0);
 	CPU[activeCPU].modrm_addoffset = 4; //High dword
 	temphi = modrm_read32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0);
 	if ((REG_EAX == templo) && (REG_EDX==temphi)) //EDX::EAX == r/m?
 	{
-		CPU[activeCPU].modrm_addoffset = 0; //Low dword
-		if (modrm_check32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, 0 | 0x40)) return;
-		CPU[activeCPU].modrm_addoffset = 4; //High dword
-		if (modrm_check32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, 0 | 0x40)) return;
-		CPU[activeCPU].modrm_addoffset = 0; //Low dword
-		if (modrm_check32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, 0 | 0xA0)) return;
-		CPU[activeCPU].modrm_addoffset = 4; //High dword
-		if (modrm_check32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, 0 | 0xA0)) return;
 		FLAGW_ZF(1);
 		CPU[activeCPU].modrm_addoffset = 0; //Low dword
 		modrm_write32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, REG_EBX); /* r/m32=low dword(EBX) */

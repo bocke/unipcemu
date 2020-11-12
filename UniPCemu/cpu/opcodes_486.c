@@ -143,12 +143,11 @@ void CPU486_OP0FB0()
 {
 	byte temp;
 	modrm_generateInstructionTEXT("CMPXCHG", 8, 0, PARAM_MODRM_0_ACCUM_1);
-	if (modrm_check8(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0,1)) return;
+	if (modrm_check8(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, 0)) return;
 	temp = modrm_read8(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0);
 	flag_sub8(REG_AL,temp); //All arithmetic flags are affected!
 	if (REG_AL==temp)
 	{
-		if (modrm_check8(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0,0)) return;
 		FLAGW_ZF(1);
 		modrm_write8(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0,modrm_read8(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src1)); /* r/m8=r8 */
 	}
@@ -162,14 +161,12 @@ void CPU486_OP0FB1_16()
 {
 	word temp;
 	modrm_generateInstructionTEXT("CMPXCHG", 16, 0, PARAM_MODRM_0_ACCUM_1);
-	if (modrm_check16(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0,1|0x40)) return;
-	if (modrm_check16(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0,1|0xA0)) return;
+	if (modrm_check16(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, 0|0x40)) return;
+	if (modrm_check16(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, 0|0xA0)) return;
 	temp = modrm_read16(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0);
 	flag_sub16(REG_AX,temp); //All arithmetic flags are affected!
 	if (REG_AX==temp)
 	{
-		if (modrm_check16(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0,0|0x40)) return;
-		if (modrm_check16(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0,0|0xA0)) return;
 		FLAGW_ZF(1);
 		modrm_write16(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0,modrm_read16(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src1),0); /* r/m16=r16 */
 	}
@@ -183,14 +180,12 @@ void CPU486_OP0FB1_32()
 {
 	uint_32 temp;
 	modrm_generateInstructionTEXT("CMPXCHG", 32, 0, PARAM_MODRM_0_ACCUM_1);
-	if (modrm_check32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0,1|0x40)) return;
-	if (modrm_check32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0,1|0xA0)) return;
+	if (modrm_check32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, 0|0x40)) return;
+	if (modrm_check32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, 0|0xA0)) return;
 	temp = modrm_read32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0);
 	flag_sub32(REG_EAX,temp); //All arithmetic flags are affected!
 	if (REG_EAX==temp)
 	{
-		if (modrm_check32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0,0|0x40)) return;
-		if (modrm_check32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0,0|0xA0)) return;
 		FLAGW_ZF(1);
 		modrm_write32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0,modrm_read32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src1)); /* r/m32=r32 */
 	}
