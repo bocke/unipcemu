@@ -427,8 +427,7 @@ void emu_raise_resetline(byte resetPendingFlags)
 			CPU[whichCPU].resetPending = resetPendingFlags; //Start pending reset BSP!
 		}
 	}
-	//Affect the I/O APIC as well!
-	resetIOAPIC(1); //Hard reset on the I/O APIC!
+	//Affect the I/O APIC as well, but that's done by the hardware reset on the i440fx!
 }
 
 void initEMU(int full) //Init!

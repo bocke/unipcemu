@@ -760,6 +760,12 @@ void i430fx_hardreset()
 
 	APMcontrol = APMstatus = 0; //Initialize APM registers!
 	ELCRhigh = ELCRlow = 0; //Initialize the ELCR registers!
+
+	if (is_i430fx==2) //i440fx?
+	{
+		//Affect the I/O APIC as well!
+		resetIOAPIC(1); //Hard reset on the I/O APIC!
+	}
 }
 
 extern uint_32 PCI_address; //What address register is currently set?
