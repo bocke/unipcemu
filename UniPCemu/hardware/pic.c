@@ -166,12 +166,17 @@ void updateLAPICTimerSpeed(byte whichCPU)
 void resetIOAPIC(byte isHardReset)
 {
 	byte IRQnr;
+	//Mask all interrupts!
 	for (IRQnr = 0; IRQnr < NUMITEMS(IOAPIC.IOAPIC_redirectionentry); ++IRQnr) //Handle all IRQ handlers we support!
 	{
 		IOAPIC.IOAPIC_redirectionentry[IRQnr][0] |= 0x10000; //Masked, nothing else set yet, edge mode, active high!
 	}
 	IOAPIC.IOAPIC_IMRset = ~0; //Mask all set!
 	IOAPIC.IOAPIC_IRRreq = 0; //Remove all pending requests!
+	if (isHardReset) //Hard reset?
+	{
+		IOAPIC.APIC_address = 0; //Clear the address register as well!
+	}
 }
 
 void updateLAPICArbitrationIDregister(byte whichCPU)
