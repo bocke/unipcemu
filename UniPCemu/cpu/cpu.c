@@ -1366,7 +1366,6 @@ uint_32 cpuaddresspins[16] = { //Bit0=XT, Bit1+=CPU
 void resetCPU(word isInit) //Initialises the currently selected CPU!
 {
 	CPU[activeCPU].allowInterrupts = CPU[activeCPU].previousAllowInterrupts = 1; //Default to allowing all interrupts to run!
-	CPU[activeCPU].TSC = 0; //Reset timestamp counter!
 	CPU_initRegisters(isInit); //Initialise the registers!
 	CPU_initPrefixes(); //Initialise all prefixes!
 	CPU_resetMode(); //Reset the mode to the default mode!
