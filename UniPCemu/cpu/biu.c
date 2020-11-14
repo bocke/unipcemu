@@ -1399,12 +1399,10 @@ void BIU_handleRequestsIPS() //Handle all pending requests at once!
 {
 	if (unlikely(BIU_processRequests(0, 0))) //Processing a request?
 	{
-		BIU[activeCPU].BUSactive = 0; //Inactive BUS!
 		checkBIUBUSrelease(); //Check for release!
 		BIU[activeCPU].requestready = 1; //The request is ready to be served!
 		for (; BIU_processRequests(0, 0);) //More requests to handle?
 		{
-			BIU[activeCPU].BUSactive = 0; //Inactive BUS!
 			checkBIUBUSrelease(); //Check for release!
 			BIU[activeCPU].requestready = 1; //The request is ready to be served!
 			if (BIU[activeCPU]._lock == 2) //Waiting for the BUS to be unlocked? Abort this handling!
@@ -1412,10 +1410,11 @@ void BIU_handleRequestsIPS() //Handle all pending requests at once!
 				BIU[activeCPU].handlerequestPending = &BIU_handleRequestsIPS; //We're keeping pending to handle!
 				goto handleBusLockPending; //Handle the bus locking pending!
 			}
+			BIU[activeCPU].BUSactive = 0; //Inactive BUS!
 		}
 		BIU[activeCPU].handlerequestPending = &BIU_handleRequestsNOP; //Nothing is pending anymore!
-		handleBusLockPending: //Bus lock is pending?
 		BIU[activeCPU].BUSactive = 0; //Inactive BUS!
+		handleBusLockPending: //Bus lock is pending?
 		checkBIUBUSrelease(); //Check for release!
 		BIU[activeCPU].requestready = 1; //The request is ready to be served!
 	}
