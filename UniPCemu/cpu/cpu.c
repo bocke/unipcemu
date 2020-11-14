@@ -1177,6 +1177,7 @@ OPTINLINE void CPU_initRegisters(word isInit) //Init the registers!
 	if (((isInit != 0x80) && ((isInit&0x100)==0)) || (!CPU[activeCPU].registers)) //Needs allocation of registers?
 	{
 		alloc_CPUregisters(); //Allocate the CPU registers!
+		CPU[activeCPU].TSC = 0; //Clear the TSC (Reset without BIST)!
 	}
 
 	if (!CPU[activeCPU].registers) return; //We can't work!
