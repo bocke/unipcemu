@@ -1142,22 +1142,28 @@ OPTINLINE void CPU_initRegisters(word isInit) //Init the registers!
 	if (CPU[activeCPU].registers) //Already allocated?
 	{
 		CSAccessRights = CPU[activeCPU].SEG_DESCRIPTOR[CPU_SEGMENT_CS].desc.AccessRights; //Save old CS acccess rights to use now (after first reset)!
-		if ((isInit&0x80)==0)
+		if ((isInit&0x80)==0x80) //INIT?
 		{
 			memcpy(&MSRbackup, &CPU[activeCPU].registers->genericMSR, sizeof(MSRbackup)); //Backup the MSRs!
+			//Leave TSC alone!
 		}
 		else
 		{
 			memset(&MSRbackup, 0, sizeof(MSRbackup)); //Cleared MSRs!
+			CPU[activeCPU].TSC = 0; //Clear the TSC (Reset without BIST)!
 		}
 		if ((isInit != 0x80) && ((isInit&0x100)==0)) //Not local reset?
 		{
 			free_CPUregisters(); //Free the CPU registers!
 		}
-		else
+		else //Soft reset or hard reset with same registers allocated?
 		{
-			CPU[activeCPU].oldCR0 = CPU[activeCPU].registers->CR0; //Save the old value for INIT purposes!
+			CPU[activeCPU].oldCR0 = CPU[activeCPU].registers->CR0&0x60000000; //Save the old value for INIT purposes!
 			memset(CPU[activeCPU].registers, 0, sizeof(*CPU[activeCPU].registers)); //Simply clear!
+			if ((isInit & 0x80) == 0x80) //INIT?
+			{
+				memcpy(&CPU[activeCPU].registers->genericMSR, &MSRbackup, sizeof(MSRbackup)); //Restore the MSRs to stay unaffected!
+			}
 		}
 	}
 	else
@@ -1264,9 +1270,9 @@ OPTINLINE void CPU_initRegisters(word isInit) //Init the registers!
 	}
 	else //Default or 80386?
 	{
-		if ((isInit&0xF)==0) //Were we not an init?
+		if ((isInit&0x80)==0x80) //Were we an INIT?
 		{
-			CPU[activeCPU].registers->CR0 = CPU[activeCPU].oldCR0; //Restore before resetting, if possible!
+			CPU[activeCPU].registers->CR0 = CPU[activeCPU].oldCR0; //Restore before resetting, if possible! Keep the cache bits(bits 30-29), clear all other bits, set bit 4(done below)!
 		}
 		else
 		{
