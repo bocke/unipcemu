@@ -374,6 +374,10 @@ byte CPUID_mode = 0; //CPUID mode! 0=Modern mode, 1=Limited to leaf 1, 2=Set to 
 
 void CPU_CPUID()
 {
+	if (unlikely(CPU[activeCPU].cpudebugger)) //Debugger on?
+	{
+		modrm_generateInstructionTEXT("CPUID", 0, 0, PARAM_NONE);
+	}
 	byte leaf;
 	leaf = REG_EAX; //What leaf?
 	if (CPUID_mode == 1) //Limited to leaf 1 or 2?
