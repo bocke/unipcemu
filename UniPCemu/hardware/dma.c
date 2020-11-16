@@ -520,7 +520,14 @@ void DMA_StateHandler_S0()
 			return; //NOP state!
 		}
 	}
-	else if (unlikely(BIU_buslocked)) return; //Block us while the bus is locked in IPS clocking mode!
+	else if (unlikely(BIU_buslocked || (BUSactive==1)))
+	{
+		return; //Block us while the bus is locked or taken in IPS clocking mode!
+	}
+	else //Taken bus in IPS clocking mode?
+	{
+		BUSactive = 2; //Take control of the BUS(DLDA is now high). Wait 1 cycle(signal the CPU is this step. Receiving the HLDA the next cycle) before starting the transfer!
+	}
 
 	if (DMA_waitstate) //Waiting on DMA transfer start?
 	{
@@ -780,9 +787,9 @@ void DMA_StateHandler_S4()
 	}
 	byte retryclock = 0;
 	DMA_S = 0; //Default to SI state!
+	BUSactive = (BUSactive==2)?0:BUSactive; //Release the BUS, when allowed!
 	if (likely(useIPSclock==0)) //Cycle-accurate clock used?
 	{	
-		BUSactive = (BUSactive==2)?0:BUSactive; //Release the BUS, when allowed!
 		retryclock = (((BUSactive==2) || (BUSactive==0))); //BUS available? Sample DREQ and perform steps to get directly into S1!
 	}
 	else //Using IPS clock?
