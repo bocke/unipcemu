@@ -111,7 +111,6 @@ void raisePF(uint_32 address, word flags)
 	CPU[activeCPU].registers->CR2 = address; //Fill CR2 with the address cause!
 	CPU[activeCPU].PFflags = flags; //Save a copy of the flags for debugging purposes!
 	//Call interrupt!
-	CPU_resetOP(); //Go back to the start of the instruction!
 	/*
 	if (CPU[activeCPU].have_oldESP && CPU[activeCPU].registers) //Returning the (E)SP to it's old value?
 	{
@@ -119,9 +118,10 @@ void raisePF(uint_32 address, word flags)
 		CPU[activeCPU].have_oldESP = 0; //Don't have anything to restore anymore!
 	}
 	*/
-	CPU_onResettingFault(); //Set the fault data!
 	if (CPU_faultraised(EXCEPTION_PAGEFAULT)) //Fault raising exception!
 	{
+		CPU_resetOP(); //Go back to the start of the instruction!
+		CPU_onResettingFault(); //Set the fault data!
 		CPU_executionphase_startinterrupt(EXCEPTION_PAGEFAULT,2|8,(int_64)flags); //Call IVT entry #13 decimal!
 		//Execute the interrupt!
 		CPU[activeCPU].faultraised = 1; //We have a fault raised, so don't raise any more!
