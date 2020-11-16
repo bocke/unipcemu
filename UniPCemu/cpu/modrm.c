@@ -49,6 +49,7 @@ OPTINLINE byte modrm_useSIB(MODRM_PARAMS *params, int size) //Use SIB byte?
 {
 	if (CPU[activeCPU].CPU_Address_size) //32-bit mode?
 	{
+		if ((params->specialflags == 3) || (params->specialflags == 4) || (params->specialflags == 7)) return 0; //No SIB on register-only operands(forced to mode 3): REQUIRED FOR SOME OPCODES!!!
 		if ((MODRM_RM(params->modrm) == 4) && (MODRM_MOD(params->modrm) != 3)) //Have a SIB byte?
 		{
 			return 1; //We use a SIB byte!
@@ -2482,6 +2483,7 @@ specialflags:
 4: Reg=> DRn, R/M is General Purpose register!
 5: General purpose register(Reg) is 16-bits instead!
 6: General purpose register(Reg) is 32-bits instead!
+7: Reg=> TRn, R/M is General Purpose register!
 
 */
 
