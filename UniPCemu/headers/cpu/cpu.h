@@ -1263,6 +1263,9 @@ typedef struct
 	word bound_min16;
 	word bound_max16;
 	word boundval16;
+	uint_64 PageFault_PDPT;
+	uint_64 PageFault_PDE;
+	uint_64 PageFault_PTE;
 } CPU_type;
 
 #ifndef IS_CPU

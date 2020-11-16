@@ -259,6 +259,9 @@ byte isvalidpage(uint_32 address, byte iswrite, byte CPL, byte isPrefetch, byte 
 		//Check present only!
 		if (!(PDPT & PXE_P)) //Not present?
 		{
+			CPU[activeCPU].PageFault_PDPT = PDPT; //Save!
+			CPU[activeCPU].PageFault_PDE = 0; //Save!
+			CPU[activeCPU].PageFault_PTE = 0; //Save!
 			raisePF(address, (RW << 1) | (effectiveUS << 2)); //Run a not present page fault!
 			return 0; //We have an error, abort!
 		}
@@ -274,6 +277,9 @@ byte isvalidpage(uint_32 address, byte iswrite, byte CPL, byte isPrefetch, byte 
 		PDE |= ((uint_64)memory_BIUdirectrdw(PDPT + ((DIR << 3)|4)))<<32; //Read the page directory entry high!
 		if (!(PDE & PXE_P)) //Not present?
 		{
+			CPU[activeCPU].PageFault_PDPT = PDPT; //Save!
+			CPU[activeCPU].PageFault_PDE = PDE; //Save!
+			CPU[activeCPU].PageFault_PTE = 0; //Save!
 			raisePF(address, (RW << 1) | (effectiveUS << 2)); //Run a not present page fault!
 			return 0; //We have an error, abort!
 		}
@@ -287,6 +293,9 @@ byte isvalidpage(uint_32 address, byte iswrite, byte CPL, byte isPrefetch, byte 
 		PDE = (uint_64)memory_BIUdirectrdw(PDEbase + (DIR << 2)); //Read the page directory entry!
 		if (!(PDE & PXE_P)) //Not present?
 		{
+			CPU[activeCPU].PageFault_PDPT = 0; //Save!
+			CPU[activeCPU].PageFault_PDE = PDE; //Save!
+			CPU[activeCPU].PageFault_PTE = 0; //Save!
 			raisePF(address, (RW << 1) | (effectiveUS << 2)); //Run a not present page fault!
 			return 0; //We have an error, abort!
 		}
@@ -318,6 +327,9 @@ byte isvalidpage(uint_32 address, byte iswrite, byte CPL, byte isPrefetch, byte 
 		*/
 		if (!(PTE&PXE_P)) //Not present?
 		{
+			CPU[activeCPU].PageFault_PDPT = PDPT; //Save!
+			CPU[activeCPU].PageFault_PDE = PDE; //Save!
+			CPU[activeCPU].PageFault_PTE = PTE; //Save!
 			raisePF(address, (RW << 1) | (effectiveUS << 2)); //Run a not present page fault!
 			return 0; //We have an error, abort!
 		}
@@ -334,11 +346,17 @@ byte isvalidpage(uint_32 address, byte iswrite, byte CPL, byte isPrefetch, byte 
 		*/
 		if ((PDE & (0x3FF000 ^ (isPAE << 21))) && ((((CPU[activeCPU].registers->CR4 & 0x10) >> 4) & (EMULATED_CPU >= CPU_PENTIUM)) | isPAE)) //Reserved bit in PDE?
 		{
+			CPU[activeCPU].PageFault_PDPT = PDPT; //Save!
+			CPU[activeCPU].PageFault_PDE = PDE; //Save!
+			CPU[activeCPU].PageFault_PTE = 0; //Save!
 			raisePF(address, PXE_P | (RW << 1) | (effectiveUS << 2) | 8); //Run a reserved page fault!
 			return 0; //We have an error, abort!
 		}
 		if (!verifyCPL(RW,effectiveUS,((PDE&PXE_RW)>>1),((PDE&PXE_US)>>2),((PDE&PXE_RW)>>1),((PDE&PXE_US)>>2),&RW)) //Protection fault on combined flags?
 		{
+			CPU[activeCPU].PageFault_PDPT = PDPT; //Save!
+			CPU[activeCPU].PageFault_PDE = PDE; //Save!
+			CPU[activeCPU].PageFault_PTE = 0; //Save!
 			raisePF(address,PXE_P|(RW<<1)|(effectiveUS<<2)); //Run a not present page fault!
 			return 0; //We have an error, abort!		
 		}
@@ -348,6 +366,9 @@ byte isvalidpage(uint_32 address, byte iswrite, byte CPL, byte isPrefetch, byte 
 	{
 		if (!verifyCPL(RW, effectiveUS, ((PDE&PXE_RW) >> 1), ((PDE&PXE_US) >> 2), ((PTE&PXE_RW) >> 1), ((PTE&PXE_US) >> 2), &RW)) //Protection fault on combined flags?
 		{
+			CPU[activeCPU].PageFault_PDPT = PDPT; //Save!
+			CPU[activeCPU].PageFault_PDE = PDE; //Save!
+			CPU[activeCPU].PageFault_PTE = PTE; //Save!
 			raisePF(address, PXE_P | (RW << 1) | (effectiveUS << 2)); //Run a not present page fault!
 			return 0; //We have an error, abort!		
 		}
