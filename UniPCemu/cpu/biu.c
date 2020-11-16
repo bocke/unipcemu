@@ -1032,6 +1032,7 @@ OPTINLINE byte BIU_processRequests(byte memory_waitstates, byte bus_waitstates)
 			{
 				//Memory operations!
 				case REQUEST_MMUREAD:
+					if (BUSactive==2) return 1; //BUS taken?
 					//Wait for other CPUs to release their lock on the bus if enabled?
 					if (CPU_getprefix(0xF0)) //Locking requested?
 					{
@@ -1117,6 +1118,7 @@ OPTINLINE byte BIU_processRequests(byte memory_waitstates, byte bus_waitstates)
 					return 1; //Handled!
 					break;
 				case REQUEST_MMUWRITE:
+					if (BUSactive==2) return 1; //BUS taken?
 					//Wait for other CPUs to release their lock on the bus if enabled?
 					if (CPU_getprefix(0xF0)) //Locking requested?
 					{
@@ -1233,6 +1235,7 @@ OPTINLINE byte BIU_processRequests(byte memory_waitstates, byte bus_waitstates)
 					break;
 				//I/O operations!
 				case REQUEST_IOREAD:
+					if (BUSactive==2) return 1; //BUS taken?
 					BUSactive = BIU[activeCPU].BUSactive = 1; //Start memory or BUS cycles!
 					BIU[activeCPU].newtransfer = 1; //We're a new transfer!
 					BIU[activeCPU].newtransfer_size = 1; //We're a new transfer!
@@ -1284,6 +1287,7 @@ OPTINLINE byte BIU_processRequests(byte memory_waitstates, byte bus_waitstates)
 					return 1; //Handled!
 					break;
 				case REQUEST_IOWRITE:
+					if (BUSactive==2) return 1; //BUS taken?
 					BUSactive = BIU[activeCPU].BUSactive = 1; //Start memory or BUS cycles!
 					BIU[activeCPU].newtransfer = 1; //We're a new transfer!
 					BIU[activeCPU].newtransfer_size = 1; //We're a new transfer!
@@ -1397,6 +1401,7 @@ void BIU_cycle_WaitStateRAMBUS() //Waiting for WaitState RAM/BUS?
 
 void BIU_handleRequestsIPS() //Handle all pending requests at once!
 {
+	if (BUSactive==2) return; //BUS taken?
 	if (unlikely(BIU_processRequests(0, 0))) //Processing a request?
 	{
 		checkBIUBUSrelease(); //Check for release!
