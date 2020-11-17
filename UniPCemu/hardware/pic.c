@@ -1403,7 +1403,6 @@ byte IOAPIC_pollRequests(byte enableExtInt, byte extIntCPU)
 		//Received something from the IO APIC redirection targetting the main CPU?
 		if (receiver) //Local APIC received?
 		{
-			/*
 			if (IOAPIC.IOAPIC_redirectionentry[IR][0] & 0x800) //Logical destination?
 			{
 				if ((IOAPIC.IOAPIC_redirectionentry[IR][0] & 0x700) == 0x100) //Lowest Priority type?
@@ -1411,7 +1410,6 @@ byte IOAPIC_pollRequests(byte enableExtInt, byte extIntCPU)
 					receiver = determineLowestPriority(IOAPIC.IOAPIC_redirectionentry[IR][0] & 0xFF, receiver); //Determine the lowest priority receiver!
 				}
 			}
-			*/ //TODO: Lowest Priority Interrupt?
 
 
 			for (destinationCPU = 0; destinationCPU < MIN(NUMITEMS(LAPIC),numemulatedcpus); ++destinationCPU)
