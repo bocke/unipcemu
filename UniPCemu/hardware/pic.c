@@ -1411,7 +1411,6 @@ byte IOAPIC_pollRequests(byte enableExtInt, byte extIntCPU)
 				}
 			}
 
-
 			for (destinationCPU = 0; destinationCPU < MIN(NUMITEMS(LAPIC),numemulatedcpus); ++destinationCPU)
 			{
 				if (receiver & (1 << destinationCPU)) //To receive?
