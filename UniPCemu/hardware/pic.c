@@ -556,6 +556,7 @@ void LAPIC_handletermination() //Handle termination on the APIC!
 		LAPIC[activeCPU].InterruptCommandRegisterLo |= DELIVERYPENDING; //Start to become pending!
 		LAPIC[activeCPU].InterruptCommandRegisterPendingIOAPIC = ~0; //Any possible pending!
 		LAPIC[activeCPU].InterruptCommandRegisterPendingReceiver = ~0; //Any possible pending!
+		LAPIC[activeCPU].InterruptCommandRegisterReceiversDetermined = 0; //Receivers not determined yet!
 	}
 
 	if (LAPIC[activeCPU].needstermination & 8) //Error status register needs termination?
@@ -1230,11 +1231,15 @@ void LAPIC_pollRequests(byte whichCPU)
 				if ((receiver & LAPIC[whichCPU].InterruptCommandRegisterPendingReceiver) || (IOAPIC_receiver & LAPIC[whichCPU].InterruptCommandRegisterPendingIOAPIC)) //Still pending to receive somewhere?
 				{
 					LAPIC[whichCPU].InterruptCommandRegisterLo |= 0x1000; //We're still receiving it somewhere!
-					LAPIC[whichCPU].InterruptCommandRegisterReceiversDetermined = 0; //Receivers not determined yet!
 				}
 				else if (receiver) //Failed to send all when transaction completed?
 				{
 					LAPIC_reportErrorStatus(whichCPU, (1 << 2),1); //Report an send accept error! Not all responded on the bus!
+					LAPIC[whichCPU].InterruptCommandRegisterReceiversDetermined = 0; //Receivers not determined yet!
+				}
+				else //Finished?
+				{
+					LAPIC[whichCPU].InterruptCommandRegisterReceiversDetermined = 0; //Receivers not determined yet!
 				}
 			}
 			else //No receivers?
