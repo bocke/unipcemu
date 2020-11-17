@@ -1288,7 +1288,7 @@ byte handleIOLAPIC_receiveCommandRegister(byte enableExtInt, byte extIntCPU, byt
 	byte result, result2;
 	result = result2 = 0; //Default result to add!
 	byte destinationCPU; //What CPU is the destination?
-	if (IOAPIC.IOAPIC_redirectionentryReceiversDetermined == 0) //Not determined yet?
+	if (IOAPIC.IOAPIC_redirectionentryReceiversDetermined[IR] == 0) //Not determined yet?
 	{
 		if (IOAPIC.IOAPIC_redirectionentry[IR][0] & 0x800) //Logical destination?
 		{
