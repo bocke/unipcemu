@@ -884,7 +884,7 @@ byte receiveCommandRegister(byte whichCPU, uint_32 destinationCPU, uint_32 *comm
 		else
 		{
 			//According to Bochs: accept anyways?
-			//LAPIC[whichCPU].InterruptCommandRegisterLo |= 0x1000; //Retry!
+			//LAPIC[whichCPU].InterruptCommandRegisterLo |= DELIVERYPENDING; //Retry!
 		}
 		break;
 	case 2: //SMI raised?
@@ -1017,7 +1017,7 @@ byte receiveCommandRegister(byte whichCPU, uint_32 destinationCPU, uint_32 *comm
 		if (APICNMIQueued[destinationCPU]) //Already queued?
 		{
 			return 0; //Don't accept it yet!
-			//*commandregister |= 0x1000; //Retry!
+			//*commandregister |= DELIVERYPENDING; //Retry!
 		}
 		else //Accepted?
 		{
@@ -1124,7 +1124,7 @@ void LAPIC_pollRequests(byte whichCPU)
 	if (LAPIC[whichCPU].LAPIC_extIntPending != -1) return; //Prevent any more interrupts until the extInt is properly parsed!
 
 	receiver = IOAPIC_receiver = 0; //Initialize receivers of the packet!
-	if (LAPIC[whichCPU].InterruptCommandRegisterLo & 0x1000) //Pending command being sent?
+	if (LAPIC[whichCPU].InterruptCommandRegisterLo & DELIVERYPENDING) //Pending command being sent?
 	{
 		if (LAPIC[whichCPU].InterruptCommandRegisterPendingReceiver == (uint_32)~0) //Starting up a new command that's starting to process?
 		{
@@ -1176,7 +1176,7 @@ void LAPIC_pollRequests(byte whichCPU)
 				LAPIC_reportErrorStatus(whichCPU,(1 << 2),1); //Report an send accept error! Nothing responded on the bus!
 			}
 			//Discard it!
-			LAPIC[whichCPU].InterruptCommandRegisterLo &= ~0x1000; //We're receiving it somewhere!
+			LAPIC[whichCPU].InterruptCommandRegisterLo &= ~DELIVERYPENDING; //We're receiving it somewhere!
 			break;
 		case 1: //To itself?
 			receiver = (1<<whichCPU); //Self received!
@@ -1204,7 +1204,7 @@ void LAPIC_pollRequests(byte whichCPU)
 			{
 				receiver = LAPIC[whichCPU].InterruptCommandRegisterReceivers; //Who is to receive!
 			}
-			LAPIC[whichCPU].InterruptCommandRegisterLo &= ~0x1000; //We're receiving it somewhere!
+			LAPIC[whichCPU].InterruptCommandRegisterLo &= ~DELIVERYPENDING; //We're receiving it somewhere!
 			if (receiver) //Received on a LAPIC?
 			{
 				for (destinationCPU = 0; destinationCPU < MIN(NUMITEMS(LAPIC),numemulatedcpus); ++destinationCPU) //Try all CPUs!
@@ -1230,7 +1230,7 @@ void LAPIC_pollRequests(byte whichCPU)
 				}
 				if ((receiver & LAPIC[whichCPU].InterruptCommandRegisterPendingReceiver) || (IOAPIC_receiver & LAPIC[whichCPU].InterruptCommandRegisterPendingIOAPIC)) //Still pending to receive somewhere?
 				{
-					LAPIC[whichCPU].InterruptCommandRegisterLo |= 0x1000; //We're still receiving it somewhere!
+					LAPIC[whichCPU].InterruptCommandRegisterLo |= DELIVERYPENDING; //We're still receiving it somewhere!
 				}
 				else if (receiver) //Failed to send all when transaction completed?
 				{
@@ -1252,7 +1252,7 @@ void LAPIC_pollRequests(byte whichCPU)
 			receiver &= ~(1 << whichCPU); //But ourselves!
 			IOAPIC_receiver = 1; //IO APIC too!
 			//Don't handle the request!
-			LAPIC[whichCPU].InterruptCommandRegisterLo &= ~0x1000; //We're receiving it somewhere!
+			LAPIC[whichCPU].InterruptCommandRegisterLo &= ~DELIVERYPENDING; //We're receiving it somewhere!
 			//Send no error because there are no other APICs to receive it! Only the IO APIC receives it, which isn't using it?
 			//Error out the write access!
 			goto receiveTheCommandRegister; //Receive it!
