@@ -99,6 +99,8 @@ struct
 	//Bookkeeping of the sending packet to various APICs pending!
 	uint_32 InterruptCommandRegisterPendingReceiver; //Receivers still pending receiving!
 	uint_32 InterruptCommandRegisterPendingIOAPIC; //IO APIC still pending receiving!
+	uint_32 InterruptCommandRegisterReceivers; //What receivers have been determined?
+	byte InterruptCommandRegisterReceiversDetermined; //Receivers have been determined?
 } LAPIC[MAXCPUS]; //The Local APIC that's emulated!
 
 byte lastLAPICAccepted[MAXCPUS]; //Last APIC accepted LVT result!
@@ -1065,6 +1067,35 @@ byte receiveCommandRegister(byte whichCPU, uint_32 destinationCPU, uint_32 *comm
 	return 1; //Accept it!
 }
 
+uint_32 determineLowestPriority(byte intnr, uint_32 receiver)
+{
+	byte destinationCPU;
+	word lowestPriority;
+	uint_32 lowestPriorityCPU;
+	lowestPriority = 0x100; //Out of range to always match!
+	lowestPriorityCPU = 0; //Which CPU has lowest priority (default if none match)! Default to no CPU matched!
+	for (destinationCPU = 0; destinationCPU < MIN(NUMITEMS(LAPIC), numemulatedcpus); ++destinationCPU)
+	{
+		if ((LAPIC[destinationCPU].SpuriousInterruptVectorRegister & 0x200) == 0) //Focus enabled?
+		{
+			if (!((LAPIC[activeCPU].IRR[intnr >> 5] & (1 << (intnr & 0x1F))) || (LAPIC[activeCPU].ISR[intnr >> 5] & (1 << (intnr & 0x1F))))) //Not requested yet? Able to accept said message!
+			{
+				//Ignore the request and deliver at the focus CPU!
+				return (1 << destinationCPU); //Deliver at the focused CPU only!
+			}
+		}
+		if (receiver & (1 << destinationCPU)) //To consider this to be the receiver?
+		{
+			if ((LAPIC[destinationCPU].ArbitrationPriorityRegister & 0xFF) < lowestPriority) //Lower priority found?
+			{
+				lowestPriority = (LAPIC[destinationCPU].ArbitrationPriorityRegister & 0xFF); //New lowest priority found!
+				lowestPriorityCPU = (1 << destinationCPU); //Lowest CPU found to match!
+			}
+		}
+	}
+	return lowestPriorityCPU; //Give the CPU with the lowest priority match!
+}
+
 //Updates local APIC requests!
 void LAPIC_pollRequests(byte whichCPU)
 {
@@ -1101,6 +1132,12 @@ void LAPIC_pollRequests(byte whichCPU)
 				LAPIC[whichCPU].InterruptCommandRegisterLo &= ~0x20000; //Default: Remote Read invalid!
 			}
 		}
+
+		if (LAPIC[whichCPU].InterruptCommandRegisterReceiversDetermined) //Already determined receivers?
+		{
+			goto receiveTheCommandRegister; //Handle the receiving of the command register!
+		}
+
 		switch ((LAPIC[whichCPU].InterruptCommandRegisterLo >> 18) & 3) //What destination type?
 		{
 		case 0: //Destination field?
@@ -1131,7 +1168,7 @@ void LAPIC_pollRequests(byte whichCPU)
 			}
 			if (receiver|IOAPIC_receiver) //Received on some Local APICs?
 			{
-				goto receiveCommandRegister; //Receive it!
+				goto receiveTheCommandRegister; //Receive it!
 			}
 			else if ((receiver|IOAPIC_receiver) == 0) //No receivers?
 			{
@@ -1142,14 +1179,30 @@ void LAPIC_pollRequests(byte whichCPU)
 			break;
 		case 1: //To itself?
 			receiver = (1<<whichCPU); //Self received!
-			goto receiveCommandRegister; //Receive it!
+			goto receiveTheCommandRegister; //Receive it!
 			break;
 		case 2: //All processors?
 			//Receive it!
 			//Handle the request!
 			receiver = (1<<(MIN(NUMITEMS(LAPIC),numemulatedcpus)))-1; //All received!
 			IOAPIC_receiver = 1; //IO APIC too!
-		receiveCommandRegister:
+		receiveTheCommandRegister:
+			if (LAPIC[whichCPU].InterruptCommandRegisterReceiversDetermined == 0) //Not determined yet?
+			{
+				if (LAPIC[whichCPU].InterruptCommandRegisterLo & 0x800) //Logical destination?
+				{
+					if ((LAPIC[whichCPU].InterruptCommandRegisterLo & 0x700) == 0x100) //Lowest Priority type?
+					{
+						receiver = determineLowestPriority(LAPIC[whichCPU].InterruptCommandRegisterLo & 0xFF, receiver); //Determine the lowest priority receiver!
+					}
+				}
+				LAPIC[whichCPU].InterruptCommandRegisterReceivers = receiver; //Who is to receive!
+				LAPIC[whichCPU].InterruptCommandRegisterReceiversDetermined = 1; //Determined!
+			}
+			else
+			{
+				receiver = LAPIC[whichCPU].InterruptCommandRegisterReceivers; //Who is to receive!
+			}
 			LAPIC[whichCPU].InterruptCommandRegisterLo &= ~0x1000; //We're receiving it somewhere!
 			if (receiver) //Received on a LAPIC?
 			{
@@ -1177,6 +1230,7 @@ void LAPIC_pollRequests(byte whichCPU)
 				if ((receiver & LAPIC[whichCPU].InterruptCommandRegisterPendingReceiver) || (IOAPIC_receiver & LAPIC[whichCPU].InterruptCommandRegisterPendingIOAPIC)) //Still pending to receive somewhere?
 				{
 					LAPIC[whichCPU].InterruptCommandRegisterLo |= 0x1000; //We're still receiving it somewhere!
+					LAPIC[whichCPU].InterruptCommandRegisterReceiversDetermined = 0; //Receivers not determined yet!
 				}
 				else if (receiver) //Failed to send all when transaction completed?
 				{
@@ -1196,7 +1250,7 @@ void LAPIC_pollRequests(byte whichCPU)
 			LAPIC[whichCPU].InterruptCommandRegisterLo &= ~0x1000; //We're receiving it somewhere!
 			//Send no error because there are no other APICs to receive it! Only the IO APIC receives it, which isn't using it?
 			//Error out the write access!
-			goto receiveCommandRegister; //Receive it!
+			goto receiveTheCommandRegister; //Receive it!
 			break;
 		}
 	}
@@ -1349,6 +1403,17 @@ byte IOAPIC_pollRequests(byte enableExtInt, byte extIntCPU)
 		//Received something from the IO APIC redirection targetting the main CPU?
 		if (receiver) //Local APIC received?
 		{
+			/*
+			if (IOAPIC.IOAPIC_redirectionentry[IR][0] & 0x800) //Logical destination?
+			{
+				if ((IOAPIC.IOAPIC_redirectionentry[IR][0] & 0x700) == 0x100) //Lowest Priority type?
+				{
+					receiver = determineLowestPriority(IOAPIC.IOAPIC_redirectionentry[IR][0] & 0xFF, receiver); //Determine the lowest priority receiver!
+				}
+			}
+			*/ //TODO: Lowest Priority Interrupt?
+
+
 			for (destinationCPU = 0; destinationCPU < MIN(NUMITEMS(LAPIC),numemulatedcpus); ++destinationCPU)
 			{
 				if (receiver & (1 << destinationCPU)) //To receive?
