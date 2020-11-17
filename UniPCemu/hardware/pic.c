@@ -1288,25 +1288,24 @@ byte handleIOLAPIC_receiveCommandRegister(byte enableExtInt, byte extIntCPU, byt
 	byte result, result2;
 	result = result2 = 0; //Default result to add!
 	byte destinationCPU; //What CPU is the destination?
+	if (IOAPIC.IOAPIC_redirectionentryReceiversDetermined == 0) //Not determined yet?
+	{
+		if (IOAPIC.IOAPIC_redirectionentry[IR][0] & 0x800) //Logical destination?
+		{
+			if ((IOAPIC.IOAPIC_redirectionentry[IR][0] & 0x700) == 0x100) //Lowest Priority type?
+			{
+				receiver = determineLowestPriority(IOAPIC.IOAPIC_redirectionentry[IR][0] & 0xFF, receiver); //Determine the lowest priority receiver!
+			}
+		}
+		IOAPIC.IOAPIC_redirectionentryReceivers[IR] = receiver; //What receives it!
+		IOAPIC.IOAPIC_redirectionentryReceiversDetermined[IR] = 1; //Determined!
+	}
+	else
+	{
+		receiver = IOAPIC.IOAPIC_redirectionentryReceivers[IR]; //What receives it!
+	}
 	if (receiver) //Local APIC received?
 	{
-		if (IOAPIC.IOAPIC_redirectionentryReceiversDetermined == 0) //Not determined yet?
-		{
-			if (IOAPIC.IOAPIC_redirectionentry[IR][0] & 0x800) //Logical destination?
-			{
-				if ((IOAPIC.IOAPIC_redirectionentry[IR][0] & 0x700) == 0x100) //Lowest Priority type?
-				{
-					receiver = determineLowestPriority(IOAPIC.IOAPIC_redirectionentry[IR][0] & 0xFF, receiver); //Determine the lowest priority receiver!
-				}
-			}
-			IOAPIC.IOAPIC_redirectionentryReceivers[IR] = receiver; //What receives it!
-			IOAPIC.IOAPIC_redirectionentryReceiversDetermined[IR] = 1; //Determined!
-		}
-		else
-		{
-			receiver = IOAPIC.IOAPIC_redirectionentryReceivers[IR]; //What receives it!
-		}
-
 		for (destinationCPU = 0; destinationCPU < MIN(NUMITEMS(LAPIC), numemulatedcpus); ++destinationCPU)
 		{
 			if (receiver & (1 << destinationCPU)) //To receive?
@@ -1324,11 +1323,15 @@ byte handleIOLAPIC_receiveCommandRegister(byte enableExtInt, byte extIntCPU, byt
 					receiver = IOAPIC.IOAPIC_redirectionentryReceivers[IR]; //New receiver for this IR!
 					result |= (result2 & 2); //INTA received?
 					//Properly received! Clear the sources!
-					if (IOAPIC.IOAPIC_redirectionentryReceivers[IR] == 0) //Finished all receicvers?
+					if ((IOAPIC.IOAPIC_redirectionentryReceivers[IR] == 0) || (result&2)) //Finished all receicvers or INTA?
 					{
 						APIC_IRQsrequested &= ~APIC_requestbit; //Clear the request bit!
 						IOAPIC.IOAPIC_IRRset &= ~APIC_requestbit; //Clear the request, because we're firing it up now!
 						IOAPIC.IOAPIC_redirectionentryReceiversDetermined[IR] = 0; //Not determined anymore!
+					}
+					else //Not finished yet?
+					{
+						IOAPIC.IOAPIC_redirectionentry[IR][0] |= DELIVERYPENDING; //The IO or Local APIC hasn't finished receiving the requests!
 					}
 				}
 			}
@@ -2790,6 +2793,7 @@ void APIC_raisedIRQ(byte PIC, byte irqnum)
 				IOAPIC.IOAPIC_redirectionentry[irqnum & 0xF][0] &= ~DELIVERYPENDING; //Not waiting to be delivered!
 				IOAPIC.IOAPIC_IRRset |= (1 << (irqnum & 0xF)); //Set the IRR?
 				IOAPIC.IOAPIC_IRRreq &= ~(1 << (irqnum & 0xF)); //Acnowledged if pending!
+				IOAPIC.IOAPIC_redirectionentryReceiversDetermined[(irqnum&0xF)] = 0; //Not determined anymore!
 			}
 		}
 		else //Masked?
