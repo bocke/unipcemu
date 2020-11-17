@@ -133,6 +133,8 @@ struct
 	uint_32 IOAPIC_redirectionentry[24][2]; //10-3F: 2 dwords for each redirection entry setting! Total 48 dwords!
 	byte IOAPIC_requirestermination[0x40]; //Termination required for this entry?
 	byte IOAPIC_globalrequirestermination; //Is termination required for the IO APIC?
+	uint_32 IOAPIC_redirectionentryReceivers[24]; //What receivers have been determined?
+	byte IOAPIC_redirectionentryReceiversDetermined[24]; //Receivers have been determined?
 } IOAPIC; //Only 1 IO APIC is possible?
 
 byte addr22 = 0; //Address select of port 22h!
@@ -1281,9 +1283,71 @@ void LAPIC_pollRequests(byte whichCPU)
 	}
 }
 
+byte handleIOLAPIC_receiveCommandRegister(byte enableExtInt, byte extIntCPU, byte IR, uint_32 receiver, uint_32 APIC_IRQsrequested, uint_32 APIC_requestbit)
+{
+	byte result, result2;
+	result = result2 = 0; //Default result to add!
+	byte destinationCPU; //What CPU is the destination?
+	if (receiver) //Local APIC received?
+	{
+		if (IOAPIC.IOAPIC_redirectionentryReceiversDetermined == 0) //Not determined yet?
+		{
+			if (IOAPIC.IOAPIC_redirectionentry[IR][0] & 0x800) //Logical destination?
+			{
+				if ((IOAPIC.IOAPIC_redirectionentry[IR][0] & 0x700) == 0x100) //Lowest Priority type?
+				{
+					receiver = determineLowestPriority(IOAPIC.IOAPIC_redirectionentry[IR][0] & 0xFF, receiver); //Determine the lowest priority receiver!
+				}
+			}
+			IOAPIC.IOAPIC_redirectionentryReceivers[IR] = receiver; //What receives it!
+			IOAPIC.IOAPIC_redirectionentryReceiversDetermined[IR] = 1; //Determined!
+		}
+		else
+		{
+			receiver = IOAPIC.IOAPIC_redirectionentryReceivers[IR]; //What receives it!
+		}
+
+		for (destinationCPU = 0; destinationCPU < MIN(NUMITEMS(LAPIC), numemulatedcpus); ++destinationCPU)
+		{
+			if (receiver & (1 << destinationCPU)) //To receive?
+			{
+				if ((IOAPIC.IOAPIC_redirectionentry[IR][0] & 0x700) == 0x700) //ExtINT type?
+				{
+					if ((destinationCPU != extIntCPU) || (!enableExtInt)) //ExtInt can't be delivered right now to this (active) CPU?
+					{
+						continue; //Can't receive the ExtInt on this CPU!
+					}
+				}
+				if ((result2 = LAPIC_executeVector(destinationCPU, &IOAPIC.IOAPIC_redirectionentry[IR][0], IR, 1 + (enableExtInt << 1))) != 0) //Execute this vector from IO APIC!
+				{
+					IOAPIC.IOAPIC_redirectionentryReceivers[IR] &= ~(1 << destinationCPU); //Clear the single receiver!
+					receiver = IOAPIC.IOAPIC_redirectionentryReceivers[IR]; //New receiver for this IR!
+					result |= (result2 & 2); //INTA received?
+					//Properly received! Clear the sources!
+					if (IOAPIC.IOAPIC_redirectionentryReceivers[IR] == 0) //Finished all receicvers?
+					{
+						APIC_IRQsrequested &= ~APIC_requestbit; //Clear the request bit!
+						IOAPIC.IOAPIC_IRRset &= ~APIC_requestbit; //Clear the request, because we're firing it up now!
+						IOAPIC.IOAPIC_redirectionentryReceiversDetermined[IR] = 0; //Not determined anymore!
+					}
+				}
+			}
+		}
+		//Otherwise, not accepted, keep polling this IR!
+	}
+	else //No receivers? Finished!
+	{
+		APIC_IRQsrequested &= ~APIC_requestbit; //Clear the request bit!
+		IOAPIC.IOAPIC_IRRset &= ~APIC_requestbit; //Clear the request, because we're firing it up now!
+		LAPIC_reportErrorStatus(0, (1 << 3), 0); //Report an receive accept error!
+		IOAPIC.IOAPIC_redirectionentryReceiversDetermined[IR] = 0; //Not determined anymore!
+	}
+	return result; //Give the result!
+}
+
 byte IOAPIC_pollRequests(byte enableExtInt, byte extIntCPU)
 {
-	byte result,result2;
+	byte result;
 	uint_32 receiver; //Up to 32 receiving CPUs!
 	byte destinationCPU; //What CPU is the destination?
 
@@ -1406,44 +1470,7 @@ byte IOAPIC_pollRequests(byte enableExtInt, byte extIntCPU)
 		return 0; //Abort: invalid destination!
 	receiveIOLAPICCommandRegister:
 		//Received something from the IO APIC redirection targetting the main CPU?
-		if (receiver) //Local APIC received?
-		{
-			if (IOAPIC.IOAPIC_redirectionentry[IR][0] & 0x800) //Logical destination?
-			{
-				if ((IOAPIC.IOAPIC_redirectionentry[IR][0] & 0x700) == 0x100) //Lowest Priority type?
-				{
-					receiver = determineLowestPriority(IOAPIC.IOAPIC_redirectionentry[IR][0] & 0xFF, receiver); //Determine the lowest priority receiver!
-				}
-			}
-
-			for (destinationCPU = 0; destinationCPU < MIN(NUMITEMS(LAPIC),numemulatedcpus); ++destinationCPU)
-			{
-				if (receiver & (1 << destinationCPU)) //To receive?
-				{
-					if ((IOAPIC.IOAPIC_redirectionentry[IR][0] & 0x700) == 0x700) //ExtINT type?
-					{
-						if ((destinationCPU != extIntCPU) || (!enableExtInt)) //ExtInt can't be delivered right now to this (active) CPU?
-						{
-							continue; //Can't receive the ExtInt on this CPU!
-						}
-					}
-					if ((result2 = LAPIC_executeVector(destinationCPU, &IOAPIC.IOAPIC_redirectionentry[IR][0], IR, 1+(enableExtInt<<1)))!=0) //Execute this vector from IO APIC!
-					{
-						result |= (result2 & 2); //INTA received?
-						//Properly received! Clear the sources!
-						APIC_IRQsrequested &= ~APIC_requestbit; //Clear the request bit!
-						IOAPIC.IOAPIC_IRRset &= ~APIC_requestbit; //Clear the request, because we're firing it up now!
-					}
-				}
-			}
-			//Otherwise, not accepted, keep polling this IR!
-		}
-		else //No receivers?
-		{
-			APIC_IRQsrequested &= ~APIC_requestbit; //Clear the request bit!
-			IOAPIC.IOAPIC_IRRset &= ~APIC_requestbit; //Clear the request, because we're firing it up now!
-			LAPIC_reportErrorStatus(0,(1 << 3),0); //Report an receive accept error!
-		}
+		result = handleIOLAPIC_receiveCommandRegister(enableExtInt, extIntCPU, IR, receiver, APIC_IRQsrequested, APIC_requestbit); //Handle this receiver!
 	}
 	return result; //Give the result!
 }
