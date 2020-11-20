@@ -28,6 +28,7 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 #include "headers/hardware/ide.h" //IDE PCI support!
 #include "headers/hardware/pic.h" //APIC support!
 #include "headers/emu/emucore.h" //RESET line support!
+#include "headers/bios/biosrom.h" //BIOS flash ROM support!
 
 extern byte is_i430fx; //Are we an i430fx motherboard?
 byte i430fx_memorymappings_read[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}; //All read memory/PCI! Set=DRAM, clear=PCI!
@@ -602,6 +603,8 @@ void i430fx_hardreset()
 	{
 		return; //nothing to do!
 	}
+
+	BIOS_flash_reset(); //Reset the BIOS flash because of hard or soft reset of PCI devices!
 
 	i430fx_resetPCIConfiguration(); //Initialize/reset the configuration!
 	i430fx_piix_resetPCIConfiguration(); //Initialize/reset the configuration!

@@ -123,6 +123,12 @@ struct
 	uint_32 blocks_len[BLOCKS_NUM];
 } BIOS_flash;
 
+void BIOS_flash_reset()
+{
+	BIOS_flash.status = 0x00; //Default status!
+	BIOS_flash.command = CMD_READ_ARRAY; //Return to giving the array result!
+}
+
 byte BIOS_flash_read8(byte* ROM, uint_32 offset, byte* result)
 {
 	*result = 0xFF; //Default!

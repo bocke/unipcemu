@@ -44,4 +44,6 @@ void BIOSROM_updateTimers(DOUBLE timepassed);
 byte BIOS_readhandler(uint_32 offset, byte index); /* A pointer to a handler function */
 byte BIOS_writehandler(uint_32 offset, byte value);    /* A pointer to a handler function */
 
+void BIOS_flash_reset(); //Reset the BIOS flash because of hard or soft reset of PCI devices!
+
 #endif
