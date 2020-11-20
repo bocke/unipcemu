@@ -112,7 +112,7 @@ byte BIOS_flash_enabled = 0;
 struct
 {
 	byte command;
-	byte status;
+	byte status; //bit 7: ready, bit 6: erase suspended when set, bit 5: block erase error(set) or success(cleared), bit 4: byte program error(set) or success(cleared), bit 3: cleared for Vpp OK. bit 2-0: reserved. 
 	byte pad;
 	byte flags;
 	word flash_id;
@@ -125,7 +125,7 @@ struct
 
 void BIOS_flash_reset()
 {
-	BIOS_flash.status = 0x00; //Default status!
+	BIOS_flash.status = 0x80; //Default status!
 	BIOS_flash.command = CMD_READ_ARRAY; //Return to giving the array result!
 }
 
@@ -152,7 +152,7 @@ byte BIOS_flash_read8(byte* ROM, uint_32 offset, byte* result)
 		}
 		break;
 	case CMD_READ_STATUS:
-		*result = BIOS_flash.status;
+		*result = BIOS_flash.status; //Give status until receiving a new command!
 		return 1; //Mapped!
 	}
 	return 1; //Safeguard!
@@ -182,7 +182,7 @@ void BIOS_flash_write8(byte* ROM, uint_32 offset, char *filename, byte value)
 					{
 						memcpy(&ROM[BIOS_flash.blocks_start[i]], &blocks_backup, BIOS_flash.blocks_len[i]); //Restore the backup copy!
 						emufclose64(f); //Close the file!
-						BIOS_flash.status = 0xFF; //Error!
+						BIOS_flash.status = (0x80|0x20); //Error!
 						goto finishflashingblock;
 					}
 					else
@@ -200,14 +200,14 @@ void BIOS_flash_write8(byte* ROM, uint_32 offset, char *filename, byte value)
 							{
 								memcpy(&ROM[BIOS_flash.blocks_start[i]], &blocks_backup, BIOS_flash.blocks_len[i]); //Restore the backup copy!
 								emufclose64(f); //Close the file!
-								BIOS_flash.status = 0xFF; //Error!
+								BIOS_flash.status = (0x80|0x20); //Error!
 								goto finishflashingblock;
 							}
 						}
 						else //Failed to flash?
 						{
 							emufclose64(f); //Close the file!
-							BIOS_flash.status = 0xFF; //Error!
+							BIOS_flash.status = (0x80|0x20); //Error!
 							goto finishflashingblock;
 						}
 					}
@@ -225,7 +225,7 @@ void BIOS_flash_write8(byte* ROM, uint_32 offset, char *filename, byte value)
 			if (!f) //Failed to open?
 			{
 				emufclose64(f); //Close the file!
-				BIOS_flash.status = 0xFF; //Error!
+				BIOS_flash.status = (0x80|0x10); //Error!
 				goto finishflashingblock;
 			}
 			else
@@ -243,14 +243,14 @@ void BIOS_flash_write8(byte* ROM, uint_32 offset, char *filename, byte value)
 					else //Failed to properly flash?
 					{
 						emufclose64(f); //Close the file!
-						BIOS_flash.status = 0xFF; //Error!
+						BIOS_flash.status = (0x80|0x10); //Error!
 						goto finishflashingblock;
 					}
 				}
 				else //Failed to flash?
 				{
 					emufclose64(f); //Close the file!
-					BIOS_flash.status = 0xFF; //Error!
+					BIOS_flash.status = (0x80|0x10); //Error!
 					goto finishflashingblock;
 				}
 			}
@@ -260,11 +260,15 @@ void BIOS_flash_write8(byte* ROM, uint_32 offset, char *filename, byte value)
 		BIOS_flash.command = value; //The command!
 		switch (value) //What command?
 		{
+		case CMD_ERASE_SETUP:
+			BIOS_flash.status = 0x80; //Ready, no error to report!
+			break;
 		case CMD_CLEAR_STATUS:
-			BIOS_flash.status = 0;
+			BIOS_flash.status = 0x80; //Ready, no error to report!
 			break;
 		case CMD_PROGRAM_SETUP:
 		case CMD_PROGRAM_SETUP_ALT: //Start writing the ROM here!
+			BIOS_flash.status = 0x80; //Ready, no error to report!
 			BIOS_flash.program_addr = offset;
 			break;
 		default: //Other command?
