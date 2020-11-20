@@ -34,6 +34,7 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 #define __HW_DISABLED 0
 
 #define DELIVERYPENDING (1<<12)
+#define REMOTEPENDING (1<<14)
 
 byte numemulatedcpus = 1; //Amount of emulated CPUs!
 
@@ -474,7 +475,8 @@ void LAPIC_broadcastEOI(byte whichCPU, byte vectornumber)
 	{
 		if ((IOAPIC.IOAPIC_redirectionentry[intnr][0] & 0xFF) == vectornumber) //Found a matching vector?
 		{
-			IOAPIC.IOAPIC_redirectionentry[intnr][0] &= ~(1 << 14); //Clear bit 14: EOI received!
+			IOAPIC.IOAPIC_redirectionentry[intnr][0] &= ~REMOTEPENDING; //Clear bit 14: EOI received!
+			recheckLiveIRRs = 1; //Recheck the live IRRs!
 		}
 	}
 }
@@ -732,6 +734,10 @@ byte LAPIC_executeVector(byte whichCPU, uint_32* vectorlo, byte IR, byte isIOAPI
 		LAPIC[whichCPU].IRR[APIC_intnr >> 5] |= (1 << (APIC_intnr & 0x1F)); //Mark the interrupt requested to fire!
 		if (*vectorlo & 0x8000) //Level triggered?
 		{
+			if (isIOAPIC) //IO APIC?
+			{
+				*vectorlo |= REMOTEPENDING; //The IO or Local APIC has received the request for servicing!
+			}
 			LAPIC[whichCPU].TMR[APIC_intnr >> 5] |= (1 << (APIC_intnr & 0x1F)); //Mark the interrupt requested to fire!
 		}
 		else //Edge triggered?
@@ -776,13 +782,6 @@ byte LAPIC_executeVector(byte whichCPU, uint_32* vectorlo, byte IR, byte isIOAPI
 	}
 
 	*vectorlo &= ~DELIVERYPENDING; //The IO or Local APIC has received the request!
-	if (isIOAPIC) //IO APIC?
-	{
-		if (*vectorlo & 0x8000) //Level triggered?
-		{
-			*vectorlo |= (1 << 14); //The IO or Local APIC has received the request for servicing!
-		}
-	}
 	recheckLiveIRRs = 1; //Recheck!
 	return (1|resultadd); //Accepted!
 }
@@ -2682,6 +2681,7 @@ void LINT0_raiseIRQ(byte updatelivestatus)
 		}
 		else
 		{
+			if ((LAPIC[activeCPU].LVTLINT0Register&REMOTEPENDING)!=0) return; //Kept pending by level!
 			LAPIC[activeCPU].LVTLINT0Register |= DELIVERYPENDING; //Perform LINT0!
 		}
 		break;
@@ -2696,6 +2696,7 @@ void LINT0_raiseIRQ(byte updatelivestatus)
 		break;
 	case 7: //extINT? Level only!
 		//Always assume that the live IRR doesn't match to keep it live on the triggering!
+		if ((LAPIC[activeCPU].LVTLINT0Register&REMOTEPENDING)!=0) return; //Kept pending by level!
 		LAPIC[activeCPU].LVTLINT0Register |= DELIVERYPENDING; //Perform LINT0!
 		break;
 	}
@@ -2748,6 +2749,7 @@ void APIC_raisedIRQ(byte PIC, byte irqnum)
 		}
 		else
 		{
+			if ((IOAPIC.IOAPIC_redirectionentry[irqnum & 0xF][0]&REMOTEPENDING)!=0) return; //Kept pending by level!
 			if ((IOAPIC.IOAPIC_redirectionentry[irqnum & 0xF][0] & 0x10000) == 0) //Not masked?
 			{
 				IOAPIC.IOAPIC_redirectionentry[irqnum & 0xF][0] |= DELIVERYPENDING; //Waiting to be delivered!
