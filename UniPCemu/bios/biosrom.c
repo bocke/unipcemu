@@ -137,16 +137,19 @@ byte BIOS_flash_read8(byte* ROM, uint_32 offset, byte* result)
 		if (offset & 1)
 		{
 			*result = (BIOS_flash.flash_id & 0xFF);
+			BIOS_flash.command = CMD_READ_ARRAY; //Return to giving the array result!
 			return 1; //mapped!
 		}
 		else
 		{
 			*result = 0x89;
+			BIOS_flash.command = CMD_READ_ARRAY; //Return to giving the array result!
 			return 1; //mapped!
 		}
 		break;
 	case CMD_READ_STATUS:
 		*result = BIOS_flash.status;
+		BIOS_flash.command = CMD_READ_ARRAY; //Return to giving the array result!
 		return 1; //Mapped!
 	}
 	return 1; //Safeguard!
