@@ -272,9 +272,9 @@ byte isvalidpage(uint_32 address, byte iswrite, byte CPL, byte isPrefetch, byte 
 		TABLE = (address >> 12) & 0x1FF; //The table entry has half the entries!
 
 		//Check PDE
-		PDEbase = PDPT; //What is the PDE base address!
-		PDE = (uint_64)memory_BIUdirectrdw(PDPT + (DIR << 3)); //Read the page directory entry low!
-		PDE |= ((uint_64)memory_BIUdirectrdw(PDPT + ((DIR << 3)|4)))<<32; //Read the page directory entry high!
+		PDEbase = (PDPT&PXEsize); //What is the PDE base address!
+		PDE = (uint_64)memory_BIUdirectrdw((PDPT&PXEsize) + (DIR << 3)); //Read the page directory entry low!
+		PDE |= ((uint_64)memory_BIUdirectrdw((PDPT&PXEsize) + ((DIR << 3)|4)))<<32; //Read the page directory entry high!
 		if (!(PDE & PXE_P)) //Not present?
 		{
 			CPU[activeCPU].PageFault_PDPT = PDPT; //Save!
