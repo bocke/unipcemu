@@ -5005,14 +5005,14 @@ OPTINLINE void ATA_executeCommand(byte channel, byte command) //Execute a comman
 			{
 				verifyaddr = disk_size; //Make within range!
 				ATA[channel].Drive[ATA_activeDrive(channel)].current_LBA_address = (disk_size+1); //Faulting address!
-				ATA[channel].Drive[ATA_activeDrive(channel)].datasize -= verifyaddr-ATA[channel].Drive[ATA_activeDrive(channel)].current_LBA_address; //How much is left!
+				ATA[channel].Drive[ATA_activeDrive(channel)].datasize -= (uint_32)(verifyaddr-ATA[channel].Drive[ATA_activeDrive(channel)].current_LBA_address); //How much is left!
 				ATA[channel].Drive[ATA_activeDrive(channel)].PARAMETERS.sectorcount = (ATA[channel].Drive[ATA_activeDrive(channel)].datasize&0xFF); //How many sectors are left is initialized!
 				goto verify_outofrange;
 			}
 			else //Fully within range?
 			{
 				++verifyaddr; //Next sector!
-				ATA[channel].Drive[ATA_activeDrive(channel)].current_LBA_address = verifyaddr; //Faulting address!
+				ATA[channel].Drive[ATA_activeDrive(channel)].current_LBA_address = (uint_32)verifyaddr; //Faulting address!
 				ATA[channel].Drive[ATA_activeDrive(channel)].datasize = 0; //Nothing left!
 				ATA[channel].Drive[ATA_activeDrive(channel)].PARAMETERS.sectorcount = (ATA[channel].Drive[ATA_activeDrive(channel)].datasize&0xFF); //How many sectors are left is initialized!
 				ATA_writeLBACHS(channel); //Update the current sector!
