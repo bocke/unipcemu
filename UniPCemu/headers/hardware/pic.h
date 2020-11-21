@@ -77,7 +77,7 @@ byte out8259(word portnum, byte value); //Out port
 byte PICInterrupt(); //We have an interrupt ready to process?
 byte nextintr(); //Next interrupt to handle
 void acnowledgeirrs(); //Acnowledge IRR!
-void updateAPIC(uint_64 clockspassed, float timepassed); //Tick the APIC in CPU clocks!
+void updateAPIC(uint_64 clockspassed, DOUBLE timepassed); //Tick the APIC in CPU clocks!
 byte CPU_NMI_APIC(byte whichCPU); //NMI pin directly connected?
 void registerIRQ(byte IRQ, IRQHandler acceptIRQ, IRQHandler finishIRQ); //Register IRQ handler!
 
@@ -93,8 +93,8 @@ void APIC_updateWindowMSR(byte whichCPU, uint_32 lo, uint_32 hi); //Update the w
 byte APIC_memIO_rb(uint_32 offset, byte index); //Read handler for the APIC!
 byte APIC_memIO_wb(uint_32 offset, byte value); //Write handler for the APIC!
 
-void APIC_raisedIRQ(byte PIC, byte irqnum);
-void APIC_loweredIRQ(byte PIC, byte irqnum);
+void APIC_raisedIRQ(byte PIC, word irqnum);
+void APIC_loweredIRQ(byte PIC, word irqnum);
 void APIC_enableIOAPIC(byte enabled); //Enable the IO APIC?
 void resetLAPIC(byte whichCPU, byte isHardReset); //Soft or hard reset of the APIC!
 void resetIOAPIC(byte isHardReset); //Soft or hard reset of the I/O APIC!

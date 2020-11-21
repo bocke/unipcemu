@@ -437,15 +437,15 @@ void LAPIC_updatedISR(byte whichCPU)
 	byte ISRV;
 	ISRV = APIC_getISRV(whichCPU); //Get the ISRV!
 	//Now, we have selected the highest priority IR! Start using it!
-	LAPIC[whichCPU].ProcessorPriorityRegister = MAX((ISRV & 0xF0), (LAPIC[whichCPU].TaskPriorityRegister & 0xF0)); //Maximum of the two is Processor Priority Class
+	LAPIC[whichCPU].ProcessorPriorityRegister = MAX((ISRV & 0xF0U), (LAPIC[whichCPU].TaskPriorityRegister & 0xF0U)); //Maximum of the two is Processor Priority Class
 	//Determine the Processor Priority Sub-class
-	if ((LAPIC[whichCPU].TaskPriorityRegister & 0xF0) > (ISRV & 0xF0)) //Use TPR 3:0!
+	if ((LAPIC[whichCPU].TaskPriorityRegister & 0xF0U) > (ISRV & 0xF0U)) //Use TPR 3:0!
 	{
-		LAPIC[whichCPU].ProcessorPriorityRegister |= (LAPIC[whichCPU].TaskPriorityRegister & 0xF); //TPR 3:0!
+		LAPIC[whichCPU].ProcessorPriorityRegister |= (LAPIC[whichCPU].TaskPriorityRegister & 0xFU); //TPR 3:0!
 	}
-	else if ((LAPIC[whichCPU].TaskPriorityRegister & 0xF0) == (ISRV & 0xF0)) //Equal? TPR 3:0 or 0? Model-specific!
+	else if ((LAPIC[whichCPU].TaskPriorityRegister & 0xF0U) == (ISRV & 0xF0U)) //Equal? TPR 3:0 or 0? Model-specific!
 	{
-		LAPIC[whichCPU].ProcessorPriorityRegister |= (LAPIC[whichCPU].TaskPriorityRegister & 0xF); //TPR 3:0!
+		LAPIC[whichCPU].ProcessorPriorityRegister |= (LAPIC[whichCPU].TaskPriorityRegister & 0xFU); //TPR 3:0!
 	}
 	//Otherwise, zero!
 }
@@ -457,13 +457,13 @@ void LAPIC_updatedIRRISR(byte whichCPU)
 	IRRV = APIC_getIRRV(whichCPU); //Get the IRRV!
 	ISRV = APIC_getISRV(whichCPU); //Get the ISRV!
 
-	if (((LAPIC[whichCPU].TaskPriorityRegister & 0xF0) >= (IRRV & 0xF0)) && ((LAPIC[whichCPU].TaskPriorityRegister & 0xF0) > (ISRV & 0xF0))) //TPR is at least request and more than service?
+	if (((LAPIC[whichCPU].TaskPriorityRegister & 0xF0U) >= (IRRV & 0xF0U)) && ((LAPIC[whichCPU].TaskPriorityRegister & 0xF0U) > (ISRV & 0xF0U))) //TPR is at least request and more than service?
 	{
-		LAPIC[whichCPU].ArbitrationPriorityRegister = (LAPIC[whichCPU].TaskPriorityRegister&0xFF); //It's the TPR!
+		LAPIC[whichCPU].ArbitrationPriorityRegister = (LAPIC[whichCPU].TaskPriorityRegister&0xFFU); //It's the TPR!
 	}
 	else
 	{
-		LAPIC[whichCPU].ArbitrationPriorityRegister = MAX((LAPIC[whichCPU].TaskPriorityRegister & 0xF0), MAX((IRRV & 0xF0), (ISRV & 0xF0))); //Maximum of IRR, ISR and TPR! Lower 3 bits are 0!
+		LAPIC[whichCPU].ArbitrationPriorityRegister = MAX((LAPIC[whichCPU].TaskPriorityRegister & 0xF0U), MAX((IRRV & 0xF0U), (ISRV & 0xF0U))); //Maximum of IRR, ISR and TPR! Lower 3 bits are 0!
 	}
 }
 
@@ -507,7 +507,8 @@ void LAPIC_reportErrorStatus(byte whichcpu, uint_32 errorstatus, byte ignoreTrig
 
 void LAPIC_handletermination() //Handle termination on the APIC!
 {
-	word MSb, MSBleft;
+	byte MSb;
+	word MSBleft;
 	//Handle any writes to APIC addresses!
 	if (likely((LAPIC[activeCPU].needstermination|LAPIC[activeCPU].LAPIC_globalrequirestermination) == 0)) return; //No termination needed?
 
@@ -786,7 +787,7 @@ byte LAPIC_executeVector(byte whichCPU, uint_32* vectorlo, byte IR, byte isIOAPI
 	return (1|resultadd); //Accepted!
 }
 
-void updateAPIC(uint_64 clockspassed, float timepassed)
+void updateAPIC(uint_64 clockspassed, DOUBLE timepassed)
 {
 	if (LAPIC[activeCPU].enabled != 1) return; //APIC not enabled?
 	if (!clockspassed) return; //Nothing passed?
@@ -807,7 +808,7 @@ void updateAPIC(uint_64 clockspassed, float timepassed)
 
 		if (LAPIC[activeCPU].CurrentCountRegister > clockspassed) //Still timing more than what's needed?
 		{
-			LAPIC[activeCPU].CurrentCountRegister -= clockspassed; //Time some clocks!
+			LAPIC[activeCPU].CurrentCountRegister -= (uint_32)clockspassed; //Time some clocks!
 		}
 		else //Finished counting?
 		{
@@ -817,7 +818,7 @@ void updateAPIC(uint_64 clockspassed, float timepassed)
 			{
 				clockspassed -= LAPIC[activeCPU].InitialCountRegister; //What is the remaining time?
 			}
-			LAPIC[activeCPU].CurrentCountRegister = clockspassed; //How many clocks are left!
+			LAPIC[activeCPU].CurrentCountRegister = (uint_32)clockspassed; //How many clocks are left!
 			if (!(LAPIC[activeCPU].LVTTimerRegister & 0x20000)) //One-shot mode?
 			{
 				LAPIC[activeCPU].CurrentCountRegister = 0; //Stop(ped) counting!
@@ -1516,7 +1517,7 @@ sword LAPIC_acnowledgeRequests(byte whichCPU)
 				{
 					APIC_intnr = (IRgroup << 5) | IR; //The priority to fire!
 					//Priority filtered? Then only fire if higher priority class than the processor priority class!
-					if ((LAPIC[whichCPU].ProcessorPriorityRegister & 0xF0) && ((APIC_intnr&0xF0) <= (LAPIC[whichCPU].ProcessorPriorityRegister & 0xF0)))
+					if ((LAPIC[whichCPU].ProcessorPriorityRegister & 0xF0U) && ((APIC_intnr&0xF0U) <= (LAPIC[whichCPU].ProcessorPriorityRegister & 0xF0U)))
 					{
 						goto skipPriorityIRR; //Skip this group!
 					}
@@ -2706,7 +2707,7 @@ void LINT0_raiseIRQ(byte updatelivestatus)
 	}
 }
 
-void APIC_raisedIRQ(byte PIC, byte irqnum)
+void APIC_raisedIRQ(byte PIC, word irqnum)
 {
 	//A line has been raised!
 	if (irqnum == 0) irqnum = 2; //IRQ0 is on APIC line 2!
@@ -2861,7 +2862,7 @@ void LINT0_lowerIRQ()
 	IOAPIC.IOAPIC_liveIRR &= ~1; //Live status!
 }
 
-void APIC_loweredIRQ(byte PIC, byte irqnum)
+void APIC_loweredIRQ(byte PIC, word irqnum)
 {
 	if (irqnum == 0) irqnum = 2; //IRQ0 is on APIC line 2!
 	else if (irqnum == 2) irqnum = 0; //INTR to APIC line 0!
