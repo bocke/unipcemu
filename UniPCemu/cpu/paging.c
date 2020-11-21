@@ -227,7 +227,7 @@ byte isvalidpage(uint_32 address, byte iswrite, byte CPL, byte isPrefetch, byte 
 			}
 		}
 		tag &= ~PAGINGTAG_S; //Without S-bit!
-		if (likely(Paging_readTLB(NULL, address, Paging_readTLBLWUDAS(address,1, effectiveUS, 0,markaccess,0),0,TLB_IGNOREREADMASK|(markaccess?TLB_NOIGNOREACCESSMASK:TLB_IGNOREACCESSMASK), &temp,&passthroughmask,0))) //Cache hit (non)dirty for reads/writes?
+		if (likely(Paging_readTLB(NULL, address, tag,0,TLB_IGNOREREADMASK|(markaccess?TLB_NOIGNOREACCESSMASK:TLB_IGNOREACCESSMASK), &temp,&passthroughmask,0))) //Cache hit (non)dirty for reads/writes?
 		{
 			return 1; //Valid!
 		}
@@ -437,7 +437,7 @@ byte isvalidpage(uint_32 address, byte iswrite, byte CPL, byte isPrefetch, byte 
 
 byte CPU_Paging_checkPage(uint_32 address, byte readflags, byte CPL)
 {
-	return (isvalidpage(address,((readflags&(~0x10))==0),CPL,(readflags&0x10),0)==0); //Are we an invalid page? We've raised an error! Bit4 is set during Prefetch operations!
+	return (isvalidpage(address,((readflags&(~0x10))==0),CPL,(readflags&0x10),1)==0); //Are we an invalid page? We've raised an error! Bit4 is set during Prefetch operations!
 }
 
 uint_64 mappagenonPSE(uint_32 address, byte iswrite, byte CPL) //Maps a page to real memory when needed!
