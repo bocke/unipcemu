@@ -64,8 +64,8 @@ void flushMMU(); //Flush MMU writes!
 void bufferMMU(); //Start buffering MMU writes!
 
 //Memory access for fake86 compatibility and testing our CPU.
-void MMU_directwb_realaddr(uint_32 realaddress, byte val); //Write without segment/offset translation&protection (from system/interrupt)!
-byte MMU_directrb_realaddr(uint_32 realaddress); //Read without segment/offset translation&protection (from system/interrupt)!
+void MMU_directwb_realaddr(uint_64 realaddress, byte val); //Write without segment/offset translation&protection (from system/interrupt)!
+byte MMU_directrb_realaddr(uint_64 realaddress); //Read without segment/offset translation&protection (from system/interrupt)!
 
 //Memory handler support!
 void MMU_resetHandlers(char *module); //Initialise/reset handlers, no module (""/NULL) for all.
@@ -73,16 +73,16 @@ byte MMU_registerWriteHandler(MMU_WHANDLER handler, char *module); //Register a 
 byte MMU_registerReadHandler(MMU_RHANDLER handler, char *module); //Register a read handler!
 
 //DMA memory support!
-byte memory_directrb(uint_32 realadress); //Direct read from memory (with real data direct)!
-void memory_directwb(uint_32 realadress, byte value); //Direct write to memory (with real data direct)!
+byte memory_directrb(uint_64 realadress); //Direct read from memory (with real data direct)!
+void memory_directwb(uint_64 realadress, byte value); //Direct write to memory (with real data direct)!
 
 //For DMA controller/paging/system: direct word access!
-word memory_directrw(uint_32 realadress); //Direct read from real memory (with real data direct)!
-void memory_directww(uint_32 realadress, word value); //Direct write to real memory (with real data direct)!
+word memory_directrw(uint_64 realadress); //Direct read from real memory (with real data direct)!
+void memory_directww(uint_64 realadress, word value); //Direct write to real memory (with real data direct)!
 
 //For paging/system only!
-uint_32 memory_directrdw(uint_32 realaddress);
-void memory_directwdw(uint_32 realaddress, uint_32 value);
+uint_32 memory_directrdw(uint_64 realaddress);
+void memory_directwdw(uint_64 realaddress, uint_32 value);
 void MMU_updatemaxsize(); //updated the maximum size!
 void updateBUShandler(); //Update the bus handler!
 void MMU_calcIndexPrecalcs(); //Calculate the index precalcs!

@@ -1548,7 +1548,7 @@ uint_32 i440fx_ioapic_base_mask;
 uint_32 i440fx_ioapic_base_match;
 
 extern byte memory_datawrittensize; //How many bytes have been written to memory during a write!
-extern uint_32 BIU_cachedmemoryaddr[MAXCPUS];
+extern uint_64 BIU_cachedmemoryaddr[MAXCPUS];
 extern byte BIU_cachedmemorysize[MAXCPUS];
 extern byte memory_datasize; //The size of the data that has been read!
 byte APIC_memIO_wb(uint_32 offset, byte value)

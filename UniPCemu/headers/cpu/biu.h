@@ -109,20 +109,20 @@ byte BIU_readResultb(byte *result); //Read the result data of a BUS request!
 byte BIU_readResultw(word *result); //Read the result data of a BUS request!
 byte BIU_readResultdw(uint_32 *result); //Read the result data of a BUS request!
 
-byte memory_BIUdirectrb(uint_32 realaddress); //Direct read from real memory (with real data direct)!
-word memory_BIUdirectrw(uint_32 realaddress); //Direct read from real memory (with real data direct)!
-uint_32 memory_BIUdirectrdw(uint_32 realaddress); //Direct read from real memory (with real data direct)!
-void memory_BIUdirectwb(uint_32 realaddress, byte value); //Direct write to real memory (with real data direct)!
-void memory_BIUdirectww(uint_32 realaddress, word value); //Direct write to real memory (with real data direct)!
-void memory_BIUdirectwdw(uint_32 realaddress, uint_32 value); //Direct write to real memory (with real data direct)!
+byte memory_BIUdirectrb(uint_64 realaddress); //Direct read from real memory (with real data direct)!
+word memory_BIUdirectrw(uint_64 realaddress); //Direct read from real memory (with real data direct)!
+uint_32 memory_BIUdirectrdw(uint_64 realaddress); //Direct read from real memory (with real data direct)!
+void memory_BIUdirectwb(uint_64 realaddress, byte value); //Direct write to real memory (with real data direct)!
+void memory_BIUdirectww(uint_64 realaddress, word value); //Direct write to real memory (with real data direct)!
+void memory_BIUdirectwdw(uint_64 realaddress, uint_32 value); //Direct write to real memory (with real data direct)!
 
 //MMU support for the above functionality!
-byte BIU_directrb_external(uint_32 realaddress, word index);
-word BIU_directrw(uint_32 realaddress, word index); //Direct read from real memory (with real data direct)!
-uint_32 BIU_directrdw(uint_32 realaddress, word index);
-void BIU_directwb_external(uint_32 realaddress, byte val, word index); //Access physical memory dir
-void BIU_directww(uint_32 realaddress, word value, word index); //Direct write to real memory (with real data direct)!
-void BIU_directwdw(uint_32 realaddress, uint_32 value, word index);
+byte BIU_directrb_external(uint_64 realaddress, word index);
+word BIU_directrw(uint_64 realaddress, word index); //Direct read from real memory (with real data direct)!
+uint_32 BIU_directrdw(uint_64 realaddress, word index);
+void BIU_directwb_external(uint_64 realaddress, byte val, word index); //Access physical memory dir
+void BIU_directww(uint_64 realaddress, word value, word index); //Direct write to real memory (with real data direct)!
+void BIU_directwdw(uint_64 realaddress, uint_32 value, word index);
 
 byte BIU_getHLDA(); //HLDA raised?
 byte BIU_getcycle(); //What is the current cycle?

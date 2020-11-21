@@ -1343,8 +1343,8 @@ OPTINLINE void CPU_initRegisters(word isInit) //Init the registers!
 void CPU_initLookupTables(); //Initialize the CPU timing lookup tables! Prototype!
 extern byte is_XT; //Are we an XT?
 
-uint_32 effectivecpuaddresspins = 0xFFFFFFFF;
-uint_32 cpuaddresspins[16] = { //Bit0=XT, Bit1+=CPU
+uint_64 effectivecpuaddresspins = 0xFFFFFFFF;
+uint_64 cpuaddresspins[16] = { //Bit0=XT, Bit1+=CPU
 							0xFFFFF, //8086 AT+
 							0xFFFFF, //8086 XT
 							0xFFFFF, //80186 AT+
@@ -1357,10 +1357,10 @@ uint_32 cpuaddresspins[16] = { //Bit0=XT, Bit1+=CPU
 							0xFFFFFFFF, //80486 XT
 							0xFFFFFFFF, //80586 AT+
 							0xFFFFFFFF, //80586 XT
-							0xFFFFFFFF, //80686 AT+
-							0xFFFFFFFF, //80686 XT
-							0xFFFFFFFF, //80786 AT+
-							0xFFFFFFFF //80786 XT
+							0xFFFFFFFFFFFF, //80686 AT+
+							0xFFFFFFFFFFFF, //80686 XT
+							0xFFFFFFFFFFFF, //80786 AT+
+							0xFFFFFFFFFFFF //80786 XT
 }; //CPU address wrapping lookup table!
 
 //isInit: bit 7 means that the INIT pin is raised without the RESET pin! bit 8 means RESET pin with INIT pin!

@@ -23,7 +23,7 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "headers/types.h" //Basic type support!
 
-typedef void (*DRAM_accessHandler)(uint_32 address); //Accessing DRAM?
+typedef void (*DRAM_accessHandler)(uint_64 address); //Accessing DRAM?
 
 void initDRAM(); //Initialize DRAM!
 

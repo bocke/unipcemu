@@ -39,35 +39,35 @@ extern MMU_type MMU; //MMU itself!
 
 #define CPU286_WAITSTATE_DELAY 1
 
-byte memory_BIUdirectrb(uint_32 realaddress) //Direct read from real memory (with real data direct)!
+byte memory_BIUdirectrb(uint_64 realaddress) //Direct read from real memory (with real data direct)!
 {
 	return BIU_directrb_external(realaddress, 0x100);
 }
-OPTINLINE byte memory_BIUdirectrbIndex(uint_32 realaddress, word index) //Direct read from real memory (with real data direct)!
+OPTINLINE byte memory_BIUdirectrbIndex(uint_64 realaddress, word index) //Direct read from real memory (with real data direct)!
 {
 	return BIU_directrb_external(realaddress, index);
 }
-word memory_BIUdirectrw(uint_32 realaddress) //Direct read from real memory (with real data direct)!
+word memory_BIUdirectrw(uint_64 realaddress) //Direct read from real memory (with real data direct)!
 {
 	return BIU_directrw(realaddress, 0x100);
 }
-uint_32 memory_BIUdirectrdw(uint_32 realaddress) //Direct read from real memory (with real data direct)!
+uint_32 memory_BIUdirectrdw(uint_64 realaddress) //Direct read from real memory (with real data direct)!
 {
 	return BIU_directrdw(realaddress, 0x100);
 }
-void memory_BIUdirectwb(uint_32 realaddress, byte value) //Direct write to real memory (with real data direct)!
+void memory_BIUdirectwb(uint_64 realaddress, byte value) //Direct write to real memory (with real data direct)!
 {
 	BIU_directwb_external(realaddress, value, 0x100);
 }
-OPTINLINE void memory_BIUdirectwbIndex(uint_32 realaddress, byte value, word index) //Direct write to real memory (with real data direct)!
+OPTINLINE void memory_BIUdirectwbIndex(uint_64 realaddress, byte value, word index) //Direct write to real memory (with real data direct)!
 {
 	BIU_directwb_external(realaddress, value, index);
 }
-void memory_BIUdirectww(uint_32 realaddress, word value) //Direct write to real memory (with real data direct)!
+void memory_BIUdirectww(uint_64 realaddress, word value) //Direct write to real memory (with real data direct)!
 {
 	BIU_directww(realaddress, value, 0x100);
 }
-void memory_BIUdirectwdw(uint_32 realaddress, uint_32 value) //Direct write to real memory (with real data direct)!
+void memory_BIUdirectwdw(uint_64 realaddress, uint_32 value) //Direct write to real memory (with real data direct)!
 {
 	BIU_directwdw(realaddress, value, 0x100);
 }
@@ -481,16 +481,18 @@ byte checkPhysMMUaccess32(void *segdesc, word segment, uint_64 offset, word read
 }
 
 extern byte MMU_logging; //Are we logging?
-extern uint_32 effectivecpuaddresspins; //What address pins are supported?
+extern uint_64 effectivecpuaddresspins; //What address pins are supported?
 extern byte CompaqWrapping[0x1000]; //Compaq Wrapping precalcs!
 byte Paging_directrb(sword segdesc, uint_32 realaddress, byte writewordbackup, byte opcode, byte index, byte CPL)
 {
 	byte result;
 	uint_32 originaladdr;
-	originaladdr = realaddress; //The linear address!
+	uint_64 translatedaddr;
+	originaladdr = (uint_64)realaddress; //The linear address!
+	translatedaddr = originaladdr; //Same by default!
 	if (is_paging() && (segdesc!=-128)) //Are we paging?
 	{
-		realaddress = mappage(realaddress,0,CPL); //Map it using the paging mechanism!
+		translatedaddr = mappage(realaddress,0,CPL); //Map it using the paging mechanism!
 	}
 
 	if (segdesc!=-1) //Normal memory access by the CPU itself?
@@ -501,7 +503,7 @@ byte Paging_directrb(sword segdesc, uint_32 realaddress, byte writewordbackup, b
 		}
 	}
 
-	result = memory_BIUdirectrbIndex(realaddress,index|0x100); //Use the BIU to read the data from memory in a cached way!
+	result = memory_BIUdirectrbIndex(translatedaddr,index|0x100); //Use the BIU to read the data from memory in a cached way!
 
 	if (unlikely(MMU_logging==1)) //To log?
 	{
@@ -514,10 +516,12 @@ byte Paging_directrb(sword segdesc, uint_32 realaddress, byte writewordbackup, b
 void Paging_directwb(sword segdesc, uint_32 realaddress, byte val, byte index, byte is_offset16, byte writewordbackup, byte CPL)
 {
 	uint_32 originaladdr;
-	originaladdr = realaddress; //The linear address!
+	uint_64 translatedaddr;
+	originaladdr = (uint_64)realaddress; //The linear address!
+	translatedaddr = originaladdr; //Default!
 	if (is_paging() && (segdesc!=-128)) //Are we paging?
 	{
-		realaddress = mappage(realaddress,1,CPL); //Map it using the paging mechanism!
+		translatedaddr = mappage(realaddress,1,CPL); //Map it using the paging mechanism!
 	}
 
 	if (segdesc!=-1) //Normal memory access?
@@ -533,7 +537,7 @@ void Paging_directwb(sword segdesc, uint_32 realaddress, byte val, byte index, b
 		debugger_logmemoryaccess(1,originaladdr,val,LOGMEMORYACCESS_PAGED); //Log it!
 	}
 
-	memory_BIUdirectwbIndex(realaddress, val,(index|0x100)); //Use the BIU to write the data to memory!
+	memory_BIUdirectwbIndex(translatedaddr, val,(index|0x100)); //Use the BIU to write the data to memory!
 }
 
 OPTINLINE byte MMU_INTERNAL_rb(sword segdesc, word segment, uint_32 offset, byte opcode, byte index, byte is_offset16) //Get adress, opcode=1 when opcode reading, else 0!
@@ -664,11 +668,11 @@ OPTINLINE void MMU_INTERNAL_wdw(sword segdesc, word segment, uint_32 offset, uin
 }
 
 //Routines used by CPU!
-byte MMU_directrb_realaddr(uint_32 realaddress) //Read without segment/offset translation&protection (from system/interrupt)!
+byte MMU_directrb_realaddr(uint_64 realaddress) //Read without segment/offset translation&protection (from system/interrupt)!
 {
 	return MMU_INTERNAL_directrb_realaddr(realaddress,0);
 }
-void MMU_directwb_realaddr(uint_32 realaddress, byte val) //Read without segment/offset translation&protection (from system/interrupt)!
+void MMU_directwb_realaddr(uint_64 realaddress, byte val) //Read without segment/offset translation&protection (from system/interrupt)!
 {
 	MMU_INTERNAL_directwb_realaddr(realaddress,val,0);
 }

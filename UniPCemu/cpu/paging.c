@@ -412,21 +412,21 @@ byte isvalidpage(uint_32 address, byte iswrite, byte CPL, byte isPrefetch, byte 
 	}
 	if (PDEUPDATED) //Updated?
 	{
-		memory_BIUdirectwdw(PDEbase + (DIR << PDEsize), PDE); //Update in memory!
+		memory_BIUdirectwdw(PDEbase + (DIR << PDEsize), (uint_32)PDE); //Update in memory!
 		BIU_terminatemem(); //Terminate memory access!
 		if (PDEsize == 3) //Needs high half too?
 		{
-			memory_BIUdirectwdw(PDEbase + ((DIR << PDEsize) | 4), (PDE>>32)); //Update in memory!
+			memory_BIUdirectwdw(PDEbase + ((DIR << PDEsize) | 4), (uint_32)(PDE>>32)); //Update in memory!
 			BIU_terminatemem(); //Terminate memory access!
 		}
 	}
 	if (PTEUPDATED) //Updated?
 	{
-		memory_BIUdirectwdw(((PDE&PXEsize)>>PXE_ADDRESSSHIFT)+(TABLE<<PTEsize),PTE); //Update in memory!
+		memory_BIUdirectwdw(((PDE&PXEsize)>>PXE_ADDRESSSHIFT)+(TABLE<<PTEsize),(uint_32)PTE); //Update in memory!
 		BIU_terminatemem(); //Terminate memory access!
 		if (PDEsize == 3) //Needs high half too?
 		{
-			memory_BIUdirectwdw(((PDE& PXEsize) >> PXE_ADDRESSSHIFT) + ((TABLE << PTEsize) | 4), (PTE>>32)); //Update in memory!
+			memory_BIUdirectwdw(((PDE& PXEsize) >> PXE_ADDRESSSHIFT) + ((TABLE << PTEsize) | 4), (uint_32)(PTE>>32)); //Update in memory!
 			BIU_terminatemem(); //Terminate memory access!
 		}
 	}

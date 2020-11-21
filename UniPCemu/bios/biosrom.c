@@ -1272,7 +1272,7 @@ void BIOSROM_updateTimers(DOUBLE timepassed)
 }
 
 
-extern uint_32 BIU_cachedmemoryaddr[MAXCPUS];
+extern uint_64 BIU_cachedmemoryaddr[MAXCPUS];
 extern uint_32 BIU_cachedmemoryread[MAXCPUS];
 extern byte BIU_cachedmemorysize[MAXCPUS]; //To invalidate the BIU cache!
 extern byte memory_datawrittensize; //How many bytes have been written to memory during a write!
