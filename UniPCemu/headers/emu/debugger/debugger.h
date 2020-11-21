@@ -74,7 +74,7 @@ void debugger_logregisters(char *filename, CPU_registers *registers, byte halted
 byte isDebuggingPOSTCodes(); //Debug POST codes?
 
 void initDebugger(); //Initialize the debugger if needed!
-void debugger_logmemoryaccess(byte iswrite, uint_32 address, byte value, byte type);
+void debugger_logmemoryaccess(byte iswrite, uint_64 address, byte value, byte type);
 
 byte debugger_forceEIP(); //Force EIP to be used for debugging?
 
