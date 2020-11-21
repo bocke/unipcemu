@@ -1680,7 +1680,7 @@ void startEMUTimers()
 
 extern Controller8042_t Controller8042;
 extern byte SystemControlPortA;
-void EMU_onCPUReset(byte isInit)
+void EMU_onCPUReset(word isInit)
 {
 	if ((isInit&0xF)||(isInit&0x40)) //Initializing or forced initialize(bit 4-7 are the bits 0-3 of the resetPending flag)?
 	{
