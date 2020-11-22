@@ -187,8 +187,6 @@ void CPU586_OP0F32() //RDMSR
 
 void CPU586_OP0FC7() //CMPXCHG8B r/m32
 {
-	uint_32 templo;
-	uint_32 temphi;
 	if (MODRM_REG(CPU[activeCPU].params.modrm)!=1)
 	{
 		CPU_unkOP(); //#UD for reg not being 1!
@@ -206,31 +204,38 @@ void CPU586_OP0FC7() //CMPXCHG8B r/m32
 		modrm_generateInstructionTEXT("CMPXCHG8B", 32, 0, PARAM_MODRM_0);
 	}
 
-	CPU[activeCPU].modrm_addoffset = 0; //Low dword
-	if (modrm_check32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, 0 | 0x40)) return;
-	CPU[activeCPU].modrm_addoffset = 4; //High dword
-	if (modrm_check32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, 0 | 0x40)) return;
-	CPU[activeCPU].modrm_addoffset = 0; //Low dword
-	if (modrm_check32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, 0 | 0xA0)) return;
-	CPU[activeCPU].modrm_addoffset = 4; //High dword
-	if (modrm_check32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, 0 | 0xA0)) return;
-	CPU[activeCPU].modrm_addoffset = 0; //Low dword
-	templo = modrm_read32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0);
-	CPU[activeCPU].modrm_addoffset = 4; //High dword
-	temphi = modrm_read32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0);
-	if ((REG_EAX == templo) && (REG_EDX==temphi)) //EDX::EAX == r/m?
+	if (CPU[activeCPU].modrmstep == 0) //Starting up?
 	{
-		FLAGW_ZF(1);
 		CPU[activeCPU].modrm_addoffset = 0; //Low dword
-		modrm_write32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, REG_EBX); /* r/m32=low dword(EBX) */
+		if (modrm_check32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, 0 | 0x40)) return;
 		CPU[activeCPU].modrm_addoffset = 4; //High dword
-		modrm_write32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, REG_ECX); /* r/m32=high dword(ECX) */
+		if (modrm_check32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, 0 | 0x40)) return;
+		CPU[activeCPU].modrm_addoffset = 0; //Low dword
+		if (modrm_check32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, 0 | 0xA0)) return;
+		CPU[activeCPU].modrm_addoffset = 4; //High dword
+		if (modrm_check32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, 0 | 0xA0)) return;
+	}
+	CPU[activeCPU].modrm_addoffset = 0; //Low dword
+	if (CPU80386_instructionstepreadmodrmdw(0, &CPU[activeCPU].instructionbufferd, CPU[activeCPU].MODRM_src0)) return; //Read low!
+	CPU[activeCPU].modrm_addoffset = 4; //High dword
+	if (CPU80386_instructionstepreadmodrmdw(2, &CPU[activeCPU].instructionbufferd2, CPU[activeCPU].MODRM_src0)) return; //Read high!
+	if ((REG_EAX == CPU[activeCPU].instructionbufferd) && (REG_EDX==CPU[activeCPU].instructionbufferd2)) //EDX::EAX == r/m?
+	{
+		FLAGW_ZF(1); //Sets the zero flag only!
+		CPU[activeCPU].modrm_addoffset = 0; //Low dword
+		if (CPU80386_instructionstepwritemodrmdw(4, REG_EBX, CPU[activeCPU].MODRM_src0)) return; /* r/m32=low dword(EBX) */
+		CPU[activeCPU].modrm_addoffset = 4; //High dword
+		if (CPU80386_instructionstepwritemodrmdw(6, REG_ECX, CPU[activeCPU].MODRM_src0)) return; /* r/m32=high dword(ECX) */
 	}
 	else
 	{
-		FLAGW_ZF(0);
-		REG_EAX = templo; /* EAX=low dword r/m */
-		REG_EDX = temphi; /* EDX=high dword r/m */
+		FLAGW_ZF(0); //Clears the zero flag only!
+		CPU[activeCPU].modrm_addoffset = 0; //Low dword
+		if (CPU80386_instructionstepwritemodrmdw(4, CPU[activeCPU].instructionbufferd, CPU[activeCPU].MODRM_src0)) return; /* r/m32=low dword writeback */
+		CPU[activeCPU].modrm_addoffset = 4; //High dword
+		if (CPU80386_instructionstepwritemodrmdw(6, CPU[activeCPU].instructionbufferd2, CPU[activeCPU].MODRM_src0)) return; /* r/m32=high dword writeback */
+		REG_EAX = CPU[activeCPU].instructionbufferd; /* EAX=low dword r/m */
+		REG_EDX = CPU[activeCPU].instructionbufferd2; /* EDX=high dword r/m */
 	}
 }
 
