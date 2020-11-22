@@ -20,6 +20,7 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "headers/cpu/cpu.h"
 #include "headers/cpu/easyregs.h"
+#include "headers/cpu/cpu_OP8086.h" //16-bit memory reading!
 #include "headers/cpu/cpu_OP80286.h" //80286 opcodes!
 #include "headers/cpu/cpu_OP80386.h" //80386 opcodes!
 #include "headers/cpu/modrm.h" //ModR/M support!
@@ -141,60 +142,86 @@ void CPU486_OP0F09() //WBINVD?
 
 void CPU486_OP0FB0()
 {
-	byte temp;
 	modrm_generateInstructionTEXT("CMPXCHG", 8, 0, PARAM_MODRM_0_ACCUM_1);
-	if (modrm_check8(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, 0)) return;
-	temp = modrm_read8(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0);
-	flag_sub8(REG_AL,temp); //All arithmetic flags are affected!
-	if (REG_AL==temp)
+	if (CPU[activeCPU].modrmstep == 0) //Starting up?
 	{
-		FLAGW_ZF(1);
-		modrm_write8(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0,modrm_read8(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src1)); /* r/m8=r8 */
+		if (modrm_check8(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, 0)) return;
+		if (modrm_check8(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src1, 1)) return;
+	}
+	if (CPU8086_instructionstepreadmodrmb(0, &CPU[activeCPU].instructionbufferb, CPU[activeCPU].MODRM_src0)) return; //Read the destination!
+	if (CPU8086_instructionstepreadmodrmb(2, &CPU[activeCPU].instructionbufferb2, CPU[activeCPU].MODRM_src1)) return; //Read the source!
+	if (CPU[activeCPU].instructionstep == 0) //Execute phase?
+	{
+		flag_sub8(REG_AL, CPU[activeCPU].instructionbufferb); //All arithmetic flags are affected!
+	}
+	if (FLAG_ZF) //Equal?
+	{
+		/* r/m8=r8 */
+		if (CPU8086_instructionstepwritemodrmb(4, CPU[activeCPU].instructionbufferb2, CPU[activeCPU].MODRM_src0)) return;
 	}
 	else
 	{
-		FLAGW_ZF(0);
-		REG_AL = temp; /* AL=r/m8 */
+		/* r/m8(write back it's own value) and AL are both to be set to r/m8 */
+		if (CPU8086_instructionstepwritemodrmb(4, CPU[activeCPU].instructionbufferb, CPU[activeCPU].MODRM_src0)) return;
+		REG_AL = CPU[activeCPU].instructionbufferb; /* AL=r/m8 */
 	}
 } //CMPXCHG r/m8,AL,r8
 void CPU486_OP0FB1_16()
 {
-	word temp;
 	modrm_generateInstructionTEXT("CMPXCHG", 16, 0, PARAM_MODRM_0_ACCUM_1);
-	if (modrm_check16(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, 0|0x40)) return;
-	if (modrm_check16(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, 0|0xA0)) return;
-	temp = modrm_read16(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0);
-	flag_sub16(REG_AX,temp); //All arithmetic flags are affected!
-	if (REG_AX==temp)
+	if (CPU[activeCPU].modrmstep == 0) //Starting up?
 	{
-		FLAGW_ZF(1);
-		modrm_write16(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0,modrm_read16(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src1),0); /* r/m16=r16 */
+		if (modrm_check16(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, 0 | 0x40)) return;
+		if (modrm_check16(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src1, 1 | 0x40)) return;
+		if (modrm_check16(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, 0 | 0xA0)) return;
+		if (modrm_check16(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src1, 1 | 0xA0)) return;
+	}
+	if (CPU8086_instructionstepreadmodrmw(0, &CPU[activeCPU].instructionbufferw, CPU[activeCPU].MODRM_src0)) return; //Read the destination!
+	if (CPU8086_instructionstepreadmodrmw(2, &CPU[activeCPU].instructionbufferw2, CPU[activeCPU].MODRM_src1)) return; //Read the source!
+	if (CPU[activeCPU].instructionstep == 0) //Execute phase?
+	{
+		flag_sub16(REG_AX, CPU[activeCPU].instructionbufferw); //All arithmetic flags are affected!
+	}
+	if (FLAG_ZF) //Equal?
+	{
+		/* r/m16=r16 */
+		if (CPU8086_instructionstepwritemodrmb(4, CPU[activeCPU].instructionbufferw2, CPU[activeCPU].MODRM_src0)) return;
 	}
 	else
 	{
-		FLAGW_ZF(0);
-		REG_AX = temp; /* AX=r/m16 */
+		/* r/m16(write back it's own value) and AX are both to be set to r/m8 */
+		if (CPU8086_instructionstepwritemodrmb(4, CPU[activeCPU].instructionbufferw, CPU[activeCPU].MODRM_src0)) return;
+		REG_AX = CPU[activeCPU].instructionbufferw; /* AX=r/m16 */
 	}
 } //CMPXCHG r/m16,AX,r16
 void CPU486_OP0FB1_32()
 {
-	uint_32 temp;
 	modrm_generateInstructionTEXT("CMPXCHG", 32, 0, PARAM_MODRM_0_ACCUM_1);
-	if (modrm_check32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, 0|0x40)) return;
-	if (modrm_check32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, 0|0xA0)) return;
-	temp = modrm_read32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0);
-	flag_sub32(REG_EAX,temp); //All arithmetic flags are affected!
-	if (REG_EAX==temp)
+	if (CPU[activeCPU].modrmstep == 0) //Starting up?
 	{
-		FLAGW_ZF(1);
-		modrm_write32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0,modrm_read32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src1)); /* r/m32=r32 */
+		if (modrm_check32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, 0 | 0x40)) return;
+		if (modrm_check32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src1, 1 | 0x40)) return;
+		if (modrm_check32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, 0 | 0xA0)) return;
+		if (modrm_check32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src1, 1 | 0xA0)) return;
+	}
+	if (CPU80386_instructionstepreadmodrmdw(0, &CPU[activeCPU].instructionbufferd, CPU[activeCPU].MODRM_src0)) return; //Read the destination!
+	if (CPU80386_instructionstepreadmodrmdw(2, &CPU[activeCPU].instructionbufferd2, CPU[activeCPU].MODRM_src1)) return; //Read the source!
+	if (CPU[activeCPU].instructionstep == 0) //Execute phase?
+	{
+		flag_sub32(REG_EAX, CPU[activeCPU].instructionbufferd); //All arithmetic flags are affected!
+	}
+	if (FLAG_ZF) //Equal?
+	{
+		/* r/m16=r16 */
+		if (CPU80386_instructionstepwritemodrmdw(4, CPU[activeCPU].instructionbufferd2, CPU[activeCPU].MODRM_src0)) return;
 	}
 	else
 	{
-		FLAGW_ZF(0);
-		REG_EAX = temp; /* EAX=r/m32 */
+		/* r/m32(write back it's own value) and AX are both to be set to r/m8 */
+		if (CPU80386_instructionstepwritemodrmdw(4, CPU[activeCPU].instructionbufferd, CPU[activeCPU].MODRM_src0)) return;
+		REG_EAX = CPU[activeCPU].instructionbufferd; /* EAX=r/m32 */
 	}
-} //CMPXCHG r/m32,EAX,r32
+} //CMPXCHG r/m16,AX,r16
 
 OPTINLINE void op_add8_486()
 {
@@ -217,34 +244,50 @@ OPTINLINE void op_add32_486()
 void CPU486_OP0FC0()
 {
 	modrm_generateInstructionTEXT("XADD",8,0,PARAM_MODRM21);
-	if (modrm_check8(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0,0)) return;
-	CPU[activeCPU].oper1b = modrm_read8(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src1);
-	CPU[activeCPU].oper2b = modrm_read8(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0);
+	if (CPU[activeCPU].modrmstep == 0) //Starting up?
+	{
+		if (modrm_check8(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, 0 | 0x40)) return;
+		if (modrm_check8(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src1, 0 | 0x40)) return;
+		if (modrm_check8(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, 0 | 0xA0)) return;
+		if (modrm_check8(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src1, 0 | 0xA0)) return;
+	}
+	if (CPU8086_instructionstepreadmodrmb(0, &CPU[activeCPU].oper1b, CPU[activeCPU].MODRM_src1)) return; //Read the source!
+	if (CPU8086_instructionstepreadmodrmb(2, &CPU[activeCPU].oper2b, CPU[activeCPU].MODRM_src0)) return; //Read the destination!
 	op_add8_486();
-	modrm_write8(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src1, CPU[activeCPU].oper2b);
-	modrm_write8(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, CPU[activeCPU].res8);
+	if (CPU8086_instructionstepwritemodrmb(4, CPU[activeCPU].oper2b, CPU[activeCPU].MODRM_src1)) return; //Write the source!
+	if (CPU8086_instructionstepwritemodrmb(6, CPU[activeCPU].res8, CPU[activeCPU].MODRM_src0)) return; //Write the destination!
 } //XADD r/m8,r8
 void CPU486_OP0FC1_16()
 {
 	modrm_generateInstructionTEXT("XADD",16,0,PARAM_MODRM21);
-	if (modrm_check16(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0,0|0x40)) return;
-	if (modrm_check16(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0,0|0xA0)) return;
-	CPU[activeCPU].oper1 = modrm_read16(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src1);
-	CPU[activeCPU].oper2 = modrm_read16(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0);
+	if (CPU[activeCPU].modrmstep == 0) //Starting up?
+	{
+		if (modrm_check16(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, 0 | 0x40)) return;
+		if (modrm_check16(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src1, 0 | 0x40)) return;
+		if (modrm_check16(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, 0 | 0xA0)) return;
+		if (modrm_check16(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src1, 0 | 0xA0)) return;
+	}
+	if (CPU8086_instructionstepreadmodrmw(0, &CPU[activeCPU].oper1, CPU[activeCPU].MODRM_src1)) return; //Read the source!
+	if (CPU8086_instructionstepreadmodrmw(2, &CPU[activeCPU].oper2, CPU[activeCPU].MODRM_src0)) return; //Read the destination!
 	op_add16_486();
-	modrm_write16(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src1, CPU[activeCPU].oper2,0);
-	modrm_write16(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, CPU[activeCPU].res16,0);
+	if (CPU8086_instructionstepwritemodrmw(4, CPU[activeCPU].oper2, CPU[activeCPU].MODRM_src1, 0)) return; //Write the source!
+	if (CPU8086_instructionstepwritemodrmw(6, CPU[activeCPU].res16, CPU[activeCPU].MODRM_src0, 0)) return; //Write the destination!
 } //XADD r/m16,r16
 void CPU486_OP0FC1_32()
 {
 	modrm_generateInstructionTEXT("XADD",32,0,PARAM_MODRM21);
-	if (modrm_check32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0,0|0x40)) return;
-	if (modrm_check32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0,0|0xA0)) return;
-	CPU[activeCPU].oper1d = modrm_read32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src1);
-	CPU[activeCPU].oper2d = modrm_read32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0);
+	if (CPU[activeCPU].modrmstep == 0) //Starting up?
+	{
+		if (modrm_check32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, 0 | 0x40)) return;
+		if (modrm_check32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src1, 0 | 0x40)) return;
+		if (modrm_check32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, 0 | 0xA0)) return;
+		if (modrm_check32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src1, 0 | 0xA0)) return;
+	}
+	if (CPU80386_instructionstepreadmodrmdw(0, &CPU[activeCPU].oper1d, CPU[activeCPU].MODRM_src1)) return; //Read the source!
+	if (CPU80386_instructionstepreadmodrmdw(2, &CPU[activeCPU].oper2d, CPU[activeCPU].MODRM_src0)) return; //Read the destination!
 	op_add32_486();
-	modrm_write32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src1, CPU[activeCPU].oper2d);
-	modrm_write32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, CPU[activeCPU].res32);
+	if (CPU80386_instructionstepwritemodrmdw(4, CPU[activeCPU].oper2d, CPU[activeCPU].MODRM_src1)) return; //Write the source!
+	if (CPU80386_instructionstepwritemodrmdw(6, CPU[activeCPU].res32, CPU[activeCPU].MODRM_src0)) return; //Write the destination!
 } //XADD r/m32,r32
 
 void CPU486_BSWAP32(uint_32 *reg)
