@@ -4832,7 +4832,10 @@ OPTINLINE void ATA_executeCommand(byte channel, byte command) //Execute a comman
 	byte temp;
 	uint_32 disk_size; //For checking against boundaries!
 	if (!(ATA_Drives[channel][ATA_activeDrive(channel)] >= CDROM0)) //Special action for non-CD-ROM drives?
-		ATA_STATUSREGISTER_ERRORW(channel,ATA_activeDrive(channel),0); //Error bit is reset when a new command is received, as defined in the documentation!
+	{
+		ATA_STATUSREGISTER_ERRORW(channel, ATA_activeDrive(channel), 0); //Error bit is reset when a new command is received, as defined in the documentation!
+		ATA[channel].Drive[ATA_activeDrive(channel)].ERRORREGISTER = 0x00; //Clear the error register according to make sure no error is left pending (according to Qemu)!
+	}
 	ATA_ERRORREGISTER_COMMANDABORTEDW(channel, ATA_activeDrive(channel), 0); //Error bit is reset when a new command is received, as defined in the documentation!
 	switch (command) //What command?
 	{
