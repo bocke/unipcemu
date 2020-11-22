@@ -4765,7 +4765,7 @@ void ATA_reset(byte channel, byte slave)
 			memset(&ATA[channel].Drive[slave].PARAMETERS, 0, sizeof(ATA[channel].Drive[slave].PARAMETERS)); //Clear the parameters for the OS to see!
 			ATA[channel].Drive[slave].STATUSREGISTER = 0x40; //Report ready, no error?
 			ATA[channel].Drive[slave].ERRORREGISTER = 0x01; //Clear the error register!
-			ATA[channel].Drive[slave].PARAMETERS.reportReady = 1; //Report ready?
+			ATA[channel].Drive[slave].PARAMETERS.reportReady = 0; //Report not ready?
 			ATA_DRIVEHEAD_HEADW(channel, slave, 0); //What head?
 			ATA_DRIVEHEAD_LBAMODE_2W(channel, slave, 0); //LBA mode?
 			ATA[channel].Drive[slave].PARAMETERS.drivehead |= 0xA0; //Always 1!
