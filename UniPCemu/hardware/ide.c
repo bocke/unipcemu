@@ -467,7 +467,7 @@ OPTINLINE byte ATA_activeDrive(byte channel)
 
 OPTINLINE uint_32 ATA_CHS2LBA(byte channel, byte slave, word cylinder, byte head, byte sector)
 {
-	return ((cylinder*ATA[channel].Drive[slave].driveparams[55]) + head)*ATA[channel].Drive[slave].driveparams[56] + sector - 1; //Give the LBA value!
+	return (((cylinder*ATA[channel].Drive[slave].driveparams[55]) + head)*ATA[channel].Drive[slave].driveparams[56]) + sector - 1; //Give the LBA value!
 }
 
 OPTINLINE byte ATA_LBA2CHS(byte channel, byte slave, uint_32 LBA, word *cylinder, byte *head, byte *sector)
@@ -2160,6 +2160,7 @@ OPTINLINE byte ATA_readsector(byte channel, byte command) //Read the current sec
 			ATA[channel].Drive[ATA_activeDrive(channel)].readmultipleerror = 1; //Don't allow errors to occur on read multiple yet! Raise the error at the next block!
 		}
 
+		ATA[channel].Drive[ATA_activeDrive(channel)].ERRORREGISTER = 0x00; //Not needed by the spec, but required by Windows apparently, according to Qemu!
 		return 2; //Process the block! Don't raise an interrupt when continuing to transfer(which automatically happens due to the larger block size applied)!
 	}
 	else //Error reading?
@@ -4713,7 +4714,7 @@ OPTINLINE void giveATAPISignature(byte channel, byte drive)
 	ATA[channel].Drive[drive].PARAMETERS.cylinderhigh = 0xEB; //LBA 16-23
 	ATA[channel].Drive[drive].PARAMETERS.cylinderlow = 0x14; //LBA 8-15
 	ATA[channel].Drive[drive].PARAMETERS.sectornumber = 0x01; //LBA 0-7
-	ATA[channel].Drive[drive].PARAMETERS.drivehead = (drive<<4); //LBA 0-7
+	ATA[channel].Drive[drive].PARAMETERS.drivehead = ((drive & 1) << 4); //Drive/Head register!
 }
 
 OPTINLINE void giveATASignature(byte channel, byte drive)
@@ -4722,7 +4723,7 @@ OPTINLINE void giveATASignature(byte channel, byte drive)
 	ATA[channel].Drive[drive].PARAMETERS.cylinderhigh = 0x00;
 	ATA[channel].Drive[drive].PARAMETERS.cylinderlow = 0x00;
 	ATA[channel].Drive[drive].PARAMETERS.sectornumber = 0x01;
-	ATA[channel].Drive[drive].PARAMETERS.drivehead = 0x00;
+	ATA[channel].Drive[drive].PARAMETERS.drivehead = ((drive & 1) << 4); //Drive/Head register!
 }
 
 OPTINLINE void giveSignature(byte channel, byte drive)
@@ -4741,7 +4742,7 @@ OPTINLINE void giveSignature(byte channel, byte drive)
 		ATA[channel].Drive[drive].PARAMETERS.cylinderhigh = 0xFF;
 		ATA[channel].Drive[drive].PARAMETERS.cylinderlow = 0xFF;
 		ATA[channel].Drive[drive].PARAMETERS.sectornumber = 0x01;
-		ATA[channel].Drive[drive].PARAMETERS.drivehead = 0x00;
+		ATA[channel].Drive[drive].PARAMETERS.drivehead = ((drive&1) << 4); //Drive/Head register!
 	}
 }
 
