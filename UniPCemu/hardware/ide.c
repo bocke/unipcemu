@@ -443,7 +443,6 @@ void LBA2MSFbin(uint_32 LBA, byte *M, byte *S, byte *F)
 	*F = rest % 75; //Frame, if any!
 }
 
-
 /*
 uint_32 MSF2LBA(byte M, byte S, byte F)
 {
