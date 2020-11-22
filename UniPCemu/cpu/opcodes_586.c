@@ -219,17 +219,27 @@ void CPU586_OP0FC7() //CMPXCHG8B r/m32
 	if (CPU80386_instructionstepreadmodrmdw(0, &CPU[activeCPU].instructionbufferd, CPU[activeCPU].MODRM_src0)) return; //Read low!
 	CPU[activeCPU].modrm_addoffset = 4; //High dword
 	if (CPU80386_instructionstepreadmodrmdw(2, &CPU[activeCPU].instructionbufferd2, CPU[activeCPU].MODRM_src0)) return; //Read high!
-	if ((REG_EAX == CPU[activeCPU].instructionbufferd) && (REG_EDX==CPU[activeCPU].instructionbufferd2)) //EDX::EAX == r/m?
+	if (CPU[activeCPU].instructionstep == 0) //Execute phase?
 	{
-		FLAGW_ZF(1); //Sets the zero flag only!
+		if ((REG_EAX == CPU[activeCPU].instructionbufferd) && (REG_EDX == CPU[activeCPU].instructionbufferd2)) //EDX::EAX == r/m?
+		{
+			FLAGW_ZF(1); //Sets the zero flag only!
+		}
+		else
+		{
+			FLAGW_ZF(0); //Clears the zero flag only!
+		}
+		++CPU[activeCPU].instructionstep;
+	}
+	if (FLAG_ZF) //Equal?
+	{
 		CPU[activeCPU].modrm_addoffset = 0; //Low dword
 		if (CPU80386_instructionstepwritemodrmdw(4, REG_EBX, CPU[activeCPU].MODRM_src0)) return; /* r/m32=low dword(EBX) */
 		CPU[activeCPU].modrm_addoffset = 4; //High dword
 		if (CPU80386_instructionstepwritemodrmdw(6, REG_ECX, CPU[activeCPU].MODRM_src0)) return; /* r/m32=high dword(ECX) */
 	}
-	else
+	else //Not equal?
 	{
-		FLAGW_ZF(0); //Clears the zero flag only!
 		CPU[activeCPU].modrm_addoffset = 0; //Low dword
 		if (CPU80386_instructionstepwritemodrmdw(4, CPU[activeCPU].instructionbufferd, CPU[activeCPU].MODRM_src0)) return; /* r/m32=low dword writeback */
 		CPU[activeCPU].modrm_addoffset = 4; //High dword

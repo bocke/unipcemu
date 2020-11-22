@@ -153,6 +153,7 @@ void CPU486_OP0FB0()
 	if (CPU[activeCPU].instructionstep == 0) //Execute phase?
 	{
 		flag_sub8(REG_AL, CPU[activeCPU].instructionbufferb); //All arithmetic flags are affected!
+		++CPU[activeCPU].instructionstep;
 	}
 	if (FLAG_ZF) //Equal?
 	{
@@ -181,6 +182,7 @@ void CPU486_OP0FB1_16()
 	if (CPU[activeCPU].instructionstep == 0) //Execute phase?
 	{
 		flag_sub16(REG_AX, CPU[activeCPU].instructionbufferw); //All arithmetic flags are affected!
+		++CPU[activeCPU].instructionstep;
 	}
 	if (FLAG_ZF) //Equal?
 	{
@@ -209,6 +211,7 @@ void CPU486_OP0FB1_32()
 	if (CPU[activeCPU].instructionstep == 0) //Execute phase?
 	{
 		flag_sub32(REG_EAX, CPU[activeCPU].instructionbufferd); //All arithmetic flags are affected!
+		++CPU[activeCPU].instructionstep;
 	}
 	if (FLAG_ZF) //Equal?
 	{
@@ -253,7 +256,11 @@ void CPU486_OP0FC0()
 	}
 	if (CPU8086_instructionstepreadmodrmb(0, &CPU[activeCPU].oper1b, CPU[activeCPU].MODRM_src1)) return; //Read the source!
 	if (CPU8086_instructionstepreadmodrmb(2, &CPU[activeCPU].oper2b, CPU[activeCPU].MODRM_src0)) return; //Read the destination!
-	op_add8_486();
+	if (CPU[activeCPU].instructionstep == 0) //Execute phase?
+	{
+		op_add8_486();
+		++CPU[activeCPU].instructionstep;
+	}
 	if (CPU8086_instructionstepwritemodrmb(4, CPU[activeCPU].oper2b, CPU[activeCPU].MODRM_src1)) return; //Write the source!
 	if (CPU8086_instructionstepwritemodrmb(6, CPU[activeCPU].res8, CPU[activeCPU].MODRM_src0)) return; //Write the destination!
 } //XADD r/m8,r8
@@ -269,7 +276,11 @@ void CPU486_OP0FC1_16()
 	}
 	if (CPU8086_instructionstepreadmodrmw(0, &CPU[activeCPU].oper1, CPU[activeCPU].MODRM_src1)) return; //Read the source!
 	if (CPU8086_instructionstepreadmodrmw(2, &CPU[activeCPU].oper2, CPU[activeCPU].MODRM_src0)) return; //Read the destination!
-	op_add16_486();
+	if (CPU[activeCPU].instructionstep == 0) //Execute phase?
+	{
+		op_add16_486();
+		++CPU[activeCPU].instructionstep;
+	}
 	if (CPU8086_instructionstepwritemodrmw(4, CPU[activeCPU].oper2, CPU[activeCPU].MODRM_src1, 0)) return; //Write the source!
 	if (CPU8086_instructionstepwritemodrmw(6, CPU[activeCPU].res16, CPU[activeCPU].MODRM_src0, 0)) return; //Write the destination!
 } //XADD r/m16,r16
@@ -285,7 +296,11 @@ void CPU486_OP0FC1_32()
 	}
 	if (CPU80386_instructionstepreadmodrmdw(0, &CPU[activeCPU].oper1d, CPU[activeCPU].MODRM_src1)) return; //Read the source!
 	if (CPU80386_instructionstepreadmodrmdw(2, &CPU[activeCPU].oper2d, CPU[activeCPU].MODRM_src0)) return; //Read the destination!
-	op_add32_486();
+	if (CPU[activeCPU].instructionstep == 0) //Execute phase?
+	{
+		op_add32_486();
+		++CPU[activeCPU].instructionstep;
+	}
 	if (CPU80386_instructionstepwritemodrmdw(4, CPU[activeCPU].oper2d, CPU[activeCPU].MODRM_src1)) return; //Write the source!
 	if (CPU80386_instructionstepwritemodrmdw(6, CPU[activeCPU].res32, CPU[activeCPU].MODRM_src0)) return; //Write the destination!
 } //XADD r/m32,r32
