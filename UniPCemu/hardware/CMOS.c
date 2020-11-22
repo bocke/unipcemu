@@ -701,8 +701,7 @@ void CMOS_cleartimedata(CMOSDATA* CMOS)
 	CMOS->DATA80.info.RTC_Minutes = 0;
 	CMOS->DATA80.info.RTC_Seconds = 0;
 	CMOS->DATA80.info.RTC_DayOfWeek = 0; //The day of the week!
-	CMOS->DATA80.info.STATUSREGISTERA |= 0x80; //Set update in progress, as emulation starts with a update!
-	RTC_timeleft = 244000.0f; //How much is left to time! Time 244uS!
+	CMOS->DATA80.info.STATUSREGISTERA &= ~0x80; //Clear update in progress, as emulation starts with a update if needed only, determined at ticking!
 	CMOS->s100 = 0; //The 100th seconds!
 	CMOS->s10000 = 0; //The 10000th seconds!
 }
