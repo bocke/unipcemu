@@ -968,10 +968,11 @@ void CPU_TSSFault(word segmentval, byte is_external, byte tbl)
 	{
 		dolog("debugger","#TS fault(%08X)!",errorcode);
 	}
-	CPU_resetOP(); //Point to the faulting instruction!
 	
 	if (CPU_faultraised(EXCEPTION_INVALIDTSSSEGMENT)) //We're raising a fault!
 	{
+		CPU_resetOP(); //Point to the faulting instruction!
+		CPU_onResettingFault(); //Apply reset to fault!
 		CPU_executionphase_startinterrupt(EXCEPTION_INVALIDTSSSEGMENT,2|8,errorcode); //Call IVT entry #13 decimal!
 	}
 }
