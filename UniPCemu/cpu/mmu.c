@@ -726,7 +726,7 @@ void MMU_setA20(byte where, byte enabled) //To enable A20?
 	MMU.enableA20[where] = enabled?1:0; //Enabled?
 	A20lineold = MMU.A20LineEnabled; //Old A20 line setting!
 	MMU.A20LineDisabled = ((MMU.A20LineEnabled = (MMU.enableA20[0]|MMU.enableA20[1]))^1); //Line enabled/disabled?
-	MMU.wraparround = ((~0)^(MMU.A20LineDisabled<<20)); //Clear A20 when both lines that specify it are disabled! Convert it to a simple mask to use!
+	MMU.wraparround = ((~0ULL)^(MMU.A20LineDisabled<<20)); //Clear A20 when both lines that specify it are disabled! Convert it to a simple mask to use!
 	if (unlikely(MMU.A20LineEnabled != A20lineold)) //A20 line changed?
 	{
 		MMU_RAMlayoutupdated(); //Memory layout has been updated!

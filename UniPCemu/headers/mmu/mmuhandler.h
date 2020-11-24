@@ -30,7 +30,7 @@ typedef struct
 	int_64 effectivemaxsize; //Effective maximum size!
 	byte *memory; //The memory itself!
 	int invaddr; //Invalid adress in memory with MMU_ptr?
-	uint_32 wraparround; //To wrap arround memory mask?
+	uint_64 wraparround; //To wrap arround memory mask?
 	byte enableA20[2];
 	byte A20LineEnabled; //Is the line enabled?
 	byte A20LineDisabled; //Is the line disabled?
