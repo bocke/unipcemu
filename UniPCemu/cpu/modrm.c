@@ -414,6 +414,7 @@ void CPU_writeCR0(uint_32 backupval, uint_32 value)
 	if (backupval & 0x80010001) //Paging changed?
 	{
 		Paging_initTLB(); //Fully clear the TLB!
+		CPU_flushPIQ(-1); //Flush the PIQ!
 	}
 	updateCPUmode(); //Try to update the CPU mode, if needed!
 }
@@ -448,6 +449,7 @@ void modrm_write32(MODRM_PARAMS *params, int whichregister, uint_32 value)
 			else if (result==&CPU[activeCPU].registers->CR3) //CR3 has been updated?
 			{
 				Paging_clearTLB(); //Clear the TLB!
+				CPU_flushPIQ(-1); //Flush the PIQ!
 			}
 			else if ((result == &CPU[activeCPU].registers->CR4) && //CR4 paging affected?
 					(
@@ -457,6 +459,7 @@ void modrm_write32(MODRM_PARAMS *params, int whichregister, uint_32 value)
 				)
 			{
 				Paging_initTLB(); //Fully clear the TLB!
+				CPU_flushPIQ(-1); //Flush the PIQ!
 			}
 			else if (result == &CPU[activeCPU].registers->DR7)
 			{
@@ -522,6 +525,7 @@ byte modrm_write32_BIU(MODRM_PARAMS *params, int whichregister, uint_32 value)
 			else if (result == &CPU[activeCPU].registers->CR3) //CR3 has been updated?
 			{
 				Paging_clearTLB(); //Clear the TLB!
+				CPU_flushPIQ(-1); //Flush the PIQ!
 			}
 			else if ((result == &CPU[activeCPU].registers->CR4) && //CR4 paging affected?
 					(
@@ -531,6 +535,7 @@ byte modrm_write32_BIU(MODRM_PARAMS *params, int whichregister, uint_32 value)
 				)
 			{
 				Paging_initTLB(); //Fully clear the TLB!
+				CPU_flushPIQ(-1); //Flush the PIQ!
 			}
 			else if (result == &CPU[activeCPU].registers->DR7)
 			{
