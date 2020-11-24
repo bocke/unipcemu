@@ -567,7 +567,6 @@ OPTINLINE void handle_keyboard_data(byte data)
 			Keyboard.cmdOK = 2|4; //Error&Finish!
 		}
 		Keyboard.timeout = KEYBOARD_DEFAULTTIMEOUT; //A small delay for the result code to appear(needed by the AT BIOS)!
-		Keyboard.has_command = 0; //No command anymore!
 		return; //Done!
 		break;
 	case 0xF0: //Scan code set: the parameter that contains the scan code set!
