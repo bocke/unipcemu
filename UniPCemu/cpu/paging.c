@@ -222,7 +222,7 @@ byte isvalidpage(uint_32 address, byte iswrite, byte CPL, byte isPrefetch, byte 
 			}
 		}
 		tag &= ~PAGINGTAG_S; //Without S-bit!
-		if (likely(Paging_readTLB(NULL, address, Paging_readTLBLWUDAS(address,1, effectiveUS, 0,markaccess,0),0,TLB_IGNOREREADMASK|(markaccess?TLB_NOIGNOREACCESSMASK:TLB_IGNOREACCESSMASK), &temp,&passthroughmask,0))) //Cache hit (non)dirty for reads/writes?
+		if (likely(Paging_readTLB(NULL, address, tag,0,TLB_IGNOREREADMASK|(markaccess?TLB_NOIGNOREACCESSMASK:TLB_IGNOREACCESSMASK), &temp,&passthroughmask,0))) //Cache hit (non)dirty for reads/writes?
 		{
 			return 1; //Valid!
 		}
