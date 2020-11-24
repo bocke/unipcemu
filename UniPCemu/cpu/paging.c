@@ -79,13 +79,8 @@ extern byte EMU_RUNNING; //1 when paging can be applied!
 //Ignore the accessed bit when reading the TLB?
 #define TLB_IGNOREACCESSMASK 0x20
 
-#ifdef ACCESS_ON_READWRITE
 //Only access on actual reads/writes? Don't access on check!
 #define TLB_NOIGNOREACCESSMASK 0
-#else
-//Access always on check?
-#define TLB_NOIGNOREACCESSMASK TLB_IGNOREACCESSMASK
-#endif
 
  //The used TAG(using a 4KB page, but the lower 10 bits are unused in 4MB pages)!
 #define Paging_generateTAG(logicaladdress,W,U,D,A,S) ((((((((((((A)<<1)|(S))<<1)|(D))<<1)|(W))<<1)|(U))<<1)|1)|((logicaladdress) & 0xFFFFF000))
@@ -227,7 +222,7 @@ byte isvalidpage(uint_32 address, byte iswrite, byte CPL, byte isPrefetch, byte 
 			}
 		}
 		tag &= ~PAGINGTAG_S; //Without S-bit!
-		if (likely(Paging_readTLB(NULL, address, tag,0,TLB_IGNOREREADMASK|(markaccess?TLB_NOIGNOREACCESSMASK:TLB_IGNOREACCESSMASK), &temp,&passthroughmask,0))) //Cache hit (non)dirty for reads/writes?
+		if (likely(Paging_readTLB(NULL, address, Paging_readTLBLWUDAS(address,1, effectiveUS, 0,markaccess,0),0,TLB_IGNOREREADMASK|(markaccess?TLB_NOIGNOREACCESSMASK:TLB_IGNOREACCESSMASK), &temp,&passthroughmask,0))) //Cache hit (non)dirty for reads/writes?
 		{
 			return 1; //Valid!
 		}
@@ -397,14 +392,14 @@ byte isvalidpage(uint_32 address, byte iswrite, byte CPL, byte isPrefetch, byte 
 			}
 		}
 	}
-	if ((!(PDE&PXE_A)) && (markaccess || (TLB_NOIGNOREACCESSMASK == TLB_IGNOREACCESSMASK))) //Not accessed yet?
+	if ((!(PDE&PXE_A)) && markaccess) //Not accessed yet?
 	{
 		PDE |= PXE_A; //Accessed!
 		PDEUPDATED = 1; //Updated!
 	}
 	if (likely(isS == 0)) //PTE-only?
 	{
-		if ((!(PTE&PXE_A)) && (markaccess || (TLB_NOIGNOREACCESSMASK == TLB_IGNOREACCESSMASK)))
+		if ((!(PTE&PXE_A)) && markaccess)
 		{
 			PTEUPDATED = 1; //Updated!
 			PTE |= PXE_A; //Accessed!
@@ -437,7 +432,7 @@ byte isvalidpage(uint_32 address, byte iswrite, byte CPL, byte isPrefetch, byte 
 
 byte CPU_Paging_checkPage(uint_32 address, byte readflags, byte CPL)
 {
-	return (isvalidpage(address,((readflags&(~0x10))==0),CPL,(readflags&0x10),1)==0); //Are we an invalid page? We've raised an error! Bit4 is set during Prefetch operations!
+	return (isvalidpage(address,((readflags&(~0x10))==0),CPL,(readflags&0x10),0)==0); //Are we an invalid page? We've raised an error! Bit4 is set during Prefetch operations!
 }
 
 uint_64 mappagenonPSE(uint_32 address, byte iswrite, byte CPL) //Maps a page to real memory when needed!
