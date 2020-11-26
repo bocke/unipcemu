@@ -649,7 +649,7 @@ void BIU_dosboxTick()
 			realaddress += (BIUsize - 1); //Take the last byte we might be fetching!
 			for (;;) //When the below check fails, try for the next address!
 			{
-				if (unlikely(faultcode = checkMMUaccess(CPU_SEGMENT_CS, REG_CS, realaddress, 0xA0 | 0x10 | 3, getCPL(), 0, 0) && BIUsize)) //Couldn't fetch?
+				if (unlikely((faultcode = checkMMUaccess(CPU_SEGMENT_CS, REG_CS, realaddress, 0xA0 | 0x10 | 3, getCPL(), 0, 0)) && BIUsize)) //Couldn't fetch?
 				{
 					if (faultcode == 2) //Pending?
 					{
@@ -728,6 +728,10 @@ byte CPU_readOP(byte *result, byte singlefetch) //Reads the operation (byte) at 
 		if (unlikely(BIU_DosboxTickPending[activeCPU])) //Tick is pending? Handle any that needs ticking when fetching!
 		{
 			BIU_dosboxTick(); //Tick like DOSBox does(fill the PIQ up as much as possible without cycle timing)!
+			if (BIU_DosboxTickPending[activeCPU]) //Still busy?
+			{
+				return 1; //Abort on semi-fault!
+			}
 		}
 		//PIQ_retry: //Retry after refilling PIQ!
 		//if ((CPU[activeCPU].prefetchclock&(((EMULATED_CPU<=CPU_NECV30)<<1)|1))!=((EMULATED_CPU<=CPU_NECV30)<<1)) return 1; //Stall when not T3(80(1)8X) or T0(286+).
@@ -745,6 +749,10 @@ byte CPU_readOP(byte *result, byte singlefetch) //Reads the operation (byte) at 
 		if (unlikely(BIU_DosboxTickPending[activeCPU])) //Tick is pending? Handle any that needs ticking when fetching!
 		{
 			BIU_dosboxTick(); //Tick like DOSBox does(fill the PIQ up as much as possible without cycle timing)!
+			if (BIU_DosboxTickPending[activeCPU]) //Still busy?
+			{
+				return 1; //Abort on semi-fault!
+			}
 		}
 		if (EMULATED_CPU >= CPU_80286)
 		{
@@ -808,6 +816,10 @@ byte CPU_readOPw(word *result, byte singlefetch) //Reads the operation (word) at
 			if (unlikely(BIU_DosboxTickPending[activeCPU])) //Tick is pending? Handle any that needs ticking when fetching!
 			{
 				BIU_dosboxTick(); //Tick like DOSBox does(fill the PIQ up as much as possible without cycle timing)!
+				if (BIU_DosboxTickPending[activeCPU]) //Still busy?
+				{
+					return 1; //Abort on semi-fault!
+				}
 			}
 			if (fifobuffer_freesize(BIU[activeCPU].PIQ)<(BIU[activeCPU].PIQ->size-1)) //Enough free to read the entire part?
 			{
@@ -823,6 +835,10 @@ byte CPU_readOPw(word *result, byte singlefetch) //Reads the operation (word) at
 	if (unlikely(BIU_DosboxTickPending[activeCPU])) //Tick is pending? Handle any that needs ticking when fetching!
 	{
 		BIU_dosboxTick(); //Tick like DOSBox does(fill the PIQ up as much as possible without cycle timing)!
+		if (BIU_DosboxTickPending[activeCPU]) //Still busy?
+		{
+			return 1; //Abort on semi-fault!
+		}
 	}
 	if ((CPU[activeCPU].instructionfetch.CPU_fetchparameterPos&1)==0) //First opcode half?
 	{
@@ -858,6 +874,10 @@ byte CPU_readOPdw(uint_32 *result, byte singlefetch) //Reads the operation (32-b
 			if (unlikely(BIU_DosboxTickPending[activeCPU])) //Tick is pending? Handle any that needs ticking when fetching!
 			{
 				BIU_dosboxTick(); //Tick like DOSBox does(fill the PIQ up as much as possible without cycle timing)!
+				if (BIU_DosboxTickPending[activeCPU]) //Still busy?
+				{
+					return 1; //Abort on semi-fault!
+				}
 			}
 			if (fifobuffer_freesize(BIU[activeCPU].PIQ)<(BIU[activeCPU].PIQ->size-3)) //Enough free to read the entire part?
 			{
@@ -873,6 +893,10 @@ byte CPU_readOPdw(uint_32 *result, byte singlefetch) //Reads the operation (32-b
 	if (unlikely(BIU_DosboxTickPending[activeCPU])) //Tick is pending? Handle any that needs ticking when fetching!
 	{
 		BIU_dosboxTick(); //Tick like DOSBox does(fill the PIQ up as much as possible without cycle timing)!
+		if (BIU_DosboxTickPending[activeCPU]) //Still busy?
+		{
+			return 1; //Abort on semi-fault!
+		}
 	}
 	if ((CPU[activeCPU].instructionfetch.CPU_fetchparameterPos&2)==0) //First opcode half?
 	{
