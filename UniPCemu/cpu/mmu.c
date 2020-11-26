@@ -291,22 +291,25 @@ void MMU_clearOP()
 
 byte checkDirectMMUaccess(uint_32 realaddress, byte readflags, byte CPL)
 {
+	byte result;
 	//Check for Page Faults!
 	if (likely(is_paging()==0)) //Are we not paging?
 	{
 		return 0; //OK
 	}
-	if (unlikely(CPU_Paging_checkPage(realaddress,readflags,CPL))) //Map it using the paging mechanism! Errored out?
+	result = CPU_Paging_checkPage(realaddress, readflags, CPL); //Map it using the paging mechanism! Errored out or waiting to page in?
+	if (unlikely(result==1)) //Map it using the paging mechanism! Errored out?
 	{
 		return 1; //Error out!
 	}
-	return 0; //OK!	
+	return result; //OK or waiting to page in!
 }
 
 uint_32 checkMMUaccess_linearaddr; //Saved linear address for the BIU to use!
 //readflags = 1|(opcode<<1) for reads! 0 for writes! Bit 4: Disable segmentation check, Bit 5: Disable debugger check, Bit 6: Disable paging check.
 byte checkMMUaccess(sword segdesc, word segment, uint_64 offset, word readflags, byte CPL, byte is_offset16, byte subbyte) //Check if a byte address is invalid to read/write for a purpose! Used in all CPU modes! Subbyte is used for alignment checking!
 {
+	byte result;
 	static byte debuggertype[4] = {PROTECTEDMODEDEBUGGER_TYPE_DATAWRITE,PROTECTEDMODEDEBUGGER_TYPE_DATAREAD,0xFF,PROTECTEDMODEDEBUGGER_TYPE_EXECUTION};
 	static byte alignmentrequirement[8] = {0,1,3,0,7,0,0,0}; //What address bits can't be set for byte 0! Index=subbyte bit 3,4,5! Bits 0-2 must be 0! Value 0 means any alignment!
 	INLINEREGISTER byte dt;
@@ -346,10 +349,15 @@ byte checkMMUaccess(sword segdesc, word segment, uint_64 offset, word readflags,
 
 	if (((readflags&0x40)==0) && (segdesc!=-128)) //Checking against paging?
 	{
-		if (unlikely(checkDirectMMUaccess(realaddress,(readflags&(~0xE0)),CPL))) //Failure in the Paging Unit? Don't give it the special flags we use!
+		result = checkDirectMMUaccess(realaddress, (readflags & (~0xE0)), CPL); //Get the result!
+		if (unlikely(result==1)) //Failure in the Paging Unit? Don't give it the special flags we use!
 		{
 			MMU.invaddr = 3; //Invalid address signaling!
 			return 1; //Error out!
+		}
+		else if (result == 2) //Waiting to page in?
+		{
+			return 2; //Paging in!
 		}
 	}
 	checkMMUaccess_linearaddr = realaddress; //Save the last valid access for the BIU to use(we're not erroring out after all)!
@@ -359,6 +367,7 @@ byte checkMMUaccess(sword segdesc, word segment, uint_64 offset, word readflags,
 
 byte checkPhysMMUaccess(void *segdesc, word segment, uint_64 offset, word readflags, byte CPL, byte is_offset16, byte subbyte) //Check if a byte address is invalid to read/write for a purpose! Used in all CPU modes! Subbyte is used for alignment checking!
 {
+	byte result;
 	static byte debuggertype[4] = { PROTECTEDMODEDEBUGGER_TYPE_DATAWRITE,PROTECTEDMODEDEBUGGER_TYPE_DATAREAD,0xFF,PROTECTEDMODEDEBUGGER_TYPE_EXECUTION };
 	INLINEREGISTER byte dt;
 	INLINEREGISTER uint_32 realaddress;
@@ -377,10 +386,15 @@ skipdebugger:
 
 	if ((readflags & 0x40) == 0) //Checking against paging?
 	{
-		if (unlikely(checkDirectMMUaccess(realaddress, (readflags & (~0xE0)), CPL))) //Failure in the Paging Unit? Don't give it the special flags we use!
+		result = checkDirectMMUaccess(realaddress, (readflags & (~0xE0)), CPL);
+		if (unlikely(result==1)) //Failure in the Paging Unit? Don't give it the special flags we use!
 		{
 			MMU.invaddr = 3; //Invalid address signaling!
 			return 1; //Error out!
+		}
+		else if (result == 2) //Waiting to page in?
+		{
+			return 2; //Waiting to page in!
 		}
 	}
 	checkMMUaccess_linearaddr = realaddress; //Save the last valid access for the BIU to use(we're not erroring out after all)!

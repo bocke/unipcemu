@@ -688,6 +688,7 @@ void CPU186_OPC1()
 
 void CPU186_OPC8()
 {
+	byte memoryaccessfault;
 	word temp16;    //ENTER Iw,Ib
 	word stacksize = CPU[activeCPU].immw;
 	byte nestlev = CPU[activeCPU].immb;
@@ -760,8 +761,9 @@ void CPU186_OPC8()
 	REG_BP = CPU[activeCPU].frametempw;
 	REG_SP -= stacksize; //Substract: the stack size is data after the buffer created, not immediately at the params.  
 
-	if (checkMMUaccess(CPU_SEGMENT_SS, REG_SS, REG_ESP&getstackaddrsizelimiter(), 0|0x40, getCPL(), !STACK_SEGMENT_DESCRIPTOR_B_BIT(), 0 | (0x0))) //Error accessing memory?
+	if ((memoryaccessfault = checkMMUaccess(CPU_SEGMENT_SS, REG_SS, REG_ESP&getstackaddrsizelimiter(), 0|0x40, getCPL(), !STACK_SEGMENT_DESCRIPTOR_B_BIT(), 0 | (0x0)))!=0) //Error accessing memory?
 	{
+		if (memoryaccessfault == 2) CPU_onResettingFault(); //Apply reset to fault!
 		return; //Abort on fault!
 	}
 

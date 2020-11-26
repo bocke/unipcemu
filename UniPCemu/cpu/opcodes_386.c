@@ -5172,6 +5172,7 @@ void CPU386_OPC1()
 
 void CPU386_OPC8_32()
 {
+	byte memoryaccessfault;
 	uint_32 temp16;    //ENTER Iw,Ib
 	word stacksize = CPU[activeCPU].immw;
 	byte nestlev = CPU[activeCPU].immb;
@@ -5253,13 +5254,15 @@ void CPU386_OPC8_32()
 
 	//page fault if cannot write to esp pointer!
 
-	if (checkMMUaccess(CPU_SEGMENT_SS, REG_SS, REG_ESP&getstackaddrsizelimiter(), 0|0x40, getCPL(), !STACK_SEGMENT_DESCRIPTOR_B_BIT(), 0 | (0x0))) //Error accessing memory?
+	if ((memoryaccessfault = checkMMUaccess(CPU_SEGMENT_SS, REG_SS, REG_ESP&getstackaddrsizelimiter(), 0|0x40, getCPL(), !STACK_SEGMENT_DESCRIPTOR_B_BIT(), 0 | (0x0)))!=0) //Error accessing memory?
 	{
+		if (memoryaccessfault==2) CPU_onResettingFault(); //Apply reset to fault!
 		return; //Abort on fault!
 	}
 
-	if (checkMMUaccess(CPU_SEGMENT_SS, REG_SS, REG_ESP&getstackaddrsizelimiter(), 0|0xA0, getCPL(), !STACK_SEGMENT_DESCRIPTOR_B_BIT(), 0 | (0x0))) //Error accessing memory?
+	if ((memoryaccessfault = checkMMUaccess(CPU_SEGMENT_SS, REG_SS, REG_ESP&getstackaddrsizelimiter(), 0|0xA0, getCPL(), !STACK_SEGMENT_DESCRIPTOR_B_BIT(), 0 | (0x0)))!=0) //Error accessing memory?
 	{
+		if (memoryaccessfault == 2) CPU_onResettingFault(); //Apply reset to fault!
 		return; //Abort on fault!
 	}
 
@@ -5268,6 +5271,7 @@ void CPU386_OPC8_32()
 
 void CPU386_OPC8_16()
 {
+	byte memoryaccessfault;
 	word temp16;    //ENTER Iw,Ib
 	word stacksize = CPU[activeCPU].immw;
 	byte nestlev = CPU[activeCPU].immb;
@@ -5347,13 +5351,15 @@ void CPU386_OPC8_16()
 	}
 	
 	//page fault if cannot write to esp pointer!
-	if (checkMMUaccess(CPU_SEGMENT_SS, REG_SS, REG_ESP&getstackaddrsizelimiter(), 0|0x40, getCPL(), !STACK_SEGMENT_DESCRIPTOR_B_BIT(), 0 | (0x0))) //Error accessing memory?
+	if ((memoryaccessfault = checkMMUaccess(CPU_SEGMENT_SS, REG_SS, REG_ESP&getstackaddrsizelimiter(), 0|0x40, getCPL(), !STACK_SEGMENT_DESCRIPTOR_B_BIT(), 0 | (0x0)))!=0) //Error accessing memory?
 	{
+		if (memoryaccessfault == 2) CPU_onResettingFault(); //Apply reset to fault!
 		return; //Abort on fault!
 	}
 
-	if (checkMMUaccess(CPU_SEGMENT_SS, REG_SS, REG_ESP&getstackaddrsizelimiter(), 0|0xA0, getCPL(), !STACK_SEGMENT_DESCRIPTOR_B_BIT(), 0 | (0x0))) //Error accessing memory?
+	if ((memoryaccessfault = checkMMUaccess(CPU_SEGMENT_SS, REG_SS, REG_ESP&getstackaddrsizelimiter(), 0|0xA0, getCPL(), !STACK_SEGMENT_DESCRIPTOR_B_BIT(), 0 | (0x0)))!=0) //Error accessing memory?
 	{
+		if (memoryaccessfault == 2) CPU_onResettingFault(); //Apply reset to fault!
 		return; //Abort on fault!
 	}
 

@@ -539,6 +539,7 @@ void CPU386_LOADALL_LoadDescriptor(DESCRIPTORCACHE386 *source, sword segment)
 
 byte LOADALL386_checkMMUaccess(word segment, uint_64 offset, byte readflags, byte CPL, byte is_offset16, byte subbyte) //Difference with normal checks: No segment is used for the access: it's a direct memory access!
 {
+	byte result;
 	INLINEREGISTER uint_32 realaddress;
 	if (EMULATED_CPU<=CPU_NECV30) return 0; //No checks are done in the old processors!
 
@@ -577,9 +578,14 @@ byte LOADALL386_checkMMUaccess(word segment, uint_64 offset, byte readflags, byt
 
 	if ((readflags & 0x40) == 0)
 	{
-		if (checkDirectMMUaccess(realaddress, readflags, CPL)) //Failure in the Paging Unit?
+		result = checkDirectMMUaccess(realaddress, readflags, CPL);
+		if (result==1) //Failure in the Paging Unit?
 		{
 			return 1; //Error out!
+		}
+		else if (result == 2) //Waiting to page in?
+		{
+			return 2; //Waiting to page in!
 		}
 	}
 

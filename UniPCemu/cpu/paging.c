@@ -238,6 +238,14 @@ byte isvalidpage(uint_32 address, byte iswrite, byte CPL, byte isPrefetch, byte 
 			return 1; //Valid!
 		}
 	}
+
+	/*
+	if (BIU_obtainbuslock()) //Obtaining the bus lock?
+	{
+		return 2; //Stop and wait to obtain the bus lock first!
+	}
+	*/
+
 	if (isPrefetch) return 0; //Stop the prefetch when not in the TLB!
 
 	if ((CPU[activeCPU].registers->CR4 & 0x20) && (EMULATED_CPU >= CPU_PENTIUMPRO)) //PAE enabled?
@@ -427,7 +435,17 @@ byte isvalidpage(uint_32 address, byte iswrite, byte CPL, byte isPrefetch, byte 
 
 byte CPU_Paging_checkPage(uint_32 address, byte readflags, byte CPL)
 {
-	return (isvalidpage(address,((readflags&(~0x10))==0),CPL,(readflags&0x10),0)==0); //Are we an invalid page? We've raised an error! Bit4 is set during Prefetch operations!
+	byte result;
+	result = isvalidpage(address,((readflags&(~0x10))==0),CPL,(readflags&0x10),0); //Are we an invalid page? We've raised an error! Bit4 is set during Prefetch operations!
+	if (result == 1) //OK?
+	{
+		return 0; //OK!
+	}
+	else if (result == 2) //Paging waiting for the lock?
+	{
+		return 2; //Paging waiting for the data!
+	}
+	return 1; //Error out?
 }
 
 uint_64 mappagenonPSE(uint_32 address, byte iswrite, byte CPL) //Maps a page to real memory when needed!

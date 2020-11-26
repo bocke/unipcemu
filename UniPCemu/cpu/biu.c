@@ -583,9 +583,11 @@ OPTINLINE void CPU_fillPIQ() //Fill the PIQ until it's full!
 	BIU[activeCPU].requestready = 0; //We're starting a request!
 }
 
+byte BIU_DosboxTickPending[MAXCPUS] = { 0,0 }; //We're pending to reload the entire buffer with whatever's available?
 byte instructionlimit[6] = {10,15,15,15,15,15}; //What is the maximum instruction length in bytes?
 void BIU_dosboxTick()
 {
+	byte faultcode;
 	uint_32 BIUsize, BIUsize2;
 	uint_32 realaddress;
 	uint_64 maxaddress, endpos;
@@ -602,11 +604,13 @@ void BIU_dosboxTick()
 			maxaddress = CPU[activeCPU].SEG_DESCRIPTOR[CPU_SEGMENT_CS].PRECALCS.limit; //The limit of the CS segment is the limit instead!
 			if (unlikely(realaddress > maxaddress)) //Limit broken?
 			{
+				BIU_DosboxTickPending[activeCPU] = 0; //Not pending anymore!
 				return; //Abort on fault! 
 			}
 		}
 		else if (unlikely(((uint_64)realaddress) <= CPU[activeCPU].SEG_DESCRIPTOR[CPU_SEGMENT_CS].PRECALCS.limit)) //Limit broken?
 		{
+			BIU_DosboxTickPending[activeCPU] = 0; //Not pending anymore!
 			return; //Abort on fault! 
 		}
 		maxaddress = MIN((uint_64)((realaddress + (uint_64)BIUsize) - 1ULL), maxaddress); //Prevent 32-bit overflow and segmentation limit from occurring!
@@ -622,6 +626,7 @@ void BIU_dosboxTick()
 		{
 			if (unlikely(CPU[activeCPU].SEG_DESCRIPTOR[CPU_SEGMENT_CS].PRECALCS.rwe_errorout[3])) //Are we to error out on this read/write/execute operation?
 			{
+				BIU_DosboxTickPending[activeCPU] = 0; //Not pending anymore!
 				return; //Abort on fault! 
 			}
 		}
@@ -629,7 +634,14 @@ void BIU_dosboxTick()
 		//Now, check the paging half of protection checks!
 		//First, check the lower bound! If this fails, we can't continue(we're immediately failing)!
 		MMU_resetaddr(); //Reset the address error line for trying some I/O!
-		if (unlikely(checkMMUaccess(CPU_SEGMENT_CS, REG_CS, realaddress, 0xA0 | 0x10 | 3, getCPL(), 0, 0))) return; //Abort on fault! 
+		if (unlikely(faultcode = checkMMUaccess(CPU_SEGMENT_CS, REG_CS, realaddress, 0xA0 | 0x10 | 3, getCPL(), 0, 0)))
+		{
+			if (faultcode != 2) //Not pending anymore?
+			{
+				BIU_DosboxTickPending[activeCPU] = 0; //Not pending anymore!
+			}
+			return; //Abort on fault! 
+		}
 
 		//Next, check the higher bound! While it fails, decrease until we don't anymore!
 		if (likely(BIUsize > 1)) //Different ending address?
@@ -637,8 +649,12 @@ void BIU_dosboxTick()
 			realaddress += (BIUsize - 1); //Take the last byte we might be fetching!
 			for (;;) //When the below check fails, try for the next address!
 			{
-				if (unlikely(checkMMUaccess(CPU_SEGMENT_CS, REG_CS, realaddress, 0xA0 | 0x10 | 3, getCPL(), 0, 0) && BIUsize)) //Couldn't fetch?
+				if (unlikely(faultcode = checkMMUaccess(CPU_SEGMENT_CS, REG_CS, realaddress, 0xA0 | 0x10 | 3, getCPL(), 0, 0) && BIUsize)) //Couldn't fetch?
 				{
+					if (faultcode == 2) //Pending?
+					{
+						return; //Abort pending!
+					}
 					//The only thing stopping us here is the page boundary, so round down to a lower one, if possible!
 					endpos = realaddrHandlerCS(CPU_SEGMENT_CS, REG_CS, realaddress, 0, 0); //Linear address of the failing byte!
 					maxaddress = 0; //Our flag for determining if we can just take the previous page by calculating it normally!
@@ -692,9 +708,8 @@ void BIU_dosboxTick()
 		checkBIUBUSrelease(); //Check for release!
 		BIU[activeCPU].requestready = 1; //The request is ready to be served!
 	}
+	BIU_DosboxTickPending[activeCPU] = 0; //Not pending anymore!
 }
-
-byte BIU_DosboxTickPending[MAXCPUS] = { 0,0 }; //We're pending to reload the entire buffer with whatever's available?
 
 void BIU_instructionStart() //Handle all when instructions are starting!
 {
@@ -713,7 +728,6 @@ byte CPU_readOP(byte *result, byte singlefetch) //Reads the operation (byte) at 
 		if (unlikely(BIU_DosboxTickPending[activeCPU])) //Tick is pending? Handle any that needs ticking when fetching!
 		{
 			BIU_dosboxTick(); //Tick like DOSBox does(fill the PIQ up as much as possible without cycle timing)!
-			BIU_DosboxTickPending[activeCPU] = 0; //Not pending anymore!
 		}
 		//PIQ_retry: //Retry after refilling PIQ!
 		//if ((CPU[activeCPU].prefetchclock&(((EMULATED_CPU<=CPU_NECV30)<<1)|1))!=((EMULATED_CPU<=CPU_NECV30)<<1)) return 1; //Stall when not T3(80(1)8X) or T0(286+).
@@ -731,7 +745,6 @@ byte CPU_readOP(byte *result, byte singlefetch) //Reads the operation (byte) at 
 		if (unlikely(BIU_DosboxTickPending[activeCPU])) //Tick is pending? Handle any that needs ticking when fetching!
 		{
 			BIU_dosboxTick(); //Tick like DOSBox does(fill the PIQ up as much as possible without cycle timing)!
-			BIU_DosboxTickPending[activeCPU] = 0; //Not pending anymore!
 		}
 		if (EMULATED_CPU >= CPU_80286)
 		{
@@ -795,7 +808,6 @@ byte CPU_readOPw(word *result, byte singlefetch) //Reads the operation (word) at
 			if (unlikely(BIU_DosboxTickPending[activeCPU])) //Tick is pending? Handle any that needs ticking when fetching!
 			{
 				BIU_dosboxTick(); //Tick like DOSBox does(fill the PIQ up as much as possible without cycle timing)!
-				BIU_DosboxTickPending[activeCPU] = 0; //Not pending anymore!
 			}
 			if (fifobuffer_freesize(BIU[activeCPU].PIQ)<(BIU[activeCPU].PIQ->size-1)) //Enough free to read the entire part?
 			{
@@ -811,7 +823,6 @@ byte CPU_readOPw(word *result, byte singlefetch) //Reads the operation (word) at
 	if (unlikely(BIU_DosboxTickPending[activeCPU])) //Tick is pending? Handle any that needs ticking when fetching!
 	{
 		BIU_dosboxTick(); //Tick like DOSBox does(fill the PIQ up as much as possible without cycle timing)!
-		BIU_DosboxTickPending[activeCPU] = 0; //Not pending anymore!
 	}
 	if ((CPU[activeCPU].instructionfetch.CPU_fetchparameterPos&1)==0) //First opcode half?
 	{
@@ -847,7 +858,6 @@ byte CPU_readOPdw(uint_32 *result, byte singlefetch) //Reads the operation (32-b
 			if (unlikely(BIU_DosboxTickPending[activeCPU])) //Tick is pending? Handle any that needs ticking when fetching!
 			{
 				BIU_dosboxTick(); //Tick like DOSBox does(fill the PIQ up as much as possible without cycle timing)!
-				BIU_DosboxTickPending[activeCPU] = 0; //Not pending anymore!
 			}
 			if (fifobuffer_freesize(BIU[activeCPU].PIQ)<(BIU[activeCPU].PIQ->size-3)) //Enough free to read the entire part?
 			{
@@ -863,7 +873,6 @@ byte CPU_readOPdw(uint_32 *result, byte singlefetch) //Reads the operation (32-b
 	if (unlikely(BIU_DosboxTickPending[activeCPU])) //Tick is pending? Handle any that needs ticking when fetching!
 	{
 		BIU_dosboxTick(); //Tick like DOSBox does(fill the PIQ up as much as possible without cycle timing)!
-		BIU_DosboxTickPending[activeCPU] = 0; //Not pending anymore!
 	}
 	if ((CPU[activeCPU].instructionfetch.CPU_fetchparameterPos&2)==0) //First opcode half?
 	{
@@ -878,6 +887,31 @@ byte CPU_readOPdw(uint_32 *result, byte singlefetch) //Reads the operation (32-b
 		*result = LE_32BITS((((uint_32)BIU[activeCPU].resultw2)<<16)|((uint_32)BIU[activeCPU].resultw1)); //Give result!
 	}
 	return 0; //We're fetched!
+}
+
+byte BIU_obtainbuslock()
+{
+	if (BIU_buslocked && (!BIU[activeCPU].BUSlockowned)) //Locked by another CPU?
+	{
+		BIU[activeCPU]._lock = 2; //Waiting for the lock to release!
+		return 1; //Waiting for the lock to be obtained!
+	}
+	else
+	{
+		if (BIU[activeCPU].BUSlockrequested == 2) //Acnowledged?
+		{
+			BIU[activeCPU]._lock = 3; //Lock obtained!
+			BIU_buslocked = 1; //A BIU has locked the bus!
+			BIU[activeCPU].BUSlockowned = 1; //We own the lock!
+		}
+		else
+		{
+			BIU[activeCPU].BUSlockrequested = 1; //Request the lock from the bus!
+			BIU[activeCPU]._lock = 2; //Waiting for the lock to release!
+			return 1; //Waiting for the lock to be obtained!
+		}
+	}
+	return 0; //Obtained the bus lock!
 }
 
 OPTINLINE byte BIU_processRequests(byte memory_waitstates, byte bus_waitstates)
@@ -1036,25 +1070,9 @@ OPTINLINE byte BIU_processRequests(byte memory_waitstates, byte bus_waitstates)
 					//Wait for other CPUs to release their lock on the bus if enabled?
 					if (CPU_getprefix(0xF0)) //Locking requested?
 					{
-						if (BIU_buslocked && (!BIU[activeCPU].BUSlockowned)) //Locked by another CPU?
+						if (BIU_obtainbuslock()) //Bus lock not obtained yet?
 						{
-							BIU[activeCPU]._lock = 2; //Waiting for the lock to release!
 							return 1; //Waiting for the lock to be obtained!
-						}
-						else
-						{
-							if (BIU[activeCPU].BUSlockrequested==2) //Acnowledged?
-							{
-								BIU[activeCPU]._lock = 3; //Lock obtained!
-								BIU_buslocked = 1; //A BIU has locked the bus!
-								BIU[activeCPU].BUSlockowned = 1; //We own the lock!
-							}
-							else
-							{
-								BIU[activeCPU].BUSlockrequested = 1; //Request the lock from the bus!
-								BIU[activeCPU]._lock = 2; //Waiting for the lock to release!
-								return 1; //Waiting for the lock to be obtained!
-							}
 						}
 					}
 					BIU[activeCPU].newtransfer = 1; //We're a new transfer!
@@ -1122,25 +1140,9 @@ OPTINLINE byte BIU_processRequests(byte memory_waitstates, byte bus_waitstates)
 					//Wait for other CPUs to release their lock on the bus if enabled?
 					if (CPU_getprefix(0xF0)) //Locking requested?
 					{
-						if (BIU_buslocked && (!BIU[activeCPU].BUSlockowned)) //Locked by another CPU?
+						if (BIU_obtainbuslock()) //Bus lock not obtained yet?
 						{
-							BIU[activeCPU]._lock = 2; //Waiting for the lock to release!
 							return 1; //Waiting for the lock to be obtained!
-						}
-						else
-						{
-							if (BIU[activeCPU].BUSlockrequested==2) //Acnowledged?
-							{
-								BIU[activeCPU]._lock = 3; //Lock obtained!
-								BIU_buslocked = 1; //A BIU has locked the bus!
-								BIU[activeCPU].BUSlockowned = 1; //We own the lock!
-							}
-							else
-							{
-								BIU[activeCPU].BUSlockrequested = 1; //Request the lock from the bus!
-								BIU[activeCPU]._lock = 2; //Waiting for the lock to release!
-								return 1; //Waiting for the lock to be obtained!
-							}
 						}
 					}
 					BIU[activeCPU].newtransfer = 1; //We're a new transfer!

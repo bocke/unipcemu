@@ -127,6 +127,7 @@ void BIU_directwdw(uint_64 realaddress, uint_32 value, word index);
 byte BIU_getHLDA(); //HLDA raised?
 byte BIU_getcycle(); //What is the current cycle?
 void BIU_terminatemem(); //Terminate memory access!
+byte BIU_obtainbuslock(); //Obtain the bus lock for the active CPU!
 
 #ifndef IS_BIU
 extern Handler BIU_handleRequests; //Handle all pending requests at once when to be processed!
