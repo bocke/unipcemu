@@ -242,6 +242,7 @@ byte isvalidpage(uint_32 address, byte iswrite, byte CPL, byte isPrefetch, byte 
 	/*
 	if (BIU_obtainbuslock()) //Obtaining the bus lock?
 	{
+		CPU[activeCPU].executed = 0; //Didn't finish executing yet!
 		return 2; //Stop and wait to obtain the bus lock first!
 	}
 	*/
