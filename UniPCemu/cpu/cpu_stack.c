@@ -65,6 +65,7 @@ void stack_pop(byte dword) //Push 16/32-bits to stack!
 
 byte checkStackAccess(uint_32 poptimes, word isPUSH, byte isdword) //How much do we need to POP from the stack?
 {
+	byte stackresult;
 	uint_32 poptimesleft = poptimes; //Load the amount to check!
 	uint_32 ESP = REG_ESP; //Load the stack pointer to verify!
 	for (; poptimesleft;) //Anything left?
@@ -77,16 +78,16 @@ byte checkStackAccess(uint_32 poptimes, word isPUSH, byte isdword) //How much do
 		//We're at least a word access!
 		if ((isdword & 1) & (((~isdword) >> 1) & 1)) //When bit0=1 and bit 2=0(not forcing 16-bit operand size), use 32-bit accesses! This is required for segment PUSH/POP!
 		{
-			if (checkMMUaccess32(CPU_SEGMENT_SS, REG_SS, ESP & getstackaddrsizelimiter(), ((isPUSH ? 0 : 1) | 0x40) | (isPUSH & 0x300), getCPL(), !STACK_SEGMENT_DESCRIPTOR_B_BIT(), 0 | (8 << isdword))) //Error accessing memory?
+			if ((stackresult = checkMMUaccess32(CPU_SEGMENT_SS, REG_SS, ESP & getstackaddrsizelimiter(), ((isPUSH ? 0 : 1) | 0x40) | (isPUSH & 0x300), getCPL(), !STACK_SEGMENT_DESCRIPTOR_B_BIT(), 0 | (8 << isdword)))!=0) //Error accessing memory?
 			{
-				return 1; //Abort on fault!
+				return stackresult; //Abort on fault!
 			}
 		}
 		else //Word?
 		{
-			if (checkMMUaccess16(CPU_SEGMENT_SS, REG_SS, (ESP & getstackaddrsizelimiter()), ((isPUSH ? 0 : 1) | 0x40) | (isPUSH & 0x300), getCPL(), !STACK_SEGMENT_DESCRIPTOR_B_BIT(), 0 | (8 << isdword))) //Error accessing memory?
+			if ((stackresult = checkMMUaccess16(CPU_SEGMENT_SS, REG_SS, (ESP & getstackaddrsizelimiter()), ((isPUSH ? 0 : 1) | 0x40) | (isPUSH & 0x300), getCPL(), !STACK_SEGMENT_DESCRIPTOR_B_BIT(), 0 | (8 << isdword)))!=0) //Error accessing memory?
 			{
-				return 1; //Abort on fault!
+				return stackresult; //Abort on fault!
 			}
 		}
 		if (isPUSH == 0)
@@ -107,16 +108,16 @@ byte checkStackAccess(uint_32 poptimes, word isPUSH, byte isdword) //How much do
 		//We're at least a word access!
 		if ((isdword & 1) & (((~isdword) >> 1) & 1)) //When bit0=1 and bit 2=0(not forcing 16-bit operand size), use 32-bit accesses! This is required for segment PUSH/POP!
 		{
-			if (checkMMUaccess32(CPU_SEGMENT_SS, REG_SS, ESP & getstackaddrsizelimiter(), (isPUSH ? 0 : 1) | 0xA0, getCPL(), !STACK_SEGMENT_DESCRIPTOR_B_BIT(), 0 | (8 << isdword))) //Error accessing memory?
+			if ((stackresult = checkMMUaccess32(CPU_SEGMENT_SS, REG_SS, ESP & getstackaddrsizelimiter(), (isPUSH ? 0 : 1) | 0xA0, getCPL(), !STACK_SEGMENT_DESCRIPTOR_B_BIT(), 0 | (8 << isdword)))!=0) //Error accessing memory?
 			{
-				return 1; //Abort on fault!
+				return stackresult; //Abort on fault!
 			}
 		}
 		else //Word
 		{
-			if (checkMMUaccess16(CPU_SEGMENT_SS, REG_SS, ESP & getstackaddrsizelimiter(), (isPUSH ? 0 : 1) | 0xA0, getCPL(), !STACK_SEGMENT_DESCRIPTOR_B_BIT(), 0 | (8 << isdword))) //Error accessing memory?
+			if ((stackresult = checkMMUaccess16(CPU_SEGMENT_SS, REG_SS, ESP & getstackaddrsizelimiter(), (isPUSH ? 0 : 1) | 0xA0, getCPL(), !STACK_SEGMENT_DESCRIPTOR_B_BIT(), 0 | (8 << isdword)))!=0) //Error accessing memory?
 			{
-				return 1; //Abort on fault!
+				return stackresult; //Abort on fault!
 			}
 		}
 		if (isPUSH == 0)
@@ -130,6 +131,7 @@ byte checkStackAccess(uint_32 poptimes, word isPUSH, byte isdword) //How much do
 
 byte checkENTERStackAccess(uint_32 poptimes, byte isdword) //How much do we need to POP from the stack(using (E)BP)?
 {
+	byte stackresult;
 	uint_32 poptimesleft = poptimes; //Load the amount to check!
 	uint_32 EBP = REG_EBP; //Load the stack pointer to verify!
 	for (; poptimesleft;) //Anything left?
@@ -139,16 +141,16 @@ byte checkENTERStackAccess(uint_32 poptimes, byte isdword) //How much do we need
 		//We're at least a word access!
 		if (isdword) //DWord?
 		{
-			if (checkMMUaccess32(CPU_SEGMENT_SS, REG_SS, (EBP & getstackaddrsizelimiter()), 1 | 0x40, getCPL(), !STACK_SEGMENT_DESCRIPTOR_B_BIT(), 0 | (8 << isdword))) //Error accessing memory?
+			if ((stackresult = checkMMUaccess32(CPU_SEGMENT_SS, REG_SS, (EBP & getstackaddrsizelimiter()), 1 | 0x40, getCPL(), !STACK_SEGMENT_DESCRIPTOR_B_BIT(), 0 | (8 << isdword)))!=0) //Error accessing memory?
 			{
-				return 1; //Abort on fault!
+				return stackresult; //Abort on fault!
 			}
 		}
 		else //Word?
 		{
-			if (checkMMUaccess16(CPU_SEGMENT_SS, REG_SS, EBP & getstackaddrsizelimiter(), 1 | 0x40, getCPL(), !STACK_SEGMENT_DESCRIPTOR_B_BIT(), 0 | (8 << isdword))) //Error accessing memory?
+			if ((stackresult = checkMMUaccess16(CPU_SEGMENT_SS, REG_SS, EBP & getstackaddrsizelimiter(), 1 | 0x40, getCPL(), !STACK_SEGMENT_DESCRIPTOR_B_BIT(), 0 | (8 << isdword)))!=0) //Error accessing memory?
 			{
-				return 1; //Abort on fault!
+				return stackresult; //Abort on fault!
 			}
 		}
 		--poptimesleft; //One POP processed!
@@ -162,16 +164,16 @@ byte checkENTERStackAccess(uint_32 poptimes, byte isdword) //How much do we need
 		//We're at least a word access!
 		if (isdword) //DWord?
 		{
-			if (checkMMUaccess32(CPU_SEGMENT_SS, REG_SS, (EBP & getstackaddrsizelimiter()), 1 | 0xA0, getCPL(), !STACK_SEGMENT_DESCRIPTOR_B_BIT(), 0 | (8 << isdword))) //Error accessing memory?
+			if ((stackresult = checkMMUaccess32(CPU_SEGMENT_SS, REG_SS, (EBP & getstackaddrsizelimiter()), 1 | 0xA0, getCPL(), !STACK_SEGMENT_DESCRIPTOR_B_BIT(), 0 | (8 << isdword)))!=0) //Error accessing memory?
 			{
-				return 1; //Abort on fault!
+				return stackresult; //Abort on fault!
 			}
 		}
 		else //Word?
 		{
-			if (checkMMUaccess16(CPU_SEGMENT_SS, REG_SS, EBP & getstackaddrsizelimiter(), 1 | 0xA0, getCPL(), !STACK_SEGMENT_DESCRIPTOR_B_BIT(), 0 | (8 << isdword))) //Error accessing memory?
+			if ((stackresult = checkMMUaccess16(CPU_SEGMENT_SS, REG_SS, EBP & getstackaddrsizelimiter(), 1 | 0xA0, getCPL(), !STACK_SEGMENT_DESCRIPTOR_B_BIT(), 0 | (8 << isdword)))!=0) //Error accessing memory?
 			{
-				return 1; //Abort on fault!
+				return stackresult; //Abort on fault!
 			}
 		}
 		--poptimesleft; //One POP processed!
