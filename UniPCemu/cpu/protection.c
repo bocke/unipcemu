@@ -1961,6 +1961,7 @@ byte CPU_ProtectedModeInterrupt(byte intnr, word returnsegment, uint_32 returnof
 
 byte CPU_handleInterruptGate(byte EXT, byte table,uint_32 descriptorbase, RAWSEGMENTDESCRIPTOR *theidtentry, word returnsegment, uint_32 returnoffset, int_64 errorcode, byte is_interrupt) //Execute a protected mode interrupt!
 {
+	byte stackresult;
 	uint_32 errorcode32 = (uint_32)errorcode; //Get the error code itelf!
 	word errorcode16 = (word)errorcode; //16-bit variant, if needed!
 	SEGMENT_DESCRIPTOR newdescriptor; //Temporary storage for task switches!
@@ -2116,9 +2117,9 @@ byte CPU_handleInterruptGate(byte EXT, byte table,uint_32 descriptorbase, RAWSEG
 				//forcepush32 = 1; //We're enforcing 32-bit pushes regardless of the interrupt gate being 32-bit or not!
 
 				//Switch Stack segment first!
-				if (switchStacks(newCPL|(EXT<<2))) return 1; //Abort failing switching stacks!
+				if ((stackresult = switchStacks(newCPL|(EXT<<2)))!=0) return (stackresult!=2)?1:0; //Abort failing switching stacks!
 				//Verify that the new stack is available!
-				if (checkStackAccess(9+((errorcode>=0)?1:0),1|0x100|0x200|((EXT&1)<<10),is32bit?1:0)) return 0; //Abort on fault! Different privileges throws #SS(SS) instead of #SS(0)!
+				if ((stackresult = checkStackAccess(9+((errorcode>=0)?1:0),1|0x100|0x200|((EXT&1)<<10),is32bit?1:0))!=0) return 0; //Abort on fault! Different privileges throws #SS(SS) instead of #SS(0)!
 
 				//Calculate and check the limit!
 
@@ -2172,16 +2173,17 @@ byte CPU_handleInterruptGate(byte EXT, byte table,uint_32 descriptorbase, RAWSEG
 				THROWDESCGP(idtentry.selector,EXT,EXCEPTION_TABLE_GDT); //Exception!
 				return 0; //Abort on fault!
 			}
-			else if ((FLAG_V8==0) && (INTTYPE==1)) //Privilege level changed in protected mode?
+			else if ((FLAG_V8==0) && (INTTYPE==1)) //Privilege level changed in protected
+ mode?
 			{
 				//Unlike the other case, we're still in protected mode!
 				//We're back in protected mode now!
 
 				//Switch Stack segment first!
-				if (switchStacks(newCPL|(EXT<<2))) return 1; //Abort failing switching stacks!
+				if ((stackresult = switchStacks(newCPL|(EXT<<2)))!=0) return (stackaccess!=2)?1:0; //Abort failing switching stacks!
 
 				//Verify that the new stack is available!
-				if (checkStackAccess(5+((errorcode>=0)?1:0),1|0x100|0x200|((EXT&1)<<10),is32bit?1:0)) return 0; //Abort on fault! Different privileges throws #SS(SS) instead of #SS(0)!
+				if ((stackresult = checkStackAccess(5+((errorcode>=0)?1:0),1|0x100|0x200|((EXT&1)<<10),is32bit?1:0))!=0) return 0; //Abort on fault! Different privileges throws #SS(SS) instead of #SS(0)!
 
 				//Calculate and check the limit!
 
@@ -2208,7 +2210,7 @@ byte CPU_handleInterruptGate(byte EXT, byte table,uint_32 descriptorbase, RAWSEG
 			}
 			else //No privilege level change?
 			{
-				if (checkStackAccess(3+((errorcode>=0)?1:0),1|0x200|((EXT&1)<<10),is32bit?1:0)) return 0; //Abort on fault!
+				if ((stackresult = checkStackAccess(3+((errorcode>=0)?1:0),1|0x200|((EXT&1)<<10),is32bit?1:0))!=0) return 0; //Abort on fault!
 				//Calculate and check the limit!
 
 				if (invalidLimit(&newdescriptor,((idtentry.offsetlow | (idtentry.offsethigh << 16))&(0xFFFFFFFFU>>((is32bit^1)<<4))))) //Limit exceeded?
