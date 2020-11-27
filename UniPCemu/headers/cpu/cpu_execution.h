@@ -28,5 +28,6 @@ void CPU_executionphase_startinterrupt(byte vectornr, byte type, int_64 errorcod
 byte CPU_executionphase_starttaskswitch(int whatsegment, SEGMENT_DESCRIPTOR *LOADEDDESCRIPTOR,word *segment, word destinationtask, byte isJMPorCALL, byte gated, int_64 errorcode); //Switching to a certain task?
 void CPU_OP(); //Normal CPU opcode execution!
 byte CPU_executionphase_busy(); //Are we busy(not ready to fetch a new instruction)?
+byte EUphasehandlerrequiresreset(); //Requires a reset to handle BIU locking mechanisms?
 
 #endif

@@ -243,7 +243,10 @@ byte isvalidpage(uint_32 address, byte iswrite, byte CPL, byte isPrefetch, byte 
 	if (BIU_obtainbuslock()) //Obtaining the bus lock?
 	{
 		CPU[activeCPU].executed = 0; //Didn't finish executing yet!
-		CPU_onResettingFault(); //Set the fault data to restart any instruction-related things!
+		if (EUphasehandlerrequiresreset()) //Requires reset to execute properly?
+		{
+			CPU_onResettingFault(); //Set the fault data to restart any instruction-related things!
+		}
 		return 2; //Stop and wait to obtain the bus lock first!
 	}
 	*/

@@ -26,6 +26,8 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 #include "headers/support/log.h" //To log invalids!
 #include "headers/cpu/cpu_pmtimings.h" //Timing support!
 #include "headers/cpu/easyregs.h" //Easy register support!
+#include "headers/cpu/cpu_OP8086.h" //IRET support!
+#include "headers/cpu/cpu_OP80386.h" //IRETD support!
 
 //Define to debug disk reads using interrupt 13h
 //#define DEBUGBOOT
@@ -226,4 +228,10 @@ void CPU_OP() //Normal CPU opcode execution!
 void CPU_executionphase_init()
 {
 	CPU[activeCPU].currentEUphasehandler = NULL; //Nothing running yet!
+}
+
+byte EUphasehandlerrequiresreset()
+{
+	//Reset is requiresd on IRET handling, Task Switch phase and Interrupt handling phase!
+	return (CPU[activeCPU].currentEUphasehandler==&CPU_executionphase_taskswitch) || (CPU[activeCPU].currentEUphasehandler == &CPU_executionphase_interrupt) || (((CPU[activeCPU].currentEUphasehandler == &CPU_executionphase_normal) && ((CPU[activeCPU].currentOP_handler==&CPU8086_OPCF)||(CPU[activeCPU].currentOP_handler==&CPU80386_OPCF)))); //On the specified cases only!
 }
