@@ -1266,6 +1266,7 @@ typedef struct
 	uint_64 PageFault_PDPT;
 	uint_64 PageFault_PDE;
 	uint_64 PageFault_PTE;
+	uint_32 enter_finalESP;
 } CPU_type;
 
 #ifndef IS_CPU

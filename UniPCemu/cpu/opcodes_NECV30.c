@@ -756,14 +756,24 @@ void CPU186_OPC8()
 			if (checkStackAccess(1,1,0)) return; //Abort on error!		
 		}
 		if (CPU8086_PUSHw(instructionstep,&CPU[activeCPU].frametempw,0)) return; //Felixcloutier.com says frametemp, fake86 says Sp(incorrect).
+		instructionstep += 2; //Next instruction step base to process!
 	}
 	
+	if (CPU[activeCPU].instructionstep == instructionstep) //Finish step?
+	{
+		CPU[activeCPU].enter_finalESP = REG_ESP; //Final ESP!
+		CPU[activeCPU].instructionstep += 2; //Next instruction step base to process!
+	}
+	else
+	{
+		REG_ESP = CPU[activeCPU].enter_finalESP; //Restore ESP!
+	}
+
 	REG_BP = CPU[activeCPU].frametempw;
 	REG_SP -= stacksize; //Substract: the stack size is data after the buffer created, not immediately at the params.  
 
 	if ((memoryaccessfault = checkMMUaccess(CPU_SEGMENT_SS, REG_SS, REG_ESP&getstackaddrsizelimiter(), 0|0x40, getCPL(), !STACK_SEGMENT_DESCRIPTOR_B_BIT(), 0 | (0x0)))!=0) //Error accessing memory?
 	{
-		if (memoryaccessfault == 2) CPU_onResettingFault(); //Apply reset to fault!
 		return; //Abort on fault!
 	}
 

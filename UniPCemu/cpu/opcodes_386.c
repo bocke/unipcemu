@@ -5240,8 +5240,19 @@ void CPU386_OPC8_32()
 			if (checkStackAccess(1,1,1)) return; //Abort on error!		
 		}
 		if (CPU80386_PUSHdw(instructionstep,&CPU[activeCPU].frametempd)) return; //Felixcloutier.com says frametemp, fake86 says Sp(incorrect).
+		instructionstep += 2; //Next instruction step base to process!
 	}
 	
+	if (CPU[activeCPU].instructionstep == instructionstep) //Finish step?
+	{
+		CPU[activeCPU].enter_finalESP = REG_ESP; //Final ESP!
+		CPU[activeCPU].instructionstep += 2; //Next instruction step base to process!
+	}
+	else
+	{
+		REG_ESP = CPU[activeCPU].enter_finalESP; //Restore ESP!
+	}
+
 	REG_EBP = CPU[activeCPU].frametempd;
 	if (STACK_SEGMENT_DESCRIPTOR_B_BIT()) //32-bit stack?
 	{
@@ -5256,13 +5267,11 @@ void CPU386_OPC8_32()
 
 	if ((memoryaccessfault = checkMMUaccess(CPU_SEGMENT_SS, REG_SS, REG_ESP&getstackaddrsizelimiter(), 0|0x40, getCPL(), !STACK_SEGMENT_DESCRIPTOR_B_BIT(), 0 | (0x0)))!=0) //Error accessing memory?
 	{
-		if (memoryaccessfault==2) CPU_onResettingFault(); //Apply reset to fault!
 		return; //Abort on fault!
 	}
 
 	if ((memoryaccessfault = checkMMUaccess(CPU_SEGMENT_SS, REG_SS, REG_ESP&getstackaddrsizelimiter(), 0|0xA0, getCPL(), !STACK_SEGMENT_DESCRIPTOR_B_BIT(), 0 | (0x0)))!=0) //Error accessing memory?
 	{
-		if (memoryaccessfault == 2) CPU_onResettingFault(); //Apply reset to fault!
 		return; //Abort on fault!
 	}
 
@@ -5338,8 +5347,19 @@ void CPU386_OPC8_16()
 			if (checkStackAccess(1,1,0)) return; //Abort on error!		
 		}
 		if (CPU8086_PUSHw(instructionstep,&CPU[activeCPU].frametempw,0)) return; //Felixcloutier.com says frametemp, fake86 says Sp(incorrect).
+		instructionstep += 2; //Next instruction step base to process!
 	}
 	
+	if (CPU[activeCPU].instructionstep == instructionstep) //Finish step?
+	{
+		CPU[activeCPU].enter_finalESP = REG_ESP; //Final ESP!
+		CPU[activeCPU].instructionstep += 2; //Next instruction step base to process!
+	}
+	else
+	{
+		REG_ESP = CPU[activeCPU].enter_finalESP; //Restore ESP!
+	}
+
 	REG_BP = CPU[activeCPU].frametempw;
 	if (STACK_SEGMENT_DESCRIPTOR_B_BIT()) //32-bit stack?
 	{
@@ -5353,13 +5373,11 @@ void CPU386_OPC8_16()
 	//page fault if cannot write to esp pointer!
 	if ((memoryaccessfault = checkMMUaccess(CPU_SEGMENT_SS, REG_SS, REG_ESP&getstackaddrsizelimiter(), 0|0x40, getCPL(), !STACK_SEGMENT_DESCRIPTOR_B_BIT(), 0 | (0x0)))!=0) //Error accessing memory?
 	{
-		if (memoryaccessfault == 2) CPU_onResettingFault(); //Apply reset to fault!
 		return; //Abort on fault!
 	}
 
 	if ((memoryaccessfault = checkMMUaccess(CPU_SEGMENT_SS, REG_SS, REG_ESP&getstackaddrsizelimiter(), 0|0xA0, getCPL(), !STACK_SEGMENT_DESCRIPTOR_B_BIT(), 0 | (0x0)))!=0) //Error accessing memory?
 	{
-		if (memoryaccessfault == 2) CPU_onResettingFault(); //Apply reset to fault!
 		return; //Abort on fault!
 	}
 
