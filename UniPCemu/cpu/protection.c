@@ -745,7 +745,7 @@ sbyte touchSegment(int segment, word segmentval, SEGMENT_DESCRIPTOR *container, 
 	return 1; //Success!
 }
 
-SEGMENT_DESCRIPTOR *getsegment_seg(int segment, SEGMENT_DESCRIPTOR *dest, word *segmentval, word isJMPorCALL, byte *isdifferentCPL) //Get this corresponding segment descriptor (or LDT. For LDT, specify LDT register as segment) for loading into the segment descriptor cache!
+SEGMENT_DESCRIPTOR *getsegment_seg(int segment, SEGMENT_DESCRIPTOR *dest, word *segmentval, word isJMPorCALL, byte *isdifferentCPL, byte *errorret) //Get this corresponding segment descriptor (or LDT. For LDT, specify LDT register as segment) for loading into the segment descriptor cache!
 {
 	//byte newCPL = getCPL(); //New CPL after switching! Default: no change!
 	SEGMENT_DESCRIPTOR LOADEDDESCRIPTOR, GATEDESCRIPTOR; //The descriptor holder/converter!
@@ -784,6 +784,7 @@ SEGMENT_DESCRIPTOR *getsegment_seg(int segment, SEGMENT_DESCRIPTOR *dest, word *
 			//if ((segment == CPU_SEGMENT_SS) && (isJMPorCALL & 0x200) && ((isJMPorCALL & 0x8000) == 0)) goto throwSSsegmentval;
 			goto throwdescsegmentval;
 		}
+		if (loadresult==-1) errorret = 2; //Page fault?
 		return NULL; //Error, by specified reason!
 	}
 	allowNP = ((segment==CPU_SEGMENT_DS) || (segment==CPU_SEGMENT_ES) || (segment==CPU_SEGMENT_FS) || (segment==CPU_SEGMENT_GS)); //Allow segment to be marked non-present(exception: values 0-3 with data segments)?
@@ -1508,6 +1509,7 @@ void CPU_segmentWritten_protectedmode_RETFIRET(word isJMPorCALL)
 
 byte segmentWritten(int segment, word value, word isJMPorCALL) //A segment register has been written to!
 {
+	byte errorret=1;
 	byte checkSegmentRegisters=0; //A segment register we're checking during a RETF instruction!
 	byte oldCPL= getCPL();
 	byte isDifferentCPL;
@@ -1518,7 +1520,7 @@ byte segmentWritten(int segment, word value, word isJMPorCALL) //A segment regis
 	{
 		isDifferentCPL = 0; //Default: same CPL!
 		SEGMENT_DESCRIPTOR tempdescriptor;
-		SEGMENT_DESCRIPTOR *descriptor = getsegment_seg(segment,&tempdescriptor,&value,isJMPorCALL,&isDifferentCPL); //Read the segment!
+		SEGMENT_DESCRIPTOR *descriptor = getsegment_seg(segment,&tempdescriptor,&value,isJMPorCALL,&isDifferentCPL, &errorret); //Read the segment!
 		if (descriptor) //Loaded&valid?
 		{
 			if (segment == CPU_SEGMENT_CS) //Code segment? We're some kind of jump or return!
@@ -1584,7 +1586,7 @@ byte segmentWritten(int segment, word value, word isJMPorCALL) //A segment regis
 						THROWDESCGP(value,((isJMPorCALL&0x400)>>10),(value&4)?EXCEPTION_TABLE_LDT:EXCEPTION_TABLE_GDT); //Throw error!
 					}
 				}
-				return 1; //Abort on fault!
+				return (loadresult==2)?2:1; //Abort on fault!
 			}
 
 			switch (segment)
@@ -1617,7 +1619,7 @@ byte segmentWritten(int segment, word value, word isJMPorCALL) //A segment regis
 			{
 				CPU_flushPIQ(-1); //We're jumping to another address!
 			}
-			return 1; //Abort on fault!
+			return errorret; //Abort on fault!
 		}
 	}
 	else //Real mode has no protection?
@@ -1858,6 +1860,7 @@ byte getTSSIRmap(word intnr) //What are we to do with this interrupt? 0=Perform 
 //bit2=EXT when set.
 byte switchStacks(byte newCPL)
 {
+	byte stackresult;
 	word SSn;
 	uint_32 ESPn;
 	byte TSSSize;
@@ -1896,7 +1899,7 @@ byte switchStacks(byte newCPL)
 		ESPn = TSSSize?MMU_rdw0(CPU_SEGMENT_TR,REG_TR,TSS_StackPos,0,1):MMU_rw0(CPU_SEGMENT_TR,REG_TR,TSS_StackPos,0,1); //Read (E)SP for the privilege level from the TSS!
 		TSS_StackPos += (2<<TSSSize); //Convert the (E)SP location to SS location!
 		SSn = MMU_rw0(CPU_SEGMENT_TR,REG_TR,TSS_StackPos,0,1); //SS!
-		if (segmentWritten(CPU_SEGMENT_SS,SSn,0x8000|0x200|((newCPL<<8)&0x400)|0x1000|((newCPL&3)<<13))) return 1; //Read SS, privilege level changes, ignore DPL vs CPL check! Fault=#TS. EXT bit when set in bit 2 of newCPL. Don't throw #SS for normal faults, throw #TS instead!
+		if ((stackresult = segmentWritten(CPU_SEGMENT_SS,SSn,0x8000|0x200|((newCPL<<8)&0x400)|0x1000|((newCPL&3)<<13)))) return (stackresult==2)?2:1; //Read SS, privilege level changes, ignore DPL vs CPL check! Fault=#TS. EXT bit when set in bit 2 of newCPL. Don't throw #SS for normal faults, throw #TS instead!
 		if (TSSSize) //32-bit?
 		{
 			REG_ESP = ESPn; //Apply the stack position!
