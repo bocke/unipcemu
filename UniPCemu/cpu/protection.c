@@ -2179,7 +2179,7 @@ byte CPU_handleInterruptGate(byte EXT, byte table,uint_32 descriptorbase, RAWSEG
 				//We're back in protected mode now!
 
 				//Switch Stack segment first!
-				if ((stackresult = switchStacks(newCPL|(EXT<<2)))!=0) return (stackaccess!=2)?1:0; //Abort failing switching stacks!
+				if ((stackresult = switchStacks(newCPL|(EXT<<2)))!=0) return (stackresult!=2)?1:0; //Abort failing switching stacks!
 
 				//Verify that the new stack is available!
 				if ((stackresult = checkStackAccess(5+((errorcode>=0)?1:0),1|0x100|0x200|((EXT&1)<<10),is32bit?1:0))!=0) return 0; //Abort on fault! Different privileges throws #SS(SS) instead of #SS(0)!
