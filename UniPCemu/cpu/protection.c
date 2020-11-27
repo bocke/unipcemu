@@ -1194,6 +1194,7 @@ byte RETF_checkSegmentRegisters[4] = {CPU_SEGMENT_ES,CPU_SEGMENT_FS,CPU_SEGMENT_
 
 byte CPU_segmentWritten_protectedmode_JMPCALL(word *value, word isJMPorCALL, SEGMENT_DESCRIPTOR* descriptor, byte isDifferentCPL)
 {
+	byte stackresult;
 	uint_32 stackval;
 	word stackval16; //16-bit stack value truncated!
 	if ((isDifferentCPL == 1) && ((isJMPorCALL & 0x1FF) == 2)) //Stack switch is required with CALL only?
@@ -1206,9 +1207,9 @@ byte CPU_segmentWritten_protectedmode_JMPCALL(word *value, word isJMPorCALL, SEG
 			//TSSSize = 1; //32-bit TSS!
 		case AVL_SYSTEM_BUSY_TSS16BIT:
 		case AVL_SYSTEM_TSS16BIT:
-			if (switchStacks(GENERALSEGMENTPTR_DPL(descriptor) | ((isJMPorCALL & 0x400) >> 8))) return 1; //Abort failing switching stacks!
+			if ((stackresult = switchStacks(GENERALSEGMENTPTR_DPL(descriptor) | ((isJMPorCALL & 0x400) >> 8)))!=0) return (stackresult==2)?2:1; //Abort failing switching stacks!
 
-			if (checkStackAccess(2, 1 | (0x100 | 0x200 | (isJMPorCALL & 0x400)), CPU[activeCPU].CallGateSize)) return 1; //Abort on error! Call Gates throws #SS(SS) instead of #SS(0)!
+			if ((stackresult = checkStackAccess(2, 1 | (0x100 | 0x200 | (isJMPorCALL & 0x400)), CPU[activeCPU].CallGateSize))!=0) return (stackresult==2)?2:1; //Abort on error! Call Gates throws #SS(SS) instead of #SS(0)!
 
 			CPU_PUSH16(&CPU[activeCPU].oldSS, CPU[activeCPU].CallGateSize); //SS to return!
 
@@ -1284,6 +1285,7 @@ byte CPU_segmentWritten_protectedmode_JMPCALL(word *value, word isJMPorCALL, SEG
 
 byte CPU_segmentWritten_protectedmode_RETF(byte oldCPL, word value, word isJMPorCALL, byte *RETF_segmentregister)
 {
+	byte stackresult;
 	if (CPU[activeCPU].is_stackswitching == 0) //We're ready to process?
 	{
 		if (STACK_SEGMENT_DESCRIPTOR_B_BIT())
@@ -1296,7 +1298,7 @@ byte CPU_segmentWritten_protectedmode_RETF(byte oldCPL, word value, word isJMPor
 		}
 		if (oldCPL < getRPL(value)) //Lowering privilege?
 		{
-			if (checkStackAccess(2, 0, CPU[activeCPU].CPU_Operand_size)) return 1; //Stack fault?
+			if ((stackresult = checkStackAccess(2, 0, CPU[activeCPU].CPU_Operand_size))!=0) return (stackresult==2)?2:1; //Stack fault?
 		}
 	}
 
@@ -1355,10 +1357,11 @@ byte CPU_segmentWritten_protectedmode_RETF(byte oldCPL, word value, word isJMPor
 
 byte CPU_segmentWritten_protectedmode_IRET(byte oldCPL, word value, word isJMPorCALL, byte *RETF_segmentregister)
 {
+	byte stackresult;
 	uint_32 tempesp;
 	if (getRPL(value) > oldCPL) //Stack needs to be restored when returning to outer privilege level!
 	{
-		if (checkStackAccess(2, 0, CPU[activeCPU].CPU_Operand_size)) return 1; //First level IRET data?
+		if ((stackresult = checkStackAccess(2, 0, CPU[activeCPU].CPU_Operand_size))!=0) return (stackresult==2)?2:1; //First level IRET data?
 		if (CPU[activeCPU].CPU_Operand_size)
 		{
 			tempesp = CPU_POP32();
@@ -1370,7 +1373,7 @@ byte CPU_segmentWritten_protectedmode_IRET(byte oldCPL, word value, word isJMPor
 
 		CPU[activeCPU].segmentWritten_tempSS = CPU_POP16(CPU[activeCPU].CPU_Operand_size);
 
-		if (segmentWritten(CPU_SEGMENT_SS, CPU[activeCPU].segmentWritten_tempSS, (getRPL(value) << 13) | 0x1000)) return 1; //Back to our calling stack!
+		if ((stackresult = segmentWritten(CPU_SEGMENT_SS, CPU[activeCPU].segmentWritten_tempSS, (getRPL(value) << 13) | 0x1000))!=0) return (stackresult==2)?2:1; //Back to our calling stack!
 		if (STACK_SEGMENT_DESCRIPTOR_B_BIT()) //32-bit stack write (undocumented)?
 		{
 			REG_ESP = tempesp; //32-bits written!
