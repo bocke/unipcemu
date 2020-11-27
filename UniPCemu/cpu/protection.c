@@ -784,7 +784,7 @@ SEGMENT_DESCRIPTOR *getsegment_seg(int segment, SEGMENT_DESCRIPTOR *dest, word *
 			//if ((segment == CPU_SEGMENT_SS) && (isJMPorCALL & 0x200) && ((isJMPorCALL & 0x8000) == 0)) goto throwSSsegmentval;
 			goto throwdescsegmentval;
 		}
-		if (loadresult==-1) errorret = 2; //Page fault?
+		if (loadresult==-1) *errorret = 2; //Page fault?
 		return NULL; //Error, by specified reason!
 	}
 	allowNP = ((segment==CPU_SEGMENT_DS) || (segment==CPU_SEGMENT_ES) || (segment==CPU_SEGMENT_FS) || (segment==CPU_SEGMENT_GS)); //Allow segment to be marked non-present(exception: values 0-3 with data segments)?
