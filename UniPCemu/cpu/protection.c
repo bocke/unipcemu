@@ -2173,8 +2173,7 @@ byte CPU_handleInterruptGate(byte EXT, byte table,uint_32 descriptorbase, RAWSEG
 				THROWDESCGP(idtentry.selector,EXT,EXCEPTION_TABLE_GDT); //Exception!
 				return 0; //Abort on fault!
 			}
-			else if ((FLAG_V8==0) && (INTTYPE==1)) //Privilege level changed in protected
- mode?
+			else if ((FLAG_V8==0) && (INTTYPE==1)) //Privilege level changed in protected mode?
 			{
 				//Unlike the other case, we're still in protected mode!
 				//We're back in protected mode now!
