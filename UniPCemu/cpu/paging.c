@@ -464,7 +464,6 @@ uint_64 mappagenonPSE(uint_32 address, byte iswrite, byte CPL) //Maps a page to 
 	uint_32 tag;
 	RW = iswrite?1:0; //Are we trying to write?
 	effectiveUS = getUserLevel(CPL); //Our effective user level!
-	retrymapping386: //Retry the mapping when not cached!
 	if (unlikely(iswrite)) //Writes are limited?
 	{
 		tag = Paging_readTLBLWUDS(address,1, effectiveUS, 1, 0); //Small page tag!
@@ -472,7 +471,6 @@ uint_64 mappagenonPSE(uint_32 address, byte iswrite, byte CPL) //Maps a page to 
 		{
 			return (result|(address&PXE_ACTIVEMASK)); //Give the actual address from the TLB!
 		}
-		else goto loadWTLB386;
 	}
 	else //Read?
 	{
@@ -480,14 +478,6 @@ uint_64 mappagenonPSE(uint_32 address, byte iswrite, byte CPL) //Maps a page to 
 		if (likely(Paging_readTLB(NULL, address, tag, 0, TLB_IGNOREREADMASK, &result, &passthroughmask, 1))) //Cache hit for an the entry, any during reads, Write Dirty on write?
 		{
 			return (result | (address&PXE_ACTIVEMASK)); //Give the actual address from the TLB!
-		}
-		else
-		{
-		loadWTLB386:
-			if (likely(isvalidpage(address, iswrite, CPL, 0, 1))) //Retry checking if possible!
-			{
-				goto retrymapping386;
-			}
 		}
 	}
 	CPU[activeCPU].successfullpagemapping = 0; //Insuccessful: errored out!
@@ -505,7 +495,6 @@ uint_64 mappagePSE(uint_32 address, byte iswrite, byte CPL) //Maps a page to rea
 	uint_32 tag;
 	RW = iswrite ? 1 : 0; //Are we trying to write?
 	effectiveUS = getUserLevel(CPL); //Our effective user level!
-	retrymappingPentium: //Retry the mapping when not cached!
 	if (unlikely(iswrite)) //Writes are limited?
 	{
 		tag = Paging_readTLBLWUDS(address, 1, effectiveUS, 1, 1); //Large page tag!
@@ -518,7 +507,6 @@ uint_64 mappagePSE(uint_32 address, byte iswrite, byte CPL) //Maps a page to rea
 		{
 			return (result | (address & PXE_ACTIVEMASK)); //Give the actual address from the TLB!
 		}
-		else goto loadWTLBPentium;
 	}
 	else //Read?
 	{
@@ -531,14 +519,6 @@ uint_64 mappagePSE(uint_32 address, byte iswrite, byte CPL) //Maps a page to rea
 		if (likely(Paging_readTLB(NULL, address, tag, 0, TLB_IGNOREREADMASK, &result, &passthroughmask, 1))) //Cache hit for an the entry, any during reads, Write Dirty on write?
 		{
 			return (result | (address & PXE_ACTIVEMASK)); //Give the actual address from the TLB!
-		}
-		else
-		{
-		loadWTLBPentium:
-			if (likely(isvalidpage(address, iswrite, CPL, 0, 1))) //Retry checking if possible!
-			{
-				goto retrymappingPentium;
-			}
 		}
 	}
 	CPU[activeCPU].successfullpagemapping = 0; //Insuccessful: errored out!

@@ -566,6 +566,7 @@ void CPU_calcSegmentPrecalcs(byte is_CS, SEGMENT_DESCRIPTOR *descriptor)
 
 sbyte LOADDESCRIPTOR(int segment, word segmentval, SEGMENT_DESCRIPTOR *container, word isJMPorCALL) //Result: 0=#GP, 1=container=descriptor.
 {
+	sbyte result;
 	CPU[activeCPU].LOADDESCRIPTOR_segmentval = segmentval;
 	uint_32 descriptor_address = 0;
 	descriptor_address = (uint_32)((segmentval & 4) ? CPU[activeCPU].SEG_DESCRIPTOR[CPU_SEGMENT_LDTR].PRECALCS.base : CPU[activeCPU].registers->GDTR.base); //LDT/GDT selector!
@@ -598,13 +599,13 @@ sbyte LOADDESCRIPTOR(int segment, word segmentval, SEGMENT_DESCRIPTOR *container
 	if (isNULLdescriptor==0) //Not special NULL descriptor handling?
 	{
 		int i;
-		if (checkDirectMMUaccess(descriptor_address, 1,/*getCPL()*/ 0)) //Error in the paging unit?
+		if ((result = (sbyte)checkDirectMMUaccess(descriptor_address, 1,/*getCPL()*/ 0))!=0) //Error in the paging unit?
 		{
-			return -1; //Error out!
+			return (result==2)?-2:-1; //Error out!
 		}
-		if (checkDirectMMUaccess(descriptor_address+(uint_32)sizeof(container->desc.bytes)-1, 1,/*getCPL()*/ 0)) //Error in the paging unit?
+		if ((result = (sbyte)checkDirectMMUaccess(descriptor_address+(uint_32)sizeof(container->desc.bytes)-1, 1,/*getCPL()*/ 0))!=0) //Error in the paging unit?
 		{
-			return -1; //Error out!
+			return (result==2)?-2:-1; //Error out!
 		}
 		for (i=0;i<(int)sizeof(container->desc.bytes);) //Process the descriptor data!
 		{
@@ -643,6 +644,7 @@ sbyte LOADDESCRIPTOR(int segment, word segmentval, SEGMENT_DESCRIPTOR *container
 //Result: 1=OK, 0=Error!
 sbyte SAVEDESCRIPTOR(int segment, word segmentval, SEGMENT_DESCRIPTOR *container, word isJMPorCALL)
 {
+	sbyte result;
 	uint_32 descriptor_address = 0;
 	descriptor_address = (uint_32)((segmentval & 4) ? CPU[activeCPU].SEG_DESCRIPTOR[CPU_SEGMENT_LDTR].PRECALCS.base : CPU[activeCPU].registers->GDTR.base); //LDT/GDT selector!
 	uint_32 descriptor_index = segmentval; //The full index within the descriptor table!
@@ -692,9 +694,9 @@ sbyte SAVEDESCRIPTOR(int segment, word segmentval, SEGMENT_DESCRIPTOR *container
 	{
 	*/
 	descriptor_address += 5; //Only the access rights byte!
-		if (checkDirectMMUaccess(descriptor_address++,0,/*getCPL()*/ 0)) //Error in the paging unit?
+		if ((result = (sbyte)checkDirectMMUaccess(descriptor_address++,0,/*getCPL()*/ 0))!=0) //Error in the paging unit?
 		{
-			return -1; //Error out!
+			return (result==2)?-2:-1; //Error out!
 		}
 	//}
 	//descriptor_address -= sizeof(container->desc.bytes);
@@ -784,7 +786,7 @@ SEGMENT_DESCRIPTOR *getsegment_seg(int segment, SEGMENT_DESCRIPTOR *dest, word *
 			//if ((segment == CPU_SEGMENT_SS) && (isJMPorCALL & 0x200) && ((isJMPorCALL & 0x8000) == 0)) goto throwSSsegmentval;
 			goto throwdescsegmentval;
 		}
-		if (loadresult==-1) *errorret = 2; //Page fault?
+		if (loadresult==-2) *errorret = 2; //Page fault?
 		return NULL; //Error, by specified reason!
 	}
 	allowNP = ((segment==CPU_SEGMENT_DS) || (segment==CPU_SEGMENT_ES) || (segment==CPU_SEGMENT_FS) || (segment==CPU_SEGMENT_GS)); //Allow segment to be marked non-present(exception: values 0-3 with data segments)?
@@ -1395,6 +1397,7 @@ byte CPU_segmentWritten_protectedmode_IRET(byte oldCPL, word value, word isJMPor
 
 byte CPU_segmentWritten_protectedmode_TR(int segment, word value, word isJMPorCALL, SEGMENT_DESCRIPTOR *tempdescriptor)
 {
+	sbyte errorret;
 	if ((isJMPorCALL & 0x1FF) == 0) //Not a JMP or CALL itself, or a task switch, so just a plain load using LTR?
 	{
 		SEGMENT_DESCRIPTOR savedescriptor;
@@ -1418,9 +1421,9 @@ byte CPU_segmentWritten_protectedmode_TR(int segment, word value, word isJMPorCA
 
 			tempdescriptor->desc.AccessRights |= 2; //Mark not idle in the RAM descriptor!
 			savedescriptor.desc.DATA64 = tempdescriptor->desc.DATA64; //Copy the resulting descriptor contents to our buffer for writing to RAM!
-			if (SAVEDESCRIPTOR(segment, value, &savedescriptor, isJMPorCALL) <= 0) //Save it back to RAM failed?
+			if ((errorret = SAVEDESCRIPTOR(segment, value, &savedescriptor, isJMPorCALL) <= 0)) //Save it back to RAM failed?
 			{
-				return 1; //Abort on fault!
+				return (errorret==-2)?2:1; //Abort on fault!
 			}
 			break;
 		default: //Invalid segment descriptor to load into the TR register?
@@ -1533,23 +1536,23 @@ byte segmentWritten(int segment, word value, word isJMPorCALL) //A segment regis
 				case 1: //JMP?
 				case 2: //CALL?
 					//JMP(with call gate)/CALL needs pushed data on the stack?
-					if (CPU_segmentWritten_protectedmode_JMPCALL(&value, isJMPorCALL, descriptor, isDifferentCPL)) //Handle JMP/CALL for protected mode segments!
+					if ((errorret = CPU_segmentWritten_protectedmode_JMPCALL(&value, isJMPorCALL, descriptor, isDifferentCPL))!=0) //Handle JMP/CALL for protected mode segments!
 					{
-						return 1; //Abort!
+						return errorret; //Abort!
 					}
 					break;
 				case 3: //IRET?
 					//IRET might need extra data popped?
-					if (CPU_segmentWritten_protectedmode_IRET(oldCPL, value, isJMPorCALL, &checkSegmentRegisters)) //Handle RETF for protected mode segments!
+					if ((errorret = CPU_segmentWritten_protectedmode_IRET(oldCPL, value, isJMPorCALL, &checkSegmentRegisters))!=0) //Handle RETF for protected mode segments!
 					{
-						return 1; //Abort!
+						return errorret; //Abort!
 					}
 					break;
 				case 4: //RETF?
 					//RETF needs popped data on the stack?
-					if (CPU_segmentWritten_protectedmode_RETF(oldCPL, value, isJMPorCALL, &checkSegmentRegisters)) //Handle RETF for protected mode segments!
+					if ((errorret = CPU_segmentWritten_protectedmode_RETF(oldCPL, value, isJMPorCALL, &checkSegmentRegisters))!=0) //Handle RETF for protected mode segments!
 					{
-						return 1; //Abort!
+						return errorret; //Abort!
 					}
 					break;
 				default: //Unknown action?
@@ -1589,7 +1592,7 @@ byte segmentWritten(int segment, word value, word isJMPorCALL) //A segment regis
 						THROWDESCGP(value,((isJMPorCALL&0x400)>>10),(value&4)?EXCEPTION_TABLE_LDT:EXCEPTION_TABLE_GDT); //Throw error!
 					}
 				}
-				return (loadresult==2)?2:1; //Abort on fault!
+				return (loadresult==-2)?2:1; //Abort on fault!
 			}
 
 			switch (segment)
@@ -2300,7 +2303,7 @@ byte CPU_handleInterruptGate(byte EXT, byte table,uint_32 descriptorbase, RAWSEG
 					}
 				}
 				CPU_flushPIQ(-1); //We're jumping to another address!
-				return 1; //Abort on fault!
+				return (loadresult==-2)?0:1; //Abort on fault!
 			}
 
 			CPU[activeCPU].hascallinterrupttaken_type = (getCPL()==oldCPL)?INTERRUPTGATETIMING_SAMELEVEL:INTERRUPTGATETIMING_DIFFERENTLEVEL;

@@ -304,7 +304,7 @@ void CPU_IRET()
 		desttask = MMU_rw(CPU_SEGMENT_TR, REG_TR, 0, 0,0); //Read the destination task!
 		if ((loadresult = LOADDESCRIPTOR(CPU_SEGMENT_TR, desttask, &newdescriptor,3))<=0) //Error loading new descriptor? The backlink is always at the start of the TSS!
 		{
-			if (loadresult == -1) return; //Abort on page fault!
+			if ((loadresult == -1) || (loadresult==-2)) return; //Abort on page fault!
 			CPU_TSSFault(desttask,0,(desttask&4)?EXCEPTION_TABLE_LDT:EXCEPTION_TABLE_GDT); //Throw error!
 			return; //Error, by specified reason!
 		}
