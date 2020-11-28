@@ -636,10 +636,6 @@ void BIU_dosboxTick()
 		MMU_resetaddr(); //Reset the address error line for trying some I/O!
 		if (unlikely(faultcode = checkMMUaccess(CPU_SEGMENT_CS, REG_CS, realaddress, 0xA0 | 0x10 | 3, getCPL(), 0, 0)))
 		{
-			if (faultcode != 2) //Not pending anymore?
-			{
-				BIU_DosboxTickPending[activeCPU] = 0; //Not pending anymore!
-			}
 			return; //Abort on fault! 
 		}
 
