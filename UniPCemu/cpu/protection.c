@@ -2302,7 +2302,10 @@ byte CPU_handleInterruptGate(byte EXT, byte table,uint_32 descriptorbase, RAWSEG
 						THROWDESCGP(idtentry.selector,((idtentry.selector&0x400)>>10),(idtentry.selector&4)?EXCEPTION_TABLE_LDT:EXCEPTION_TABLE_GDT); //Throw error!
 					}
 				}
-				CPU_flushPIQ(-1); //We're jumping to another address!
+				if (loadresult == -1) //Errored out?
+				{
+					CPU_flushPIQ(-1); //We're jumping to another address!
+				}
 				return (loadresult==-2)?0:1; //Abort on fault!
 			}
 
