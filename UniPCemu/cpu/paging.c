@@ -441,7 +441,7 @@ byte isvalidpage(uint_32 address, byte iswrite, byte CPL, byte isPrefetch) //Do 
 byte CPU_Paging_checkPage(uint_32 address, byte readflags, byte CPL)
 {
 	byte result;
-	result = isvalidpage(address,((readflags&(~0x10))==0),CPL,(readflags&0x10),0); //Are we an invalid page? We've raised an error! Bit4 is set during Prefetch operations!
+	result = isvalidpage(address,((readflags&(~0x10))==0),CPL,(readflags&0x10)); //Are we an invalid page? We've raised an error! Bit4 is set during Prefetch operations!
 	if (result == 1) //OK?
 	{
 		return 0; //OK!
