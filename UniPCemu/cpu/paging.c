@@ -180,7 +180,7 @@ byte verifyCPL(byte iswrite, byte userlevel, byte PDERW, byte PDEUS, byte PTERW,
 
 void Paging_freeOppositeTLB(uint_32 logicaladdress, byte W, byte U, byte D, byte S);
 
-byte isvalidpage(uint_32 address, byte iswrite, byte CPL, byte isPrefetch, byte markaccess) //Do we have paging without error? userlevel=CPL usually.
+byte isvalidpage(uint_32 address, byte iswrite, byte CPL, byte isPrefetch) //Do we have paging without error? userlevel=CPL usually.
 {
 	word DIR, TABLE;
 	byte PTEUPDATED = 0, PDEUPDATED = 0; //Not update!
@@ -380,7 +380,7 @@ byte isvalidpage(uint_32 address, byte iswrite, byte CPL, byte isPrefetch, byte 
 	//RW=Are we writable?
 	if (likely(isS == 0)) //PTE-only?
 	{
-		if (iswrite && markaccess) //Writing and marking dirty?
+		if (iswrite) //Writing and marking dirty?
 		{
 			if (unlikely(!(PTE&PTE_D)))
 			{
@@ -391,7 +391,7 @@ byte isvalidpage(uint_32 address, byte iswrite, byte CPL, byte isPrefetch, byte 
 	}
 	else //Large page?
 	{
-		if (iswrite && markaccess) //Writing and marking dirty?
+		if (iswrite) //Writing and marking dirty?
 		{
 			if (unlikely(!(PDE&PDE_Dirty)))
 			{
