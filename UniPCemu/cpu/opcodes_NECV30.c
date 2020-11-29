@@ -54,7 +54,7 @@ OUTS
 //Info: Gv,Ev=See 8086 opcode map; Ib/w=Immediate, Iz=Iw/Idw.
 
 //Help functions for debugging:
-OPTINLINE void CPU186_internal_MOV16(word *dest, word val) //Copy of 8086 version!
+OPTINLINE byte CPU186_internal_MOV16(word *dest, word val) //Copy of 8086 version!
 {
 	CPUPROT1
 		if (dest) //Register?
@@ -73,18 +73,19 @@ OPTINLINE void CPU186_internal_MOV16(word *dest, word val) //Copy of 8086 versio
 		{
 			if (CPU[activeCPU].custommem)
 			{
-				if (checkMMUaccess16(CPU_segment_index(CPU_SEGMENT_DS), CPU_segment(CPU_SEGMENT_DS), (CPU[activeCPU].customoffset&CPU[activeCPU].address_size),0|0x40,getCPL(),!CPU[activeCPU].CPU_Address_size,0|0x8)) return; //Abort on fault!
-				if (checkMMUaccess16(CPU_segment_index(CPU_SEGMENT_DS), CPU_segment(CPU_SEGMENT_DS), (CPU[activeCPU].customoffset&CPU[activeCPU].address_size), 0|0xA0, getCPL(), !CPU[activeCPU].CPU_Address_size, 0 | 0x8)) return; //Abort on fault!
-				if (CPU8086_internal_stepwritedirectw(0,CPU_segment_index(CPU_SEGMENT_DS), CPU_segment(CPU_SEGMENT_DS), CPU[activeCPU].customoffset, val,!CPU[activeCPU].CPU_Address_size)) return; //Write to memory directly!
+				if (checkMMUaccess16(CPU_segment_index(CPU_SEGMENT_DS), CPU_segment(CPU_SEGMENT_DS), (CPU[activeCPU].customoffset&CPU[activeCPU].address_size),0|0x40,getCPL(),!CPU[activeCPU].CPU_Address_size,0|0x8)) return 1; //Abort on fault!
+				if (checkMMUaccess16(CPU_segment_index(CPU_SEGMENT_DS), CPU_segment(CPU_SEGMENT_DS), (CPU[activeCPU].customoffset&CPU[activeCPU].address_size), 0|0xA0, getCPL(), !CPU[activeCPU].CPU_Address_size, 0 | 0x8)) return 1; //Abort on fault!
+				if (CPU8086_internal_stepwritedirectw(0,CPU_segment_index(CPU_SEGMENT_DS), CPU_segment(CPU_SEGMENT_DS), CPU[activeCPU].customoffset, val,!CPU[activeCPU].CPU_Address_size)) return 1; //Write to memory directly!
 				CPU_apply286cycles(); //Apply the 80286+ cycles!
 			}
 			else //ModR/M?
 			{
-				if (CPU8086_internal_stepwritemodrmw(0,val, CPU[activeCPU].MODRM_src0,0)) return; //Write the result to memory!
+				if (CPU8086_internal_stepwritemodrmw(0,val, CPU[activeCPU].MODRM_src0,0)) return 1; //Write the result to memory!
 				CPU_apply286cycles(); //Apply the 80286+ cycles!
 			}
 		}
 	CPUPROT2
+		return 0; //OK!
 }
 
 //BCD opcodes!
@@ -578,7 +579,7 @@ void CPU186_OP8E()
 		if (modrm_check16(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src1, 1|0xA0)) return;
 	}
 	if (CPU8086_instructionstepreadmodrmw(0, &CPU[activeCPU].temp8Edata, CPU[activeCPU].MODRM_src1)) return;
-	CPU186_internal_MOV16(modrm_addr16(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, 0), CPU[activeCPU].temp8Edata);
+	if (CPU186_internal_MOV16(modrm_addr16(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, 0), CPU[activeCPU].temp8Edata)) return;
 	if ((CPU[activeCPU].params.info[CPU[activeCPU].MODRM_src0].reg16 == &REG_SS) && (CPU[activeCPU].params.info[CPU[activeCPU].MODRM_src0].isreg == 1) && (CPU[activeCPU].previousAllowInterrupts))
 	{
 		CPU[activeCPU].allowInterrupts = 0; /* Inhabit all interrupts up to the next instruction */
