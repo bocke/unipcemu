@@ -183,6 +183,11 @@ void CPU_onResettingFault(byte is_paginglock)
 	if (CPU[activeCPU].have_oldESPinstr && is_paginglock) //Use instruction ESP instead to return to during paging locks?
 	{
 		REG_ESP = CPU[activeCPU].oldESPinstr; //Restore ESP to it's original value!
+		CPU[activeCPU].have_oldESPinstr = 0; //Don't do this again, unless retriggered (paging lock again)!
+	}
+	else //Normal fault handling?
+	{
+		CPU[activeCPU].have_oldESPinstr = 0; //Don't do this again, unless retriggered (paging lock again)!
 	}
 	if (CPU[activeCPU].have_oldEBP) //Returning the (E)BP to it's old value?
 	{
@@ -1344,7 +1349,9 @@ byte CPU_segmentWritten_protectedmode_RETF(byte oldCPL, word value, word isJMPor
 		}
 		CPU[activeCPU].is_stackswitching = 0; //We've finished stack switching!
 		//Privilege change!
-		if (segmentWritten(CPU_SEGMENT_SS, CPU[activeCPU].segmentWritten_tempSS, (getRPL(value) << 13) | 0x1000)) return 1; //Back to our calling stack!
+		CPU_commitStateESP(); //ESP has been changed within an instruction to be kept when not faulting!
+
+		if ((stackresult = segmentWritten(CPU_SEGMENT_SS, CPU[activeCPU].segmentWritten_tempSS, (getRPL(value) << 13) | 0x1000))!=0) return (stackresult==2)?2:1; //Back to our calling stack!
 		if (CPU[activeCPU].CPU_Operand_size)
 		{
 			REG_ESP = CPU[activeCPU].segmentWritten_tempESP; //POP ESP!
