@@ -1397,7 +1397,11 @@ void BIU_cycle_WaitStateRAMBUS() //Waiting for WaitState RAM/BUS?
 
 void BIU_handleRequestsIPS() //Handle all pending requests at once!
 {
-	if (BUSactive==2) return; //BUS taken?
+	if (BUSactive == 2)
+	{
+		BIU[activeCPU].handlerequestPending = &BIU_handleRequestsIPS; //We're keeping pending to handle!
+		return; //BUS taken?
+	}
 	if (unlikely(BIU_processRequests(0, 0))) //Processing a request?
 	{
 		checkBIUBUSrelease(); //Check for release!
@@ -1418,6 +1422,10 @@ void BIU_handleRequestsIPS() //Handle all pending requests at once!
 		handleBusLockPending: //Bus lock is pending?
 		checkBIUBUSrelease(); //Check for release!
 		BIU[activeCPU].requestready = 1; //The request is ready to be served!
+	}
+	else //Nothing to do?
+	{
+		BIU[activeCPU].handlerequestPending = &BIU_handleRequestsNOP; //Nothing is pending anymore!
 	}
 }
 
