@@ -172,7 +172,7 @@ void CPU_executionphase_startinterrupt(byte vectornr, byte type, int_64 errorcod
 	CPU[activeCPU].CPU_executionphaseinterrupt_errorcode = errorcode; //Save the error code!
 	CPU[activeCPU].CPU_executionphaseinterrupt_nr = vectornr; //Vector number!
 	CPU[activeCPU].CPU_executionphaseinterrupt_type = type; //Are we a what kind of type are we?
-	CPU[activeCPU].CPU_executionphaseinterrupt_is_interrupt = ((((errorcode==-2)|(errorcode==-4))?(1|((type<<1)&0x10)):(0|((type<<1)&0x10)))|(type<<1)); //Interrupt?
+	CPU[activeCPU].CPU_executionphaseinterrupt_is_interrupt = ((((errorcode==-2)|(errorcode==-4)|(errorcode==-5))?(1|((type<<1)&0x10)):(0|((type<<1)&0x10)))|(type<<1)); //Interrupt?
 	CPU[activeCPU].executed = 0; //Not executed yet!
 	CPU[activeCPU].INTreturn_CS = REG_CS; //Return segment!
 	CPU[activeCPU].INTreturn_EIP = REG_EIP; //Save the return offset!

@@ -1766,7 +1766,7 @@ int CPU_MMU_checklimit(int segment, word segmentval, uint_64 offset, word forrea
 			{
 			default: //Unknown status? Count #GP by default!
 			case 1: //#GP(0) or pseudo protection fault(Real/V86 mode(V86 mode only during limit range exceptions, otherwise error code 0))?
-				if (unlikely((forreading&0x10)==0)) CPU_GP(((getcpumode()==CPU_MODE_PROTECTED) || (!(((CPU[activeCPU].CPU_MMU_checkrights_cause==6) && (getcpumode()==CPU_MODE_8086)) || (getcpumode()==CPU_MODE_REAL))))?(0|((forreading&0x200)?((forreading&0x400)>>10):0)):-2); //Throw (pseudo) fault when not prefetching!
+				if (unlikely((forreading&0x10)==0)) CPU_GP(((getcpumode()==CPU_MODE_PROTECTED) || (!(((CPU[activeCPU].CPU_MMU_checkrights_cause==6) && (getcpumode()==CPU_MODE_8086)) || (getcpumode()==CPU_MODE_REAL))))?(0|((forreading&0x200)?((forreading&0x400)>>10):0)):-5); //Throw (pseudo) fault when not prefetching!
 				return 1; //Error out!
 				break;
 			case 2: //#NP?
@@ -1774,7 +1774,7 @@ int CPU_MMU_checklimit(int segment, word segmentval, uint_64 offset, word forrea
 				return 1; //Error out!
 				break;
 			case 3: //#SS(0) or pseudo protection fault(Real/V86 mode)?
-				if (unlikely((forreading&0x10)==0)) CPU_StackFault(((getcpumode()==CPU_MODE_PROTECTED) || (!(((CPU[activeCPU].CPU_MMU_checkrights_cause==6) && (getcpumode()==CPU_MODE_8086)) || (getcpumode()==CPU_MODE_REAL))))?((((forreading&0x100))?((REG_SS&0xFFF8)|(((REG_SS&4)?EXCEPTION_TABLE_LDT:EXCEPTION_TABLE_GDT)<<1)):0)|((forreading&0x200)?((forreading&0x400)>>10):0)):-2); //Throw (pseudo) fault when not prefetching! Set EXT bit(bit7) when requested(bit6) and give SS instead of 0!
+				if (unlikely((forreading&0x10)==0)) CPU_StackFault(((getcpumode()==CPU_MODE_PROTECTED) || (!(((CPU[activeCPU].CPU_MMU_checkrights_cause==6) && (getcpumode()==CPU_MODE_8086)) || (getcpumode()==CPU_MODE_REAL))))?((((forreading&0x100))?((REG_SS&0xFFF8)|(((REG_SS&4)?EXCEPTION_TABLE_LDT:EXCEPTION_TABLE_GDT)<<1)):0)|((forreading&0x200)?((forreading&0x400)>>10):0)):-5); //Throw (pseudo) fault when not prefetching! Set EXT bit(bit7) when requested(bit6) and give SS instead of 0!
 				return 1; //Error out!
 				break;
 			}
@@ -2032,7 +2032,7 @@ byte CPU_handleInterruptGate(byte EXT, byte table,uint_32 descriptorbase, RAWSEG
 	RAWSEGMENTDESCRIPTOR idtentry; //The loaded IVT entry!
 	memcpy(&idtentry,theidtentry,sizeof(idtentry)); //Make a copy for our own use!
 
-	if ((is_interrupt&1) && /*((is_interrupt&0x10)==0) &&*/ (IDTENTRY_DPL(idtentry) < getCPL())) //Not enough rights on software interrupt?
+	if ((is_interrupt&1) && /*((is_interrupt&0x10)==0) &&*/ (IDTENTRY_DPL(idtentry) < getCPL()) && (errorcode!=-5)) //Not enough rights on software interrupt? Don't fault on a pseudo-interrupt!
 	{
 		THROWDESCGP(base,EXT,table); //#GP!
 		return 0;
