@@ -111,7 +111,7 @@ void raisePF(uint_32 address, word flags)
 	if (CPU_faultraised(EXCEPTION_PAGEFAULT)) //Fault raising exception!
 	{
 		CPU_resetOP(); //Go back to the start of the instruction!
-		CPU_onResettingFault(); //Set the fault data!
+		CPU_onResettingFault(0); //Set the fault data!
 		CPU_executionphase_startinterrupt(EXCEPTION_PAGEFAULT,2|8,(int_64)flags); //Call IVT entry #13 decimal!
 		//Execute the interrupt!
 		CPU[activeCPU].faultraised = 1; //We have a fault raised, so don't raise any more!
@@ -245,7 +245,7 @@ byte isvalidpage(uint_32 address, byte iswrite, byte CPL, byte isPrefetch) //Do 
 		CPU[activeCPU].executed = 0; //Didn't finish executing yet!
 		if (EUphasehandlerrequiresreset()) //Requires reset to execute properly?
 		{
-			CPU_onResettingFault(); //Set the fault data to restart any instruction-related things!
+			CPU_onResettingFault(1); //Set the fault data to restart any instruction-related things!
 		}
 		return 2; //Stop and wait to obtain the bus lock first!
 	}

@@ -1030,6 +1030,8 @@ typedef struct
 	word oldSS; //SS backup for fault handling!
 	byte have_oldESP; //oldESP is set to use?
 	uint_32 oldESP; //Back-up of ESP during stack faults to use!
+	byte have_oldESPinstr; //oldESP is set to use?
+	uint_32 oldESPinstr; //Back-up of ESP during stack faults to use!
 	byte have_oldEBP; //oldEBP is set to use?
 	uint_32 oldEBP; //Back-up of EBP during stack faults to use!
 	byte have_oldEFLAGS;

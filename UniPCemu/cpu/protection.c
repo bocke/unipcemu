@@ -82,7 +82,7 @@ void CPU_doublefault()
 	uint_64 zerovalue=0; //Zero value pushed!
 	++CPU[activeCPU].faultlevel; //Raise the fault level to cause triple faults!
 	CPU_resetOP();
-	CPU_onResettingFault();
+	CPU_onResettingFault(0);
 	CPU_executionphase_startinterrupt(EXCEPTION_DOUBLEFAULT,2|8,zerovalue); //Execute the double fault handler!
 }
 
@@ -169,7 +169,7 @@ byte CPU_faultraised(byte type)
 	return 1; //Handle the fault normally!
 }
 
-void CPU_onResettingFault()
+void CPU_onResettingFault(byte is_paginglock)
 {
 	byte segRegLeft,segRegIndex,segRegShift;
 	if (CPU[activeCPU].have_oldCPL) //Returning the CPL to it's old value?
@@ -233,6 +233,12 @@ void CPU_commitState() //Prepare for a fault by saving all required data!
 	CPU[activeCPU].have_oldSegReg = 0; //Commit the segment registers!
 }
 
+void CPU_commitStateESP()
+{
+	CPU[activeCPU].oldESPinstr = REG_ESP; //Restore ESP to it's original value!
+	CPU[activeCPU].have_oldESPinstr = 1; //Restorable!
+}
+
 //More info: http://wiki.osdev.org/Paging
 //General Protection fault.
 void CPU_GP(int_64 errorcode)
@@ -251,7 +257,7 @@ void CPU_GP(int_64 errorcode)
 	if (CPU_faultraised(EXCEPTION_GENERALPROTECTIONFAULT)) //Fault raising exception!
 	{
 		CPU_resetOP(); //Point to the faulting instruction!
-		CPU_onResettingFault(); //Apply reset to fault!
+		CPU_onResettingFault(0); //Apply reset to fault!
 		CPU_executionphase_startinterrupt(EXCEPTION_GENERALPROTECTIONFAULT,2|8,errorcode); //Call IVT entry #13 decimal!
 		//Execute the interrupt!
 	}
@@ -273,7 +279,7 @@ void CPU_AC(int_64 errorcode)
 	if (CPU_faultraised(EXCEPTION_ALIGNMENTCHECK)) //Fault raising exception!
 	{
 		CPU_resetOP(); //Point to the faulting instruction!
-		CPU_onResettingFault(); //Apply reset to fault!
+		CPU_onResettingFault(0); //Apply reset to fault!
 		CPU_executionphase_startinterrupt(EXCEPTION_ALIGNMENTCHECK,2|8,errorcode); //Call IVT entry #13 decimal!
 		//Execute the interrupt!
 	}
@@ -295,7 +301,7 @@ void CPU_SegNotPresent(int_64 errorcode)
 	if (CPU_faultraised(EXCEPTION_SEGMENTNOTPRESENT)) //Fault raising exception!
 	{
 		CPU_resetOP(); //Point to the faulting instruction!
-		CPU_onResettingFault(); //Apply reset to fault!
+		CPU_onResettingFault(0); //Apply reset to fault!
 		CPU_executionphase_startinterrupt(EXCEPTION_SEGMENTNOTPRESENT,2|8,errorcode); //Call IVT entry #11 decimal!
 		//Execute the interrupt!
 	}
@@ -318,7 +324,7 @@ void CPU_StackFault(int_64 errorcode)
 	if (CPU_faultraised(EXCEPTION_STACKFAULT)) //Fault raising exception!
 	{
 		CPU_resetOP(); //Point to the faulting instruction!
-		CPU_onResettingFault(); //Apply reset to fault!
+		CPU_onResettingFault(0); //Apply reset to fault!
 		CPU_executionphase_startinterrupt(EXCEPTION_STACKFAULT,2|8,errorcode); //Call IVT entry #12 decimal!
 		//Execute the interrupt!
 	}

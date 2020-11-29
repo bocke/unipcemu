@@ -60,7 +60,8 @@ byte STACK_SEGMENT_DESCRIPTOR_B_BIT(); //80386+: Gives the B-Bit of the DATA DES
 byte CODE_SEGMENT_DESCRIPTOR_D_BIT(); //80386+: Gives the D-Bit of the CODE DESCRIPTOR TABLE FOR CS-register!
 uint_32 getstackaddrsizelimiter(); //80286+: Gives the stack address size mask to use!
 void CPU_commitState(); //Prepare for a fault by saving all required data!
-void CPU_onResettingFault(); //When resetting the current instruction for a fault!
+void CPU_commitStateESP(); //Prepare for a page handler after an instruction has changed ESP!
+void CPU_onResettingFault(byte is_paginglock); //When resetting the current instruction for a fault!
 
 void CPU_AC(int_64 errorcode); //Alignment check fault!
 
