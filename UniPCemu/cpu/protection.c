@@ -229,6 +229,7 @@ void CPU_commitState() //Prepare for a fault by saving all required data!
 	CPU[activeCPU].oldESP = REG_ESP; //Restore ESP to it's original value!
 	CPU[activeCPU].have_oldESP = 1; //Restorable!
 	CPU[activeCPU].oldEBP = REG_EBP; //Restore EBP to it's original value!
+	CPU[activeCPU].have_oldESPinstr = 0; //Don't reload instruction ESP!
 	CPU[activeCPU].have_oldEBP = 1; //Restorable!
 	CPU_filterflags(); //Filter the flags!
 	CPU[activeCPU].oldEFLAGS = REG_EFLAGS; //Restore EFLAGS to it's original value!
