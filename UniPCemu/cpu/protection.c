@@ -1946,11 +1946,11 @@ byte CPU_ProtectedModeInterrupt(byte intnr, word returnsegment, uint_32 returnof
 	RAWSEGMENTDESCRIPTOR idtentry; //The loaded IVT entry!
 	if ((result = checkDirectMMUaccess(base, 1,/*getCPL()*/ 0))!=0) //Error in the paging unit?
 	{
-		return (result==2)?2:1; //Error out!
+		return (result==2)?0:1; //Error out!
 	}
 	if ((result = checkDirectMMUaccess(base+sizeof(idtentry.descdata)-1, 1,/*getCPL()*/ 0))!=0) //Error in the paging unit?
 	{
-		return (result==2)?2:1; //Error out!
+		return (result==2)?0:1; //Error out!
 	}
 	for (left=0;left<sizeof(idtentry.descdata);) //Data left to read?
 	{
