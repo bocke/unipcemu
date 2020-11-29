@@ -180,6 +180,10 @@ void CPU_onResettingFault(byte is_paginglock)
 	{
 		REG_ESP = CPU[activeCPU].oldESP; //Restore ESP to it's original value!
 	}
+	if (CPU[activeCPU].have_oldESPinstr && is_paginglock) //Use instruction ESP instead to return to during paging locks?
+	{
+		REG_ESP = CPU[activeCPU].oldESPinstr; //Restore ESP to it's original value!
+	}
 	if (CPU[activeCPU].have_oldEBP) //Returning the (E)BP to it's old value?
 	{
 		REG_EBP = CPU[activeCPU].oldEBP; //Restore EBP to it's original value!

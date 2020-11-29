@@ -2083,6 +2083,7 @@ void CPU_exec() //Processes the opcode at CS:EIP (386) or CS:IP (8086).
 
 		CPU[activeCPU].have_oldCPL = 0; //Default: no CPL to return to during exceptions!
 		CPU[activeCPU].have_oldESP = 0; //Default: no ESP to return to during exceptions!
+		CPU[activeCPU].have_oldESPinstr = 0; //Default: no ESP to return to during page loads!
 		CPU[activeCPU].have_oldEBP = 0; //Default: no EBP to return to during exceptions!
 		CPU[activeCPU].have_oldEFLAGS = 0; //Default: no EFLAGS to return during exceptions!
 
