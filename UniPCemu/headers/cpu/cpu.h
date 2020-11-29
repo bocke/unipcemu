@@ -1267,6 +1267,7 @@ typedef struct
 	uint_64 PageFault_PDE;
 	uint_64 PageFault_PTE;
 	uint_32 enter_finalESP;
+	byte segmentWritten_instructionrunning; //segmentWritten running within an instruction?
 } CPU_type;
 
 #ifndef IS_CPU

@@ -115,6 +115,7 @@ byte CPU_request_MMUwdw(sword segdesc, uint_32 offset, uint_32 val, byte is_offs
 
 void CPU_executionphase_normal() //Executing an opcode?
 {
+	CPU[activeCPU].segmentWritten_instructionrunning = 0; //Not running segmentWritten by default!
 	CPU[activeCPU].currentOP_handler(); //Now go execute the OPcode once in the runtime!
 	//Don't handle unknown opcodes here: handled by native CPU parser, defined in the opcode jmptbl.
 }
@@ -233,5 +234,5 @@ void CPU_executionphase_init()
 byte EUphasehandlerrequiresreset()
 {
 	//Reset is requiresd on IRET handling, Task Switch phase and Interrupt handling phase!
-	return (CPU[activeCPU].currentEUphasehandler==&CPU_executionphase_taskswitch) || (CPU[activeCPU].currentEUphasehandler == &CPU_executionphase_interrupt) || (((CPU[activeCPU].currentEUphasehandler == &CPU_executionphase_normal) && ((CPU[activeCPU].currentOP_handler==&CPU8086_OPCF)||(CPU[activeCPU].currentOP_handler==&CPU80386_OPCF)))); //On the specified cases only!
+	return (CPU[activeCPU].currentEUphasehandler==&CPU_executionphase_taskswitch) || (CPU[activeCPU].currentEUphasehandler == &CPU_executionphase_interrupt) || (((CPU[activeCPU].currentEUphasehandler == &CPU_executionphase_normal) && ((CPU[activeCPU].currentOP_handler==&CPU8086_OPCF)||(CPU[activeCPU].currentOP_handler==&CPU80386_OPCF)||(CPU[activeCPU].segmentWritten_instructionrunning)))); //On the specified cases only!
 }

@@ -1522,6 +1522,7 @@ byte segmentWritten(int segment, word value, word isJMPorCALL) //A segment regis
 	sbyte loadresult;
 	CPU[activeCPU].segmentWrittenVal = value; //What value is written!
 	CPU[activeCPU].isJMPorCALLval = isJMPorCALL; //What type of write are we?
+	CPU[activeCPU].segmentWritten_instructionrunning = 1; //We're running the segmentWritten function now!
 	if (getcpumode()==CPU_MODE_PROTECTED) //Protected mode, must not be real or V8086 mode, so update the segment descriptor cache!
 	{
 		isDifferentCPL = 0; //Default: same CPL!
