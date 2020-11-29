@@ -1922,6 +1922,7 @@ byte switchStacks(byte newCPL)
 
 byte CPU_ProtectedModeInterrupt(byte intnr, word returnsegment, uint_32 returnoffset, int_64 errorcode, byte is_interrupt) //Execute a protected mode interrupt!
 {
+	byte result;
 	byte left; //The amount of bytes left to read of the IDT entry!
 	uint_32 base;
 	base = (intnr<<3); //The base offset of the interrupt in the IDT!
@@ -1943,13 +1944,13 @@ byte CPU_ProtectedModeInterrupt(byte intnr, word returnsegment, uint_32 returnof
 	base += CPU[activeCPU].registers->IDTR.base; //Add the base for the actual offset into the IDT!
 	
 	RAWSEGMENTDESCRIPTOR idtentry; //The loaded IVT entry!
-	if (checkDirectMMUaccess(base, 1,/*getCPL()*/ 0)) //Error in the paging unit?
+	if ((result = checkDirectMMUaccess(base, 1,/*getCPL()*/ 0))!=0) //Error in the paging unit?
 	{
-		return 1; //Error out!
+		return (result==2)?2:1; //Error out!
 	}
-	if (checkDirectMMUaccess(base+sizeof(idtentry.descdata)-1, 1,/*getCPL()*/ 0)) //Error in the paging unit?
+	if ((result = checkDirectMMUaccess(base+sizeof(idtentry.descdata)-1, 1,/*getCPL()*/ 0))!=0) //Error in the paging unit?
 	{
-		return 1; //Error out!
+		return (result==2)?2:1; //Error out!
 	}
 	for (left=0;left<sizeof(idtentry.descdata);) //Data left to read?
 	{
