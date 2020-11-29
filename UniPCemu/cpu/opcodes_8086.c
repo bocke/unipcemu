@@ -4059,6 +4059,7 @@ OPTINLINE byte CPU8086_internal_RETF(word popbytes, byte isimm)
 	CPUPROT1
 	CPU[activeCPU].destEIP = (uint_32)CPU[activeCPU].RETF_val; //Load IP!
 	CPU[activeCPU].RETF_popbytes = popbytes; //Allow modification!
+	CPU_commitStateESP(); //ESP has been changed within an instruction to be kept when not faulting!
 	if (segmentWritten(CPU_SEGMENT_CS, CPU[activeCPU].RETF_destCS,4)) return 1; //CS changed, we're a RETF instruction!
 	CPUPROT1
 	if (STACK_SEGMENT_DESCRIPTOR_B_BIT())
@@ -4464,6 +4465,7 @@ void CPU8086_OP07()
 	}
 	if (CPU8086_instructionstepPOPtimeout(0)) return; /*POP timeout*/
 	if (CPU8086_POPw(2,&CPU[activeCPU].instructionbufferw,CPU[activeCPU].CPU_Operand_size|2)) return;
+	CPU_commitStateESP(); //ESP has been changed within an instruction to be kept when not faulting!
 	if (segmentWritten(CPU_SEGMENT_ES, CPU[activeCPU].instructionbufferw,0)) return; /*CS changed!*/
 	if (CPU_apply286cycles()==0) /* No 80286+ cycles instead? */
 	{
@@ -4523,6 +4525,7 @@ void CPU8086_OP0F() /*FLAG_OF: POP CS; shouldn't be used?*/
 	if (CPU8086_instructionstepPOPtimeout(0)) return; /*POP timeout*/
 	if (CPU8086_POPw(2,&CPU[activeCPU].instructionbufferw,CPU[activeCPU].CPU_Operand_size)) return; /*Don't handle: 8086 ignores this opcode, and you won't find it there!*/
 	CPU[activeCPU].destEIP = REG_EIP;
+	CPU_commitStateESP(); //ESP has been changed within an instruction to be kept when not faulting!
 	if (segmentWritten(CPU_SEGMENT_CS, CPU[activeCPU].instructionbufferw, 0)) return; /*POP CS!*/
 	if (CPU_apply286cycles()==0) /* No 80286+ cycles instead? */
 	{
@@ -4586,6 +4589,7 @@ void CPU8086_OP17()
 	}
 	if (CPU8086_instructionstepPOPtimeout(0)) return; /*POP timeout*/
 	if (CPU8086_POPw(2,&CPU[activeCPU].instructionbufferw,CPU[activeCPU].CPU_Operand_size|2)) return;
+	CPU_commitStateESP(); //ESP has been changed within an instruction to be kept when not faulting!
 	if (segmentWritten(CPU_SEGMENT_SS, CPU[activeCPU].instructionbufferw,0)) return; /*CS changed!*/
 	if (CPU_apply286cycles()==0) /* No 80286+ cycles instead? */
 	{
@@ -4653,6 +4657,7 @@ void CPU8086_OP1F()
 	}
 	if (CPU8086_instructionstepPOPtimeout(0)) return; /*POP timeout*/
 	if (CPU8086_POPw(2,&CPU[activeCPU].instructionbufferw,CPU[activeCPU].CPU_Operand_size|2)) return;
+	CPU_commitStateESP(); //ESP has been changed within an instruction to be kept when not faulting!
 	if (segmentWritten(CPU_SEGMENT_DS, CPU[activeCPU].instructionbufferw,0)) return; /*CS changed!*/
 	if (CPU_apply286cycles()==0) /* No 80286+ cycles instead? */
 	{
@@ -5718,6 +5723,7 @@ void CPU8086_OP9A()
 		if (CPU8086_instructionstepdelayBIU(2, 5)) return; //Wait 5 cycles!
 		if (CPU8086_instructionstepdelayBIU(4, 4)) return; //Wait 4 cycles!
 		if (CPU8086_PUSHw(6, &REG_IP, 0)) return; //IP pushed!
+		CPU_commitStateESP(); //ESP has been changed within an instruction to be kept when not faulting!
 		CPU[activeCPU].destEIP = (segmentoffset & 0xFFFF) & CPU_EIPmask(0); //IP destination!
 		segmentWritten(CPU_SEGMENT_CS, (segmentoffset >> 16) & 0xFFFF, 0); //Set CS&IP!
 	}

@@ -2344,6 +2344,7 @@ OPTINLINE byte CPU80386_internal_RETF(word popbytes, byte isimm)
 	CPUPROT1
 	CPU[activeCPU].destEIP = CPU[activeCPU].RETFD_val; //Load IP!
 	CPU[activeCPU].RETF_popbytes = popbytes; //Allow modification!
+	CPU_commitStateESP(); //ESP has been changed within an instruction to be kept when not faulting!
 	if (segmentWritten(CPU_SEGMENT_CS, CPU[activeCPU].RETF_destCS,4)) return 1; //CS changed, we're a RETF instruction!
 	CPUPROT1
 	if (STACK_SEGMENT_DESCRIPTOR_B_BIT())
@@ -2557,6 +2558,7 @@ byte CPU80386_internal_LXS(int segmentregister) //LDS, LES etc.
 	//Execution phase!
 	CPUPROT1
 	CPU[activeCPU].destEIP = REG_EIP; //Save EIP for transfers!
+	CPU_commitStateESP(); //ESP has been changed within an instruction to be kept when not faulting!
 	if (segmentWritten(segmentregister, CPU[activeCPU].LXS_segment,0)) return 1; //Load the new segment!
 	CPUPROT1
 	modrm_write32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, CPU[activeCPU].LXS_offsetd); //Try to load the new register with the offset!

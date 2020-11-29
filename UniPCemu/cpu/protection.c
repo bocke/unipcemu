@@ -1658,12 +1658,14 @@ byte segmentWritten(int segment, word value, word isJMPorCALL) //A segment regis
 				pushingval = REG_CS; //What to push!
 				if (CPU80386_internal_PUSHdw(0,&pushingval)) return 1;
 				if (CPU80386_internal_PUSHdw(2,&REG_EIP)) return 1;
+				CPU_commitStateESP(); //ESP has been changed within an instruction to be kept when not faulting!
 			}
 			else //16-bit?
 			{
 				if (CPU[activeCPU].internalinstructionstep==0) if(checkStackAccess(2, 1, 0)) return 1; //We're trying to push on the stack!
 				if (CPU8086_internal_PUSHw(0,&REG_CS,0)) return 1;
 				if (CPU8086_internal_PUSHw(2,&REG_IP,0)) return 1;
+				CPU_commitStateESP(); //ESP has been changed within an instruction to be kept when not faulting!
 			}
 		}
 
