@@ -1676,7 +1676,6 @@ void CPU80386_OP0FA1()
 		++CPU[activeCPU].stackchecked;
 	}
 	if (CPU8086_POPw(0,&CPU[activeCPU].instructionbufferw,CPU[activeCPU].CPU_Operand_size|2)) return;
-	CPU_commitStateESP(); //ESP has been changed within an instruction to be kept when not faulting!
 	if (segmentWritten(CPU_SEGMENT_FS, CPU[activeCPU].instructionbufferw,0)) return;
 	CPU_apply286cycles(); /* Apply cycles */
 } //POP FS
@@ -1701,7 +1700,6 @@ void CPU80386_OP0FA9()
 		++CPU[activeCPU].stackchecked;
 	}
 	if (CPU8086_POPw(0,&CPU[activeCPU].instructionbufferw,CPU[activeCPU].CPU_Operand_size|2)) return;
-	CPU_commitStateESP(); //ESP has been changed within an instruction to be kept when not faulting!
 	if (segmentWritten(CPU_SEGMENT_GS, CPU[activeCPU].instructionbufferw,0)) return;
 	CPU_apply286cycles(); /* Apply cycles */
 } //POP GS

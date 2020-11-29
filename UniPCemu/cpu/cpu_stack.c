@@ -238,6 +238,7 @@ byte CPU_PUSH16_BIU(word* val, byte is32instruction) //Push Word!
 		if (CPU[activeCPU].pushbusy == 0)
 		{
 			stack_push(0); //We're pushing a 16-bit value!
+			CPU_commitStateESP(); //ESP has been changed within an instruction to be kept when not faulting!
 			CPU[activeCPU].pushbusy = 1; //We're pending!
 		}
 		if (CPU_request_MMUww(CPU_SEGMENT_SS, (REG_ESP & getstackaddrsizelimiter()), *val, !STACK_SEGMENT_DESCRIPTOR_B_BIT())) //Request Put value!
@@ -252,6 +253,7 @@ byte CPU_PUSH16_BIU(word* val, byte is32instruction) //Push Word!
 		{
 			CPU[activeCPU].oldvalw = *val; //Original value, saved before decrementing (E)SP!
 			stack_push(is32instruction&1); //We're pushing a 16-bit or 32-bit value!
+			CPU_commitStateESP(); //ESP has been changed within an instruction to be kept when not faulting!
 			CPU[activeCPU].pushbusy = 1; //We're pending!
 		}
 		if ((is32instruction & 1) & (((~is32instruction) >> 1) & 1)) //32-bit?
@@ -305,6 +307,7 @@ byte CPU_POP16_BIU(byte is32instruction) //Pop Word!
 	if (result) //Requested?
 	{
 		stack_pop(/*CODE_SEGMENT_DESCRIPTOR_D_BIT()*/ is32instruction&1); //We're popping a 16-bit value!
+		CPU_commitStateESP(); //ESP has been changed within an instruction to be kept when not faulting!
 	}
 	return result; //Give the result!
 }
@@ -316,6 +319,7 @@ byte CPU_PUSH32_BIU(uint_32* val) //Push DWord!
 		if (CPU[activeCPU].pushbusy == 0)
 		{
 			stack_push(0); //We're pushing a 16-bit value!
+			CPU_commitStateESP(); //ESP has been changed within an instruction to be kept when not faulting!
 			CPU[activeCPU].pushbusy = 1; //We're pending!
 		}
 		if (CPU_request_MMUww(CPU_SEGMENT_SS, (REG_ESP & getstackaddrsizelimiter()), *val, !STACK_SEGMENT_DESCRIPTOR_B_BIT())) //Request Put value!
@@ -330,6 +334,7 @@ byte CPU_PUSH32_BIU(uint_32* val) //Push DWord!
 		{
 			CPU[activeCPU].oldvald = *val; //Original value, saved before decrementing (E)SP!
 			stack_push(/*CODE_SEGMENT_DESCRIPTOR_D_BIT()*/ 1); //We're pushing a 16-bit or 32-bit value!
+			CPU_commitStateESP(); //ESP has been changed within an instruction to be kept when not faulting!
 			CPU[activeCPU].pushbusy = 1; //We're pending!
 		}
 		/*if (CODE_SEGMENT_DESCRIPTOR_D_BIT()) //32-bit?
@@ -411,6 +416,7 @@ else //16-bit?
 	if (result) //Requested?
 	{
 		stack_pop(/*CODE_SEGMENT_DESCRIPTOR_D_BIT()*/ 1); //We're popping a 32-bit value!
+		CPU_commitStateESP(); //ESP has been changed within an instruction to be kept when not faulting!
 	}
 	return result; //Give the result!
 }
