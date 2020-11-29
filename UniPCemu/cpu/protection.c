@@ -1524,7 +1524,7 @@ byte segmentWritten(int segment, word value, word isJMPorCALL) //A segment regis
 	CPU[activeCPU].isJMPorCALLval = isJMPorCALL; //What type of write are we?
 	if (getcpumode()==CPU_MODE_PROTECTED) //Protected mode, must not be real or V8086 mode, so update the segment descriptor cache!
 	{
-		CPU[activeCPU].segmentWritten_instructionrunning = 1; //We're running the segmentWritten function now!
+		CPU[activeCPU].segmentWritten_instructionrunning += 1; //We're running the segmentWritten function now!
 		isDifferentCPL = 0; //Default: same CPL!
 		SEGMENT_DESCRIPTOR tempdescriptor;
 		SEGMENT_DESCRIPTOR *descriptor = getsegment_seg(segment,&tempdescriptor,&value,isJMPorCALL,&isDifferentCPL, &errorret); //Read the segment!
@@ -1539,6 +1539,7 @@ byte segmentWritten(int segment, word value, word isJMPorCALL) //A segment regis
 					//JMP(with call gate)/CALL needs pushed data on the stack?
 					if ((errorret = CPU_segmentWritten_protectedmode_JMPCALL(&value, isJMPorCALL, descriptor, isDifferentCPL))!=0) //Handle JMP/CALL for protected mode segments!
 					{
+						CPU[activeCPU].segmentWritten_instructionrunning -= 1; //We're running the segmentWritten function now!
 						return errorret; //Abort!
 					}
 					break;
@@ -1546,6 +1547,7 @@ byte segmentWritten(int segment, word value, word isJMPorCALL) //A segment regis
 					//IRET might need extra data popped?
 					if ((errorret = CPU_segmentWritten_protectedmode_IRET(oldCPL, value, isJMPorCALL, &checkSegmentRegisters))!=0) //Handle RETF for protected mode segments!
 					{
+						CPU[activeCPU].segmentWritten_instructionrunning -= 1; //We're running the segmentWritten function now!
 						return errorret; //Abort!
 					}
 					break;
@@ -1553,6 +1555,7 @@ byte segmentWritten(int segment, word value, word isJMPorCALL) //A segment regis
 					//RETF needs popped data on the stack?
 					if ((errorret = CPU_segmentWritten_protectedmode_RETF(oldCPL, value, isJMPorCALL, &checkSegmentRegisters))!=0) //Handle RETF for protected mode segments!
 					{
+						CPU[activeCPU].segmentWritten_instructionrunning -= 1; //We're running the segmentWritten function now!
 						return errorret; //Abort!
 					}
 					break;
@@ -1564,6 +1567,7 @@ byte segmentWritten(int segment, word value, word isJMPorCALL) //A segment regis
 			{
 				if (CPU_segmentWritten_protectedmode_TR(segment, value, isJMPorCALL, descriptor)) //Handle TR for protected mode segments!
 				{
+					CPU[activeCPU].segmentWritten_instructionrunning -= 1; //We're running the segmentWritten function now!
 					return 1; //Abort!
 				}
 			}
@@ -1593,6 +1597,7 @@ byte segmentWritten(int segment, word value, word isJMPorCALL) //A segment regis
 						THROWDESCGP(value,((isJMPorCALL&0x400)>>10),(value&4)?EXCEPTION_TABLE_LDT:EXCEPTION_TABLE_GDT); //Throw error!
 					}
 				}
+				CPU[activeCPU].segmentWritten_instructionrunning -= 1; //We're running the segmentWritten function now!
 				return (loadresult==-2)?2:1; //Abort on fault!
 			}
 
@@ -1601,6 +1606,7 @@ byte segmentWritten(int segment, word value, word isJMPorCALL) //A segment regis
 			case CPU_SEGMENT_CS: //CS register?
 				if (CPU_segmentWritten_protectedmode_CS(isJMPorCALL))
 				{
+					CPU[activeCPU].segmentWritten_instructionrunning -= 1; //We're running the segmentWritten function now!
 					return 1; //Abort!
 				}
 				break;
@@ -1617,8 +1623,13 @@ byte segmentWritten(int segment, word value, word isJMPorCALL) //A segment regis
 			}
 			if (segment == CPU_SEGMENT_CS) //CS needs a update on all CPU-related stuff!
 			{
-				if (CPU_condflushPIQ(-1)) return 1; //We're jumping to another address!
+				if (CPU_condflushPIQ(-1))
+				{
+					CPU[activeCPU].segmentWritten_instructionrunning -= 1; //We're running the segmentWritten function now!
+					return 1; //We're jumping to another address!
+				}
 			}
+			CPU[activeCPU].segmentWritten_instructionrunning -= 1; //We're running the segmentWritten function now!
 		}
 		else //A fault has been raised? Abort!
 		{
@@ -1626,6 +1637,7 @@ byte segmentWritten(int segment, word value, word isJMPorCALL) //A segment regis
 			{
 				CPU_flushPIQ(-1); //We're jumping to another address!
 			}
+			CPU[activeCPU].segmentWritten_instructionrunning -= 1; //We're running the segmentWritten function now!
 			return errorret; //Abort on fault!
 		}
 	}
