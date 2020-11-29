@@ -68,6 +68,7 @@ typedef struct
 	byte temp, temp2;
 	word resultw1, resultw2;
 	Handler handlerequestPending; //Pending request?
+	byte newrequest; //New request is pending to execute?
 } BIU_type;
 
 void CPU_initBIU(); //Initialize the BIU!

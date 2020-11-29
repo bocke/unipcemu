@@ -140,6 +140,7 @@ void CPU_initBIU()
 		memset(&CompaqWrapping, 0, sizeof(CompaqWrapping)); //Wrapping applied always!
 	}
 	BIU[activeCPU].handlerequestPending = &BIU_handleRequestsNOP; //Nothing is actively being handled!
+	BIU[activeCPU].newrequest = 0; //Not a new request loaded!
 }
 
 void CPU_doneBIU()
@@ -912,9 +913,9 @@ OPTINLINE byte BIU_processRequests(byte memory_waitstates, byte bus_waitstates)
 {
 	INLINEREGISTER uint_64 physicaladdress;
 	INLINEREGISTER byte value;
-	if (BIU[activeCPU]._lock==2) goto handlelockingBIU; //Lock waiting?
 	if (BIU[activeCPU].currentrequest) //Do we have a pending request we're handling? This is used for 16-bit and 32-bit requests!
 	{
+		if (BIU[activeCPU].newrequest) goto handleNewRequest; //A new request instead!
 		BUSactive = BIU[activeCPU].BUSactive = 1; //Start memory or BUS cycles!
 		switch (BIU[activeCPU].currentrequest&REQUEST_TYPEMASK) //What kind of request?
 		{
@@ -1051,16 +1052,19 @@ OPTINLINE byte BIU_processRequests(byte memory_waitstates, byte bus_waitstates)
 				break; //Ignore the entire request!
 		}
 	}
-	else if (BIU_haveRequest()) //Do we have a request to handle first?
+	else
 	{
-		if (BIU_readRequest(&BIU[activeCPU].currentrequest,&BIU[activeCPU].currentpayload[0],&BIU[activeCPU].currentpayload[1])) //Read the request, if available!
+		if (BIU_haveRequest()) //Do we have a request to handle first?
 		{
-			handlelockingBIU:
-			switch (BIU[activeCPU].currentrequest&REQUEST_TYPEMASK) //What kind of request?
+			if (BIU_readRequest(&BIU[activeCPU].currentrequest, &BIU[activeCPU].currentpayload[0], &BIU[activeCPU].currentpayload[1])) //Read the request, if available!
 			{
-				//Memory operations!
+				BIU[activeCPU].newrequest = 1; //We're a new request!
+			handleNewRequest:
+				switch (BIU[activeCPU].currentrequest & REQUEST_TYPEMASK) //What kind of request?
+				{
+					//Memory operations!
 				case REQUEST_MMUREAD:
-					if (BUSactive==2) return 1; //BUS taken?
+					if (BUSactive == 2) return 1; //BUS taken?
 					//Wait for other CPUs to release their lock on the bus if enabled?
 					if (CPU_getprefix(0xF0)) //Locking requested?
 					{
@@ -1072,7 +1076,7 @@ OPTINLINE byte BIU_processRequests(byte memory_waitstates, byte bus_waitstates)
 					BIU[activeCPU].newtransfer = 1; //We're a new transfer!
 					BIU[activeCPU].newtransfer_size = 1; //We're a new transfer!
 					BUSactive = BIU[activeCPU].BUSactive = 1; //Start memory or BUS cycles!
-					if ((BIU[activeCPU].currentrequest&REQUEST_16BIT) || (BIU[activeCPU].currentrequest&REQUEST_32BIT)) //16/32-bit?
+					if ((BIU[activeCPU].currentrequest & REQUEST_16BIT) || (BIU[activeCPU].currentrequest & REQUEST_32BIT)) //16/32-bit?
 					{
 						BIU[activeCPU].newtransfer_size = 2; //We're a new transfer!
 						BIU[activeCPU].currentrequest |= REQUEST_SUB1; //Request 16-bit half next(high byte)!
@@ -1081,7 +1085,7 @@ OPTINLINE byte BIU_processRequests(byte memory_waitstates, byte bus_waitstates)
 							BIU[activeCPU].newtransfer_size = 4; //We're a new transfer!
 						}
 					}
-					physicaladdress = BIU[activeCPU].currentaddress = (BIU[activeCPU].currentpayload[0]&0xFFFFFFFF); //Address to use!
+					physicaladdress = BIU[activeCPU].currentaddress = (BIU[activeCPU].currentpayload[0] & 0xFFFFFFFF); //Address to use!
 					if (BIU[activeCPU].currentpayload[1] & 1) //Requires logical to physical address translation?
 					{
 						if (is_paging()) //Are we paging?
@@ -1089,15 +1093,16 @@ OPTINLINE byte BIU_processRequests(byte memory_waitstates, byte bus_waitstates)
 							physicaladdress = mappage((uint_32)physicaladdress, 0, getCPL()); //Map it using the paging mechanism!
 						}
 					}
-					BIU[activeCPU].currentresult = ((value = BIU_directrb((physicaladdress),0x100))<<BIU_access_readshift[0]); //Read first byte!
+					BIU[activeCPU].currentresult = ((value = BIU_directrb((physicaladdress), 0x100)) << BIU_access_readshift[0]); //Read first byte!
 					if (unlikely((MMU_logging == 1) && (BIU[activeCPU].currentpayload[1] & 1))) //To log the paged layer?
 					{
 						debugger_logmemoryaccess(0, BIU[activeCPU].currentaddress, value, LOGMEMORYACCESS_PAGED | (((0 & 0x20) >> 5) << LOGMEMORYACCESS_PREFETCHBITSHIFT)); //Log it!
 					}
-					if ((BIU[activeCPU].currentrequest&REQUEST_SUBMASK)==REQUEST_SUB0) //Finished the request?
+					if ((BIU[activeCPU].currentrequest & REQUEST_SUBMASK) == REQUEST_SUB0) //Finished the request?
 					{
 						if (BIU_response(BIU[activeCPU].currentresult)) //Result given?
 						{
+							BIU[activeCPU].newrequest = 0; //We're not a new request!
 							BIU[activeCPU].waitstateRAMremaining += memory_waitstates; //Apply the waitstates for the fetch!
 							BIU[activeCPU].currentrequest = REQUEST_NONE; //No request anymore! We're finished!
 						}
@@ -1108,7 +1113,7 @@ OPTINLINE byte BIU_processRequests(byte memory_waitstates, byte bus_waitstates)
 					}
 					else
 					{
-						if (useIPSclock && (BIU[activeCPU].newtransfer_size==BIU_cachedmemorysize[activeCPU]) && (BIU_cachedmemorysize[activeCPU]>1) && (BIU_cachedmemoryaddr[activeCPU]==physicaladdress)) //Data already fully read in IPS clocking mode?
+						if (useIPSclock && (BIU[activeCPU].newtransfer_size == BIU_cachedmemorysize[activeCPU]) && (BIU_cachedmemorysize[activeCPU] > 1) && (BIU_cachedmemoryaddr[activeCPU] == physicaladdress)) //Data already fully read in IPS clocking mode?
 						{
 							BIU[activeCPU].currentresult = BIU_cachedmemoryread[activeCPU]; //What was read?
 							if (BIU_response(BIU[activeCPU].currentresult)) //Result given? We're giving OK!
@@ -1116,21 +1121,24 @@ OPTINLINE byte BIU_processRequests(byte memory_waitstates, byte bus_waitstates)
 								BIU_terminatemem(); //Terminate memory access!
 								BIU[activeCPU].waitstateRAMremaining += memory_waitstates; //Apply the waitstates for the fetch!
 								BIU[activeCPU].currentrequest = REQUEST_NONE; //No request anymore! We're finished!
+								BIU[activeCPU].newrequest = 0; //We're not a new request!
 								return 1; //Handled!
 							}
 						}
 						++BIU[activeCPU].currentaddress; //Next address!
-						if (unlikely((BIU[activeCPU].currentaddress&CPU_databusmask)==0))
+						if (unlikely((BIU[activeCPU].currentaddress & CPU_databusmask) == 0))
 						{
 							BIU[activeCPU].waitstateRAMremaining += memory_waitstates; //Apply the waitstates for the fetch!
+							BIU[activeCPU].newrequest = 0; //We're not a new request!
 							return 1; //Handled, but broken up at this point due to the data bus not supporting transferring the rest of the word in one go!
 						}
+						BIU[activeCPU].newrequest = 0; //We're not a new request!
 						goto fulltransferMMUread; //Start Full transfer, when available?
 					}
 					return 1; //Handled!
 					break;
 				case REQUEST_MMUWRITE:
-					if (BUSactive==2) return 1; //BUS taken?
+					if (BUSactive == 2) return 1; //BUS taken?
 					//Wait for other CPUs to release their lock on the bus if enabled?
 					if (CPU_getprefix(0xF0)) //Locking requested?
 					{
@@ -1142,7 +1150,7 @@ OPTINLINE byte BIU_processRequests(byte memory_waitstates, byte bus_waitstates)
 					BIU[activeCPU].newtransfer = 1; //We're a new transfer!
 					BIU[activeCPU].newtransfer_size = 1; //We're a new transfer!
 					BUSactive = BIU[activeCPU].BUSactive = 1; //Start memory or BUS cycles!
-					if ((BIU[activeCPU].currentrequest&REQUEST_16BIT) || (BIU[activeCPU].currentrequest&REQUEST_32BIT)) //16/32-bit?
+					if ((BIU[activeCPU].currentrequest & REQUEST_16BIT) || (BIU[activeCPU].currentrequest & REQUEST_32BIT)) //16/32-bit?
 					{
 						BIU[activeCPU].newtransfer_size = 2; //We're a new transfer!
 						BIU[activeCPU].currentrequest |= REQUEST_SUB1; //Request 16-bit half next(high byte)!
@@ -1151,7 +1159,7 @@ OPTINLINE byte BIU_processRequests(byte memory_waitstates, byte bus_waitstates)
 							BIU[activeCPU].newtransfer_size = 4; //We're a new transfer!
 						}
 					}
-					physicaladdress = BIU[activeCPU].currentaddress = (BIU[activeCPU].currentpayload[0]&0xFFFFFFFF); //Address to use!
+					physicaladdress = BIU[activeCPU].currentaddress = (BIU[activeCPU].currentpayload[0] & 0xFFFFFFFF); //Address to use!
 					if (BIU[activeCPU].currentpayload[1] & 1) //Requires logical to physical address translation?
 					{
 						if (is_paging()) //Are we paging?
@@ -1159,7 +1167,7 @@ OPTINLINE byte BIU_processRequests(byte memory_waitstates, byte bus_waitstates)
 							physicaladdress = mappage((uint_32)physicaladdress, 1, getCPL()); //Map it using the paging mechanism!
 						}
 					}
-					if ((BIU[activeCPU].currentrequest&REQUEST_SUBMASK)==REQUEST_SUB0) //Finished the request?
+					if ((BIU[activeCPU].currentrequest & REQUEST_SUBMASK) == REQUEST_SUB0) //Finished the request?
 					{
 						if (BIU_response(1)) //Result given? We're giving OK!
 						{
@@ -1170,13 +1178,15 @@ OPTINLINE byte BIU_processRequests(byte memory_waitstates, byte bus_waitstates)
 								debugger_logmemoryaccess(1, BIU[activeCPU].currentaddress, value, LOGMEMORYACCESS_PAGED | (((0 & 0x20) >> 5) << LOGMEMORYACCESS_PREFETCHBITSHIFT)); //Log it!
 							}
 							memory_datawritesize = 1; //1 byte only!
-							BIU_directwb(physicaladdress,value,0x100); //Write directly to memory now!
+							BIU_directwb(physicaladdress, value, 0x100); //Write directly to memory now!
 							BIU[activeCPU].currentrequest = REQUEST_NONE; //No request anymore! We're finished!
 							BIU_terminatemem();
+							BIU[activeCPU].newrequest = 0; //We're not a new request!
 						}
 						else //Response failed? Try again!
 						{
 							BIU[activeCPU].currentrequest &= ~REQUEST_SUB1; //Request 8-bit half again(low byte)!
+							BIU[activeCPU].newrequest = 0; //We're not a new request!
 						}
 					}
 					else //Busy request?
@@ -1195,10 +1205,10 @@ OPTINLINE byte BIU_processRequests(byte memory_waitstates, byte bus_waitstates)
 						else //16-bit request?
 						{
 							memory_datawritesize = 2; //2 bytes only!
-							memory_datawrite = ((BIU[activeCPU].currentpayload[0] >> 32)&0xFFFF); //What to write!
+							memory_datawrite = ((BIU[activeCPU].currentpayload[0] >> 32) & 0xFFFF); //What to write!
 							BIU[activeCPU].datawritesizeexpected = 2; //We expect 2 to be set!
 						}
-						if (unlikely((physicaladdress & 0xFFF) > (((physicaladdress + memory_datawritesize) - 1)&0xFFF))) //Ending address in a different page? We can't write more!
+						if (unlikely((physicaladdress & 0xFFF) > (((physicaladdress + memory_datawritesize) - 1) & 0xFFF))) //Ending address in a different page? We can't write more!
 						{
 							memory_datawritesize = 1; //1 byte only!
 							BIU[activeCPU].datawritesizeexpected = 1; //1 byte only!
@@ -1209,33 +1219,36 @@ OPTINLINE byte BIU_processRequests(byte memory_waitstates, byte bus_waitstates)
 							BIU[activeCPU].datawritesizeexpected = 1; //Expect 1 byte for all other bytes!
 							memory_datawritesize = 1; //1 byte from now on!
 						}
-						else if (useIPSclock && (BIU[activeCPU].datawritesizeexpected==BIU[activeCPU].newtransfer_size)) //Data already fully written in IPS clocking mode?
+						else if (useIPSclock && (BIU[activeCPU].datawritesizeexpected == BIU[activeCPU].newtransfer_size)) //Data already fully written in IPS clocking mode?
 						{
 							if (BIU_response(1)) //Result given? We're giving OK!
 							{
 								BIU_terminatemem(); //Terminate memory access!
 								BIU[activeCPU].waitstateRAMremaining += memory_waitstates; //Apply the waitstates for the fetch!
 								BIU[activeCPU].currentrequest = REQUEST_NONE; //No request anymore! We're finished!
+								BIU[activeCPU].newrequest = 0; //We're not a new request!
 								return 1; //Handled!
 							}
 						}
 						++BIU[activeCPU].currentaddress; //Next address!
-						if (unlikely((BIU[activeCPU].currentaddress&CPU_databusmask)==0))
+						if (unlikely((BIU[activeCPU].currentaddress & CPU_databusmask) == 0))
 						{
 							BIU[activeCPU].waitstateRAMremaining += memory_waitstates; //Apply the waitstates for the fetch!
+							BIU[activeCPU].newrequest = 0; //We're not a new request!
 							return 1; //Handled, but broken up at this point due to the data bus not supporting transferring the rest of the word in one go!
 						}
+						BIU[activeCPU].newrequest = 0; //We're not a new request!
 						goto fulltransferMMUwrite; //Start Full transfer, when available?
 					}
 					return 1; //Handled!
 					break;
-				//I/O operations!
+					//I/O operations!
 				case REQUEST_IOREAD:
-					if (BUSactive==2) return 1; //BUS taken?
+					if (BUSactive == 2) return 1; //BUS taken?
 					BUSactive = BIU[activeCPU].BUSactive = 1; //Start memory or BUS cycles!
 					BIU[activeCPU].newtransfer = 1; //We're a new transfer!
 					BIU[activeCPU].newtransfer_size = 1; //We're a new transfer!
-					if ((BIU[activeCPU].currentrequest&REQUEST_16BIT) || (BIU[activeCPU].currentrequest&REQUEST_32BIT)) //16/32-bit?
+					if ((BIU[activeCPU].currentrequest & REQUEST_16BIT) || (BIU[activeCPU].currentrequest & REQUEST_32BIT)) //16/32-bit?
 					{
 						BIU[activeCPU].newtransfer_size = 2; //We're a new transfer!
 						BIU[activeCPU].currentrequest |= REQUEST_SUB1; //Request 16-bit half next(high byte)!
@@ -1244,50 +1257,54 @@ OPTINLINE byte BIU_processRequests(byte memory_waitstates, byte bus_waitstates)
 							BIU[activeCPU].newtransfer_size = 4; //We're a new transfer!
 						}
 					}
-					BIU[activeCPU].currentaddress = (BIU[activeCPU].currentpayload[0]&0xFFFFFFFF); //Address to use!
-					if (BIU[activeCPU].currentrequest&REQUEST_32BIT) //32-bit?
+					BIU[activeCPU].currentaddress = (BIU[activeCPU].currentpayload[0] & 0xFFFFFFFF); //Address to use!
+					if (BIU[activeCPU].currentrequest & REQUEST_32BIT) //32-bit?
 					{
-						BIU[activeCPU].currentresult = PORT_IN_D(BIU[activeCPU].currentaddress&0xFFFF); //Read byte!
+						BIU[activeCPU].currentresult = PORT_IN_D(BIU[activeCPU].currentaddress & 0xFFFF); //Read byte!
 					}
-					else if (BIU[activeCPU].currentrequest&REQUEST_16BIT) //16-bit?
+					else if (BIU[activeCPU].currentrequest & REQUEST_16BIT) //16-bit?
 					{
-						BIU[activeCPU].currentresult = PORT_IN_W(BIU[activeCPU].currentaddress&0xFFFF); //Read byte!
+						BIU[activeCPU].currentresult = PORT_IN_W(BIU[activeCPU].currentaddress & 0xFFFF); //Read byte!
 					}
 					else //8-bit?
 					{
-						BIU[activeCPU].currentresult = PORT_IN_B(BIU[activeCPU].currentaddress&0xFFFF); //Read byte!
+						BIU[activeCPU].currentresult = PORT_IN_B(BIU[activeCPU].currentaddress & 0xFFFF); //Read byte!
 					}
 					PCI_finishtransfer(); //Terminate the bus cycle!
-					if ((BIU[activeCPU].currentrequest&REQUEST_SUBMASK)==REQUEST_SUB0) //Finished the request?
+					if ((BIU[activeCPU].currentrequest & REQUEST_SUBMASK) == REQUEST_SUB0) //Finished the request?
 					{
 						if (BIU_response(BIU[activeCPU].currentresult)) //Result given?
 						{
 							BIU[activeCPU].waitstateRAMremaining += bus_waitstates; //Apply the waitstates for the fetch!
 							BIU[activeCPU].currentrequest = REQUEST_NONE; //No request anymore! We're finished!
+							BIU[activeCPU].newrequest = 0; //We're not a new request!
 						}
 						else //Response failed?
 						{
 							BIU[activeCPU].currentrequest &= ~REQUEST_SUB1; //Request low 8-bit half again(low byte)!
+							BIU[activeCPU].newrequest = 0; //We're not a new request!
 						}
 					}
 					else
 					{
 						++BIU[activeCPU].currentaddress; //Next address!
-						if (unlikely((BIU[activeCPU].currentaddress&CPU_databusmask)==0))
+						if (unlikely((BIU[activeCPU].currentaddress & CPU_databusmask) == 0))
 						{
 							BIU[activeCPU].waitstateRAMremaining += bus_waitstates; //Apply the waitstates for the fetch!
+							BIU[activeCPU].newrequest = 0; //We're not a new request!
 							return 1; //Handled, but broken up at this point due to the data bus not supporting transferring the rest of the word in one go!
 						}
+						BIU[activeCPU].newrequest = 0; //We're not a new request!
 						goto fulltransferIOread; //Start Full transfer, when available?
 					}
 					return 1; //Handled!
 					break;
 				case REQUEST_IOWRITE:
-					if (BUSactive==2) return 1; //BUS taken?
+					if (BUSactive == 2) return 1; //BUS taken?
 					BUSactive = BIU[activeCPU].BUSactive = 1; //Start memory or BUS cycles!
 					BIU[activeCPU].newtransfer = 1; //We're a new transfer!
 					BIU[activeCPU].newtransfer_size = 1; //We're a new transfer!
-					if ((BIU[activeCPU].currentrequest&REQUEST_16BIT) || (BIU[activeCPU].currentrequest&REQUEST_32BIT)) //16/32-bit?
+					if ((BIU[activeCPU].currentrequest & REQUEST_16BIT) || (BIU[activeCPU].currentrequest & REQUEST_32BIT)) //16/32-bit?
 					{
 						BIU[activeCPU].newtransfer_size = 2; //We're a new transfer!
 						BIU[activeCPU].currentrequest |= REQUEST_SUB1; //Request 16-bit half next(high byte)!
@@ -1296,42 +1313,46 @@ OPTINLINE byte BIU_processRequests(byte memory_waitstates, byte bus_waitstates)
 							BIU[activeCPU].newtransfer_size = 4; //We're a new transfer!
 						}
 					}
-					BIU[activeCPU].currentaddress = (BIU[activeCPU].currentpayload[0]&0xFFFFFFFF); //Address to use!
-					if (BIU[activeCPU].currentrequest&REQUEST_32BIT) //32-bit?
+					BIU[activeCPU].currentaddress = (BIU[activeCPU].currentpayload[0] & 0xFFFFFFFF); //Address to use!
+					if (BIU[activeCPU].currentrequest & REQUEST_32BIT) //32-bit?
 					{
 						BIU[activeCPU].currentrequest |= REQUEST_SUB1; //Request 16-bit half next(high byte)!
-						PORT_OUT_D((word)(BIU[activeCPU].currentpayload[0]&0xFFFF),(uint_32)((BIU[activeCPU].currentpayload[0]>>32)&0xFFFFFFFF)); //Write to memory now!									
+						PORT_OUT_D((word)(BIU[activeCPU].currentpayload[0] & 0xFFFF), (uint_32)((BIU[activeCPU].currentpayload[0] >> 32) & 0xFFFFFFFF)); //Write to memory now!									
 					}
-					else if (BIU[activeCPU].currentrequest&REQUEST_16BIT) //16-bit?
+					else if (BIU[activeCPU].currentrequest & REQUEST_16BIT) //16-bit?
 					{
 						BIU[activeCPU].currentrequest |= REQUEST_SUB1; //Request 16-bit half next(high byte)!
-						PORT_OUT_W((word)(BIU[activeCPU].currentpayload[0]&0xFFFF),(word)((BIU[activeCPU].currentpayload[0]>>32)&0xFFFFFFFF)); //Write to memory now!									
+						PORT_OUT_W((word)(BIU[activeCPU].currentpayload[0] & 0xFFFF), (word)((BIU[activeCPU].currentpayload[0] >> 32) & 0xFFFFFFFF)); //Write to memory now!									
 					}
 					else //8-bit?
 					{
-						PORT_OUT_B((word)(BIU[activeCPU].currentpayload[0]&0xFFFF),(byte)((BIU[activeCPU].currentpayload[0]>>32)&0xFFFFFFFF)); //Write to memory now!									
+						PORT_OUT_B((word)(BIU[activeCPU].currentpayload[0] & 0xFFFF), (byte)((BIU[activeCPU].currentpayload[0] >> 32) & 0xFFFFFFFF)); //Write to memory now!									
 					}
 					PCI_finishtransfer(); //Terminate the bus cycle!
-					if ((BIU[activeCPU].currentrequest&REQUEST_SUBMASK)==REQUEST_SUB0) //Finished the request?
+					if ((BIU[activeCPU].currentrequest & REQUEST_SUBMASK) == REQUEST_SUB0) //Finished the request?
 					{
 						if (BIU_response(1)) //Result given? We're giving OK!
 						{
 							BIU[activeCPU].waitstateRAMremaining += bus_waitstates; //Apply the waitstates for the fetch!
 							BIU[activeCPU].currentrequest = REQUEST_NONE; //No request anymore! We're finished!
+							BIU[activeCPU].newrequest = 0; //We're not a new request!
 						}
 						else //Response failed?
 						{
 							BIU[activeCPU].currentrequest &= ~REQUEST_SUB1; //Request low 8-bit half again(low byte)!
+							BIU[activeCPU].newrequest = 0; //We're not a new request!
 						}
 					}
 					else
 					{
 						++BIU[activeCPU].currentaddress; //Next address!
-						if (unlikely((BIU[activeCPU].currentaddress&CPU_databusmask)==0))
+						if (unlikely((BIU[activeCPU].currentaddress & CPU_databusmask) == 0))
 						{
 							BIU[activeCPU].waitstateRAMremaining += bus_waitstates; //Apply the waitstates for the fetch!
+							BIU[activeCPU].newrequest = 0; //We're not a new request!
 							return 1; //Handled, but broken up at this point due to the data bus not supporting transferring the rest of the word in one go!
 						}
+						BIU[activeCPU].newrequest = 0; //We're not a new request!
 						goto fulltransferIOwrite; //Start Full transfer, when available?
 					}
 					return 1; //Handled!
@@ -1339,7 +1360,9 @@ OPTINLINE byte BIU_processRequests(byte memory_waitstates, byte bus_waitstates)
 				default:
 				case REQUEST_NONE: //Unknown request?
 					BIU[activeCPU].currentrequest = REQUEST_NONE; //No request anymore! We're finished!
+					BIU[activeCPU].newrequest = 0; //We're not a new request!
 					break; //Ignore the entire request!
+				}
 			}
 		}
 	}
@@ -1425,7 +1448,7 @@ void BIU_handleRequestsIPS() //Handle all pending requests at once!
 	}
 	else //Nothing to do?
 	{
-		BIU[activeCPU].handlerequestPending = &BIU_handleRequestsNOP; //Nothing is pending anymore!
+		BIU[activeCPU].handlerequestPending = &BIU_handleRequestsIPS; //We're keeping pending to handle!
 	}
 }
 
