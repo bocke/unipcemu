@@ -1034,6 +1034,8 @@ typedef struct
 	uint_32 oldESPinstr; //Back-up of ESP during stack faults to use!
 	byte have_oldEBP; //oldEBP is set to use?
 	uint_32 oldEBP; //Back-up of EBP during stack faults to use!
+	byte have_oldEBPinstr; //oldESP is set to use?
+	uint_32 oldEBPinstr; //Back-up of ESP during stack faults to use!
 	byte have_oldEFLAGS;
 	uint_32 oldEFLAGS;
 	byte debuggerFaultRaised; //Debugger faults raised after execution flags?

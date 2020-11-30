@@ -180,18 +180,18 @@ void CPU_onResettingFault(byte is_paginglock)
 	{
 		REG_ESP = CPU[activeCPU].oldESP; //Restore ESP to it's original value!
 	}
-	if (CPU[activeCPU].have_oldESPinstr && is_paginglock) //Use instruction ESP instead to return to during paging locks?
-	{
-		REG_ESP = CPU[activeCPU].oldESPinstr; //Restore ESP to it's original value!
-		CPU[activeCPU].have_oldESPinstr = 0; //Don't do this again, unless retriggered (paging lock again)!
-	}
-	else //Normal fault handling?
-	{
-		CPU[activeCPU].have_oldESPinstr = 0; //Don't do this again, unless retriggered (paging lock again)!
-	}
 	if (CPU[activeCPU].have_oldEBP) //Returning the (E)BP to it's old value?
 	{
 		REG_EBP = CPU[activeCPU].oldEBP; //Restore EBP to it's original value!
+	}
+	if (CPU[activeCPU].have_oldESPinstr && CPU[activeCPU].have_oldEBPinstr && is_paginglock) //Use instruction ESP instead to return to during paging locks?
+	{
+		REG_ESP = CPU[activeCPU].oldESPinstr; //Restore ESP to it's original value!
+		REG_EBP = CPU[activeCPU].oldEBPinstr; //Restore EBP to it's original value!
+	}
+	else //Normal fault handling?
+	{
+		CPU[activeCPU].have_oldESPinstr = CPU[activeCPU].have_oldEBPinstr = 0; //Don't do this again, unless retriggered (paging lock again)!
 	}
 	if (CPU[activeCPU].have_oldEFLAGS) //Returning the (E)SP to it's old value?
 	{
@@ -230,6 +230,7 @@ void CPU_commitState() //Prepare for a fault by saving all required data!
 	CPU[activeCPU].have_oldESP = 1; //Restorable!
 	CPU[activeCPU].oldEBP = REG_EBP; //Restore EBP to it's original value!
 	CPU[activeCPU].have_oldESPinstr = 0; //Don't reload instruction ESP!
+	CPU[activeCPU].have_oldEBPinstr = 0; //Don't reload instruction ESP!
 	CPU[activeCPU].have_oldEBP = 1; //Restorable!
 	CPU_filterflags(); //Filter the flags!
 	CPU[activeCPU].oldEFLAGS = REG_EFLAGS; //Restore EFLAGS to it's original value!
@@ -247,6 +248,8 @@ void CPU_commitStateESP()
 {
 	CPU[activeCPU].oldESPinstr = REG_ESP; //Restore ESP to it's original value!
 	CPU[activeCPU].have_oldESPinstr = 1; //Restorable!
+	CPU[activeCPU].oldEBPinstr = REG_EBP; //Restore ESP to it's original value!
+	CPU[activeCPU].have_oldEBPinstr = 1; //Restorable!
 }
 
 //More info: http://wiki.osdev.org/Paging
