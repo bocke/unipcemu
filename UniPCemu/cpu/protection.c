@@ -1251,7 +1251,7 @@ byte CPU_segmentWritten_protectedmode_JMPCALL(word *value, word isJMPorCALL, SEG
 			}
 
 			//Now, we've switched to the destination stack! Load all parameters onto the new stack!
-			if (checkStackAccess(CPU[activeCPU].CallGateParamCount, 1 | (0x100 | 0x200 | (isJMPorCALL & 0x400)), CPU[activeCPU].CallGateSize)) return 1; //Abort on error! Call Gates throws #SS(SS) instead of #SS(0)!
+			if ((stackresult = checkStackAccess(CPU[activeCPU].CallGateParamCount, 1 | (0x100 | 0x200 | (isJMPorCALL & 0x400)), CPU[activeCPU].CallGateSize))!=0) return (stackresult==2)?2:1; //Abort on error! Call Gates throws #SS(SS) instead of #SS(0)!
 			for (; CPU[activeCPU].CallGateParamCount;) //Process the CALL Gate Stack!
 			{
 				stackval = CPU[activeCPU].CallGateStack[--CPU[activeCPU].CallGateParamCount]; //Read the next value to store!
@@ -1278,7 +1278,7 @@ byte CPU_segmentWritten_protectedmode_JMPCALL(word *value, word isJMPorCALL, SEG
 
 	if ((isJMPorCALL & 0x1FF) == 2) //CALL pushes return address!
 	{
-		if (checkStackAccess(2, 1, CPU[activeCPU].CallGateSize | ((isDifferentCPL == 1) ? (0x100 | 0x200 | (isJMPorCALL & 0x400)) : 0))) return 1; //Abort on error! Call Gates throws #SS(SS) instead of #SS(0)!
+		if ((stackresult = checkStackAccess(2, 1, CPU[activeCPU].CallGateSize | ((isDifferentCPL == 1) ? (0x100 | 0x200 | (isJMPorCALL & 0x400)) : 0)))!=0) return (stackresult==2)?2:1; //Abort on error! Call Gates throws #SS(SS) instead of #SS(0)!
 
 		//Push the old address to the new stack!
 		if (CPU[activeCPU].CallGateSize) //32-bit?
