@@ -1673,7 +1673,7 @@ byte segmentWritten(int segment, word value, word isJMPorCALL) //A segment regis
 		{
 			if ((CPU[activeCPU].CPU_Operand_size) && (EMULATED_CPU>=CPU_80386)) //32-bit?
 			{
-				if (CPU[activeCPU].internalinstructionstep==0) if (checkStackAccess(2, 1, 1)) return 1; //We're trying to push on the stack!
+				if (CPU[activeCPU].internalinstructionstep==0) if ((errorret = checkStackAccess(2, 1, 1))!=0) return errorret; //We're trying to push on the stack!
 				uint_32 pushingval;
 				pushingval = REG_CS; //What to push!
 				if (CPU80386_internal_PUSHdw(0,&pushingval)) return 1;
@@ -1681,7 +1681,7 @@ byte segmentWritten(int segment, word value, word isJMPorCALL) //A segment regis
 			}
 			else //16-bit?
 			{
-				if (CPU[activeCPU].internalinstructionstep==0) if(checkStackAccess(2, 1, 0)) return 1; //We're trying to push on the stack!
+				if (CPU[activeCPU].internalinstructionstep==0) if((errorret = checkStackAccess(2, 1, 0))!=0) return errorret; //We're trying to push on the stack!
 				if (CPU8086_internal_PUSHw(0,&REG_CS,0)) return 1;
 				if (CPU8086_internal_PUSHw(2,&REG_IP,0)) return 1;
 			}
