@@ -893,6 +893,7 @@ SEGMENT_DESCRIPTOR *getsegment_seg(int segment, SEGMENT_DESCRIPTOR *dest, word *
 			{
 				goto throwdescsegmentval; //Throw error!
 			}
+			if (loadresult==-2) *errorret = 2; //Page fault?
 			return NULL; //Error, by specified reason!
 		}
 		privilegedone = 1; //Privilege has been precalculated!
