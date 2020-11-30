@@ -775,6 +775,7 @@ SEGMENT_DESCRIPTOR *getsegment_seg(int segment, SEGMENT_DESCRIPTOR *dest, word *
 	word originalval=*segmentval; //Back-up of the original segment value!
 	byte allowNP; //Allow #NP to be used?
 	sbyte loadresult;
+	byte stackresult;
 	byte privilegedone = 0; //Privilege already calculated?
 	byte is_gated = 0; //Are we gated?
 	byte is_TSS = 0; //Are we a TSS?
@@ -1107,7 +1108,11 @@ SEGMENT_DESCRIPTOR *getsegment_seg(int segment, SEGMENT_DESCRIPTOR *dest, word *
 				*isdifferentCPL = 1; //We're a different level!
 				arguments = CPU[activeCPU].CALLGATE_NUMARGUMENTS =  (GATEDESCRIPTOR.desc.ParamCnt&0x1F); //Amount of parameters!
 				CPU[activeCPU].CallGateParamCount = 0; //Initialize the amount of arguments that we're storing!
-				if (checkStackAccess(arguments,0,(callgatetype==2)?1:0)) return NULL; //Abort on stack fault! Use #SS(0) because we're on the unchanged stack still!
+				if ((stackresult = checkStackAccess(arguments,0,(callgatetype==2)?1:0))!=0)
+				{
+						if (stackresult==2) *errorret = 2; //Page fault?
+						return NULL; //Abort on stack fault! Use #SS(0) because we're on the unchanged stack still!
+				}
 				for (;arguments--;) //Copy as many arguments as needed!
 				{
 					if (callgatetype==2) //32-bit source?
