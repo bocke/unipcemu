@@ -3986,6 +3986,7 @@ void CPU80386_OP8F() //Undocumented GRP opcode 8F r/m32
 		}
 		if (unlikely(CPU[activeCPU].stackchecked==0))
 		{
+			modrm_recalc(&CPU[activeCPU].params); //Recalc if using (e)sp as the destination offset!
 			if (checkStackAccess(1,0,1)) return;
 			stack_pop(1); //Popped a dword!
 			modrm_recalc(&CPU[activeCPU].params); //Recalc if using (e)sp as the destination offset!
