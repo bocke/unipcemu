@@ -1456,6 +1456,12 @@ OPTINLINE byte coreHandler()
 					{
 						BIU[activeCPU].BUSlockrequested = 2; //Acnowledged!
 						CPU_exec(); //Run CPU!
+						//Increase the instruction counter every cycle/HLT time!
+						debugger_step(); //Step debugger if needed!
+						if (unlikely(CPU[activeCPU].executed)) //Are we executed?
+						{
+							CB_handleCallbacks(); //Handle callbacks after CPU/debugger usage!
+						}
 					}
 				} while (++activeCPU < numemulatedcpus); //More CPUs left to handle?
 			}
@@ -1472,6 +1478,12 @@ OPTINLINE byte coreHandler()
 						{
 							BIU[activeCPU].BUSlockrequested = 2; //Acnowledged!
 							CPU_exec(); //Run CPU!
+							//Increase the instruction counter every cycle/HLT time!
+							debugger_step(); //Step debugger if needed!
+							if (unlikely(CPU[activeCPU].executed)) //Are we executed?
+							{
+								CB_handleCallbacks(); //Handle callbacks after CPU/debugger usage!
+							}
 							goto finishLocked; //Finish up!
 						}
 						++lockcounter; //Next locked test!
