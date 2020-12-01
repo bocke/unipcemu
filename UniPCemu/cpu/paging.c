@@ -37,7 +37,7 @@ extern byte EMU_RUNNING; //1 when paging can be applied!
 //Enable below to only set the access bit when actually reading/writing the memory address(and all checks have passed).
 //#define ACCESS_ON_READWRITE
 //Enable below define to make paging lock the bus when doing so, aborting the instruction or current action until it's granted.
-//#define PAGING_LOCKED
+#define PAGING_LOCKED
 
 //20-bit PDBR. Could also be CR3 in total?
 #define CR3_PDBR (CPU[activeCPU].registers->CR3&0xFFFFF000)
@@ -248,6 +248,17 @@ byte isvalidpage(uint_32 address, byte iswrite, byte CPL, byte isPrefetch) //Do 
 		if (EUphasehandlerrequiresreset()) //Requires reset to execute properly?
 		{
 			CPU_onResettingFault(1); //Set the fault data to restart any instruction-related things!
+			if ((MMU_logging == 1) && advancedlog) //Are we logging?
+			{
+				dolog("debugger", "Paging pending (full instruction state reset)!");
+			}
+		}
+		else
+		{
+			if ((MMU_logging == 1) && advancedlog) //Are we logging?
+			{
+				dolog("debugger", "Paging pending!");
+			}
 		}
 		return 2; //Stop and wait to obtain the bus lock first!
 	}
