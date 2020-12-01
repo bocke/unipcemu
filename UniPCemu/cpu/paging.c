@@ -241,6 +241,8 @@ byte isvalidpage(uint_32 address, byte iswrite, byte CPL, byte isPrefetch) //Do 
 		}
 	}
 
+	if (isPrefetch) return 0; //Stop the prefetch when not in the TLB!
+
 	#ifdef PAGING_LOCKED
 	if (BIU_obtainbuslock()) //Obtaining the bus lock?
 	{
@@ -270,8 +272,6 @@ byte isvalidpage(uint_32 address, byte iswrite, byte CPL, byte isPrefetch) //Do 
 		}
 	}
 	#endif
-
-	if (isPrefetch) return 0; //Stop the prefetch when not in the TLB!
 
 	if ((CPU[activeCPU].registers->CR4 & 0x20) && (EMULATED_CPU >= CPU_PENTIUMPRO)) //PAE enabled?
 	{
