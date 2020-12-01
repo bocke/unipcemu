@@ -348,11 +348,7 @@ byte modrm_check16(MODRM_PARAMS *params, int whichregister, byte isread)
 			CPU[activeCPU].modrm_lastoffset = offset&params->info[whichregister].memorymask;
 		}
 		offset += CPU[activeCPU].modrm_addoffset; //Add to get the destination offset!
-		if (checkMMUaccess16(params->info[whichregister].segmentregister_index, params->info[whichregister].mem_segment, offset&params->info[whichregister].memorymask,isread,getCPL(),(params->info[whichregister].is16bit),0|0x8)) //Check the data to memory using byte depth!
-		{
-			return 1; //Errored out!
-		}
-		return 0; //OK!
+		return checkMMUaccess16(params->info[whichregister].segmentregister_index, params->info[whichregister].mem_segment, offset&params->info[whichregister].memorymask,isread,getCPL(),(params->info[whichregister].is16bit),0|0x8); //Check the data to memory using byte depth!
 		break;
 	default:
 		halt_modrm("MODRM: Unknown MODR/M16!");
@@ -379,11 +375,7 @@ byte modrm_check32(MODRM_PARAMS *params, int whichregister, byte isread)
 			CPU[activeCPU].modrm_lastoffset = offset&params->info[whichregister].memorymask;
 		}
 		offset += CPU[activeCPU].modrm_addoffset; //Add to get the destination offset!
-		if (checkMMUaccess32(params->info[whichregister].segmentregister_index, params->info[whichregister].mem_segment, offset&params->info[whichregister].memorymask,isread,getCPL(),(params->info[whichregister].is16bit),0|0x10)) //Check the data to memory using byte depth!
-		{
-			return 1; //Errored out!
-		}
-		return 0; //OK!
+		return checkMMUaccess32(params->info[whichregister].segmentregister_index, params->info[whichregister].mem_segment, offset&params->info[whichregister].memorymask,isread,getCPL(),(params->info[whichregister].is16bit),0|0x10); //Check the data to memory using byte depth!
 		break;
 	default:
 		halt_modrm("MODRM: Unknown MODR/M32!");
