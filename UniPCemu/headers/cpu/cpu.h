@@ -1272,6 +1272,7 @@ typedef struct
 	uint_64 PageFault_PTE;
 	uint_32 enter_finalESP;
 	byte segmentWritten_instructionrunning; //segmentWritten running within an instruction?
+	uint_32 taskswitch_stepping; //Currently completed steps during a task switch.
 } CPU_type;
 
 #ifndef IS_CPU
