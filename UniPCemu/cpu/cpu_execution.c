@@ -205,6 +205,7 @@ byte CPU_executionphase_starttaskswitch(int whatsegment, SEGMENT_DESCRIPTOR *LOA
 	CPU[activeCPU].TASKSWITCH_INFO.gated = gated;
 	CPU[activeCPU].TASKSWITCH_INFO.errorcode = errorcode;
 	CPU[activeCPU].executed = 0; //Not executed yet!
+	CPU[activeCPU].taskswitch_stepping = 0; //No steps have been executed yet!
 	CPU_OP(); //Execute right away for simple timing compatility!
 	return CPU[activeCPU].taskswitch_result; //Default to an abort of the current instruction!
 }
