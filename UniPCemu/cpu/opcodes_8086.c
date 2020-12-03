@@ -6784,6 +6784,7 @@ void CPU8086_OP83() //GRP1 Ev,Ib
 
 void CPU8086_OP8F() //Undocumented GRP opcode 8F r/m16
 {
+	byte stackresult;
 	switch (CPU[activeCPU].thereg) //What function?
 	{
 	case 0: //POP
@@ -6799,9 +6800,12 @@ void CPU8086_OP8F() //Undocumented GRP opcode 8F r/m16
 			stack_pop(0); //Popped a word!
 			modrm_recalc(&CPU[activeCPU].params); //Recalc if using (e)sp as the destination offset!
 			if (modrm_check16(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, 0|0x40)) return;
-			if (modrm_check16(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, 0 | 0xA0))
+			if ((stackresult = modrm_check16(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0, 0 | 0xA0))!=0)
 			{
-				stack_push(0); //Popped a word!
+				if (stackresult==2)
+				{
+					stack_push(0); //Popped a word!
+				}
 				return; //Abort when needed!
 			}
 			stack_push(0); //Popped a word!
