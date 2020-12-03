@@ -1273,6 +1273,16 @@ typedef struct
 	uint_32 enter_finalESP;
 	byte segmentWritten_instructionrunning; //segmentWritten running within an instruction?
 	uint_32 taskswitch_stepping; //Currently completed steps during a task switch.
+	struct
+	{
+		byte TSS_dirty; //Is the new TSS dirty?
+		TSS286 TSS16;
+		TSS386 TSS32;
+		byte TSSSizeSrc, TSSSize; //The (source) TSS size!
+		sbyte loadresult;
+		word oldtask;
+		word LDTsegment;
+	} taskswitchdata;
 } CPU_type;
 
 #ifndef IS_CPU

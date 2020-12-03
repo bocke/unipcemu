@@ -313,19 +313,16 @@ byte CPU_switchtask(int whatsegment, SEGMENT_DESCRIPTOR *LOADEDDESCRIPTOR, word 
 {
 	//byte isStackSwitch = 0; //Stack switch?
 	//Both structures to use for the TSS!
-	word LDTsegment;
-	word oldtask;
-	//byte busy=0;
-	byte TSS_dirty = 0; //Is the new TSS dirty?
-	TSS286 TSS16;
-	TSS386 TSS32;
-	byte TSSSizeSrc = 0, TSSSize = 0; //The (source) TSS size!
-	sbyte loadresult;
 	byte backlinking;
+	//byte busy=0;
 	sbyte affectedregisters[7] = { CPU_SEGMENT_CS,CPU_SEGMENT_SS,CPU_SEGMENT_DS,CPU_SEGMENT_ES,CPU_SEGMENT_FS,CPU_SEGMENT_GS,CPU_SEGMENT_LDTR }; //What registers are affected and to be cleared with a task switch?
 	sbyte affectedregisterindex;
 	byte affectedregister; //What affected register!
 
+	if ((CPU[activeCPU].taskswitch_stepping&1)==0) //Step 1?
+	{
+	CPU[activeCPU].TSS_dirty = 0; //Is the new TSS dirty?
+	CPU[activeCPU].TSSSizeSrc = CPU[activeCPU].TSSSize = 0; //The (source) TSS size!
 	if (errorcode>=0) //Error code to be pushed on the stack(not an interrupt without error code or errorless task switch)?
 	{
 		CPU[activeCPU].hascallinterrupttaken_type = INTERRUPTGATETIMING_TASKGATE; //INT gate type taken. Low 4 bits are the type. High 2 bits are privilege level/task gate flag. Left at 0xFF when nothing is used(unknown case?)
@@ -359,12 +356,12 @@ byte CPU_switchtask(int whatsegment, SEGMENT_DESCRIPTOR *LOADEDDESCRIPTOR, word 
 	case AVL_SYSTEM_BUSY_TSS16BIT:
 		//busy = 1;
 	case AVL_SYSTEM_TSS16BIT:
-		TSSSize = 0; //16-bit TSS!
+		CPU[activeCPU].taskswitchdata.TSSSize = 0; //16-bit TSS!
 		break;
 	case AVL_SYSTEM_BUSY_TSS32BIT:
 		//busy = 1;
 	case AVL_SYSTEM_TSS32BIT: //Valid descriptor?
-		TSSSize = 1; //32-bit TSS!
+		CPU[activeCPU].taskswitchdata.TSSSize = 1; //32-bit TSS!
 		if (EMULATED_CPU < CPU_80386) //Continue normally: we're valid on a 80386 only?
 		{
 			goto invaliddsttask; //Thow #GP!
@@ -388,7 +385,7 @@ byte CPU_switchtask(int whatsegment, SEGMENT_DESCRIPTOR *LOADEDDESCRIPTOR, word 
 	}
 
 #ifdef FORCE_16BITTSS
-	if (EMULATED_CPU == CPU_80286) TSSSize = 0; //Force 16-bit TSS on 286!
+	if (EMULATED_CPU == CPU_80286) CPU[activeCPU].taskswitchdata.TSSSize = 0; //Force 16-bit TSS on 286!
 #endif
 
 	limit = LOADEDDESCRIPTOR->PRECALCS.limit; //Limit!
@@ -416,12 +413,12 @@ byte CPU_switchtask(int whatsegment, SEGMENT_DESCRIPTOR *LOADEDDESCRIPTOR, word 
 	case AVL_SYSTEM_BUSY_TSS16BIT:
 		//busy = 1;
 	case AVL_SYSTEM_TSS16BIT:
-		TSSSizeSrc = 0; //16-bit TSS!
+		CPU[activeCPU].taskswitchdata.TSSSizeSrc = 0; //16-bit TSS!
 		break;
 	case AVL_SYSTEM_BUSY_TSS32BIT:
 		//busy = 1;
 	case AVL_SYSTEM_TSS32BIT: //Valid descriptor?
-		TSSSizeSrc = 1; //32-bit TSS!
+		CPU[activeCPU].taskswitchdata.TSSSizeSrc = 1; //32-bit TSS!
 		if (EMULATED_CPU < CPU_80386) //Continue normally: we're valid on a 80386 only?
 		{
 			goto invalidsrctask; //Thow #GP!
@@ -438,17 +435,22 @@ byte CPU_switchtask(int whatsegment, SEGMENT_DESCRIPTOR *LOADEDDESCRIPTOR, word 
 		return 0; //Error out!
 	}
 
-	if (TSSSizeSrc) //32-bit TSS?
+	if (CPU[activeCPU].taskswitchdata.TSSSizeSrc) //32-bit TSS?
 	{
-		memset(&TSS32, 0, sizeof(TSS32)); //Read the TSS! Don't be afraid of errors, since we're always accessable!
+		memset(&CPU[activeCPU].taskswitchdata.TSS32, 0, sizeof(CPU[activeCPU].taskswitchdata.TSS32)); //Read the TSS! Don't be afraid of errors, since we're always accessable!
 	}
 	else //16-bit TSS?
 	{
-		memset(&TSS16, 0, sizeof(TSS16)); //Read the TSS! Don't be afraid of errors, since we're always accessable!
+		memset(&CPU[activeCPU].taskswitchdata.TSS16, 0, sizeof(CPU[activeCPU].taskswitchdata.TSS16)); //Read the TSS! Don't be afraid of errors, since we're always accessable!
 	}
+	}
+	CPU[activeCPU].taskswitch_stepping |= 1; //Finished step!
+	} //End of step 1
 
 	backlinking = ((isJMPorCALL | 0x80) == 0x82); //CALL with backlink?
 
+	if ((CPU[activeCPU].taskswitch_stepping&2)==0) //Step 2?
+	{
 	if (GENERALSEGMENT_P(CPU[activeCPU].SEG_DESCRIPTOR[CPU_SEGMENT_TR])) //Valid task to switch FROM?
 	{
 		if ((MMU_logging == 1) && advancedlog) //Are we logging?
@@ -457,7 +459,7 @@ byte CPU_switchtask(int whatsegment, SEGMENT_DESCRIPTOR *LOADEDDESCRIPTOR, word 
 		}
 
 		//Check the incoming task for valid memory area before doing anything!
-		if (TSSSize) //32-bit switching in?
+		if (CPU[activeCPU].taskswitchdata.TSSSize) //32-bit switching in?
 		{
 			if (checkloadTSS32((void *)LOADEDDESCRIPTOR,destinationtask)) return 0; //Abort on error!
 			if (checksaveTSS32((void *)LOADEDDESCRIPTOR,destinationtask,backlinking)) return 0; //Abort on error!
@@ -490,39 +492,39 @@ byte CPU_switchtask(int whatsegment, SEGMENT_DESCRIPTOR *LOADEDDESCRIPTOR, word 
 		//16 or 32-bit TSS is loaded, now save the registers!
 		if (TSSSizeSrc) //We're a 32-bit TSS?
 		{
-			TSS32.EAX = REG_EAX;
-			TSS32.ECX = REG_ECX;
-			TSS32.EDX = REG_EDX;
-			TSS32.EBX = REG_EBX;
-			TSS32.ESP = REG_ESP;
-			TSS32.EBP = REG_EBP;
-			TSS32.ESI = REG_ESI;
-			TSS32.EDI = REG_EDI;
-			TSS32.CS = REG_CS;
-			TSS32.EIP = REG_EIP;
-			TSS32.SS = REG_SS;
-			TSS32.DS = REG_DS;
-			TSS32.ES = REG_ES;
-			TSS32.FS = REG_FS;
-			TSS32.GS = REG_GS;
-			TSS32.EFLAGS = REG_EFLAGS;
+			CPU[activeCPU].taskswitchdata.TSS32.EAX = REG_EAX;
+			CPU[activeCPU].taskswitchdata.TSS32.ECX = REG_ECX;
+			CPU[activeCPU].taskswitchdata.TSS32.EDX = REG_EDX;
+			CPU[activeCPU].taskswitchdata.TSS32.EBX = REG_EBX;
+			CPU[activeCPU].taskswitchdata.TSS32.ESP = REG_ESP;
+			CPU[activeCPU].taskswitchdata.TSS32.EBP = REG_EBP;
+			CPU[activeCPU].taskswitchdata.TSS32.ESI = REG_ESI;
+			CPU[activeCPU].taskswitchdata.TSS32.EDI = REG_EDI;
+			CPU[activeCPU].taskswitchdata.TSS32.CS = REG_CS;
+			CPU[activeCPU].taskswitchdata.TSS32.EIP = REG_EIP;
+			CPU[activeCPU].taskswitchdata.TSS32.SS = REG_SS;
+			CPU[activeCPU].taskswitchdata.TSS32.DS = REG_DS;
+			CPU[activeCPU].taskswitchdata.TSS32.ES = REG_ES;
+			CPU[activeCPU].taskswitchdata.TSS32.FS = REG_FS;
+			CPU[activeCPU].taskswitchdata.TSS32.GS = REG_GS;
+			CPU[activeCPU].taskswitchdata.TSS32.EFLAGS = REG_EFLAGS;
 		}
 		else //We're a 16-bit TSS?
 		{
-			TSS16.AX = REG_AX;
-			TSS16.CX = REG_CX;
-			TSS16.DX = REG_DX;
-			TSS16.BX = REG_BX;
-			TSS16.SP = REG_SP;
-			TSS16.BP = REG_BP;
-			TSS16.SI = REG_SI;
-			TSS16.DI = REG_DI;
-			TSS16.CS = REG_CS;
-			TSS16.IP = REG_IP;
-			TSS16.SS = REG_SS;
-			TSS16.DS = REG_DS;
-			TSS16.ES = REG_ES;
-			TSS16.FLAGS = REG_FLAGS;
+			CPU[activeCPU].taskswitchdata.TSS16.AX = REG_AX;
+			CPU[activeCPU].taskswitchdata.TSS16.CX = REG_CX;
+			CPU[activeCPU].taskswitchdata.TSS16.DX = REG_DX;
+			CPU[activeCPU].taskswitchdata.TSS16.BX = REG_BX;
+			CPU[activeCPU].taskswitchdata.TSS16.SP = REG_SP;
+			CPU[activeCPU].taskswitchdata.TSS16.BP = REG_BP;
+			CPU[activeCPU].taskswitchdata.TSS16.SI = REG_SI;
+			CPU[activeCPU].taskswitchdata.TSS16.DI = REG_DI;
+			CPU[activeCPU].taskswitchdata.TSS16.CS = REG_CS;
+			CPU[activeCPU].taskswitchdata.TSS16.IP = REG_IP;
+			CPU[activeCPU].taskswitchdata.TSS16.SS = REG_SS;
+			CPU[activeCPU].taskswitchdata.TSS16.DS = REG_DS;
+			CPU[activeCPU].taskswitchdata.TSS16.ES = REG_ES;
+			CPU[activeCPU].taskswitchdata.TSS16.FLAGS = REG_FLAGS;
 		}
 
 		if ((MMU_logging == 1) && advancedlog) //Are we logging?
@@ -530,22 +532,25 @@ byte CPU_switchtask(int whatsegment, SEGMENT_DESCRIPTOR *LOADEDDESCRIPTOR, word 
 			dolog("debugger", "Saving outgoing task %04X to memory", REG_TR);
 		}
 
-		if (TSSSizeSrc) //32-bit TSS?
+		if (CPU[activeCPU].taskswitchdata.TSSSizeSrc) //32-bit TSS?
 		{
-			saveTSS32(&TSS32); //Save us!
+			saveTSS32(&CPU[activeCPU].taskswitchdata.TSS32); //Save us!
 		}
 		else //16-bit TSS?
 		{
-			saveTSS16(&TSS16); //Save us!
+			saveTSS16(&CPU[activeCPU].taskswitchdata.TSS16); //Save us!
 		}
 	}
 	else //Invalid task to switch FROM?
 	{
 		goto invalidsrctask; //Invalid source task!
 	}
+	CPU[activeCPU].taskswitchdata.oldtask = REG_TR; //Save the old task, for backlink purposes!
+	CPU[activeCPU].taskswitch_stepping |= 2; //Finished step 2!
+	}
 
-	oldtask = REG_TR; //Save the old task, for backlink purposes!
-
+	if ((CPU[activeCPU].taskswitch_stepping&4)==0) //Step 3?
+	{
 	//Now, load all the registers required as needed!
 	if ((MMU_logging == 1) && advancedlog) //Are we logging?
 	{
@@ -554,7 +559,11 @@ byte CPU_switchtask(int whatsegment, SEGMENT_DESCRIPTOR *LOADEDDESCRIPTOR, word 
 	//Backup of the TR register&descriptor isn't needed, as this is automatically done when loading it!
 
 	if (segmentWritten(CPU_SEGMENT_TR, destinationtask, (isJMPorCALL & 0x400)|((isJMPorCALL == 3)?0x800:0)|(gated?0x80:0))) return 0; //Execute the task switch itself, loading our new descriptor! //Abort on fault: invalid(or busy) task we're switching to! Ignore the privilege level if we're using a gated task switch!
+	CPU[activeCPU].taskswitch_stepping |= 4; //Finished step 3!
+	}
 
+	if ((CPU[activeCPU].taskswitchstepping&8)==0) //Step 4?
+	{
 	if ((isJMPorCALL | 0x80) != 0x82) //Not a call? Stop being busy to switch to another task(or ourselves)!
 	{
 		SEGMENT_DESCRIPTOR tempdesc;
@@ -567,17 +576,20 @@ byte CPU_switchtask(int whatsegment, SEGMENT_DESCRIPTOR *LOADEDDESCRIPTOR, word 
 			}
 		}
 		else return 0; //Abort on fault raised!
+		CPU[activeCPU].taskswitch_stepping |= 8; //Finished step 4!
 	}
 
+	if ((CPU[activeCPU].taskswitch_stepping&0x10)==0) //Step 5?
+	{
 	switch (GENERALSEGMENT_TYPE(CPU[activeCPU].SEG_DESCRIPTOR[CPU_SEGMENT_TR])) //Check the type of descriptor we're executing now!
 	{
 	case AVL_SYSTEM_BUSY_TSS16BIT:
 	case AVL_SYSTEM_TSS16BIT:
-		TSSSize = 0; //16-bit TSS!
+		CPU[activeCPU].taskswitchdata.TSSSize = 0; //16-bit TSS!
 		break;
 	case AVL_SYSTEM_BUSY_TSS32BIT:
 	case AVL_SYSTEM_TSS32BIT: //Valid descriptor?
-		TSSSize = 1; //32-bit TSS!
+		CPU[activeCPU].taskswitchdata.TSSSize = 1; //32-bit TSS!
 		if (EMULATED_CPU < CPU_80386) //Continue normally: we're valid on a 80386 only?
 		{
 			goto invaliddesttask; //Thow #GP!
@@ -595,7 +607,7 @@ byte CPU_switchtask(int whatsegment, SEGMENT_DESCRIPTOR *LOADEDDESCRIPTOR, word 
 	}
 
 #ifdef FORCE_16BITTSS
-	if (EMULATED_CPU == CPU_80286) TSSSize = 0; //Force 16-bit TSS on 286!
+	if (EMULATED_CPU == CPU_80286) CPU[activeCPU].taskswitchdata.TSSSize = 0; //Force 16-bit TSS on 286!
 #endif
 
 	if ((MMU_logging == 1) && advancedlog) //Are we logging?
@@ -605,17 +617,17 @@ byte CPU_switchtask(int whatsegment, SEGMENT_DESCRIPTOR *LOADEDDESCRIPTOR, word 
 
 
 	//Load the new TSS!
-	if (TSSSize) //32-bit TSS?
+	if (CPU[activeCPU].taskswitchdata.TSSSize) //32-bit TSS?
 	{
-		memset(&TSS32, 0, sizeof(TSS32)); //Init!
-		loadTSS32(&TSS32); //Load the TSS!
+		memset(&CPU[activeCPU].taskswitchdata.TSS32, 0, sizeof(CPU[activeCPU].taskswitchdata.TSS32)); //Init!
+		loadTSS32(&CPU[activeCPU].taskswitchdata.TSS32); //Load the TSS!
 	}
 	else //16-bit TSS?
 	{
-		memset(&TSS16, 0, sizeof(TSS16)); //Init!
-		loadTSS16(&TSS16); //Load the TSS!
+		memset(&CPU[activeCPU].taskswitchdata.TSS16, 0, sizeof(CPU[activeCPU].taskswitchdata.TSS16)); //Init!
+		loadTSS16(&CPU[activeCPU].taskswitchdata.TSS16); //Load the TSS!
 	}
-	TSS_dirty = 0; //Not dirty!
+	CPU[activeCPU].taskswitchdata.TSS_dirty = 0; //Not dirty!
 
 	if ((MMU_logging == 1) && advancedlog) //Are we logging?
 	{
@@ -624,18 +636,22 @@ byte CPU_switchtask(int whatsegment, SEGMENT_DESCRIPTOR *LOADEDDESCRIPTOR, word 
 
 	if (backlinking) //CALL with backlink?
 	{
-		if (TSSSize) //32-bit TSS?
+		if (CPU[activeCPU].taskswitchdata.TSSSize) //32-bit TSS?
 		{
-			TSS32.BackLink = oldtask; //Save the old task as a backlink in the new task!
-			TSS_dirty |= 1; //We're dirty(backlink)!
+			CPU[activeCPU].taskswitchdata.TSS32.BackLink = CPU[activeCPU].taskswitchdata.oldtask; //Save the old task as a backlink in the new task!
+			CPU[activeCPU].taskswitchdata.TSS_dirty |= 1; //We're dirty(backlink)!
 		}
 		else //16-bit TSS?
 		{
-			TSS16.BackLink = oldtask; //Save the old task as a backlink in the new task!
-			TSS_dirty |= 1; //We're dirty(backlink)!
+			CPU[activeCPU].taskswitchdata.TSS16.BackLink = CPU[activeCPU].taskswitchdata.oldtask; //Save the old task as a backlink in the new task!
+			CPU[activeCPU].taskswitchdata.TSS_dirty |= 1; //We're dirty(backlink)!
 		}
 	}
+	CPU[activeCPU].taskswitch_stepping |= 0x10; //Finished step 5!
+	}
 
+	if ((CPU[activeCPU].taskswitch_stepping&0x20)==0) //Step 6?
+	{
 	if ((MMU_logging == 1) && advancedlog) //Are we logging?
 	{
 		dolog("debugger", "Marking incoming TSS %04X busy if needed", REG_TR);
@@ -649,7 +665,11 @@ byte CPU_switchtask(int whatsegment, SEGMENT_DESCRIPTOR *LOADEDDESCRIPTOR, word 
 			return 0; //Abort on fault raised!
 		}
 	}
+	CPU[activeCPU].taskswitch_stepping |= 0x20; //Finished step 6!
+	}
 
+	if ((CPU[activeCPU].taskswitch_stepping&0x40)==0) //Step 7?
+	{
 	if ((MMU_logging == 1) && advancedlog) //Are we logging?
 	{
 		dolog("debugger", "Loading incoming TSS %04X state into the registers.", REG_TR);
@@ -665,73 +685,73 @@ byte CPU_switchtask(int whatsegment, SEGMENT_DESCRIPTOR *LOADEDDESCRIPTOR, word 
 	//Now we're ready to load all registers!
 	if (TSSSize) //We're a 32-bit TSS?
 	{
-		REG_EAX = TSS32.EAX;
-		REG_ECX = TSS32.ECX;
-		REG_EDX = TSS32.EDX;
-		REG_EBX = TSS32.EBX;
-		REG_ESP = TSS32.ESP;
-		REG_EBP = TSS32.EBP;
-		REG_ESI = TSS32.ESI;
-		REG_EDI = TSS32.EDI;
-		CPU[activeCPU].registers->CR3 = TSS32.CR3; //Load the new CR3 register to use the new Paging table!
-		REG_EFLAGS = TSS32.EFLAGS;
+		REG_EAX = CPU[activeCPU].taskswitchdata.TSS32.EAX;
+		REG_ECX = CPU[activeCPU].taskswitchdata.TSS32.ECX;
+		REG_EDX = CPU[activeCPU].taskswitchdata.TSS32.EDX;
+		REG_EBX = CPU[activeCPU].taskswitchdata.TSS32.EBX;
+		REG_ESP = CPU[activeCPU].taskswitchdata.TSS32.ESP;
+		REG_EBP = CPU[activeCPU].taskswitchdata.TSS32.EBP;
+		REG_ESI = CPU[activeCPU].taskswitchdata.TSS32.ESI;
+		REG_EDI = CPU[activeCPU].taskswitchdata.TSS32.EDI;
+		CPU[activeCPU].registers->CR3 = CPU[activeCPU].taskswitchdata.TSS32.CR3; //Load the new CR3 register to use the new Paging table!
+		REG_EFLAGS = CPU[activeCPU].taskswitchdata.TSS32.EFLAGS;
 		//Load all remaining registers manually for exceptions!
-		REG_CS = TSS32.CS;
-		REG_DS = TSS32.DS;
-		REG_ES = TSS32.ES;
-		REG_FS = TSS32.FS;
-		REG_GS = TSS32.GS;
-		REG_EIP = TSS32.EIP;
-		REG_SS = TSS32.SS; //Default stack to use: the old stack!
-		REG_LDTR = TSS32.LDT;
-		LDTsegment = TSS32.LDT; //LDT used!
+		REG_CS = CPU[activeCPU].taskswitchdata.TSS32.CS;
+		REG_DS = CPU[activeCPU].taskswitchdata.TSS32.DS;
+		REG_ES = CPU[activeCPU].taskswitchdata.TSS32.ES;
+		REG_FS = CPU[activeCPU].taskswitchdata.TSS32.FS;
+		REG_GS = CPU[activeCPU].taskswitchdata.TSS32.GS;
+		REG_EIP = CPU[activeCPU].taskswitchdata.TSS32.EIP;
+		REG_SS = CPU[activeCPU].taskswitchdata.TSS32.SS; //Default stack to use: the old stack!
+		REG_LDTR = CPU[activeCPU].taskswitchdata.TSS32.LDT;
+		CPU[activeCPU].taskswitchdata.LDTsegment = CPU[activeCPU].taskswitchdata.TSS32.LDT; //LDT used!
 		Paging_clearTLB(); //Clear the TLB: CR3 has been changed!
 	}
 	else //We're a 16-bit TSS?
 	{
-		REG_EAX = TSS16.AX;
-		REG_ECX = TSS16.CX;
-		REG_EDX = TSS16.DX;
-		REG_EBX = TSS16.BX;
-		REG_ESP = TSS16.SP;
-		REG_EBP = TSS16.BP;
-		REG_ESI = TSS16.SI;
-		REG_EDI = TSS16.DI;
-		REG_EFLAGS = (uint_32)TSS16.FLAGS;
+		REG_EAX = CPU[activeCPU].taskswitchdata.TSS16.AX;
+		REG_ECX = CPU[activeCPU].taskswitchdata.TSS16.CX;
+		REG_EDX = CPU[activeCPU].taskswitchdata.TSS16.DX;
+		REG_EBX = CPU[activeCPU].taskswitchdata.TSS16.BX;
+		REG_ESP = CPU[activeCPU].taskswitchdata.TSS16.SP;
+		REG_EBP = CPU[activeCPU].taskswitchdata.TSS16.BP;
+		REG_ESI = CPU[activeCPU].taskswitchdata.TSS16.SI;
+		REG_EDI = CPU[activeCPU].taskswitchdata.TSS16.DI;
+		REG_EFLAGS = (uint_32)CPU[activeCPU].taskswitchdata.TSS16.FLAGS;
 		//Load all remaining registers manually for exceptions!
-		REG_CS = TSS16.CS; //This should also load the privilege level!
-		REG_DS = TSS16.DS;
-		REG_ES = TSS16.ES;
-		REG_EIP = (uint_32)TSS16.IP;
-		REG_SS = TSS16.SS; //Default stack to use: the old stack!
-		REG_LDTR = TSS16.LDT;
-		LDTsegment = TSS16.LDT; //LDT used!
+		REG_CS = CPU[activeCPU].taskswitchdata.TSS16.CS; //This should also load the privilege level!
+		REG_DS = CPU[activeCPU].taskswitchdata.TSS16.DS;
+		REG_ES = CPU[activeCPU].taskswitchdata.TSS16.ES;
+		REG_EIP = (uint_32)CPU[activeCPU].taskswitchdata.TSS16.IP;
+		REG_SS = CPU[activeCPU].taskswitchdata.TSS16.SS; //Default stack to use: the old stack!
+		REG_LDTR = CPU[activeCPU].taskswitchdata.TSS16.LDT;
+		CPU[activeCPU].taskswitchdata.LDTsegment = CPU[activeCPU].taskswitchdata.TSS16.LDT; //LDT used!
 	}
 
 	if (backlinking) //CALL with backlink?
 	{
 		FLAGW_NT(1); //Set Nested Task flag of the new task!
-		if (TSSSize) //32-bit TSS?
+		if (CPU[activeCPU].taskswitchdata.TSSSize) //32-bit TSS?
 		{
-			TSS32.EFLAGS = REG_EFLAGS; //Save the new flag!
+			CPU[activeCPU].taskswitchdata.TSS32.EFLAGS = REG_EFLAGS; //Save the new flag!
 		}
 		else //16-bit TSS?
 		{
-			TSS16.FLAGS = REG_FLAGS; //Save the new flag!
+			CPU[activeCPU].taskswitchdata.TSS16.FLAGS = REG_FLAGS; //Save the new flag!
 		}
-		TSS_dirty |= 2; //We're dirty((E)FLAGS)!
+		CPU[activeCPU].taskswitchdata.TSS_dirty |= 2; //We're dirty((E)FLAGS)!
 	}
 
-	if (TSS_dirty) //Destination TSS dirty?
+	if (CPU[activeCPU].taskswitchdata.TSS_dirty) //Destination TSS dirty?
 	{
 		if ((MMU_logging == 1) && advancedlog) //Are we logging?
 		{
 			dolog("debugger", "Saving incoming TSS %04X state to memory, because the state has changed(Nested Task).", REG_TR);
 		}
 
-		if (TSS_dirty & 1)
+		if (CPU[activeCPU].taskswitchdata.TSS_dirty & 1)
 		{
-			if ((EMULATED_CPU>=CPU_PENTIUM) && TSSSize) //Pentium uses a 32-bit write?
+			if ((EMULATED_CPU>=CPU_PENTIUM) && CPU[activeCPU].taskswitchdata.TSSSize) //Pentium uses a 32-bit write?
 			{
 				MMU_wdw(CPU_SEGMENT_TR, REG_TR, 0, TSSSize ? TSS32.BackLink : TSS16.BackLink, 0); //Write the TSS Backlink to use! Don't be afraid of errors, since we're always accessable!
 			}
@@ -741,19 +761,23 @@ byte CPU_switchtask(int whatsegment, SEGMENT_DESCRIPTOR *LOADEDDESCRIPTOR, word 
 			}
 		}
 
-		if (TSS_dirty & 2) //Dirty (E)FLAGS?
+		if (CPU[activeCPU].taskswitchdata.TSS_dirty & 2) //Dirty (E)FLAGS?
 		{
-			if (TSSSize) //32-bit TSS?
+			if (CPU[activeCPU].taskswitchdata.TSSSize) //32-bit TSS?
 			{
-				saveTSS32(&TSS32); //Save the TSS!
+				saveTSS32(&CPU[activeCPU].taskswitchdata.TSS32); //Save the TSS!
 			}
 			else //16-bit TSS?
 			{
-				saveTSS16(&TSS16); //Save the TSS!
+				saveTSS16(&CPU[activeCPU].taskswitchdata.TSS16); //Save the TSS!
 			}
 		}
 	}
+	CPU[activeCPU].taskswitch_stepping |= 0x40; //Finished step 7!
+	}
 
+	if ((CPU[activeCPU].taskswitch_stepping&0x80)==0) //Step 8?
+	{
 	//At this point, the basic task switch is complete. All that remains is loading all segment descriptors as required!
 
 	CPU[activeCPU].have_oldSegReg &= ~(1<<CPU_SEGMENT_TR); //Not supporting returning to the old task anymore, we've completed the task switch, committing to the new task!
@@ -764,7 +788,7 @@ byte CPU_switchtask(int whatsegment, SEGMENT_DESCRIPTOR *LOADEDDESCRIPTOR, word 
 		CPU[activeCPU].SEG_DESCRIPTOR[affectedregisterindex].PRECALCS.notpresent = 1; //Not present!
 	}
 	//Set the default CPL!
-	CPU[activeCPU].CPL = (getcpumode() == CPU_MODE_8086) ? 3 : ((getcpumode() == CPU_MODE_REAL) ? 0 : getRPL(TSSSize ? TSS32.CS : TSS16.CS)); //Load default CPL, according to the mode!
+	CPU[activeCPU].CPL = (getcpumode() == CPU_MODE_8086) ? 3 : ((getcpumode() == CPU_MODE_REAL) ? 0 : getRPL(CPU[activeCPU].taskswitchdata.TSSSize ? CPU[activeCPU].taskswitchdata.TSS32.CS : CPU[activeCPU].taskswitchdata.TSS16.CS)); //Load default CPL, according to the mode!
 	CPU[activeCPU].SEG_DESCRIPTOR[CPU_SEGMENT_SS].desc.AccessRights = (CPU[activeCPU].CPL << 5); //Make sure that SS has the correct DPL(and Access Rights) for the selected task when erroring out!
 	CPU_commitState(); //Set the new fault as a return point when faulting!
 	//Clear all the descriptor caches to invalid!
@@ -779,7 +803,11 @@ byte CPU_switchtask(int whatsegment, SEGMENT_DESCRIPTOR *LOADEDDESCRIPTOR, word 
 	protectedModeDebugger_taskswitching(); //Apply any action required for a task switch!
 
 	updateCPUmode(); //Make sure the CPU mode is updated, according to the task!
+	CPU[activeCPU].taskswitch_stepping |= 0x80; //Finished step 8!
+	}
 
+	if ((CPU[activeCPU].taskswitch_stepping&0x100)==0) //Step 9?
+	{
 	if ((MMU_logging == 1) && advancedlog) //Are we logging?
 	{
 		dolog("debugger", "Loading incoming TSS LDT %04X", LDTsegment);
@@ -787,6 +815,8 @@ byte CPU_switchtask(int whatsegment, SEGMENT_DESCRIPTOR *LOADEDDESCRIPTOR, word 
 
 	//Check and verify the LDT descriptor!
 	SEGMENT_DESCRIPTOR LDTsegdesc;
+	word LDTsegment; //For ease of use below
+	LDTsegment = CPU[activeCPU].taskswitchdata.LDTsegment; //Load the used segment!
 	uint_32 descriptor_index = (LDTsegment&~0x7); //The full index within the descriptor table!
 
 	if (!(descriptor_index&~3)) //NULL segment loaded into LDTR? Special case: no LDT available!
@@ -838,7 +868,11 @@ byte CPU_switchtask(int whatsegment, SEGMENT_DESCRIPTOR *LOADEDDESCRIPTOR, word 
 
 	memcpy(&CPU[activeCPU].SEG_DESCRIPTOR[CPU_SEGMENT_LDTR], &LDTsegdesc, sizeof(CPU[activeCPU].SEG_DESCRIPTOR[0])); //Make the LDTR active by loading it into the descriptor cache!
 	CPU_commitState(); //Set the new fault as a return point when faulting!
+	CPU[activeCPU].taskswitch_stepping |= 0x100; //Finished step 9!
+	}
 
+	if ((CPU[activeCPU].taskswitch_stepping&0x200)==0) //Step 10?
+	{
 	if ((MMU_logging == 1) && advancedlog) //Are we logging?
 	{
 		dolog("debugger", "Setting Task Switched flag in CR0");
@@ -848,20 +882,24 @@ byte CPU_switchtask(int whatsegment, SEGMENT_DESCRIPTOR *LOADEDDESCRIPTOR, word 
 
 	//Now, load all normal registers in order, keeping aborts possible!
 	CPU[activeCPU].faultraised = 0; //Clear the fault level: the new task has no faults by default!
+	CPU[activeCPU].taskswitch_stepping |= 0x200; //Finished step 10!
+	}
 
+	if ((CPU[activeCPU].taskswitch_stepping&0x400)==0) //Step 11?
+	{
 	//First, load CS!
 	if ((MMU_logging == 1) && advancedlog) //Are we logging?
 	{
 		dolog("debugger", "Loading incoming TSS CS register");
 	}
 	CPU[activeCPU].destEIP = REG_EIP; //Save EIP for the new address, we don't want to lose it when loading!
-	if (TSSSize) //32-bit?
+	if (CPU[activeCPU].taskswitchdata.TSSSize) //32-bit?
 	{
-		if (segmentWritten(CPU_SEGMENT_CS, TSS32.CS, 0x200 | (isJMPorCALL & 0x400))) return 0; //Load CS!
+		if (segmentWritten(CPU_SEGMENT_CS, CPU[activeCPU].taskswitchdata.TSS32.CS, 0x200 | (isJMPorCALL & 0x400))) return 0; //Load CS!
 	}
 	else
 	{
-		if (segmentWritten(CPU_SEGMENT_CS, TSS16.CS, 0x200 | (isJMPorCALL & 0x400))) return 0; //Load CS!
+		if (segmentWritten(CPU_SEGMENT_CS, CPU[activeCPU].taskswitchdata.TSS16.CS, 0x200 | (isJMPorCALL & 0x400))) return 0; //Load CS!
 	}
 	CPU_commitState(); //Set the new fault as a return point when faulting!
 	/*
@@ -871,7 +909,11 @@ byte CPU_switchtask(int whatsegment, SEGMENT_DESCRIPTOR *LOADEDDESCRIPTOR, word 
 		return 0; //Not present: limit exceeded!
 	}
 	*/ //Doesn't make sense with conforming segments, nor with V86 segments! Also, already handled by segmentWritten.
+	CPU[activeCPU].taskswitch_stepping |= 0x400; //Finished step 11!
+	}
 
+	if ((CPU[activeCPU].taskswitch_stepping&0x800)==0) //Step 12?
+	{
 	if ((MMU_logging == 1) && advancedlog) //Are we logging?
 	{
 		dolog("debugger", "Loading incoming TSS Stack address");
@@ -879,47 +921,97 @@ byte CPU_switchtask(int whatsegment, SEGMENT_DESCRIPTOR *LOADEDDESCRIPTOR, word 
 
 	if (TSSSize) //32-bit?
 	{
-		if (segmentWritten(CPU_SEGMENT_SS, TSS32.SS, 0x200 | (isJMPorCALL & 0x400))) return 0; //Update the segment! Privilege must match CPL(bit 7 of isJMPorCALL==0)!
-		REG_ESP = TSS32.ESP;
+		if (segmentWritten(CPU_SEGMENT_SS, CPU[activeCPU].taskswitchdata.TSS32.SS, 0x200 | (isJMPorCALL & 0x400))) return 0; //Update the segment! Privilege must match CPL(bit 7 of isJMPorCALL==0)!
+		REG_ESP = CPU[activeCPU].taskswitchdata.TSS32.ESP;
 	}
 	else //16-bit?
 	{
-		if (segmentWritten(CPU_SEGMENT_SS, TSS16.SS, 0x200 | (isJMPorCALL & 0x400))) return 0; //Update the segment! Privilege must match CPL(bit 7 of isJMPorCALL==0)!
-		REG_SP = TSS16.SP;
+		if (segmentWritten(CPU_SEGMENT_SS, CPU[activeCPU].taskswitchdata.TSS16.SS, 0x200 | (isJMPorCALL & 0x400))) return 0; //Update the segment! Privilege must match CPL(bit 7 of isJMPorCALL==0)!
+		REG_SP = CPU[activeCPU].taskswitchdata.TSS16.SP;
 	}
 
 	//Set the default CPL!
 	CPU[activeCPU].CPL = (getcpumode()==CPU_MODE_8086)?3:((getcpumode()==CPU_MODE_REAL)?0:GENERALSEGMENT_DPL(CPU[activeCPU].SEG_DESCRIPTOR[CPU_SEGMENT_SS])); //Load default CPL to use from SS if needed!
 	CPU_commitState(); //Set the new fault as a return point when faulting!
+	CPU[activeCPU].taskswitch_stepping |= 0x800; //Finished step 12!
+	}
 
+	if ((CPU[activeCPU].taskswitch_stepping&0x1000)==0) //Step 13?
+	{
 	if ((MMU_logging == 1) && advancedlog) //Are we logging?
 	{
-		dolog("debugger","Loading remaining TSS segment registers");
+		dolog("debugger","Loading DS register");
 	}
-	if (TSSSize) //32-bit?
+	if (CPU[activeCPU].taskswitchdata.TSSSize) //32-bit?
 	{
-		if (segmentWritten(CPU_SEGMENT_DS, TSS32.DS, 0x280|(isJMPorCALL&0x400))) return 0; //Load reg!
-		CPU_commitState(); //Set the new fault as a return point when faulting!
-		if (segmentWritten(CPU_SEGMENT_ES, TSS32.ES, 0x280|(isJMPorCALL&0x400))) return 0; //Load reg!
-		CPU_commitState(); //Set the new fault as a return point when faulting!
-		if (segmentWritten(CPU_SEGMENT_FS, TSS32.FS, 0x280|(isJMPorCALL&0x400))) return 0; //Load reg!
-		CPU_commitState(); //Set the new fault as a return point when faulting!
-		if (segmentWritten(CPU_SEGMENT_GS, TSS32.GS, 0x280|(isJMPorCALL&0x400))) return 0; //Load reg!
+		if (segmentWritten(CPU_SEGMENT_DS, CPU[activeCPU].taskswitchdata.TSS32.DS, 0x280|(isJMPorCALL&0x400))) return 0; //Load reg!
 	}
 	else //16-bit?
 	{
-		if (segmentWritten(CPU_SEGMENT_DS, TSS16.DS, 0x280|(isJMPorCALL&0x400))) return 0; //Load reg!
-		CPU_commitState(); //Set the new fault as a return point when faulting!
-		if (segmentWritten(CPU_SEGMENT_ES, TSS16.ES, 0x280|(isJMPorCALL&0x400))) return 0; //Load reg!
-		CPU_commitState(); //Set the new fault as a return point when faulting!
+		if (segmentWritten(CPU_SEGMENT_DS, CPU[activeCPU].taskswitchdata.TSS16.DS, 0x280|(isJMPorCALL&0x400))) return 0; //Load reg!
+	}
+	CPU_commitState(); //Set the new fault as a return point when faulting!
+	CPU[activeCPU].taskswitch_stepping |= 0x1000; //Finished step 13!
+	}
+
+	if ((CPU[activeCPU].taskswitch_stepping&0x2000)==0) //Step 14?
+	{
+	if ((MMU_logging == 1) && advancedlog) //Are we logging?
+	{
+		dolog("debugger","Loading ES register");
+	}
+	if (CPU[activeCPU].taskswitchdata.TSSSize) //32-bit?
+	{
+		if (segmentWritten(CPU_SEGMENT_ES, CPU[activeCPU].taskswitchdata.TSS32.ES, 0x280|(isJMPorCALL&0x400))) return 0; //Load reg!
+	}
+	else //16-bit?
+	{
+		if (segmentWritten(CPU_SEGMENT_ES, CPU[activeCPU].taskswitchdata.TSS16.ES, 0x280|(isJMPorCALL&0x400))) return 0; //Load reg!
+	}
+	CPU_commitState(); //Set the new fault as a return point when faulting!
+	CPU[activeCPU].taskswitch_stepping |= 0x2000; //Finished step 14!
+	}
+
+	if ((CPU[activeCPU].taskswitch_stepping&0x4000)==0) //Step 15?
+	{
+	if ((MMU_logging == 1) && advancedlog) //Are we logging?
+	{
+		dolog("debugger","Loading FS register");
+	}
+	if (CPU[activeCPU].taskswitchdata.TSSSize) //32-bit?
+	{
+		if (segmentWritten(CPU_SEGMENT_FS, CPU[activeCPU].taskswitchdata.TSS32.FS, 0x280|(isJMPorCALL&0x400))) return 0; //Load reg!
+	}
+	else //16-bit?
+	{
 		if (segmentWritten(CPU_SEGMENT_FS, 0, 0x280|(isJMPorCALL&0x400))) return 0; //Load reg: FS is unusable!
-		CPU_commitState(); //Set the new fault as a return point when faulting!
+	}
+	CPU_commitState(); //Set the new fault as a return point when faulting!
+	CPU[activeCPU].taskswitch_stepping |= 0x4000; //Finished step 15!
+	}
+
+	if ((CPU[activeCPU].taskswitch_stepping&0x8000)==0) //Step 16?
+	{
+	if ((MMU_logging == 1) && advancedlog) //Are we logging?
+	{
+		dolog("debugger","Loading GS register");
+	}
+	if (CPU[activeCPU].taskswitchdata.TSSSize) //32-bit?
+	{
+		if (segmentWritten(CPU_SEGMENT_GS, CPU[activeCPU].taskswitchdata.TSS32.GS, 0x280|(isJMPorCALL&0x400))) return 0; //Load reg!
+	}
+	else //16-bit?
+	{
 		if (segmentWritten(CPU_SEGMENT_GS, 0, 0x280|(isJMPorCALL&0x400))) return 0; //Load reg: GS is unusable!
 	}
 	CPU_commitState(); //Set the new fault as a return point when faulting!
+	CPU[activeCPU].taskswitch_stepping |= 0x8000; //Finished step 16!
+	}
 
 	//All segments are valid and readable!
 
+	if ((CPU[activeCPU].taskswitch_stepping&0x10000)==0) //Step 17?
+	{
 	if ((MMU_logging == 1) && advancedlog) //Are we logging?
 	{
 		dolog("debugger","New task ready for execution.");
@@ -930,8 +1022,8 @@ byte CPU_switchtask(int whatsegment, SEGMENT_DESCRIPTOR *LOADEDDESCRIPTOR, word 
 
 	if (errorcode>=0) //Error code to be pushed on the stack(not an interrupt without error code or errorless task switch)?
 	{
-		if (checkStackAccess(1,1,TSSSize)) return 0; //Abort on fault!
-		if (TSSSize) //32-bit task?
+		if (checkStackAccess(1,1,CPU[activeCPU].taskswitchdata.TSSSize)) return 0; //Abort on fault!
+		if (CPU[activeCPU].taskswitchdata.TSSSize) //32-bit task?
 		{
 			CPU_PUSH32(&errorcode32); //Push the error on the stack!
 		}
@@ -945,13 +1037,19 @@ byte CPU_switchtask(int whatsegment, SEGMENT_DESCRIPTOR *LOADEDDESCRIPTOR, word 
 	CPU[activeCPU].faultlevel = 0; //Clear the fault level: the new task has no faults by default!
 
 	CPU_commitState(); //Set the new fault as a return point when faulting!
+	CPU[activeCPU].taskswitch_stepping |= 0x10000; //Finished step 17!
+	}
 
-	if (TSSSize) //32-bit TSS?
+	if ((CPU[activeCPU].taskswitch_stepping&0x20000)==0) //Step 18?
 	{
-		if ((TSS32.T & 1) && (FLAG_RF == 0)) //Trace bit set? Cause a debug exception when this context is run?
+	if (CPU[activeCPU].taskswitchdata.TSSSize) //32-bit TSS?
+	{
+		if ((CPU[activeCPU].taskswitchdata.TSS32.T & 1) && (FLAG_RF == 0)) //Trace bit set? Cause a debug exception when this context is run?
 		{
 			if (protectedModeDebugger_taskswitched()) return 0; //Finished task switch with debugger interrupt handling!
 		}
+	}
+	CPU[activeCPU].taskswitch_stepping |= 0x20000; //Finished step 18!
 	}
 
 	CPU[activeCPU].unaffectedRF = 3; //Default: affected, but don't trigger an exception right away for the current instruction(changed state)!
