@@ -3996,7 +3996,7 @@ void CPU80386_OP8F() //Undocumented GRP opcode 8F r/m32
 			{
 				if (stackresult==2)
 				{
-					stack_push(1); //Popped a word!
+					stack_push(1); //Popped a dword!
 				}
 				return; //Abort when needed!
 			}
