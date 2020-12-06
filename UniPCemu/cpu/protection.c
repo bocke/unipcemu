@@ -1922,22 +1922,22 @@ byte switchStacks(byte newCPL)
 		TSS_StackPos += (4<<TSSSize)*(newCPL&3); //Start of the correct TSS (E)SP! 4 for 16-bit TSS, 8 for 32-bit TSS!
 		//Check against memory first!
 		//First two are the SP!
-		if (checkMMUaccess16(CPU_SEGMENT_TR, REG_TR, TSS_StackPos, 0x40 | 1, 0, 1, 0)) return 2; //Check if the address is valid according to segmentation!
+		if ((stackresult = checkMMUaccess16(CPU_SEGMENT_TR, REG_TR, TSS_StackPos, 0x40 | 1, 0, 1, 0))!=0) return (stackresult==2)?2:1; //Check if the address is valid according to segmentation!
 		//Next two are either high ESP or SS!
-		if (checkMMUaccess16(CPU_SEGMENT_TR, REG_TR, TSS_StackPos+2, 0x40 | 1, 0, 1, 0)) return 2; //Check if the address is valid according to segmentation!
+		if ((stackresult = checkMMUaccess16(CPU_SEGMENT_TR, REG_TR, TSS_StackPos+2, 0x40 | 1, 0, 1, 0))!=0) return (stackresult==2)?2:1; //Check if the address is valid according to segmentation!
 		if (TSSSize) //Extra checks for 32-bit?
 		{
 			//The 32-bit TSS SSn value!
-			if (checkMMUaccess16(CPU_SEGMENT_TR, REG_TR, TSS_StackPos+4, 0x40 | 1, 0, 1, 0)) return 2; //Check if the address is valid according to segmentation!
+			if ((stackresult = checkMMUaccess16(CPU_SEGMENT_TR, REG_TR, TSS_StackPos+4, 0x40 | 1, 0, 1, 0))!=0) return (stackresult==2)?2:1; //Check if the address is valid according to segmentation!
 		}
 		//First two are the SP!
-		if (checkMMUaccess16(CPU_SEGMENT_TR, REG_TR, TSS_StackPos, 0xA0 | 1, 0, 1, 0)) return 2; //Check if the address is valid according to the remainder of checks!
+		if ((stackresult = checkMMUaccess16(CPU_SEGMENT_TR, REG_TR, TSS_StackPos, 0xA0 | 1, 0, 1, 0))!=0) return (stackresult==2)?2:1; //Check if the address is valid according to the remainder of checks!
 		//Next two are either high ESP or SS!
-		if (checkMMUaccess16(CPU_SEGMENT_TR, REG_TR, TSS_StackPos+2, 0xA0 | 1, 0, 1, 0)) return 2; //Check if the address is valid according to the remainder of checks!
+		if ((stackresult = checkMMUaccess16(CPU_SEGMENT_TR, REG_TR, TSS_StackPos+2, 0xA0 | 1, 0, 1, 0))!=0) return (stackresult==2)?2:1; //Check if the address is valid according to the remainder of checks!
 		if (TSSSize) //Extra checks for 32-bit?
 		{
 			//The 32-bit TSS SSn value!
-			if (checkMMUaccess16(CPU_SEGMENT_TR, REG_TR, TSS_StackPos+4, 0xA0 | 1, 0, 1, 0)) return 2; //Check if the address is valid according to the remainder of checks!
+			if ((stackresult = checkMMUaccess16(CPU_SEGMENT_TR, REG_TR, TSS_StackPos+4, 0xA0 | 1, 0, 1, 0))!=0) return (stackresult==2)?2:1; //Check if the address is valid according to the remainder of checks!
 		}
 		//Memory is now validated! Load the values from memory!
 
