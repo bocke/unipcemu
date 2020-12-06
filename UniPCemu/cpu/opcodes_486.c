@@ -187,12 +187,12 @@ void CPU486_OP0FB1_16()
 	if (FLAG_ZF) //Equal?
 	{
 		/* r/m16=r16 */
-		if (CPU8086_instructionstepwritemodrmb(4, CPU[activeCPU].instructionbufferw2, CPU[activeCPU].MODRM_src0)) return;
+		if (CPU8086_instructionstepwritemodrmw(4, CPU[activeCPU].instructionbufferw2, CPU[activeCPU].MODRM_src0)) return;
 	}
 	else
 	{
 		/* r/m16(write back it's own value) and AX are both to be set to r/m8 */
-		if (CPU8086_instructionstepwritemodrmb(4, CPU[activeCPU].instructionbufferw, CPU[activeCPU].MODRM_src0)) return;
+		if (CPU8086_instructionstepwritemodrmw(4, CPU[activeCPU].instructionbufferw, CPU[activeCPU].MODRM_src0)) return;
 		REG_AX = CPU[activeCPU].instructionbufferw; /* AX=r/m16 */
 	}
 } //CMPXCHG r/m16,AX,r16
