@@ -112,6 +112,7 @@ void initVGAclocks(byte extension); //Init all clocks used!
 DOUBLE VGA_VerticalRefreshRate(VGA_Type *VGA); //Scanline speed for one line in Hz!
 
 void VGA_Sequencer_calcScanlineData(VGA_Type *VGA);
+void VGA_Sequencer_updateScanlineData(VGA_Type* VGA); //Update the VGA scanline data by software!
 
 void updateVGASequencer_Mode(VGA_Type *VGA);
 void updateVGADAC_Mode(VGA_Type* VGA);

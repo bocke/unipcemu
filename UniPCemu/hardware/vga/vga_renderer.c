@@ -233,6 +233,35 @@ OPTINLINE void drawCGALine(VGA_Type *VGA) //Draw the current CGA line to display
 	}
 }
 
+void VGA_Sequencer_updateScanlineData(VGA_Type* VGA) //Update the VGA scanline data by software!
+{
+	//First, all our variables!
+	byte pixelshiftcount; //Effective value!
+	SEQ_DATA* Sequencer;
+	Sequencer = GETSEQUENCER(VGA); //Our sequencer!
+
+	//Determine panning
+	pixelshiftcount = VGA->precalcs.pixelshiftcount; //Allowable pixel shift count!
+
+	//Determine shifts and reset the start map if needed!
+	if (Sequencer->is_topwindow) //Top window reached?
+	{
+		//Enforce start of map to beginning in VRAM for the top window!
+		if (VGA->precalcs.AttributeModeControlRegister_PixelPanningMode) //Pixel panning mode enabled?
+		{
+			Sequencer->pixelshiftcount_cleared = 1; //Cleared from now on!
+		}
+	}
+
+	if (Sequencer->pixelshiftcount_cleared) //Cleared PEL panning from now on in the top window?
+	{
+		pixelshiftcount = 0; //Reset to 0 for the remainder of the display!
+	}
+
+	//Apply the byte panning and pixel shift count!
+	Sequencer->pixelshiftcount = pixelshiftcount; //Effective pixel shift count!
+}
+
 void VGA_Sequencer_calcScanlineData(VGA_Type *VGA) //Recalcs all scanline data for the sequencer!
 {
 	//First, all our variables!

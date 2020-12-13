@@ -1050,7 +1050,7 @@ void VGA_calcprecalcs(void *useVGA, uint_32 whereupdated) //Calculate them, wher
 	//Recalculate all our lookup tables when needed!
 	if (VGA->precalcs.recalcScanline) //Update scanline information?
 	{
-		VGA_Sequencer_calcScanlineData(VGA); //Recalculate all scanline data!
+		VGA_Sequencer_updateScanlineData(VGA); //Recalculate all scanline data!
 	}
 	
 	if (updateCRTC) //Update CRTC?
