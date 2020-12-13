@@ -44,7 +44,6 @@ typedef struct
 	word x; //Current pixel on the scanline!
 	//Newline recalculation
 	uint_32 startmap; //Where our map starts!
-	uint_32 bytepanning; //How much byte panning is used?
 	
 	//Text mode information about the current scanline!
 	word chary; //Character y!
@@ -82,7 +81,7 @@ typedef struct
 
 	byte frame_presetrowscan; //Our pre-calculated preset row scan!
 	byte frame_activepresetrowscan; //Our pre-calculated preset row scan!
-	uint_32 frame_bytepanning; //Our pre-calculated byte panning!
+	uint_32 scanline_bytepanning; //Our pre-calculated byte panning! This is reloaded each scanline depending on the used top/bottom window and VGA registers being setup!
 	byte frame_characterheight; //Character height!
 	word frame_topwindowstart;
 	byte frame_latchpending; //Pending latch for the current frame?

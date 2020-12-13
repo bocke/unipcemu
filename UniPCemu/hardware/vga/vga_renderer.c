@@ -272,9 +272,9 @@ void VGA_Sequencer_calcScanlineData(VGA_Type *VGA) //Recalcs all scanline data f
 	Sequencer = GETSEQUENCER(VGA); //Our sequencer!
 
 	//Determine panning
-	bytepanning = Sequencer->frame_bytepanning; //Byte panning for Start Address Register for characters or 0,0 pixel!
 	presetrowscan = Sequencer->frame_presetrowscan; //Preset row scan!
 	pixelshiftcount = VGA->precalcs.pixelshiftcount; //Allowable pixel shift count!
+	bytepanning = VGA->precalcs.PresetRowScanRegister_BytePanning; //Byte panning to apply!
 
 	//Determine shifts and reset the start map if needed!
 	if (Sequencer->is_topwindow) //Top window reached?
@@ -285,7 +285,7 @@ void VGA_Sequencer_calcScanlineData(VGA_Type *VGA) //Recalcs all scanline data f
 		if (VGA->precalcs.AttributeModeControlRegister_PixelPanningMode) //Pixel panning mode enabled?
 		{
 			Sequencer->pixelshiftcount_cleared = 1; //Cleared from now on!
-			bytepanning = Sequencer->frame_bytepanning = 0; //Reset to 0 for the remainder of the display!
+			bytepanning = 0; //Reset to 0 for the remainder of the display!
 		}
 	}
 
@@ -300,7 +300,7 @@ void VGA_Sequencer_calcScanlineData(VGA_Type *VGA) //Recalcs all scanline data f
 	}
 
 	//Apply the byte panning and pixel shift count!
-	Sequencer->bytepanning = bytepanning; //Effective byte panning!
+	Sequencer->scanline_bytepanning = bytepanning; //Effective byte panning!
 	Sequencer->presetrowscan = presetrowscan; //Effective preset row scan!
 	Sequencer->pixelshiftcount = pixelshiftcount; //Effective pixel shift count!
 }
@@ -524,20 +524,14 @@ OPTINLINE void VGA_Sequencer_updateRow(VGA_Type *VGA, SEQ_DATA *Sequencer, byte 
 		Sequencer->is_topwindow = 0; //We're not the top window!
 	}
 
-	if (row==0) //Starting a new window(both top and bottom)?
-	{
-		VGA_Sequencer_calcScanlineData(VGA);
-		Sequencer->activepresetrowscan = Sequencer->presetrowscan; //Activate!
-	}
+	VGA_Sequencer_calcScanlineData(VGA); //Apply live data for the current scanline, as needed!
 
 	if (isinit) //Are we the initialization for the top/bottom window?
 	{
+		Sequencer->activepresetrowscan = Sequencer->presetrowscan; //Activate!
 		Sequencer->chary = 0; //Init!
 		Sequencer->rowscancounter = Sequencer->charinner_y = Sequencer->activepresetrowscan; //Init scanline within the character!
-		charystart = 0; //Calculate row start!
-		charystart += Sequencer->startmap; //Calculate the start of the map while we're at it: it's faster this way!
-		charystart += Sequencer->bytepanning; //Apply byte panning!
-		Sequencer->baselineaddr = charystart; //Load the first base line address!
+		Sequencer->baselineaddr = Sequencer->startmap; //Calculate the start of the map while we're at it: it's faster this way! Load the first base line address!
 		Sequencer->scandoublingcounter = 0; //First of the scan doubling counter! Don't tick on the next one when double scanning!
 	}
 	else
@@ -568,7 +562,9 @@ OPTINLINE void VGA_Sequencer_updateRow(VGA_Type *VGA, SEQ_DATA *Sequencer, byte 
 
 	Sequencer->charinner_y = Sequencer->rowscancounter; //Inner y is the row scan counter!
 
-	Sequencer->memoryaddress = Sequencer->charystart = Sequencer->baselineaddr; //What row to start with our pixels! Apply the line and start map to retrieve(start at the new start of the scanline to draw)!
+	charystart = Sequencer->baselineaddr; //What row to start with our pixels! Apply the line and start map to retrieve(start at the new start of the scanline to draw)!
+	charystart += Sequencer->scanline_bytepanning; //Apply byte panning live!
+	Sequencer->memoryaddress = Sequencer->charystart = charystart; //Apply scanline starting memory address!
 
 	//Some attribute controller special 8-bit mode support!
 	Sequencer->extrastatus = &VGA->CRTC.extrahorizontalstatus[0]; //Start our extra status at the beginning of the row!
@@ -1404,7 +1400,6 @@ recalcsignal: //Recalculate the signal to process!
 					//The end of vertical retrace has been reached, reload start address!
 					Sequencer->startmap = VGA->precalcs.startaddress; //What start address to use for the next frame?
 				}
-				Sequencer->frame_bytepanning = VGA->precalcs.PresetRowScanRegister_BytePanning; //Byte panning for Start Address Register for characters or 0,0 pixel!
 			}
 			SETBITS(VGA->registers->ExternalRegisters.INPUTSTATUS1REGISTER,3,1,(vretrace = 1)); //We're retracing!
 		}
