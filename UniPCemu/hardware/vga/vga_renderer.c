@@ -647,10 +647,11 @@ void VGA_VTotal(SEQ_DATA *Sequencer, VGA_Type *VGA)
 	if (VGA->enable_SVGA == 4) //CGA/MDA?
 	{
 		//The end of vertical total has been reached, reload start address!
-		Sequencer->startmap = VGA->precalcs.startaddress; //What start address to use for the next frame?
+		Sequencer->frame_startmap = VGA->precalcs.startaddress; //What start address to use for the next frame?
 	}
 	Sequencer->frame_presetrowscan = VGA->precalcs.presetrowscan; //Preset row scan!
 	Sequencer->frame_characterheight = VGA->precalcs.characterheight; //The character height to compare to when checking for validity of the preset row scan!
+	Sequencer->startmap = Sequencer->frame_startmap; //Restart the frame with the selected start map!
 	VGA_Sequencer_updateRow(VGA, Sequencer,1); //Scanline has been changed!
 }
 
@@ -1403,7 +1404,7 @@ recalcsignal: //Recalculate the signal to process!
 				if (VGA->enable_SVGA != 4) //Not CGA/MDA?
 				{
 					//The end of vertical retrace has been reached, reload start address!
-					Sequencer->startmap = VGA->precalcs.startaddress; //What start address to use for the next frame?
+					Sequencer->frame_startmap = VGA->precalcs.startaddress; //What start address to use for the next frame?
 					Sequencer->frame_bytepanning = VGA->precalcs.PresetRowScanRegister_BytePanning; //Byte panning is latched as well!
 				}
 			}
