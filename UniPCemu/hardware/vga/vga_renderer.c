@@ -274,7 +274,7 @@ void VGA_Sequencer_calcScanlineData(VGA_Type *VGA) //Recalcs all scanline data f
 	//Determine panning
 	presetrowscan = Sequencer->frame_presetrowscan; //Preset row scan!
 	pixelshiftcount = VGA->precalcs.pixelshiftcount; //Allowable pixel shift count!
-	bytepanning = VGA->precalcs.PresetRowScanRegister_BytePanning; //Byte panning to apply!
+	bytepanning = Sequencer->frame_bytepanning; //Byte panning to apply!
 
 	//Determine shifts and reset the start map if needed!
 	if (Sequencer->is_topwindow) //Top window reached?
@@ -305,8 +305,6 @@ void VGA_Sequencer_calcScanlineData(VGA_Type *VGA) //Recalcs all scanline data f
 	Sequencer->pixelshiftcount = pixelshiftcount; //Effective pixel shift count!
 }
 	
-
-typedef void (*Sequencer_pixelhandler)(VGA_Type *VGA,VGA_AttributeInfo *Sequencer_Attributeinfo, word tempx,word tempy,word x,word Scanline,uint_32 bytepanning); //Pixel(s) handler!
 
 LOADEDPLANESCONTAINER loadedplanes; //All four loaded planes!
 LOADEDPLANESCONTAINER loadedplaneshigh; //All four loaded planes!
@@ -1406,6 +1404,7 @@ recalcsignal: //Recalculate the signal to process!
 				{
 					//The end of vertical retrace has been reached, reload start address!
 					Sequencer->startmap = VGA->precalcs.startaddress; //What start address to use for the next frame?
+					Sequencer->frame_bytepanning = VGA->precalcs.PresetRowScanRegister_BytePanning; //Byte panning is latched as well!
 				}
 			}
 			SETBITS(VGA->registers->ExternalRegisters.INPUTSTATUS1REGISTER,3,1,(vretrace = 1)); //We're retracing!

@@ -82,6 +82,7 @@ typedef struct
 	byte frame_presetrowscan; //Our pre-calculated preset row scan!
 	byte frame_activepresetrowscan; //Our pre-calculated preset row scan!
 	uint_32 scanline_bytepanning; //Our pre-calculated byte panning! This is reloaded each scanline depending on the used top/bottom window and VGA registers being setup!
+	uint_32 frame_bytepanning; //Our pre-calculated byte panning! This is latched each vertical retrace!
 	byte frame_characterheight; //Character height!
 	word frame_topwindowstart;
 	byte frame_latchpending; //Pending latch for the current frame?
