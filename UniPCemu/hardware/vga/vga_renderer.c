@@ -509,6 +509,7 @@ OPTINLINE byte VGA_AttributeController(VGA_AttributeInfo *Sequencer_attributeinf
 
 OPTINLINE void VGA_Sequencer_updateRow(VGA_Type *VGA, SEQ_DATA *Sequencer, byte isinit)
 {
+	word shiftcount;
 	byte x; //For horizontal shifting/temp storage!
 	INLINEREGISTER word row;
 	INLINEREGISTER uint_32 charystart;
@@ -541,7 +542,7 @@ OPTINLINE void VGA_Sequencer_updateRow(VGA_Type *VGA, SEQ_DATA *Sequencer, byte 
 		Sequencer->scandoublingcounter ^= 1; //Check for scan doubling!
 		if ((Sequencer->scandoublingcounter ^ 1) | (VGA->precalcs.scandoubling ^ 1)) //Scan doubling overflow when set or no scan doubling? We're ticking!
 		{
-			//We''re ticking an undoubled or doubling scanline that needs reloading!
+			//We're ticking an undoubled or doubling scanline that needs reloading!
 			if (VGA->precalcs.scandoubling == 0) //Not scan doubling?
 			{
 				Sequencer->scandoublingcounter = 1; //First the counter on the next when not double scanning to start any pending double scanning operation!
@@ -563,7 +564,6 @@ OPTINLINE void VGA_Sequencer_updateRow(VGA_Type *VGA, SEQ_DATA *Sequencer, byte 
 	Sequencer->charinner_y = Sequencer->rowscancounter; //Inner y is the row scan counter!
 
 	charystart = Sequencer->baselineaddr; //What row to start with our pixels! Apply the line and start map to retrieve(start at the new start of the scanline to draw)!
-	charystart += Sequencer->scanline_bytepanning; //Apply byte panning live!
 	Sequencer->memoryaddress = Sequencer->charystart = charystart; //Apply scanline starting memory address!
 
 	//Some attribute controller special 8-bit mode support!
@@ -573,10 +573,17 @@ OPTINLINE void VGA_Sequencer_updateRow(VGA_Type *VGA, SEQ_DATA *Sequencer, byte 
 	currentattributeinfo.latchstatus = 0; //Reset the latches used for rendering!
 	VGA_loadcharacterplanes(VGA, Sequencer); //Load data from the first planes!
 
+	shiftcount = Sequencer->pixelshiftcount; //How much pixels to shift!
+	shiftcount += (Sequencer->scanline_bytepanning<<3); //How much to shift in 8-pixel modes!
+	if (VGA->precalcs.characterwidth==9) //9-pixel width instead of 8-pixel width?
+	{
+		shiftcount += Sequencer->scanline_bytepanning; //How much to shift in 9-pixel modes!
+	}
+
 	//Process any horizontal pixel shift count!
 	if (VGA->precalcs.textmode) //Text mode?
 	{
-		for (x = 0;x < Sequencer->pixelshiftcount;++x) //Process pixel shift count!
+		for (x = 0;x < shiftcount;++x) //Process pixel shift count!
 		{
 			if (VGA_ActiveDisplay_timing(Sequencer, VGA)) //Render the next pixel?
 			{
@@ -587,7 +594,7 @@ OPTINLINE void VGA_Sequencer_updateRow(VGA_Type *VGA, SEQ_DATA *Sequencer, byte 
 	}
 	else //Graphics mode?
 	{
-		for (x = 0;x < Sequencer->pixelshiftcount;++x) //Process pixel shift count!
+		for (x = 0;x < shiftcount;++x) //Process pixel shift count!
 		{
 			if (VGA_ActiveDisplay_timing(Sequencer, VGA)) //Render the next pixel?
 			{
