@@ -241,7 +241,7 @@ void VGA_Sequencer_updateScanlineData(VGA_Type* VGA) //Update the VGA scanline d
 	Sequencer = GETSEQUENCER(VGA); //Our sequencer!
 
 	//Determine panning
-	pixelshiftcount = VGA->precalcs.pixelshiftcount; //Allowable pixel shift count!
+	pixelshiftcount = Sequencer->frame_pixelshiftcount; //Allowable pixel shift count!
 
 	//Determine shifts and reset the start map if needed!
 	if (Sequencer->is_topwindow) //Top window reached?
@@ -273,7 +273,7 @@ void VGA_Sequencer_calcScanlineData(VGA_Type *VGA) //Recalcs all scanline data f
 
 	//Determine panning
 	presetrowscan = Sequencer->frame_presetrowscan; //Preset row scan!
-	pixelshiftcount = VGA->precalcs.pixelshiftcount; //Allowable pixel shift count!
+	pixelshiftcount = Sequencer->frame_pixelshiftcount; //Allowable pixel shift count!
 	bytepanning = Sequencer->frame_bytepanning; //Byte panning to apply!
 
 	//Determine shifts and reset the start map if needed!
@@ -1416,6 +1416,7 @@ recalcsignal: //Recalculate the signal to process!
 			{
 				vretrace = 0; //We're not retracing anymore!
 				SETBITS(VGA->registers->ExternalRegisters.INPUTSTATUS1REGISTER,3,1,vretrace); //Vertical retrace?
+				Sequencer->frame_pixelshiftcount = VGA->precalcs.pixelshiftcount; //Pixel shift count is latched during vertical retrace ending, according to Dosbox!
 			}
 			else
 			{
