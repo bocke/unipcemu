@@ -952,17 +952,13 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 		possibleboost = GETBITS(VGA->registers->AttributeControllerRegisters.REGISTERS.HORIZONTALPIXELPANNINGREGISTER,0,0xF); //Possible value, to be determined!
 		if ((GETBITS(VGA->registers->SequencerRegisters.REGISTERS.CLOCKINGMODEREGISTER, 0, 1) == 0) && (VGA->precalcs.graphicsmode)) //Different behaviour with 9 pixel modes?
 		{
-			if (possibleboost == 8) //No shift?
+			if (possibleboost >= 8) //No shift?
 			{
 				possibleboost = 0; //No shift!
 			}
-			else if (possibleboost < 8) //Less than 8?
+			else //Less than 8?
 			{
 				++possibleboost; //1 more!
-			}
-			else //Invalid?
-			{
-				possibleboost = 0; //Invalid!
 			}
 		}
 		else //Only 3 bits?
