@@ -966,7 +966,7 @@ void VGA_calcprecalcs(void *useVGA, uint_32 whereupdated) //Calculate them, wher
 				{
 					possibleboost = 0; //No shift!
 				}
-				else if (possibleboost<8) //Less than 8?
+				else //Less than 8?
 				{
 					++possibleboost; //1 more!
 				}
