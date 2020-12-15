@@ -962,17 +962,13 @@ void VGA_calcprecalcs(void *useVGA, uint_32 whereupdated) //Calculate them, wher
 			possibleboost = GETBITS(VGA->registers->AttributeControllerRegisters.REGISTERS.HORIZONTALPIXELPANNINGREGISTER,0,0xF); //Possible value, to be determined!
 			if ((GETBITS(VGA->registers->SequencerRegisters.REGISTERS.CLOCKINGMODEREGISTER, 0, 1) == 0) && (VGA->precalcs.graphicsmode==0)) //Different behaviour with 9 pixel text modes?
 			{
-				if (possibleboost == 8) //No shift?
+				if (possibleboost >= 8) //No shift from 8 and up?
 				{
 					possibleboost = 0; //No shift!
 				}
 				else if (possibleboost<8) //Less than 8?
 				{
 					++possibleboost; //1 more!
-				}
-				else //Invalid?
-				{
-					possibleboost = 0; //Invalid!
 				}
 			}
 			else //Only 3 bits?
