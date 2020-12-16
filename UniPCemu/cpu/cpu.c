@@ -1357,10 +1357,10 @@ uint_64 cpuaddresspins[16] = { //Bit0=XT, Bit1+=CPU
 							0xFFFFFFFF, //80486 XT
 							0xFFFFFFFF, //80586 AT+
 							0xFFFFFFFF, //80586 XT
-							0xFFFFFFFFFFFF, //80686 AT+
-							0xFFFFFFFFFFFF, //80686 XT
-							0xFFFFFFFFFFFF, //80786 AT+
-							0xFFFFFFFFFFFF //80786 XT
+							0xFFFFFFFFFFFFULL, //80686 AT+
+							0xFFFFFFFFFFFFULL, //80686 XT
+							0xFFFFFFFFFFFFULL, //80786 AT+
+							0xFFFFFFFFFFFFULL //80786 XT
 }; //CPU address wrapping lookup table!
 
 //isInit: bit 7 means that the INIT pin is raised without the RESET pin! bit 8 means RESET pin with INIT pin!

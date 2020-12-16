@@ -236,7 +236,7 @@ OPTINLINE byte MMU_IO_writehandler(uint_64 offset, byte value, word index)
 	MMU_WHANDLER *list; //Current list item!
 	MMU_WHANDLER current; //Current handler!
 	memory_datawrittensize = 1; //Default to only 1 byte responding!
-	if (likely((offset & 0xFFFFFFFF00000000U) == 0)) //32-bit address?
+	if (likely((offset & 0xFFFFFFFF00000000ULL) == 0)) //32-bit address?
 	{
 		if (APIC_memIO_wb((uint_32)offset, value)) return 0; //APIC responded! This happens within the CPU, thus has priority over all hardware!
 	}
@@ -268,7 +268,7 @@ OPTINLINE byte MMU_IO_writehandler(uint_64 offset, byte value, word index)
 			}
 		}
 	}
-	if (likely((offset & 0xFFFFFFFF00000000U) == 0)) //32-bit address?
+	if (likely((offset & 0xFFFFFFFF00000000ULL) == 0)) //32-bit address?
 	{
 		if (unlikely(BIOS_writehandler((uint_32)offset, value))) return 0; //BIOS responded!
 		if (VGAmemIO_wb((uint_32)offset, value)) return 0; //Video responded!
@@ -318,7 +318,7 @@ OPTINLINE byte MMU_IO_readhandler(uint_64 offset, word index)
 	memory_datasize = 0; //Default to a size of invalid!
 	memory_dataaddr = offset; //What address has been cached!
 
-	if (likely((offset & 0xFFFFFFFF00000000U) == 0)) //32-bit address?
+	if (likely((offset & 0xFFFFFFFF00000000ULL) == 0)) //32-bit address?
 	{
 		if (APIC_memIO_rb((uint_32)offset, index)) return 0; //APIC responded! This happens within the CPU, thus has priority over all hardware!
 	}
@@ -351,7 +351,7 @@ OPTINLINE byte MMU_IO_readhandler(uint_64 offset, word index)
 			}
 		}
 	}
-	if (likely((offset & 0xFFFFFFFF00000000U) == 0))
+	if (likely((offset & 0xFFFFFFFF00000000ULL) == 0))
 	{
 		if (BIOS_readhandler((uint_32)offset, index)) return 0; //BIOS responded!
 		if (VGAmemIO_rb((uint_32)offset)) return 0; //Video responded!
@@ -673,7 +673,7 @@ OPTINLINE byte applyMemoryHoles(uint_64 realaddress, byte isread)
 	byte memoryhole;
 	realaddress = originaladdress; //Make sure we're aligned at chunks!
 
-	if (originaladdress & 0xFFFFFFFF00000000U) //64-bit address is currently unsupported?
+	if (originaladdress & 0xFFFFFFFF00000000ULL) //64-bit address is currently unsupported?
 	{
 		return 1; //Not mapped or invalid!
 	}
