@@ -657,6 +657,38 @@ sbyte LOADDESCRIPTOR(int segment, word segmentval, SEGMENT_DESCRIPTOR *container
 	}
 
 	CPU_calcSegmentPrecalcs((segment==CPU_SEGMENT_CS)?1:0,container); //Precalculate anything needed!
+	if (((segment == CPU_SEGMENT_TR) && ((container->desc.AccessRights & 0x9D) == 0x89)) //Present TSS either 16-bit or 32-bit to set/clear the B-bit when loaded?
+		|| (((container->desc.AccessRights & 0x90) == 0x90) && (((container->desc.AccessRights & 1) == 0) || (EMULATED_CPU <= CPU_80386)))) //80386 and below always update the accessed bit and lock. 80486 and up don't when already set!
+	{
+		//Lock the bus in these cases!
+		if (BIU_obtainbuslock()) //Obtaining the bus lock?
+		{
+			CPU[activeCPU].executed = 0; //Didn't finish executing yet!
+			if (EUphasehandlerrequiresreset()) //Requires reset to execute properly?
+			{
+				CPU_onResettingFault(1); //Set the fault data to restart any instruction-related things!
+				if ((MMU_logging == 1) && advancedlog) //Are we logging?
+				{
+					dolog("debugger", "Descriptor load pending (full instruction state reset)!");
+				}
+			}
+			else
+			{
+				if ((MMU_logging == 1) && advancedlog) //Are we logging?
+				{
+					dolog("debugger", "Descriptor load pending!");
+				}
+			}
+			return -2; //Stop and wait to obtain the bus lock first!
+		}
+		else
+		{
+			if ((MMU_logging == 1) && advancedlog) //Are we logging?
+			{
+				dolog("debugger", "Descriptor load pending: bus locked!");
+			}
+		}
+	}
 	return 1; //OK!
 }
 
