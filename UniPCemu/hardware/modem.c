@@ -1270,50 +1270,56 @@ void modem_updatelines(byte lines)
 	{
 		modem.detectiontimer[0] = (DOUBLE)0; //Stop timing!
 		modem.detectiontimer[1] = (DOUBLE)0; //Stop timing!
-		switch (modem.DTROffResponse) //What reponse?
+		if (modem.supported != 2) //Able to respond normally?
 		{
+			switch (modem.DTROffResponse) //What reponse?
+			{
 			case 0: //Ignore the line?
 				break;
 			case 3: //Reset and Hang-up?
 			case 2: //Hang-up and Goto AT command mode?
-				if ((modem.connected&1) || modem.ringing) //Are we connected?
+				if ((modem.connected & 1) || modem.ringing) //Are we connected?
 				{
 					modem_responseResult(MODEMRESULT_NOCARRIER); //No carrier!
 					modem_hangup(); //Hang up!
 				}
 			case 1: //Goto AT command mode?
 				modem.datamode = (byte)(modem.ATcommandsize = 0); //Starting a new command!
-				if (modem.DTROffResponse==3) //Reset as well?
+				if (modem.DTROffResponse == 3) //Reset as well?
 				{
 					resetModem(0); //Reset!
 				}
 				break;
 			default:
 				break;
+			}
 		}
 	}
-	if (((modem.outputline&1)==1) && ((modem.outputlinechanges^modem.outputline)&1) && (modem.TxDisMark)) //DTR set while TxD is mark?
+	if (modem.supported != 2) //Normal behaviour?
 	{
-		modem.detectiontimer[0] = (DOUBLE)150000000.0; //Timer 150ms!
-		modem.detectiontimer[1] = (DOUBLE)250000000.0; //Timer 250ms!
-		//Run the RTS checks now!
-	}
-	if ((modem.outputline&2) && (modem.detectiontimer[0])) //RTS and T1 not expired?
-	{
+		if (((modem.outputline & 1) == 1) && ((modem.outputlinechanges ^ modem.outputline) & 1) && (modem.TxDisMark)) //DTR set while TxD is mark?
+		{
+			modem.detectiontimer[0] = (DOUBLE)150000000.0; //Timer 150ms!
+			modem.detectiontimer[1] = (DOUBLE)250000000.0; //Timer 250ms!
+			//Run the RTS checks now!
+		}
+		if ((modem.outputline & 2) && (modem.detectiontimer[0])) //RTS and T1 not expired?
+		{
 		modem_startidling:
-		modem.detectiontimer[0] = (DOUBLE)0; //Stop timing!
-		modem.detectiontimer[1] = (DOUBLE)0; //Stop timing!
-		goto finishupmodemlinechanges; //Finish up!
-	}
-	if ((modem.outputline&2) && (!modem.detectiontimer[0]) && (modem.detectiontimer[1])) //RTS and T1 expired and T2 not expired?
-	{
-		//Send serial PNP message!
-		MODEM_sendAutodetectionPNPmessage();
-		goto modem_startidling; //Start idling again!
-	}
-	if ((modem.outputline&2) && (!modem.detectiontimer[1])) //RTS and T2 expired?
-	{
-		goto modem_startidling; //Start idling again!
+			modem.detectiontimer[0] = (DOUBLE)0; //Stop timing!
+			modem.detectiontimer[1] = (DOUBLE)0; //Stop timing!
+			goto finishupmodemlinechanges; //Finish up!
+		}
+		if ((modem.outputline & 2) && (!modem.detectiontimer[0]) && (modem.detectiontimer[1])) //RTS and T1 expired and T2 not expired?
+		{
+			//Send serial PNP message!
+			MODEM_sendAutodetectionPNPmessage();
+			goto modem_startidling; //Start idling again!
+		}
+		if ((modem.outputline & 2) && (!modem.detectiontimer[1])) //RTS and T2 expired?
+		{
+			goto modem_startidling; //Start idling again!
+		}
 	}
 	finishupmodemlinechanges:
 	modem.outputlinechanges = modem.outputline; //Save for reference!
@@ -1329,7 +1335,11 @@ byte modem_hasData() //Do we have data for input?
 	byte temp;
 	byte allowdatatoreceive; //Do we allow data to receive?
 	havedatatoreceive = (peekfifobuffer(modem.inputbuffer, &temp) || (peekfifobuffer(modem.inputdatabuffer[0], &temp) && (modem.datamode == 1))); //Do we have data to receive?
-	if (modem.communicationsmode && (modem.communicationsmode < 4)) //Synchronous mode? CTS is affected!
+	if (modem.supported == 2) //Passthrough mode?
+	{
+		allowdatatoreceive = modem.canrecvdata; //Default: allow to receive if not blocked!
+	}
+	else if (modem.communicationsmode && (modem.communicationsmode < 4)) //Synchronous mode? CTS is affected!
 	{
 		allowdatatoreceive = ((modem.canrecvdata && ((modem.flowcontrol == 1) || (modem.flowcontrol == 3))) || ((modem.flowcontrol != 1) && (modem.flowcontrol != 3))); //Default: allow all data to receive!
 		switch (modem.CTSAlwaysActive)
@@ -4034,7 +4044,10 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 								fifobuffer_clear(modem.inputdatabuffer[0]); //Clear the output buffer for the next client!
 								fifobuffer_clear(modem.outputbuffer[0]); //Clear the output buffer for the next client!
 								modem.connected = 0; //Not connected anymore!
-								modem_responseResult(MODEMRESULT_NOCARRIER);
+								if (modem.supported != 2) //Normal mode?
+								{
+									modem_responseResult(MODEMRESULT_NOCARRIER);
+								}
 								modem.datamode = 0; //Drop out of data mode!
 								modem.ringing = 0; //Not ringing anymore!
 							}
@@ -4071,7 +4084,10 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 								fifobuffer_clear(modem.inputdatabuffer[0]); //Clear the output buffer for the next client!
 								fifobuffer_clear(modem.outputbuffer[0]); //Clear the output buffer for the next client!
 								modem.connected = 0; //Not connected anymore!
-								modem_responseResult(MODEMRESULT_NOCARRIER);
+								if (modem.supported != 2) //Not in passthrough mode?
+								{
+									modem_responseResult(MODEMRESULT_NOCARRIER);
+								}
 								modem.datamode = 0; //Drop out of data mode!
 								modem.ringing = 0; //Not ringing anymore!
 							}
