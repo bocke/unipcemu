@@ -1503,8 +1503,12 @@ void modem_Answered()
 	if (modem.supported != 2) //Not passthrough mode?
 	{
 		modem_responseResult(MODEMRESULT_CONNECT); //Connected!
+		modem.datamode = 2; //Enter data mode pending!
 	}
-	modem.datamode = 2; //Enter data mode pending!
+	else
+	{
+		modem.datamode = 1; //Enter data mode!
+	}
 	modem.offhook = 1; //Off-hook(connect)!
 }
 
