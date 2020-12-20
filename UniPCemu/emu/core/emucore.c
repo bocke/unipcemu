@@ -685,7 +685,7 @@ void initEMU(int full) //Init!
 	initSERMouse(!is_PS2); //Initilialise the serial mouse for all supported platforms not using PS/2 mouse!
 
 	debugrow("Initialising serial modem...");
-	initModem(1); //Initilialise the serial modem!
+	initModem(BIOS_Settings.nullmodem?2:1); //Initilialise the serial modem to nullmodem mode or normal mode!
 
 	debugrow("Initialising Floppy Disk Controller...");
 	initFDC(); //Initialise the Floppy Disk Controller!

@@ -1279,6 +1279,7 @@ void BIOS_LoadData() //Load BIOS settings!
 
 	//Modem
 	BIOS_Settings.modemlistenport = LIMITRANGE((word)get_private_profile_uint64("modem", "listenport", DEFAULT_MODEMLISTENPORT, inifile),0,0xFFFF); //Modem listen port!
+	BIOS_Settings.nullmodem = LIMITRANGE((word)get_private_profile_uint64("modem", "nullmodem", DEFAULT_NULLMODEM, inifile), 0, 1); //nullmodem mode!
 	for (c = 0; c < NUMITEMS(BIOS_Settings.phonebook); ++c) //Process all phonebook entries!
 	{
 		snprintf(phonebookentry, sizeof(phonebookentry), "phonebook%u", c); //The entry to use!
@@ -1634,6 +1635,8 @@ int BIOS_SaveData() //Save BIOS settings!
 	memset(&modem_comment, 0, sizeof(modem_comment)); //Init!
 	memset(currentstr, 0, sizeof(currentstr)); //Init!
 	snprintf(modem_comment, sizeof(modem_comment), "listenport: listen port to listen on when not connected(defaults to %u)\n", DEFAULT_MODEMLISTENPORT);
+	snprintf(currentstr, sizeof(currentstr), "nullmodem: make the modem behave as a nullmodem cable(defaults to %u)\n", DEFAULT_NULLMODEM);
+	safestrcat(modem_comment, sizeof(modem_comment), currentstr); //MAC address information!
 	snprintf(currentstr, sizeof(currentstr), "phonebook0-%u: Phonebook entry #n", (byte)(NUMITEMS(BIOS_Settings.phonebook) - 1)); //Information about the phonebook!
 	safestrcat(modem_comment, sizeof(modem_comment), currentstr); //MAC address information!
 #ifdef PACKETSERVER_ENABLED
@@ -1655,6 +1658,7 @@ int BIOS_SaveData() //Save BIOS settings!
 	char *modem_commentused=NULL;
 	if (modem_comment[0]) modem_commentused = &modem_comment[0];
 	if (!write_private_profile_uint64("modem",modem_commentused,"listenport",BIOS_Settings.modemlistenport,inifile)) ABORT_SAVEDATA //Modem listen port!
+	if (!write_private_profile_uint64("modem",modem_commentused,"nullmodem",BIOS_Settings.nullmodem,inifile)) ABORT_SAVEDATA //nullmodem mode!
 	for (c = 0; c < NUMITEMS(BIOS_Settings.phonebook); ++c) //Process all phonebook entries!
 	{
 		snprintf(phonebookentry, sizeof(phonebookentry), "phonebook%u", c); //The entry to use!

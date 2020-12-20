@@ -139,6 +139,7 @@ typedef struct
 	uint_64 taskBreakpoint; //Task to break on
 	uint_64 FSBreakpoint; //FS to break on
 	uint_64 CR3breakpoint; //CR3 to break on
+	byte nullmodem; //nullmodem mode to TCP when set!
 } BIOS_Settings_TYPE; //BIOS Settings!
 
 //Debug modes:
@@ -276,6 +277,7 @@ enum BIOSROMMode {
 #else
 #define DEFAULT_MODEMLISTENPORT 23
 #endif
+#define DEFAULT_NULLMODEM 0
 #define DEFAULT_CLOCKINGMODE CLOCKINGMODE_IPSCLOCK
 #define DEFAULT_CGAMODEL 0
 #define DEFAULT_VIDEOCARD 4

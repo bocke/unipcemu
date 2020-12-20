@@ -1478,7 +1478,10 @@ byte modemcommand_readNumber(word *pos, int *result)
 
 void modem_Answered()
 {
-	modem_responseResult(MODEMRESULT_CONNECT); //Connected!
+	if (modem.supported != 2) //Not passthrough mode?
+	{
+		modem_responseResult(MODEMRESULT_CONNECT); //Connected!
+	}
 	modem.datamode = 2; //Enter data mode pending!
 	modem.offhook = 1; //Off-hook(connect)!
 }
@@ -2462,6 +2465,7 @@ void modem_writeCommandData(byte value)
 	}
 	else //Command mode?
 	{
+		if (modem.supported == 2) return; //Don't allow sending commands when in passthrough mode!
 		modem.timer = 0.0; //Reset the timer when anything is received!
 		if (value == '~') //Pause stream for half a second?
 		{
@@ -2585,6 +2589,11 @@ void modem_writeData(byte value)
 	//Handle the data sent to the modem!
 	if ((value==modem.escapecharacter) && (modem.escapecharacter<=0x7F) && ((modem.escaping && (modem.escaping<3)) || ((modem.timer>=modem.escapecodeguardtime) && (modem.escaping==0)))) //Possible escape sequence? Higher values than 127 disables the escape character! Up to 3 escapes after the guard timer is allowed!
 	{
+		if (modem.supported==2) //Passthrough mode?
+		{
+			modem_writeCommandData(value); //Send it as data/command!
+			return; //Don't count towards escaping!
+		}
 		++modem.escaping; //Increase escape info!
 	}
 	else //Not escaping(anymore)?
@@ -3206,7 +3215,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 	if ((modem.serverpolltimer>=modem.serverpolltick) && modem.serverpolltick) //To poll?
 	{
 		modem.serverpolltimer = fmod(modem.serverpolltimer,modem.serverpolltick); //Polling once every turn!
-		if (!(((modem.linechanges & 1) == 0) && (PacketServer_running == 0))) //Able to accept?
+		if (!(((((modem.linechanges & 1) == 0) && (modem.supported!=2)) || ((modem.supported==2) && ((modem.connected==1) || (modem.ringing)))) && (PacketServer_running == 0))) //Able to accept? Never accept in passthrough mode!
 		{
 			if ((connectionid = acceptTCPServer()) >= 0) //Are we connected to?
 			{
@@ -3231,6 +3240,10 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 					modem.ringing = 1; //We start ringing!
 					modem.registers[1] = 0; //Reset ring counter!
 					modem.ringtimer = timepassed; //Automatic time timer, start immediately!
+					if ((modem.supported == 2) && (PacketServer_running == 0)) //Passthrough mode accepted without packet server?
+					{
+						TCPServer_Unavailable(); //We're unavailable to connect to from now on!
+					}
 				}
 				else //Invalid ID to handle right now(single host only atm)?
 				{
@@ -3241,12 +3254,15 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 		else //We can't be connected to, stop the server if so!
 		{
 			TCPServer_Unavailable(); //We're unavailable to connect to!
-			if ((modem.connected==1) || modem.ringing) //We're connected as a modem?
+			if (modem.supported != 2) //Not in passthrough mode? Disconnect any if connected!
 			{
-				TCP_DisconnectClientServer(modem.connectionid);
-				modem.connectionid = -1; //Not connected anymore!
-				fifobuffer_clear(modem.inputdatabuffer[0]); //Clear the output buffer for the next client!
-				fifobuffer_clear(modem.outputbuffer[0]); //Clear the output buffer for the next client!
+				if ((modem.connected == 1) || modem.ringing) //We're connected as a modem?
+				{
+					TCP_DisconnectClientServer(modem.connectionid);
+					modem.connectionid = -1; //Not connected anymore!
+					fifobuffer_clear(modem.inputdatabuffer[0]); //Clear the output buffer for the next client!
+					fifobuffer_clear(modem.outputbuffer[0]); //Clear the output buffer for the next client!
+				}
 			}
 		}
 	}
@@ -3259,8 +3275,9 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 			if (modem.ringing & 2) //Ring completed?
 			{
 				++modem.registers[1]; //Increase numbr of rings!
-				if ((modem.registers[0] > 0) && (modem.registers[1] >= modem.registers[0])) //Autoanswer?
+				if ((modem.registers[0] > 0) && (modem.registers[1] >= modem.registers[0]) || (modem.supported==2)) //Autoanswer or passthrough mode?
 				{
+					handleModemAutoAnswer:
 					modem.registers[1] = 0; //When connected, clear the register!
 					if (modem_connect(NULL)) //Accept incoming call?
 					{
@@ -3278,14 +3295,22 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 			}
 			else //Starting a ring?
 			{
-				modem_responseResult(MODEMRESULT_RING); //We're ringing!
+				if (modem.supported != 2) //Not passthrough mode?
+				{
+					modem_responseResult(MODEMRESULT_RING); //We're ringing!
+					#ifdef IS_LONGDOUBLE
+						modem.ringtimer += 3000000000.0L; //3s timer for every ring!
+					#else
+						modem.ringtimer += 3000000000.0; //3s timer for every ring!
+					#endif
+				}
+				else //Silent autoanswer mode?
+				{
+					modem.ringing |= 2; //Wait to start a new ring!
+					goto handleModemAutoAnswer; //Autoanswer immediately!
+				}
 				//Wait for the next ring to start!
 				modem.ringing |= 2; //Wait to start a new ring!
-				#ifdef IS_LONGDOUBLE
-					modem.ringtimer += 3000000000.0L; //3s timer for every ring!
-				#else
-					modem.ringtimer += 3000000000.0; //3s timer for every ring!
-				#endif
 			}
 		}
 	}
