@@ -1404,9 +1404,12 @@ byte modem_getstatus()
 	//DSRisConnectionEstablished: 0:1, 1:DTR
 	if (modem.supported == 2) //DTR depends on the outgoing connection in passthrough mode!
 	{
-		if ((modem.connected == 1) && (modem.datamode)) //Handshaked or pending handshake?
+		if ((modem.outputline & 1) == 1) //DTR is set? Then raise DSR when connected using the nullmodem line!
 		{
-			result |= 2; //Raise the line!
+			if ((modem.connected == 1) && (modem.datamode)) //Handshaked or pending handshake?
+			{
+				result |= 2; //Raise the line!
+			}
 		}
 	}
 	else if ((modem.communicationsmode) && (modem.communicationsmode < 5)) //Special actions taken?
