@@ -295,6 +295,9 @@ struct
 	//Command completion status!
 	byte wascommandcompletionecho; //Was command completion with echo!
 	DOUBLE wascommandcompletionechoTimeout; //Timeout for execution anyways!
+	byte passthroughlinestatusdirty; //Passthrough mode line status dirty? Bit 0=DTR, bit 1=RTS, bit 2=Break
+	byte passthroughescaped; //Was the last byte escaped?
+	byte passthroughlines; //The actual lines that were received in passthrough mode!
 } modem;
 
 byte readIPnumber(char **x, byte *number); //Prototype!
@@ -856,6 +859,22 @@ byte modem_sendData(byte value) //Send data to the connected device!
 {
 	//Handle sent data!
 	if (PacketServer_running) return 0; //Not OK to send data this way!
+	if (modem.supported == 3) //Might need to be escaped?
+	{
+		if (modem.passthroughlinestatusdirty & 7) //Still pending to send the last line status?
+		{
+			return 0; //Don't send any yet! Wait for the transfer to become up-to-date first!
+		}
+		if (value == 0xFF) //Needs to be escaped?
+		{
+			if (fifobuffer_freesize(modem.outputbuffer[0]) < 2) //Not enough room to send?
+			{
+				return 0; //Don't send yet!
+			}
+			writefifobuffer(modem.outputbuffer[0], 0xFF); //Escape the value to write to make it to the other side!
+		}
+		//Doesn't need to be escaped for any other value!
+	}
 	return writefifobuffer(modem.outputbuffer[0],value); //Try to write to the output buffer!
 }
 
@@ -889,6 +908,11 @@ byte modem_connect(char *phonenumber)
 	{
 		modem.ringing = 0; //Not ringing anymore!
 		modem.connected = 1; //We're connected!
+		if (modem.supported == 3) //Requires sending a special packet?
+		{
+			modem.passthroughlines = 0; //Nothing received yet!
+			modem.passthroughlinestatusdirty |= 7; //Request the packet to send!
+		}
 		return 1; //Accepted!
 	}
 	else if (phonenumber==NULL) //Not ringing, but accepting?
@@ -981,6 +1005,11 @@ byte modem_connect(char *phonenumber)
 	{
 		modem.connectionid = connectionid; //We're connected to this!
 		modem.connected = 1; //We're connected!
+		if (modem.supported == 3) //Requires sending a special packet?
+		{
+			modem.passthroughlines = 0; //Nothing received yet!
+			modem.passthroughlinestatusdirty |= 7; //Request the packet to send!
+		}
 		return 1; //We're connected!
 	}
 	return 0; //We've failed to connect!
@@ -1294,6 +1323,10 @@ void modem_updatelines(byte lines)
 				break;
 			}
 		}
+		else if (modem.supported == 3) //Line status is passed as well?
+		{
+			modem.passthroughlinestatusdirty |= 1; //DTR Line is dirty!
+		}
 	}
 	if (modem.supported < 2) //Normal behaviour?
 	{
@@ -1321,7 +1354,15 @@ void modem_updatelines(byte lines)
 			goto modem_startidling; //Start idling again!
 		}
 	}
-	finishupmodemlinechanges:
+	else if ((modem.supported == 3) && ((modem.outputline ^ modem.outputlinechanges) & 2)) //Line status is passed as well?
+	{
+		if ((modem.outputline ^ modem.outputlinechanges) & 2) //RTS is passed as well?
+		{
+			modem.passthroughlinestatusdirty |= 2; //RTS Line is dirty!
+		}
+		//Check for break as well? Break isn't supported as an output from the UART yet?
+	}
+finishupmodemlinechanges:
 	modem.outputlinechanges = modem.outputline; //Save for reference!
 	if ((lines & 4) == 0) //Apply effective line?
 	{
@@ -1369,6 +1410,10 @@ byte modem_getstatus()
 	if (modem.supported >= 2) //CTS depends on the outgoing buffer in passthrough mode!
 	{
 		result |= ((modem.datamode == 1) ? ((modem.connectionid >= 0) ? (fifobuffer_freesize(modem.outputbuffer[modem.connectionid]) ? 1 : 0) : 0) : 0); //Can we send to the modem?
+		if (modem.supported == 3) //Also depend on the received line!
+		{
+			result = (result & ~1) | ((modem.passthroughlines >> 1) & 1); //Mask CTS with received RTS!
+		}
 	}
 	else if (modem.communicationsmode && (modem.communicationsmode < 4)) //Synchronous mode? CTS is affected!
 	{
@@ -1409,6 +1454,10 @@ byte modem_getstatus()
 			if ((modem.connected == 1) && (modem.datamode)) //Handshaked or pending handshake?
 			{
 				result |= 2; //Raise the line!
+				if (modem.supported == 3) //Also depend on the received line?
+				{
+					result = (result & ~2) | ((result & ((modem.passthroughlines >> 1) & 1))); //Mask DSR with received DTR!
+				}
 			}
 		}
 	}
@@ -2485,12 +2534,12 @@ void modem_flushCommandCompletion()
 	modem_executeCommand();
 }
 
-void modem_writeCommandData(byte value)
+byte modem_writeCommandData(byte value)
 {
 	if (modem.datamode) //Data mode?
 	{
 		modem.wascommandcompletionecho = 0; //Disable the linefeed echo!
-		modem_sendData(value); //Send the data!
+		return modem_sendData(value); //Send the data!
 	}
 	else //Command mode?
 	{
@@ -2547,7 +2596,7 @@ void modem_writeCommandData(byte value)
 				if ((modem.wascommandcompletionecho && (value == modem.linefeedcharacter))) //Finishing echo and start of command execution?
 				{
 					modem_flushCommandCompletion(); //Start executing the command now!
-					return; //Don't add to the buffer!
+					return 1; //Don't add to the buffer!
 				}
 			}
 			if (modem.wascommandcompletionecho) //Finishing echo and start of command execution?
@@ -2611,18 +2660,14 @@ void modem_writeCommandData(byte value)
 			}
 		}
 	}
+	return 1; //Received!
 }
 
-void modem_writeData(byte value)
+byte modem_writeData(byte value)
 {
 	//Handle the data sent to the modem!
-	if ((value==modem.escapecharacter) && (modem.escapecharacter<=0x7F) && ((modem.escaping && (modem.escaping<3)) || ((modem.timer>=modem.escapecodeguardtime) && (modem.escaping==0)))) //Possible escape sequence? Higher values than 127 disables the escape character! Up to 3 escapes after the guard timer is allowed!
+	if ((value==modem.escapecharacter) && (modem.supported<2) && (modem.escapecharacter<=0x7F) && ((modem.escaping && (modem.escaping<3)) || ((modem.timer>=modem.escapecodeguardtime) && (modem.escaping==0)))) //Possible escape sequence? Higher values than 127 disables the escape character! Up to 3 escapes after the guard timer is allowed!
 	{
-		if (modem.supported>=2) //Passthrough mode?
-		{
-			modem_writeCommandData(value); //Send it as data/command!
-			return; //Don't count towards escaping!
-		}
 		++modem.escaping; //Increase escape info!
 	}
 	else //Not escaping(anymore)?
@@ -2632,9 +2677,13 @@ void modem_writeData(byte value)
 			--modem.escaping; //Handle one!
 			modem_writeCommandData(modem.escapecharacter); //Send it as data/command!
 		}
-		modem_writeCommandData(value); //Send it as data/command!
+		if (!modem_writeCommandData(value)) //Send it as data/command! Not acnowledged?
+		{
+			return 0; //Don't acnowledge the send yet!
+		}
 	}
 	modem.timer = 0.0; //Reset the timer when anything is received!
+	return 1; //Acnowledged and sent!
 }
 
 void initModem(byte enabled) //Initialise modem!
@@ -3237,6 +3286,17 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 		{
 			modem.DTRlineDelay = (DOUBLE)0; //Stop timer!
 			modem_updatelines(1); //Update line!
+		}
+	}
+
+	if ((modem.supported == 3) && (modem.passthroughlinestatusdirty & 7)) //Dirty lines to handle in passthrough mode?
+	{
+		if (fifobuffer_freesize(modem.outputbuffer[0]) >= 2) //Enough to send a packet to describe our status change?
+		{
+			//Send a break(bit 2)/DTR(bit 1)/RTS(bit 0) packet!
+			writefifobuffer(modem.outputbuffer[0], 0xFF); //Escape!
+			writefifobuffer(modem.outputbuffer[0], ((modem.linechanges & 1) << 1) | ((modem.linechanges & 2) >> 1)); //Send DTR and RTS! Don't handle break yet, as this isn't supported yet!
+			modem.passthroughlinestatusdirty &= ~7; //Acknowledge the new lines!
 		}
 	}
 
@@ -4080,7 +4140,33 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 						case 0: //Nothing received?
 							break;
 						case 1: //Something received?
-							writefifobuffer(modem.inputdatabuffer[0], datatotransmit); //Add the transmitted data to the input buffer!
+							if (modem.supported == 3) //Passthrough mode with data lines that can be escaped?
+							{
+								if (modem.passthroughescaped) //Was the last byte an escape?
+								{
+									if (datatotransmit == 0xFF) //Escaped non-escaped byte?
+									{
+										writefifobuffer(modem.inputdatabuffer[0], datatotransmit); //Add the transmitted data to the input buffer!
+									}
+									else //DTR/RTS/break received?
+									{
+										modem.passthroughlines = datatotransmit; //The received lines!
+									}
+									modem.passthroughescaped = 0; //Not escaped anymore!
+								}
+								else if (datatotransmit == 0xFF) //New command! Escaped?
+								{
+									modem.passthroughescaped = 1; //Escaped now!
+								}
+								else //Non-escaped data!
+								{
+									writefifobuffer(modem.inputdatabuffer[0], datatotransmit); //Add the transmitted data to the input buffer!
+								}
+							}
+							else //Normal mode?
+							{
+								writefifobuffer(modem.inputdatabuffer[0], datatotransmit); //Add the transmitted data to the input buffer!
+							}
 							break;
 						case -1: //Disconnected?
 							modem.connected = 0; //Not connected anymore!
