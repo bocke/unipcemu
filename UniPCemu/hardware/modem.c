@@ -859,7 +859,7 @@ byte modem_sendData(byte value) //Send data to the connected device!
 {
 	//Handle sent data!
 	if (PacketServer_running) return 0; //Not OK to send data this way!
-	if (modem.supported == 3) //Might need to be escaped?
+	if (modem.supported >= 3) //Might need to be escaped?
 	{
 		if (modem.passthroughlinestatusdirty & 7) //Still pending to send the last line status?
 		{
@@ -908,7 +908,7 @@ byte modem_connect(char *phonenumber)
 	{
 		modem.ringing = 0; //Not ringing anymore!
 		modem.connected = 1; //We're connected!
-		if (modem.supported == 3) //Requires sending a special packet?
+		if (modem.supported >= 3) //Requires sending a special packet?
 		{
 			modem.passthroughlines = 0; //Nothing received yet!
 			modem.passthroughlinestatusdirty |= 7; //Request the packet to send!
@@ -1005,7 +1005,7 @@ byte modem_connect(char *phonenumber)
 	{
 		modem.connectionid = connectionid; //We're connected to this!
 		modem.connected = 1; //We're connected!
-		if (modem.supported == 3) //Requires sending a special packet?
+		if (modem.supported >= 3) //Requires sending a special packet?
 		{
 			modem.passthroughlines = 0; //Nothing received yet!
 			modem.passthroughlinestatusdirty |= 7; //Request the packet to send!
@@ -1323,7 +1323,7 @@ void modem_updatelines(byte lines)
 				break;
 			}
 		}
-		else if (modem.supported == 3) //Line status is passed as well?
+		else if (modem.supported >= 3) //Line status is passed as well?
 		{
 			modem.passthroughlinestatusdirty |= 1; //DTR Line is dirty!
 		}
@@ -1354,7 +1354,7 @@ void modem_updatelines(byte lines)
 			goto modem_startidling; //Start idling again!
 		}
 	}
-	else if ((modem.supported == 3) && ((modem.outputline ^ modem.outputlinechanges) & 2)) //Line status is passed as well?
+	else if ((modem.supported >= 3) && ((modem.outputline ^ modem.outputlinechanges) & 2)) //Line status is passed as well?
 	{
 		if ((modem.outputline ^ modem.outputlinechanges) & 2) //RTS is passed as well?
 		{
@@ -1379,6 +1379,10 @@ byte modem_hasData() //Do we have data for input?
 	if (modem.supported >= 2) //Passthrough mode?
 	{
 		allowdatatoreceive = modem.canrecvdata; //Default: allow to receive if not blocked!
+		if (modem.supported >= 3) //Lines as well?
+		{
+			allowdatatoreceive = 1; //Always allow data to receive!
+		}
 	}
 	else if (modem.communicationsmode && (modem.communicationsmode < 4)) //Synchronous mode? CTS is affected!
 	{
@@ -1410,7 +1414,7 @@ byte modem_getstatus()
 	if (modem.supported >= 2) //CTS depends on the outgoing buffer in passthrough mode!
 	{
 		result |= ((modem.datamode == 1) ? ((modem.connectionid >= 0) ? (fifobuffer_freesize(modem.outputbuffer[modem.connectionid]) ? 1 : 0) : 0) : 0); //Can we send to the modem?
-		if (modem.supported == 3) //Also depend on the received line!
+		if (modem.supported >= 3) //Also depend on the received line!
 		{
 			result = (result & ~1) | ((modem.passthroughlines >> 1) & 1); //Mask CTS with received RTS!
 		}
@@ -1454,7 +1458,7 @@ byte modem_getstatus()
 			if ((modem.connected == 1) && (modem.datamode)) //Handshaked or pending handshake?
 			{
 				result |= 2; //Raise the line!
-				if (modem.supported == 3) //Also depend on the received line?
+				if (modem.supported >= 3) //Also depend on the received line?
 				{
 					result = (result & ~2) | ((result & ((modem.passthroughlines >> 1) & 1))); //Mask DSR with received DTR!
 				}
@@ -3289,7 +3293,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 		}
 	}
 
-	if ((modem.supported == 3) && (modem.passthroughlinestatusdirty & 7)) //Dirty lines to handle in passthrough mode?
+	if ((modem.supported >= 3) && (modem.passthroughlinestatusdirty & 7)) //Dirty lines to handle in passthrough mode?
 	{
 		if (fifobuffer_freesize(modem.outputbuffer[0]) >= 2) //Enough to send a packet to describe our status change?
 		{
@@ -4140,7 +4144,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 						case 0: //Nothing received?
 							break;
 						case 1: //Something received?
-							if (modem.supported == 3) //Passthrough mode with data lines that can be escaped?
+							if (modem.supported >= 3) //Passthrough mode with data lines that can be escaped?
 							{
 								if (modem.passthroughescaped) //Was the last byte an escape?
 								{
