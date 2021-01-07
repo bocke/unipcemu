@@ -24,7 +24,7 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 typedef void (*UART_setmodemcontrol)(byte control);
 typedef byte (*UART_getmodemstatus)(); //Retrieve the modem status!
 typedef byte(*UART_hasdata)();
-typedef void (*UART_senddata)(byte value);
+typedef byte (*UART_senddata)(byte value);
 typedef byte(*UART_receivedata)();
 
 void initUART(); //Init UART!

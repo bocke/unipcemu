@@ -713,7 +713,10 @@ void updateUART(DOUBLE timepassed)
 						else //Not transmitting to the loopback adapter?
 						{
 							//Finished transferring data to an actual device.
-							UART_port[UART].senddata(UART_port[UART].TransmitterShiftRegister); //Send the data!
+							if (!UART_port[UART].senddata(UART_port[UART].TransmitterShiftRegister)) //Send the data, if possible!
+							{
+								break; //Don't handle it yet if we can't send it yet!
+							}
 						}
 
 						//Data is sent, so update status when finished!
