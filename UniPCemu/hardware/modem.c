@@ -1336,7 +1336,7 @@ void modem_updatelines(byte lines)
 		{
 			char* c = &BIOS_Settings.phonebook[0][0]; //Phone book support for entry #0!
 			safestrcpy((char*)&modem.lastnumber, sizeof(modem.lastnumber), c); //Set the last number!
-			if (modem_connect(&modem.lastnumber[0])) //Try to dial said number!
+			if (modem_connect(c)) //Try to dial said number!
 			{
 				modem_Answered(); //Answer!
 			}
@@ -3411,7 +3411,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 			if (modem.ringing & 2) //Ring completed?
 			{
 				++modem.registers[1]; //Increase numbr of rings!
-				if ((modem.registers[0] > 0) && (modem.registers[1] >= modem.registers[0]) || (modem.supported>=2)) //Autoanswer or passthrough mode?
+				if (((modem.registers[0] > 0) && (modem.registers[1] >= modem.registers[0])) || (modem.supported>=2)) //Autoanswer or passthrough mode?
 				{
 					handleModemAutoAnswer:
 					modem.registers[1] = 0; //When connected, clear the register!
