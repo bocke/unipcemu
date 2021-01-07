@@ -3217,6 +3217,34 @@ byte PPPOE_handlePADreceived(sword connectedclient)
 	return 0; //Not handled!
 }
 
+void connectModem(char* number)
+{
+	if (modem_connect(number))
+	{
+		modem_responseResult(MODEMRESULT_CONNECT); //Accept!
+		modem.offhook = 2; //On-hook(connect)!
+		//Not to remain in command mode?
+		if (modem.supported<2) //Normal mode?
+		{
+			modem.datamode = 2; //Enter data mode pending!
+		}
+		else
+		{
+			modem.datamode = 1; //Enter data mode!
+		}
+	}
+}
+
+byte modem_connected()
+{
+	return (modem.connected == 1); //Are we connected or not!
+}
+
+byte modem_passthrough()
+{
+	return (modem.connected >= 2); //In phassethough mode?
+}
+
 void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 {
 	byte IP_useIHL;

@@ -31,4 +31,10 @@ void updateModem(DOUBLE timepassed); //Sound tick. Executes every instruction.
 void initPcap(); //PCAP initialization, when supported!
 void termPcap(); //PCAP termination, when supported!
 
+//Manual dialing and hangup support!
+byte modem_passthrough(); //Passthrough mode enabled?
+void connectModem(char* number);
+byte modem_connected();
+void modem_hangup(); //Hang up, if possible!
+
 #endif
