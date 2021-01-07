@@ -1289,6 +1289,8 @@ void modem_setModemControl(byte line) //Set output lines of the Modem!
 	modem.linechanges = line; //Save for reference!
 }
 
+void modem_Answered(); //Prototype!
+
 void modem_updatelines(byte lines)
 {
 	if ((lines & 4) == 0) //Update effective lines?
@@ -1328,6 +1330,19 @@ void modem_updatelines(byte lines)
 			modem.passthroughlinestatusdirty |= 1; //DTR Line is dirty!
 		}
 	}
+	else if ((((modem.outputline & 1) == 1) && ((modem.outputlinechanges ^ modem.outputline) & 1))) //Became ready?
+	{
+		if (modem.supported >= 4) //Manual dialling out is enabled using phonebook entry #0?
+		{
+			char* c = &BIOS_Settings.phonebook[0][0]; //Phone book support for entry #0!
+			safestrcpy((char*)&modem.lastnumber, sizeof(modem.lastnumber), c); //Set the last number!
+			if (modem_connect(&modem.lastnumber[0])) //Try to dial said number!
+			{
+				modem_Answered(); //Answer!
+			}
+		}
+	}
+
 	if (modem.supported < 2) //Normal behaviour?
 	{
 		if (((modem.outputline & 1) == 1) && ((modem.outputlinechanges ^ modem.outputline) & 1) && (modem.TxDisMark)) //DTR set while TxD is mark?
