@@ -2592,7 +2592,7 @@ extern byte input_buffer_shift; //Ctrl-Shift-Alt Status for the pressed key!
 extern sword input_buffer; //To contain the pressed key!
 extern byte input_buffer_mouse; //Mouse button input also supported!
 
-byte BIOS_InputText(byte x, byte y, char *filename, uint_32 maxlength)
+byte BIOS_InputText(byte x, byte y, char *filename, uint_32 maxlength, byte isaddress)
 {
 	char ending[2] = { '_',0 };
 	ending[0] = (char)219; //Ending character!
@@ -2656,10 +2656,11 @@ byte BIOS_InputText(byte x, byte y, char *filename, uint_32 maxlength)
 						(input[0] != '\\') &&
 						(input[0] != '[') &&
 						(input[0] != ']') &&
-						(input[0] != ';') &&
+						((input[0] != ';') || (isaddress && ((input[0] == ';') && (input_buffer_shift & SHIFTSTATUS_SHIFT)))) && //Address allows ':'!
 						(strcmp(input,"'")!=0) &&
 						(input[0] != ',') &&
-						(input[0] != '/')) //Not an invalid character?
+						((input[0] != '/') || (isaddress && (input[0] == '/'))) //Address allows '/'!
+						) //Not an invalid character?
 					{
 						if (safestrlen(filename,maxlength+1) < maxlength) //Not max?
 						{
@@ -2674,6 +2675,11 @@ byte BIOS_InputText(byte x, byte y, char *filename, uint_32 maxlength)
 								{
 									input[0] = '_'; //Convert to uppercase!
 									safestrcat(filename,(maxlength+1), input); //Add the input to the filename!
+								}
+								else if (input[0] == ';') //Becomes :?
+								{
+									input[0] = ':'; //Convert to uppercase!
+									safestrcat(filename, (maxlength + 1), input); //Add the input to the filename!
 								}
 								//Invalid uppercase is ignored!
 							}
@@ -2933,7 +2939,7 @@ void BIOS_GenerateStaticHDD() //Generate Static HDD Image!
 	EMU_gotoxy(0, 4); //Goto position for info!
 	GPU_EMU_printscreen(0, 4, "Name: "); //Show the filename!
 	EMU_unlocktext();
-	if (BIOS_InputText(6, 4, &filename[0], 255-4)) //Input text confirmed?
+	if (BIOS_InputText(6, 4, &filename[0], 255-4, 0)) //Input text confirmed?
 	{
 		if (strcmp(filename, "") != 0) //Got input?
 		{
@@ -2999,7 +3005,7 @@ void BIOS_GenerateDynamicHDD() //Generate Static HDD Image!
 	EMU_gotoxy(0, 4); //Goto position for info!
 	GPU_EMU_printscreen(0, 4, "Name: "); //Show the filename!
 	EMU_unlocktext();
-	if (BIOS_InputText(6, 4, &filename[0], 255-7)) //Input text confirmed?
+	if (BIOS_InputText(6, 4, &filename[0], 255-7, 0)) //Input text confirmed?
 	{
 		if (strcmp(filename, "") != 0) //Got input?
 		{
@@ -3095,7 +3101,7 @@ void BIOS_ConvertStaticDynamicHDD() //Generate Dynamic HDD Image from a static o
 			GPU_EMU_printscreen(12, 5, "      "); //Clear the creation process!
 			GPU_EMU_printscreen(12, 5, "%uMB", (size / MBMEMORY)); //Image size
 			EMU_unlocktext();
-			if (BIOS_InputText(22, 6, &filename[0], (sizeof(filename) - 1) - strlen(".sfdimg")))
+			if (BIOS_InputText(22, 6, &filename[0], (sizeof(filename) - 1) - strlen(".sfdimg"), 0))
 			{
 				if (safestrlen(filename, sizeof(filename)) > (sizeof(filename) - strlen(".sfdimg") - 1)) //Too long filename?
 				{
@@ -3313,7 +3319,7 @@ void BIOS_ConvertDynamicStaticHDD() //Generate Static HDD Image from a dynamic o
 			GPU_EMU_printscreen(12, 5, "      "); //Clear the creation process!
 			GPU_EMU_printscreen(12, 5, "%uMB", (size / MBMEMORY)); //Image size
 			EMU_unlocktext();
-			if (BIOS_InputText(22, 6, &filename[0], (sizeof(filename) - 1) - strlen(".img")))
+			if (BIOS_InputText(22, 6, &filename[0], (sizeof(filename) - 1) - strlen(".img"), 0))
 			{
 				if (safestrlen(filename, sizeof(filename)) > (sizeof(filename) - strlen(".img") - 1)) //Too long filename?
 				{
@@ -7042,7 +7048,7 @@ void BIOS_GenerateFloppyDisk()
 		EMU_gotoxy(0, 4); //Goto position for info!
 		GPU_EMU_printscreen(0, 5, "Name: "); //Show the filename!
 		EMU_unlocktext();
-		if (BIOS_InputText(6, 5, &filename[0], 255-4)) //Input text confirmed?
+		if (BIOS_InputText(6, 5, &filename[0], 255-4, 0)) //Input text confirmed?
 		{
 			if (strcmp(filename, "") != 0) //Got input?
 			{
@@ -7123,7 +7129,7 @@ void BIOS_GenerateIMDFloppyDisk()
 		EMU_gotoxy(0, 4); //Goto position for info!
 		GPU_EMU_printscreen(0, 5, "Name: "); //Show the filename!
 		EMU_unlocktext();
-		if (BIOS_InputText(6, 5, &filename[0], 255 - 4)) //Input text confirmed?
+		if (BIOS_InputText(6, 5, &filename[0], 255 - 4, 0)) //Input text confirmed?
 		{
 			if (strcmp(filename, "") != 0) //Got input?
 			{
@@ -9221,7 +9227,7 @@ void BIOS_connectdisconnectpassthrough()
 	EMU_gotoxy(0, 4); //Goto position for info!
 	GPU_EMU_printscreen(0, 4, "Address: "); //Show the filename!
 	EMU_unlocktext();
-	if (BIOS_InputText(9, 4, &filename[0], 255 - 4)) //Input text confirmed?
+	if (BIOS_InputText(9, 4, &filename[0], 255 - 4, 1)) //Input text confirmed?
 	{
 		if (strcmp(filename, "") != 0) //Got input?
 		{
