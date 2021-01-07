@@ -2543,7 +2543,7 @@ byte modem_writeCommandData(byte value)
 	}
 	else //Command mode?
 	{
-		if (modem.supported >= 2) return; //Don't allow sending commands when in passthrough mode!
+		if (modem.supported >= 2) return 1; //Don't allow sending commands when in passthrough mode!
 		modem.timer = 0.0; //Reset the timer when anything is received!
 		if (value == '~') //Pause stream for half a second?
 		{
