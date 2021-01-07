@@ -1635,7 +1635,7 @@ int BIOS_SaveData() //Save BIOS settings!
 	memset(&modem_comment, 0, sizeof(modem_comment)); //Init!
 	memset(currentstr, 0, sizeof(currentstr)); //Init!
 	snprintf(modem_comment, sizeof(modem_comment), "listenport: listen port to listen on when not connected(defaults to %u)\n", DEFAULT_MODEMLISTENPORT);
-	snprintf(currentstr, sizeof(currentstr), "nullmodem: make the modem behave as a nullmodem cable(defaults to %u)\n", DEFAULT_NULLMODEM);
+	snprintf(currentstr, sizeof(currentstr), "nullmodem: make the modem behave as a nullmodem cable(defaults to %u). 0=Normal modem, 1=simple nullmodem cable, 2=nullmodem cable with line signalling, 3=nullmodem cable with line signalling and outgoing manual connect using phonebook entry #0\n", DEFAULT_NULLMODEM);
 	safestrcat(modem_comment, sizeof(modem_comment), currentstr); //MAC address information!
 	snprintf(currentstr, sizeof(currentstr), "phonebook0-%u: Phonebook entry #n", (byte)(NUMITEMS(BIOS_Settings.phonebook) - 1)); //Information about the phonebook!
 	safestrcat(modem_comment, sizeof(modem_comment), currentstr); //MAC address information!
