@@ -60,6 +60,7 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 #include "headers/mmu/mmuhandler.h" //MMU memory support!
 #include "headers/hardware/vga/vga_precalcs.h" //Precalcs support!
 #include "headers/cpu/easyregs.h" //Easy register support!
+#include "headers/hardware/modem.h" //Connection support!
 
 extern byte diagnosticsportoutput; //Diagnostics port output!
 
@@ -239,6 +240,8 @@ void BIOS_LoadEjectCDROM0(); //Load/Eject CD-ROM 0!
 void BIOS_LoadEjectCDROM1(); //Load/Eject CD-ROM 1!
 void BIOS_EmulatedCPUs(); //How many emulated CPUs!
 void BIOS_CPUIDmode(); //CPUID mode!
+void BIOS_connectdisconnectpassthrough(); //Connect/disconnect passthrough!
+void BIOS_nullModem(); //Nullmodem setting!
 
 //First, global handler!
 Handler BIOS_Menus[] =
@@ -327,6 +330,8 @@ Handler BIOS_Menus[] =
 	,BIOS_FSBreakpoint //Task breakpoint is #81!
 	,BIOS_EmulatedCPUs //Emulated CPUs is #82!
 	,BIOS_CPUIDmode //CPUID mode is #83!
+	,BIOS_connectdisconnectpassthrough //Connect/disconnect passthrough is #84!
+	,BIOS_nullModem //Nullmodem is #85!
 };
 
 //Not implemented?
@@ -2120,7 +2125,7 @@ void BIOS_InitAdvancedText()
 {
 	advancedoptions = 0; //Init!
 	int i;
-	for (i = 0; i<12; i++) //Clear all possibilities!
+	for (i = 0; i<13; i++) //Clear all possibilities!
 	{
 		memset(&menuoptions[i][0],0,sizeof(menuoptions[i])); //Init!
 	}
@@ -2208,6 +2213,38 @@ setBackgroundpolicytext: //For fixing it!
 
 	optioninfo[advancedoptions] = 9; //RTC mode!
 	snprintf(menuoptions[advancedoptions++],sizeof(menuoptions[0]), "RTC mode: %s", currentCMOS->cycletiming?"Cycle-accurate":"Realtime");
+
+	optioninfo[advancedoptions] = 10; //Null modem!
+	safestrcpy(menuoptions[advancedoptions], sizeof(menuoptions[0]), "Null modem mode: ");
+	switch (BIOS_Settings.nullmodem) //Null modem mode?
+	{
+	case 0:
+		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Normal modem");
+		break;
+	case 1:
+		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Simple nullmodem cable");
+		break;
+	case 2:
+		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Nullmodem cable with line signalling");
+		break;
+	default: //Error: fix it!
+	case 3:
+		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Nullmodem cable with line on phonebook #0");
+		break;
+	}
+
+	if (modem_passthrough()) //Passthrough mode?
+	{
+		optioninfo[advancedoptions] = 11; //Connect/disconnect the passthrough!
+		if (modem_connected()) //Connected? Disconnect!
+		{
+			snprintf(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Disconnect the passthrough");
+		}
+		else
+		{
+			snprintf(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Connect the passthrough");
+		}
+	}
 }
 
 void BIOS_AdvancedMenu() //Manages the boot order etc!
@@ -2251,7 +2288,9 @@ void BIOS_AdvancedMenu() //Manages the boot order etc!
 	case 6:
 	case 7:
 	case 8:
-	case 9: //Valid option?
+	case 9:
+	case 10:
+	case 11: //Valid option?
 		switch (optioninfo[menuresult]) //What option has been chosen, since we are dynamic size?
 		{
 		case 0:
@@ -2283,6 +2322,15 @@ void BIOS_AdvancedMenu() //Manages the boot order etc!
 			break;
 		case 9: //RTC mode?
 			BIOS_Menu = 67; //Reset timekeeping!
+			break;
+		case 10: //Modem passthrough mode!
+			if (!EMU_RUNNING) //Emulator isn't running?
+			{
+				BIOS_Menu = 85; //Passthrough mode!
+			}
+			break;
+		case 11: //Connect/disconnect the passthrough?
+			BIOS_Menu = 84; //Connect/disconnect the passthrough!
 			break;
 		default:
 			break;
@@ -9150,4 +9198,97 @@ void BIOS_CPUIDmode()
 		break;
 	}
 	BIOS_Menu = 35; //Goto CPU menu!
+}
+
+void BIOS_connectdisconnectpassthrough()
+{
+	if (!modem_passthrough())
+	{
+		BIOS_Menu = 8; //Return to Advanced Menu!	
+		return; //Not supported when not in passthrough mode!
+	}
+	if (modem_connected()) //Already connected? Hang up!
+	{
+		modem_hangup(); //Hang up the phone!
+		BIOS_Menu = 8; //Return to Advanced Menu!	
+		return; //Don't dial again!
+	}
+	char filename[256]; //Filename container!
+	BIOSClearScreen(); //Clear the screen!
+	memset(&filename[0], 0, sizeof(filename)); //Init!
+	BIOS_Title("Connect passthrough"); //Full clear!
+	EMU_locktext();
+	EMU_gotoxy(0, 4); //Goto position for info!
+	GPU_EMU_printscreen(0, 4, "Address: "); //Show the filename!
+	EMU_unlocktext();
+	if (BIOS_InputText(9, 4, &filename[0], 255 - 4)) //Input text confirmed?
+	{
+		if (strcmp(filename, "") != 0) //Got input?
+		{
+			connectModem(filename); //Try and connect to the other side!
+		}
+	}
+	BIOS_Menu = 8; //Return to Advanced Menu!	
+}
+
+void BIOS_nullModem()
+{
+	BIOS_Title("Nullmodem mode");
+	EMU_locktext();
+	EMU_gotoxy(0, 4); //Goto 4th row!
+	EMU_textcolor(BIOS_ATTR_INACTIVE); //We're using inactive color for label!
+	GPU_EMU_printscreen(0, 4, "Nullmodem mode: "); //Show selection init!
+	EMU_unlocktext();
+	int i = 0; //Counter!
+	numlist = 4; //Amount of Synchronization modes!
+	for (i = 0; i < numlist; i++) //Process options!
+	{
+		cleardata(&itemlist[i][0], sizeof(itemlist[i])); //Reset!
+	}
+
+	safestrcpy(itemlist[0], sizeof(itemlist[0]), "Normal modem"); //Set filename from options!
+	safestrcpy(itemlist[1], sizeof(itemlist[0]), "Simple nullmodem cable"); //Set filename from options!
+	safestrcpy(itemlist[2], sizeof(itemlist[0]), "Nullmodem cable with line signalling"); //Set filename from options!
+	safestrcpy(itemlist[3], sizeof(itemlist[0]), "Nullmodem cable with line signalling and outgoing manual connect using phonebook entry #0"); //Set filename from options!
+
+	int current = 0;
+	switch (BIOS_Settings.nullmodem) //What setting?
+	{
+	case 0: //Valid
+	case 1: //Valid
+	case 2: //Valid
+	case 3: //Valid
+		current = BIOS_Settings.nullmodem; //Valid: use!
+		break;
+	default: //Invalid
+		current = DEFAULT_NULLMODEM; //Default: none!
+		break;
+	}
+	if (BIOS_Settings.nullmodem != current) //Invalid?
+	{
+		BIOS_Settings.nullmodem = current; //Safety!
+		BIOS_Changed = 1; //Changed!
+	}
+	int file = ExecuteList(16, 4, itemlist[current], 256, NULL, 0); //Show options for the installed CPU!
+	switch (file) //Which file?
+	{
+	case FILELIST_CANCEL: //Cancelled?
+		//We do nothing with the selected disk!
+		break; //Just calmly return!
+	case FILELIST_DEFAULT: //Default?
+		file = DEFAULT_NULLMODEM; //Default setting: Disabled!
+
+	case 0:
+	case 1:
+	case 2:
+	default: //Changed?
+		if (file != current) //Not current?
+		{
+			BIOS_Changed = 1; //Changed!
+			reboot_needed |= 1; //We need to reboot to apply the ATA changes!
+			BIOS_Settings.nullmodem = file; //Select Data bus size setting!
+		}
+		break;
+	}
+	BIOS_Menu = 8; //Return to Advanced Menu!	
 }
