@@ -3242,7 +3242,7 @@ byte modem_connected()
 
 byte modem_passthrough()
 {
-	return (modem.supported >= 2); //In phassethough mode?
+	return (modem.supported >= 2); //In phassthough mode?
 }
 
 void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
