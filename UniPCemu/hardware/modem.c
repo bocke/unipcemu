@@ -1343,6 +1343,11 @@ void modem_updatelines(byte lines)
 		}
 	}
 
+	if (((modem.outputlinechanges ^ modem.outputline) & 0x20)!=0) //Changed break?
+	{
+		modem.passthroughlinestatusdirty |= 4; //Break Line is dirty!
+	}
+
 	if (modem.supported < 2) //Normal behaviour?
 	{
 		if (((modem.outputline & 1) == 1) && ((modem.outputlinechanges ^ modem.outputline) & 1) && (modem.TxDisMark)) //DTR set while TxD is mark?
@@ -1425,7 +1430,7 @@ byte modem_getstatus()
 {
 	byte result = 0;
 	result = 0;
-	//0: Clear to Send(Can we buffer data to be sent), 1: Data Set Ready(Not hang up, are we ready for use), 2: Ring Indicator, 3: Carrrier detect
+	//0: Clear to Send(Can we buffer data to be sent), 1: Data Set Ready(Not hang up, are we ready for use), 2: Ring Indicator, 3: Carrrier detect, 4: Break
 	if (modem.supported >= 2) //CTS depends on the outgoing buffer in passthrough mode!
 	{
 		result |= ((modem.datamode == 1) ? ((modem.connectionid >= 0) ? (fifobuffer_freesize(modem.outputbuffer[modem.connectionid]) ? 1 : 0) : 0) : 0); //Can we send to the modem?
@@ -1522,6 +1527,11 @@ byte modem_getstatus()
 	}
 	result |= (((modem.ringing&1)&((modem.ringing)>>1))?4:0)| //Currently Ringing?
 			(((modem.connected==1)||((modem.DCDisCarrier==0)&&(modem.supported<2)))?8:0); //Connected or forced on(never forced on for passthrough mode)?
+
+	if (modem.supported >= 3) //Break is implemented?
+	{
+		result |= (((modem.passthroughlines & 4) << 2) && (fifobuffer_freesize(modem.inputdatabuffer[0])==MODEM_BUFFERSIZE)); //Set the break output when needed and not receiving anything anymore on the UART!
+	}
 
 	return result; //Give the resulting line status!
 }
@@ -3342,7 +3352,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 		{
 			//Send a break(bit 2)/DTR(bit 1)/RTS(bit 0) packet!
 			writefifobuffer(modem.outputbuffer[0], 0xFF); //Escape!
-			writefifobuffer(modem.outputbuffer[0], ((modem.linechanges & 1) << 1) | ((modem.linechanges & 2) >> 1)); //Send DTR and RTS! Don't handle break yet, as this isn't supported yet!
+			writefifobuffer(modem.outputbuffer[0], ((modem.linechanges & 1) << 1) | ((modem.linechanges & 2) >> 1) | ((modem.linechanges & 0x20)>>3)); //Send DTR, RTS and Break!
 			modem.passthroughlinestatusdirty &= ~7; //Acknowledge the new lines!
 		}
 	}
@@ -4193,7 +4203,10 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 								{
 									if (datatotransmit == 0xFF) //Escaped non-escaped byte?
 									{
-										writefifobuffer(modem.inputdatabuffer[0], datatotransmit); //Add the transmitted data to the input buffer!
+										if ((modem.passthroughlines & 4) == 0) //Not in break state?
+										{
+											writefifobuffer(modem.inputdatabuffer[0], datatotransmit); //Add the transmitted data to the input buffer!
+										}
 									}
 									else //DTR/RTS/break received?
 									{
@@ -4207,7 +4220,10 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 								}
 								else //Non-escaped data!
 								{
-									writefifobuffer(modem.inputdatabuffer[0], datatotransmit); //Add the transmitted data to the input buffer!
+									if ((modem.passthroughlines & 4) == 0) //Not in break state?
+									{
+										writefifobuffer(modem.inputdatabuffer[0], datatotransmit); //Add the transmitted data to the input buffer!
+									}
 								}
 							}
 							else //Normal mode?
