@@ -75,6 +75,7 @@ struct
 	uint_32 UART_DLABclock; //DLAB-based clock being used!
 	uint_32 UART_DLABtimingdivider; //DLAB timing divider!
 	byte output_is_marking; //Is the output marking?
+	byte input_is_break; //Input is breaking?
 } UART_port[4]; //All UART ports!
 
 //Value = 5+DataBits
@@ -85,6 +86,8 @@ struct
 #define UART_LINECONTROLREGISTER_PARITYENABLEDR(UART) ((UART_port[UART].LineControlRegister>>3)&1)
 //0=Odd, 1=Even, 2=Mark, 3=Space.
 #define UART_LINECONTROREGISTERL_PARITYTYPER(UART) ((UART_port[UART].LineControlRegister>>4)&3)
+//1=Break, 0=Normal mode
+#define UART_LINECONTROLREGISTER_BREAK(UART) ((UART_port[UART].LineControlRegister>>6)&1)
 //Enable address 0&1 mapping to divisor?
 #define UART_LINECONTROLREGISTER_DLABR(UART) ((UART_port[UART].LineControlRegister>>7)&1)
 
@@ -410,7 +413,7 @@ void UART_update_modemcontrol(byte COMport, byte isportwrite)
 {
 	if (UART_port[COMport].setmodemcontrol) //Line handler is connected and not in loopback mode?
 	{
-		UART_port[COMport].setmodemcontrol(UART_port[COMport].LiveModemControlRegister | ((UART_port[COMport].output_is_marking & 1) << 4)); //Update the output lines for the peripheral!
+		UART_port[COMport].setmodemcontrol(UART_port[COMport].LiveModemControlRegister | ((UART_port[COMport].output_is_marking & 1) << 4) | ((UART_LINECONTROLREGISTER_BREAK(COMport)<<5))); //Update the output lines for the peripheral!
 	}
 	if ((UART_port[COMport].LiveModemControlRegister & 8) && isportwrite) //IRQ line raised?
 	{
@@ -497,6 +500,11 @@ byte PORT_writeUART(word port, byte value)
 			//Not used in the original 8250 UART.
 			break;
 		case 3: //Line Control Register?
+			if ((UART_port[COMport].LineControlRegister ^ value) & 0x40) //Changed break signal?
+			{
+				UART_port[COMport].LineControlRegister = value; //Set the register!
+				UART_update_modemcontrol(COMport, 1); //Update the modem control output!
+			}
 			UART_port[COMport].LineControlRegister = value; //Set the register!
 			break;
 		case 4: //Modem Control Register?
@@ -558,6 +566,8 @@ void UART_handleInputs() //Handle any input to the UART!
 
 			//Update the modem status register accordingly!
 			SETBITS(UART_port[i].ModemStatusRegister,4,0xF,UART_port[i].activeModemStatus); //Set the high bits of the modem status to our input lines!
+			UART_port[i].LineStatusRegister |= (((UART_port[i].input_is_break) ^ ((UART_port[i].activeModemStatus & 0x10) >> 4)) && (((UART_port[i].activeModemStatus & 0x10) >> 4) == 0))?0x40:0; //Break raised?
+			UART_port[i].input_is_break = ((UART_port[i].activeModemStatus & 0x10)>>4); //Break raised?
 			checknewmodemstatus = ((UART_port[i].ModemStatusRegister^(UART_port[i].oldModemStatusRegister))&0xF0); //Check the new status!
 		}
 		else if (UART_port[i].ModemControlRegister & 0x10) //In loopback mode? Reroute the Modem Control Register to Modem Status Register and act accordingly!
