@@ -1536,7 +1536,7 @@ byte modem_getstatus()
 
 	if (modem.supported >= 3) //Break is implemented?
 	{
-		result |= (((modem.passthroughlines & 4) << 2) && (fifobuffer_freesize(modem.inputdatabuffer[0])==MODEM_BUFFERSIZE)); //Set the break output when needed and not receiving anything anymore on the UART!
+		result |= (((((modem.passthroughlines & 4) >> 2)&(fifobuffer_freesize(modem.inputdatabuffer[0])==MODEM_BUFFERSIZE))&1)<<4); //Set the break output when needed and not receiving anything anymore on the UART!
 	}
 
 	return result; //Give the resulting line status!
