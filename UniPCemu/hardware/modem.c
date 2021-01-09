@@ -1480,7 +1480,7 @@ byte modem_getstatus()
 				result |= 2; //Raise the line!
 				if (modem.supported >= 3) //Also depend on the received line?
 				{
-					result = (result & ~2) | ((result & ((modem.passthroughlines >> 1) & 1))); //Mask DSR with received DTR!
+					result = (result & ~2) | ((result & ((modem.passthroughlines << 1) & 2))); //Replace DSR with received DTR!
 				}
 			}
 		}
