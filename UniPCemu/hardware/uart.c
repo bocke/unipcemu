@@ -566,9 +566,20 @@ void UART_handleInputs() //Handle any input to the UART!
 
 			//Update the modem status register accordingly!
 			SETBITS(UART_port[i].ModemStatusRegister,4,0xF,UART_port[i].activeModemStatus); //Set the high bits of the modem status to our input lines!
-			UART_port[i].LineStatusRegister |= (((((UART_port[i].input_is_break) ^ ((UART_port[i].activeModemStatus & 0x10) >> 4)) && (UART_port[i].input_is_break == 0))&1)<<4); //Break raised?
-			UART_port[i].LineStatusRegister |= ((UART_port[i].LineStatusRegister&0x10)>>1); //Break raised? Raise framing error as well!
-			UART_port[i].input_is_break = ((UART_port[i].activeModemStatus & 0x10)>>4); //Break raised?
+			if (unlikely((UART_port[i].activeModemStatus & 0x10) && (UART_port[i].input_is_break==0))) //Break set and not acnowledged yet?
+			{
+				if (((UART_port[i].LineStatusRegister & 1) == 0) && (UART_port[i].receivePhase == 0)) //Receiver buffer is empty that we can overwrite?
+				{
+					UART_port[i].LineStatusRegister |= 0x11; //Break received!
+					UART_port[i].DataHoldingRegister = 0x00; //Empty data received!
+					UART_port[i].input_is_break = 1; //Break is acnowledged!
+					UART_port[i].LineStatusRegister |= ((UART_port[i].LineStatusRegister & 0x10) >> 1) | ((UART_port[i].LineStatusRegister & 0x10) >> 4); //Break raised? Raise framing error as well!
+				}
+			}
+			else if (unlikely(((UART_port[i].activeModemStatus & 0x10) == 0) && UART_port[i].input_is_break)) //Break was cleared?
+			{
+				UART_port[i].input_is_break = 0; //Not breaking anymore!
+			}
 			checknewmodemstatus = ((UART_port[i].ModemStatusRegister^(UART_port[i].oldModemStatusRegister))&0xF0); //Check the new status!
 		}
 		else if (UART_port[i].ModemControlRegister & 0x10) //In loopback mode? Reroute the Modem Control Register to Modem Status Register and act accordingly!
