@@ -566,7 +566,7 @@ void UART_handleInputs() //Handle any input to the UART!
 
 			//Update the modem status register accordingly!
 			SETBITS(UART_port[i].ModemStatusRegister,4,0xF,UART_port[i].activeModemStatus); //Set the high bits of the modem status to our input lines!
-			UART_port[i].LineStatusRegister |= (((UART_port[i].input_is_break) ^ ((UART_port[i].activeModemStatus & 0x10) >> 4)) && (((UART_port[i].activeModemStatus & 0x10) >> 4) == 0))?0x40:0; //Break raised?
+			UART_port[i].LineStatusRegister |= (((((UART_port[i].input_is_break) ^ ((UART_port[i].activeModemStatus & 0x10) >> 4)) && (UART_port[i].input_is_break == 0))&1)<<4); //Break raised?
 			UART_port[i].LineStatusRegister |= ((UART_port[i].LineStatusRegister&0x10)>>1); //Break raised? Raise framing error as well!
 			UART_port[i].input_is_break = ((UART_port[i].activeModemStatus & 0x10)>>4); //Break raised?
 			checknewmodemstatus = ((UART_port[i].ModemStatusRegister^(UART_port[i].oldModemStatusRegister))&0xF0); //Check the new status!
