@@ -1279,7 +1279,7 @@ void BIOS_LoadData() //Load BIOS settings!
 
 	//Modem
 	BIOS_Settings.modemlistenport = LIMITRANGE((word)get_private_profile_uint64("modem", "listenport", DEFAULT_MODEMLISTENPORT, inifile),0,0xFFFF); //Modem listen port!
-	BIOS_Settings.nullmodem = LIMITRANGE((word)get_private_profile_uint64("modem", "nullmodem", DEFAULT_NULLMODEM, inifile), 0, 1); //nullmodem mode!
+	BIOS_Settings.nullmodem = LIMITRANGE((word)get_private_profile_uint64("modem", "nullmodem", DEFAULT_NULLMODEM, inifile), 0, 3); //nullmodem mode!
 	for (c = 0; c < NUMITEMS(BIOS_Settings.phonebook); ++c) //Process all phonebook entries!
 	{
 		snprintf(phonebookentry, sizeof(phonebookentry), "phonebook%u", c); //The entry to use!
