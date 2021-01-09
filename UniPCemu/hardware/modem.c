@@ -242,6 +242,7 @@ struct
 	DOUBLE effectiveDTRlineDelay; //Effective DSR line delay to use!
 
 	byte TxDisMark; //Is TxD currently in mark state?
+	byte TxDisBreak; //Is TxD currently in the break state?
 
 	//Various parameters used!
 	byte communicationstandard; //What communication standard! B command!
@@ -1260,7 +1261,8 @@ void modem_setModemControl(byte line) //Set output lines of the Modem!
 	}
 	modem.canrecvdata = (line&2); //Can we receive data?
 	modem.TxDisMark = ((line & 0x10) >> 4); //Is TxD set to mark?
-	line &= 0xF; //Ignore unused lines!
+	modem.TxDisBreak = ((line & 0x20) >> 5); //Is TxD set to break?
+	line &= 0x2F; //Ignore unused lines!
 	modem.outputline = line; //The line that's output!
 	if ((modem.linechanges^line)&2) //RTS changed?
 	{
