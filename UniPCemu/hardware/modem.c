@@ -1288,6 +1288,10 @@ void modem_setModemControl(byte line) //Set output lines of the Modem!
 			modem_updatelines(1); //Update DTR, acnowledge!
 		}
 	}
+	if ((modem.linechanges ^ line) & 0x20) //Break changed?
+	{
+		modem_updatelines(0x20); //Update Break internally, acnowledging it!
+	}
 	modem.linechanges = line; //Save for reference!
 }
 
