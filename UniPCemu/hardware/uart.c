@@ -570,10 +570,9 @@ void UART_handleInputs() //Handle any input to the UART!
 			{
 				if (((UART_port[i].LineStatusRegister & 1) == 0) && (UART_port[i].receivePhase == 0)) //Receiver buffer is empty that we can overwrite?
 				{
-					UART_port[i].LineStatusRegister |= 0x11; //Break received!
+					UART_port[i].LineStatusRegister |= 0x19; //Break received! Also raise framing error!
 					UART_port[i].DataHoldingRegister = 0x00; //Empty data received!
 					UART_port[i].input_is_break = 1; //Break is acnowledged!
-					UART_port[i].LineStatusRegister |= ((UART_port[i].LineStatusRegister & 0x10) >> 1) | ((UART_port[i].LineStatusRegister & 0x10) >> 4); //Break raised? Raise framing error as well!
 				}
 			}
 			else if (unlikely(((UART_port[i].activeModemStatus & 0x10) == 0) && UART_port[i].input_is_break)) //Break was cleared?
