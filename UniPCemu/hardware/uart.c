@@ -574,11 +574,15 @@ void UART_handleInputs() //Handle any input to the UART!
 					if (UART_port[i].receivedata)
 					{
 						UART_port[i].ReceiverBufferRegister = UART_port[i].receivedata(); //Read the data to receive! This also acnowledges the receiving of the data!
-
-						//Start transferring break data...
-						UART_port[i].receiveTiming = UART_port[i].UART_bytetransfertiming + 1; //Duration of the transfer!
-						UART_port[i].receivePhase = 1; //Pending finish of transfer!
 					}
+					else
+					{
+						UART_port[i].ReceiverBufferRegister = 0x00; //Read the data to receive! This also acnowledges the receiving of the data!
+					}
+
+					//Start transferring break data...
+					UART_port[i].receiveTiming = UART_port[i].UART_bytetransfertiming + 1; //Duration of the transfer!
+					UART_port[i].receivePhase = 1; //Pending finish of transfer!
 					UART_port[i].input_is_break = 1; //Break is acnowledged!
 				}
 			}
