@@ -568,10 +568,17 @@ void UART_handleInputs() //Handle any input to the UART!
 			SETBITS(UART_port[i].ModemStatusRegister,4,0xF,UART_port[i].activeModemStatus); //Set the high bits of the modem status to our input lines!
 			if (unlikely((UART_port[i].activeModemStatus & 0x10) && (UART_port[i].input_is_break==0))) //Break set and not acnowledged yet?
 			{
-				if (((UART_port[i].LineStatusRegister & 1) == 0) && (UART_port[i].receivePhase == 0)) //Receiver buffer is empty that we can overwrite?
+				if (((UART_port[i].LineStatusRegister & 1) == 0) && (UART_port[i].receivePhase == 0)) //Receiver buffer is empty that we can overwrite? We can start the teransfer?
 				{
-					UART_port[i].LineStatusRegister |= 0x19; //Break received! Also raise framing error!
-					UART_port[i].DataHoldingRegister = 0x00; //Empty data received!
+					UART_port[i].LineStatusRegister |= 0x18; //Break received! Also raise framing error!
+					if (UART_port[i].receivedata)
+					{
+						UART_port[i].ReceiverBufferRegister = UART_port[i].receivedata(); //Read the data to receive! This also acnowledges the receiving of the data!
+
+						//Start transferring break data...
+						UART_port[i].receiveTiming = UART_port[i].UART_bytetransfertiming + 1; //Duration of the transfer!
+						UART_port[i].receivePhase = 1; //Pending finish of transfer!
+					}
 					UART_port[i].input_is_break = 1; //Break is acnowledged!
 				}
 			}
