@@ -299,6 +299,7 @@ struct
 	byte passthroughlinestatusdirty; //Passthrough mode line status dirty? Bit 0=DTR, bit 1=RTS, bit 2=Break
 	byte passthroughescaped; //Was the last byte escaped?
 	byte passthroughlines; //The actual lines that were received in passthrough mode!
+	byte breakPending; //Is a break pending to be received on the receiver of the connection?
 } modem;
 
 byte readIPnumber(char **x, byte *number); //Prototype!
@@ -913,6 +914,7 @@ byte modem_connect(char *phonenumber)
 		{
 			modem.passthroughlines = 0; //Nothing received yet!
 			modem.passthroughlinestatusdirty |= 7; //Request the packet to send!
+			modem.breakPending = 0; //Not pending yet!
 		}
 		return 1; //Accepted!
 	}
@@ -1010,6 +1012,7 @@ byte modem_connect(char *phonenumber)
 		{
 			modem.passthroughlines = 0; //Nothing received yet!
 			modem.passthroughlinestatusdirty |= 7; //Request the packet to send!
+			modem.breakPending = 0; //Not pending yet!
 		}
 		return 1; //We're connected!
 	}
@@ -1537,6 +1540,10 @@ byte modem_getstatus()
 	if (modem.supported >= 3) //Break is implemented?
 	{
 		result |= (((((modem.passthroughlines & 4) >> 2)&(fifobuffer_freesize(modem.inputdatabuffer[0])==MODEM_BUFFERSIZE))&1)<<4); //Set the break output when needed and not receiving anything anymore on the UART!
+		if (likely(modem.breakPending == 0)) //Not break pending or pending anymore (preventing re-triggering without raising it again)?
+		{
+			result &= ~0x10; //Clear break signalling, as it's not pending yet or anymore!
+		}
 	}
 
 	return result; //Give the resulting line status!
@@ -1545,6 +1552,11 @@ byte modem_getstatus()
 byte modem_readData()
 {
 	byte result,emptycheck;
+	if (modem.breakPending && (fifobuffer_freesize(modem.inputbuffer) == MODEM_BUFFERSIZE) && (fifobuffer_freesize(modem.inputdatabuffer[0]) == MODEM_BUFFERSIZE)) //Break acnowledged by reading the result data?
+	{
+		modem.breakPending = 0; //Not pending anymore, acnowledged!
+		return 0; //A break has this value (00h) read on it's data lines!
+	}
 	if (modem.datamode!=1) //Not data mode?
 	{
 		if (readfifobuffer(modem.inputbuffer, &result))
@@ -4198,70 +4210,77 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 					}
 					if (fifobuffer_freesize(modem.inputdatabuffer[0])) //Free to receive?
 					{
-						switch (TCP_ReceiveData(modem.connectionid, &datatotransmit))
+						if (likely(modem.breakPending == 0)) //Not a pending break? If pending, don't receive new data until processed!
 						{
-						case 0: //Nothing received?
-							break;
-						case 1: //Something received?
-							if (modem.supported >= 3) //Passthrough mode with data lines that can be escaped?
+							switch (TCP_ReceiveData(modem.connectionid, &datatotransmit))
 							{
-								if (modem.passthroughescaped) //Was the last byte an escape?
+							case 0: //Nothing received?
+								break;
+							case 1: //Something received?
+								if (modem.supported >= 3) //Passthrough mode with data lines that can be escaped?
 								{
-									if (datatotransmit == 0xFF) //Escaped non-escaped byte?
+									if (modem.passthroughescaped) //Was the last byte an escape?
+									{
+										if (datatotransmit == 0xFF) //Escaped non-escaped byte?
+										{
+											if ((modem.passthroughlines & 4) == 0) //Not in break state?
+											{
+												writefifobuffer(modem.inputdatabuffer[0], datatotransmit); //Add the transmitted data to the input buffer!
+											}
+										}
+										else //DTR/RTS/break received?
+										{
+											if (unlikely(((modem.passthroughlines & (modem.passthroughlines ^ datatotransmit)) & 4))) //Break was raised?
+											{
+												modem.breakPending = 0x10; //Pending break has been received!
+											}
+											modem.passthroughlines = datatotransmit; //The received lines!
+										}
+										modem.passthroughescaped = 0; //Not escaped anymore!
+									}
+									else if (datatotransmit == 0xFF) //New command! Escaped?
+									{
+										modem.passthroughescaped = 1; //Escaped now!
+									}
+									else //Non-escaped data!
 									{
 										if ((modem.passthroughlines & 4) == 0) //Not in break state?
 										{
 											writefifobuffer(modem.inputdatabuffer[0], datatotransmit); //Add the transmitted data to the input buffer!
 										}
 									}
-									else //DTR/RTS/break received?
-									{
-										modem.passthroughlines = datatotransmit; //The received lines!
-									}
-									modem.passthroughescaped = 0; //Not escaped anymore!
 								}
-								else if (datatotransmit == 0xFF) //New command! Escaped?
+								else //Normal mode?
 								{
-									modem.passthroughescaped = 1; //Escaped now!
+									writefifobuffer(modem.inputdatabuffer[0], datatotransmit); //Add the transmitted data to the input buffer!
 								}
-								else //Non-escaped data!
-								{
-									if ((modem.passthroughlines & 4) == 0) //Not in break state?
-									{
-										writefifobuffer(modem.inputdatabuffer[0], datatotransmit); //Add the transmitted data to the input buffer!
-									}
-								}
-							}
-							else //Normal mode?
-							{
-								writefifobuffer(modem.inputdatabuffer[0], datatotransmit); //Add the transmitted data to the input buffer!
-							}
-							break;
-						case -1: //Disconnected?
-							modem.connected = 0; //Not connected anymore!
-							if (PacketServer_running == 0) //Not running a packet server?
-							{
-								TCP_DisconnectClientServer(modem.connectionid); //Disconnect!
-								modem.connectionid = -1;
-								fifobuffer_clear(modem.inputdatabuffer[0]); //Clear the output buffer for the next client!
-								fifobuffer_clear(modem.outputbuffer[0]); //Clear the output buffer for the next client!
+								break;
+							case -1: //Disconnected?
 								modem.connected = 0; //Not connected anymore!
-								if (modem.supported < 2) //Not in passthrough mode?
+								if (PacketServer_running == 0) //Not running a packet server?
 								{
-									modem_responseResult(MODEMRESULT_NOCARRIER);
+									TCP_DisconnectClientServer(modem.connectionid); //Disconnect!
+									modem.connectionid = -1;
+									fifobuffer_clear(modem.inputdatabuffer[0]); //Clear the output buffer for the next client!
+									fifobuffer_clear(modem.outputbuffer[0]); //Clear the output buffer for the next client!
+									modem.connected = 0; //Not connected anymore!
+									if (modem.supported < 2) //Not in passthrough mode?
+									{
+										modem_responseResult(MODEMRESULT_NOCARRIER);
+									}
+									modem.datamode = 0; //Drop out of data mode!
+									modem.ringing = 0; //Not ringing anymore!
 								}
-								modem.datamode = 0; //Drop out of data mode!
-								modem.ringing = 0; //Not ringing anymore!
+								else //Disconnect from packet server?
+								{
+									terminatePacketServer(modem.connectionid); //Clean up the packet server!
+									fifobuffer_clear(modem.inputdatabuffer[0]); //Clear the output buffer for the next client!
+									fifobuffer_clear(modem.outputbuffer[0]); //Clear the output buffer for the next client!
+								}
+								break;
+							default: //Unknown function?
+								break;
 							}
-							else //Disconnect from packet server?
-							{
-								terminatePacketServer(modem.connectionid); //Clean up the packet server!
-								fifobuffer_clear(modem.inputdatabuffer[0]); //Clear the output buffer for the next client!
-								fifobuffer_clear(modem.outputbuffer[0]); //Clear the output buffer for the next client!
-							}
-							break;
-						default: //Unknown function?
-							break;
 						}
 					}
 				}
