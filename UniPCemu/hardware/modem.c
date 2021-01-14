@@ -1343,11 +1343,14 @@ void modem_updatelines(byte lines)
 	{
 		if (modem.supported >= 4) //Manual dialling out is enabled using phonebook entry #0?
 		{
-			char* c = &BIOS_Settings.phonebook[0][0]; //Phone book support for entry #0!
-			safestrcpy((char*)&modem.lastnumber, sizeof(modem.lastnumber), c); //Set the last number!
-			if (modem_connect(c)) //Try to dial said number!
+			if (modem.connected != 1) //Not already connected on the modem?
 			{
-				modem_Answered(); //Answer!
+				char* c = &BIOS_Settings.phonebook[0][0]; //Phone book support for entry #0!
+				safestrcpy((char*)&modem.lastnumber, sizeof(modem.lastnumber), c); //Set the last number!
+				if (modem_connect(c)) //Try to dial said number!
+				{
+					modem_Answered(); //Answer!
+				}
 			}
 		}
 	}
