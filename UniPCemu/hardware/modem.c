@@ -1339,8 +1339,19 @@ void modem_updatelines(byte lines)
 			modem.passthroughlinestatusdirty |= 1; //DTR Line is dirty!
 		}
 	}
+	else if ((((modem.outputline & 1) == 0) && ((modem.outputlinechanges ^ modem.outputline) & 1))) //Became not ready?
+	{
+		if (modem.supported >= 3) //Line status is passed as well?
+		{
+			modem.passthroughlinestatusdirty |= 1; //DTR Line is dirty!
+		}
+	}
 	else if ((((modem.outputline & 1) == 1) && ((modem.outputlinechanges ^ modem.outputline) & 1))) //Became ready?
 	{
+		if (modem.supported >= 3) //Line status is passed as well?
+		{
+			modem.passthroughlinestatusdirty |= 1; //DTR Line is dirty!
+		}
 		if (modem.supported >= 4) //Manual dialling out is enabled using phonebook entry #0?
 		{
 			if (modem.connected != 1) //Not already connected on the modem?
