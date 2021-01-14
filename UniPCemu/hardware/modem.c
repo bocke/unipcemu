@@ -3384,7 +3384,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 		{
 			//Send a break(bit 2)/DTR(bit 1)/RTS(bit 0) packet!
 			writefifobuffer(modem.outputbuffer[0], 0xFF); //Escape!
-			writefifobuffer(modem.outputbuffer[0], ((modem.linechanges & 1) << 1) | ((modem.linechanges & 2) >> 1) | ((modem.linechanges & 0x20)>>3)); //Send DTR, RTS and Break!
+			writefifobuffer(modem.outputbuffer[0], ((modem.outputline & 1) << 1) | ((modem.outputline & 2) >> 1) | ((modem.outputline & 0x20)>>3)); //Send DTR, RTS and Break!
 			modem.passthroughlinestatusdirty &= ~7; //Acknowledge the new lines!
 		}
 	}
