@@ -316,6 +316,7 @@ void initPacketServerClients()
 #endif
 
 uint8_t ethif=255, pcap_enabled = 0;
+byte pcap_receiverstate = 0;
 uint8_t dopktrecv = 0;
 uint16_t rcvseg, rcvoff, hdrlen, handpkt;
 
@@ -519,6 +520,7 @@ void initPcap() {
 	/* At this point, we don't need any more the device list. Free it */
 	pcap_freealldevs (alldevs);
 	pcap_enabled = 1;
+	pcap_receiverstate = 0; //Packet receiver/filter state: ready to receive a packet!
 #endif
 	PacketServer_running = 1; //We're using the packet server emulation, disable normal modem(we don't connect to other systems ourselves)!
 }
@@ -533,13 +535,12 @@ void fetchpackets_pcap() { //Handle any packets to process!
 
 	if (pcap_enabled) //Enabled?
 	{
-		//Cannot receive until buffer cleared!
-		if (net.packet==NULL) //Can we receive anything?
+		//Check for new packets arriving and filter them as needed!
+		if (pcap_receiverstate == 0) //Ready to receive a new packet?
 		{
-			//Check for new packets arriving and filter them as needed!
 		invalidpacket_receivefilter:
 			if (pcap_next_ex(adhandle, &hdr, &pktdata) <= 0) return; //Nothing valid to process?
-			if (hdr->len==0) goto invalidpacket_receivefilter; //Try again on invalid 
+			if (hdr->len == 0) goto invalidpacket_receivefilter; //Try again on invalid 
 
 			//Packet received!
 			memcpy(&ethernetheader.data, &pktdata[0], sizeof(ethernetheader.data)); //Copy to the client buffer for inspection!
@@ -593,17 +594,23 @@ void fetchpackets_pcap() { //Handle any packets to process!
 					}
 				}
 			}
+			//Packet ready to receive!
+			pcap_receiverstate = 1; //Packet is loaded and ready to parse by the receiver algorithm!
+		}
 
+		if ((net.packet == NULL) && (pcap_receiverstate==1)) //Can we receive anything and receiver is loaded?
+		{
 			//Packet acnowledged for clients to receive!
-			net.packet = zalloc(hdr->len,"MODEM_PACKET",NULL);
+			net.packet = zalloc(hdr->len, "MODEM_PACKET", NULL);
 			if (net.packet) //Allocated?
 			{
 				memcpy(net.packet, &pktdata[0], hdr->len);
-				net.pktlen = (uint16_t) hdr->len;
+				net.pktlen = (uint16_t)hdr->len;
 				if (pcap_verbose) {
-						dolog("ethernetcard","Received packet of %u bytes.", net.pktlen);
+					dolog("ethernetcard", "Received packet of %u bytes.", net.pktlen);
 				}
 				//Packet received!
+				pcap_receiverstate = 0; //Start scanning for incoming packets again, since the receiver is cleared again!
 				return;
 			}
 		}
