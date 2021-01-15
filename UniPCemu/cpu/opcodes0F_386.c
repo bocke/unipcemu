@@ -83,8 +83,6 @@ Interrupts:
 
 */
 
-extern Handler CurrentCPU_opcode0F_jmptbl[512]; //Our standard internal standard opcode jmptbl!
-
 //0F opcodes for 286+ processors!
 
 //Based on http://ref.x86asm.net/coder32.html

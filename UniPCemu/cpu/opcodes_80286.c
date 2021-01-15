@@ -60,8 +60,6 @@ Interrupts:
 
 */
 
-extern Handler CurrentCPU_opcode0F_jmptbl[512]; //Our standard internal standard opcode jmptbl!
-
 //Modr/m support, used when reg=NULL and custommem==0
 
 OPTINLINE byte CPU80286_instructionstepPOPtimeout(word base)
