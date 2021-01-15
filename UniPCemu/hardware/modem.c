@@ -525,14 +525,76 @@ void initPcap() {
 
 void fetchpackets_pcap() { //Handle any packets to process!
 #if defined(PACKETSERVER_ENABLED) && !defined(NOPCAP)
+	//Filter parameters to apply!
+	ETHERNETHEADER ethernetheader; //The header to inspect!
+	uint_32 detselfrelpos;
+	uint_32 detselfdataleft;
+	byte IP_useIHL;
+
 	if (pcap_enabled) //Enabled?
 	{
 		//Cannot receive until buffer cleared!
-		if (pcap_next_ex(adhandle, &hdr, &pktdata) <= 0) return;
 		if (net.packet==NULL) //Can we receive anything?
 		{
-			if (hdr->len==0) return;
+			//Check for new packets arriving and filter them as needed!
+		invalidpacket_receivefilter:
+			if (pcap_next_ex(adhandle, &hdr, &pktdata) <= 0) return; //Nothing valid to process?
+			if (hdr->len==0) goto invalidpacket_receivefilter; //Try again on invalid 
 
+			//Packet received!
+			memcpy(&ethernetheader.data, &pktdata[0], sizeof(ethernetheader.data)); //Copy to the client buffer for inspection!
+			//Check for the packet type first! Don't receive anything that is our unsupported (the connected client)!
+			if (ethernetheader.type != SDL_SwapBE16(0x0800)) //Not IP packet?
+			{
+				if (ethernetheader.type != SDL_SwapBE16(0x8863)) //Are we not a discovery packet?
+				{
+					if (ethernetheader.type != SDL_SwapBE16(0x8864)) //Not Receiving uses normal PPP packets to transfer/receive on the receiver line only!
+					{
+						if (ethernetheader.type != SDL_SwapBE16(0x8864)) //Not Receiving uses normal PPP packets to transfer/receive on the receiver line only!
+						{
+							if (ethernetheader.type != SDL_SwapBE16(0x8137)) //Not an IPX packet!
+							{
+								//This is an unsupported packet type discard it fully and don't look at it anymore!
+								//Discard the received packet, so nobody else handles it too!
+								goto invalidpacket_receivefilter; //Ignore this packet and check for more!
+							}
+						}
+					}
+				}
+			}
+
+			//Check for the client first! Don't receive anything that is our own traffic (the connected client)!
+			if (ethernetheader.type == SDL_SwapBE16(0x0800)) //IP packet?
+			{
+				//Check for TCP packet in the IP packet!
+				detselfrelpos = sizeof(ethernetheader.data); //Start of the IP packet!
+				detselfdataleft = hdr->len - detselfrelpos; //Data left to parse as subpackets!
+				if (detselfdataleft >= 9) //Enough data left to parse?
+				{
+					if (pktdata[detselfrelpos + 9] == 6) //TCP protocol?
+					{
+						IP_useIHL = (((pktdata[detselfrelpos] & 0xF0) >> 4) << 5); //IHL field, in bytes!
+						if ((detselfdataleft > IP_useIHL) && (IP_useIHL)) //Enough left for the subpacket?
+						{
+							detselfrelpos += IP_useIHL; //TCP Data position!
+							detselfdataleft -= IP_useIHL; //How much data if left!
+							//Now we're at the start of the TCP packet!
+							if (detselfdataleft >= 4) //Valid to filter the port?
+							{
+								if ((SDL_SwapBE16(*((word*)&pktdata[detselfrelpos])) == modem.connectionport) || //Own source port?
+									(SDL_SwapBE16(*((word*)&pktdata[detselfrelpos + 2])) == modem.connectionport) //Own destination port?
+									)
+								{
+									//Discard the received packet, so nobody else handles it too!
+									goto invalidpacket_receivefilter; //Ignore this packet and check for more!
+								}
+							}
+						}
+					}
+				}
+			}
+
+			//Packet acnowledged for clients to receive!
 			net.packet = zalloc(hdr->len,"MODEM_PACKET",NULL);
 			if (net.packet) //Allocated?
 			{
@@ -3291,9 +3353,6 @@ byte modem_passthrough()
 
 void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 {
-	byte IP_useIHL;
-	uint_32 detselfrelpos;
-	uint_32 detselfdataleft;
 	sword connectedclient;
 	sword connectionid;
 	byte datatotransmit;
@@ -3528,7 +3587,39 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 									{
 										if (Packetserver_clients[connectedclient].pktlen > (sizeof(ethernetheader.data) + ((Packetserver_clients[connectedclient].packetserver_slipprotocol!=3)?20:7))) //Length OK(at least one byte of data and complete IP header) or the PPP packet size?
 										{
-											memcpy(&ethernetheader.data, Packetserver_clients[connectedclient].packet, sizeof(ethernetheader.data)); //Copy for inspection!
+											memcpy(&ethernetheader.data, Packetserver_clients[connectedclient].packet, sizeof(ethernetheader.data)); //Copy to the client buffer for inspection!
+											//Next, check for supported packet types!
+											if (Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) //PPP protocol used?
+											{
+												if (ethernetheader.type == SDL_SwapBE16(0x8863)) //Are we a discovery packet?
+												{
+													if (PPPOE_handlePADreceived(connectedclient)) //Handle the received PAD packet!
+													{
+														//Discard the received packet, so nobody else handles it too!
+														freez((void**)&net.packet, net.pktlen, "MODEM_PACKET");
+														net.packet = NULL; //Discard if failed to deallocate!
+														net.pktlen = 0; //Not allocated!
+														goto invalidpacket; //Invalid packet!
+													}
+												}
+												headertype = SDL_SwapBE16(0x8864); //Receiving uses normal PPP packets to transfer/receive on the receiver line only!
+											}
+											else if (Packetserver_clients[connectedclient].packetserver_slipprotocol == 2) //IPX protocol used?
+											{
+												headertype = SDL_SwapBE16(0x8137); //We're an IPX packet!
+											}
+											else //IPv4?
+											{
+												headertype = SDL_SwapBE16(0x0800); //We're an IP packet!
+											}
+											//Now, check the normal receive parameters!
+											if (Packetserver_clients[connectedclient].packetserver_useStaticIP && (headertype == SDL_SwapBE16(0x0800))) //IP filter to apply?
+											{
+												if ((memcmp(&Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data) + 16], Packetserver_clients[connectedclient].packetserver_staticIP, 4) != 0) && (memcmp(&Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data) + 16], packetserver_broadcastIP, 4) != 0)) //Static IP mismatch?
+												{
+													goto invalidpacket; //Invalid packet!
+												}
+											}
 											if ((memcmp(&ethernetheader.dst, &packetserver_sourceMAC, sizeof(ethernetheader.dst)) != 0) && (memcmp(&ethernetheader.dst, &packetserver_broadcastMAC, sizeof(ethernetheader.dst)) != 0)) //Invalid destination(and not broadcasting)?
 											{
 												//dolog("ethernetcard","Discarding destination."); //Showing why we discard!
@@ -3544,6 +3635,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 														freez((void**)&net.packet, net.pktlen, "MODEM_PACKET");
 														net.packet = NULL; //Discard if failed to deallocate!
 														net.pktlen = 0; //Not allocated!
+														goto invalidpacket; //Invalid packet!
 													}
 												}
 												headertype = SDL_SwapBE16(0x8864); //Receiving uses normal PPP packets to transfer/receive on the receiver line only!
@@ -3561,41 +3653,6 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 											{
 												//dolog("ethernetcard","Discarding type: %04X",SDL_SwapBE16(ethernetheader.type)); //Showing why we discard!
 												goto invalidpacket; //Invalid packet!
-											}
-											if (Packetserver_clients[connectedclient].packetserver_useStaticIP && (headertype==SDL_SwapBE16(0x0800))) //IP filter to apply?
-											{
-												if ((memcmp(&Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data) + 16], Packetserver_clients[connectedclient].packetserver_staticIP, 4) != 0) && (memcmp(&Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data) + 16], packetserver_broadcastIP, 4) != 0)) //Static IP mismatch?
-												{
-													goto invalidpacket; //Invalid packet!
-												}
-											}
-											if (headertype == SDL_SwapBE16(0x0800)) //IP packet?
-											{
-												//Check for TCP packet in the IP packet!
-												detselfrelpos = sizeof(ethernetheader.data); //Start of the IP packet!
-												detselfdataleft = Packetserver_clients[connectedclient].pktlen-detselfrelpos; //Data left to parse as subpackets!
-												if (detselfdataleft >= 9) //Enough data left to parse?
-												{
-													if (Packetserver_clients[connectedclient].packet[detselfrelpos + 9] == 6) //TCP protocol?
-													{
-														IP_useIHL = (((Packetserver_clients[connectedclient].packet[detselfrelpos]&0xF0)>>4)<<5); //IHL field, in bytes!
-														if ((detselfdataleft > IP_useIHL) && (IP_useIHL)) //Enough left for the subpacket?
-														{
-															detselfrelpos += IP_useIHL; //TCP Data position!
-															detselfdataleft -= IP_useIHL; //How much data if left!
-															//Now we're at the start of the TCP packet!
-															if (detselfdataleft >= 4) //Valid to filter the port?
-															{
-																if ((SDL_SwapBE16(*((word*)&Packetserver_clients[connectedclient].packet[detselfrelpos])) == modem.connectionport) || //Own source port?
-																	(SDL_SwapBE16(*((word*)&Packetserver_clients[connectedclient].packet[detselfrelpos + 2])) == modem.connectionport) //Own destination port?
-																	)
-																{
-																	goto invalidpacket; //Ignore this packet!
-																}
-															}
-														}
-													}
-												}
 											}
 											//Valid packet! Receive it!
 											if (Packetserver_clients[connectedclient].packetserver_slipprotocol) //Using slip or PPP protocol?
