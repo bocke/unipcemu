@@ -1544,8 +1544,8 @@ firePrioritizedIR: //Fire the IR that has the most priority!
 	return (sword)APIC_intnr; //Give the interrupt number to fire!
 }
 
-uint_32 i440fx_ioapic_base_mask;
-uint_32 i440fx_ioapic_base_match;
+extern uint_32 i440fx_ioapic_base_mask;
+extern uint_32 i440fx_ioapic_base_match;
 
 extern byte memory_datawrittensize; //How many bytes have been written to memory during a write!
 extern uint_64 BIU_cachedmemoryaddr[MAXCPUS];

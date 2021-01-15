@@ -303,7 +303,7 @@ byte checksaveTSS32(void* segdesc, word value, byte isBacklinked)
 }
 
 
-byte enableMMUbuffer; //To buffer the MMU writes?
+extern byte enableMMUbuffer; //To buffer the MMU writes?
 
 extern byte advancedlog; //Advanced log setting
 

@@ -84,7 +84,7 @@ extern byte EMU_RUNNING; //Emulator running? 0=Not running, 1=Running, Active CP
 //Allow the BIOS to be run?
 #define ALLOW_BIOS
 
-byte allow_debuggerstep; //Do we allow the debugger to step through?
+extern byte allow_debuggerstep; //Do we allow the debugger to step through?
 
 extern byte EMU_BIOS[0x10000]; //Full custom BIOS from 0xF0000-0xFFFFF for the emulator itself to use!
 extern word CB_datasegment; //Reserved segment when adding callback!

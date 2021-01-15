@@ -1688,7 +1688,7 @@ Handler opcode0F_jmptbl[NUM0FEXTS][256][2] =   //Our standard internal standard 
 	}
 };
 
-Handler CurrentCPU_opcode_jmptbl[1024]; //Our standard internal opcode jmptbl!
+extern Handler CurrentCPU_opcode_jmptbl[1024]; //Our standard internal opcode jmptbl!
 
 void generate_opcode0F_jmptbl()
 {

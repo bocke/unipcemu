@@ -735,7 +735,7 @@ sbyte dynamicimage_nextallocatedsector(char *filename, uint_32 *sector) //Finds 
 	return (sbyte)present; //Next sector that is (un)allocated! -1=Invalid file, 0=Nothing present anymore(EOF reached during search), 1=
 }
 
-char diskpath[256]; //Disk path!
+extern char diskpath[256]; //Disk path!
 
 FILEPOS generateDynamicImage(char *filename, FILEPOS size, int percentagex, int percentagey, byte format)
 {
