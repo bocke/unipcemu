@@ -528,9 +528,9 @@ void fetchpackets_pcap() { //Handle any packets to process!
 	if (pcap_enabled) //Enabled?
 	{
 		//Cannot receive until buffer cleared!
+		if (pcap_next_ex(adhandle, &hdr, &pktdata) <= 0) return;
 		if (net.packet==NULL) //Can we receive anything?
 		{
-			if (pcap_next_ex (adhandle, &hdr, &pktdata) <=0) return;
 			if (hdr->len==0) return;
 
 			net.packet = zalloc(hdr->len,"MODEM_PACKET",NULL);
