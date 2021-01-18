@@ -512,28 +512,86 @@ void BIOS_DetectStorage() //Auto-Detect the current storage to use, on start onl
 	#if defined(ANDROID) || defined(IS_LINUX)
 		#ifndef ANDROID
 		#ifdef SDL2
-		char *base_path = SDL_GetPrefPath("Superfury", "UniPCemu");
-		if (base_path) //Gotten?
+		char* base_path;
+		char* linuxpath = SDL_getenv("UNIPCEMU");
+		if (linuxpath) //Linux environment path specified?
 		{
-			safestrcpy(UniPCEmu_root_dir, sizeof(UniPCEmu_root_dir), base_path);
-			SDL_free(base_path); //Release it, now that we have it!
-			if (safestrlen(UniPCEmu_root_dir, sizeof(UniPCEmu_root_dir))>1) //Valid length?
+			safestrcpy(UniPCEmu_root_dir, sizeof(UniPCEmu_root_dir), linuxpath);
+			//SDL_free(linuxpath); //Release it, now that we have it! For some reason, this cannot be done on a linux version?
+			if (safestrlen(UniPCEmu_root_dir, sizeof(UniPCEmu_root_dir)) > 1) //Valid length?
 			{
-				UniPCEmu_root_dir[safestrlen(UniPCEmu_root_dir, sizeof(UniPCEmu_root_dir) - 1)] = '\0'; //Strip off the trailing slash!
+				if (UniPCEmu_root_dir[safestrlen(UniPCEmu_root_dir, sizeof(UniPCEmu_root_dir) - 1)] == '/') //Ending with a slash? Check to strip!
+				{
+					if (UniPCEmu_root_dir[safestrlen(UniPCEmu_root_dir, sizeof(UniPCEmu_root_dir) - 2)] != '/') //Not ending with a double slash? Valid to strip!
+					{
+						UniPCEmu_root_dir[safestrlen(UniPCEmu_root_dir, sizeof(UniPCEmu_root_dir) - 1)] = '\0'; //Strip off the trailing slash!
+					}
+				}
 			}
-			else //Default length?
+			else //Invalid length? Fallback!
 			{
-				safestrcpy(UniPCEmu_root_dir, sizeof(UniPCEmu_root_dir), "~/UniPCemu"); //Default path!
+				if (strcmp(UniPCEmu_root_dir, ".") != 0) //Not CWD?
+				{
+					goto handleLinuxBasePathSDL2; //Fallback!
+				}
 			}
-			recursive_mkdir(UniPCEmu_root_dir); //Make sure our directory exists, if it doesn't yet!
 		}
-		else //Fallback to default path?
+		else
 		{
-			safestrcpy(UniPCEmu_root_dir, sizeof(UniPCEmu_root_dir), "~/UniPCemu");
+			handleLinuxBasePathSDL2: //Fallback!
+			base_path = SDL_GetPrefPath("Superfury", "UniPCemu");
+			if (base_path) //Gotten?
+			{
+				safestrcpy(UniPCEmu_root_dir, sizeof(UniPCEmu_root_dir), base_path);
+				SDL_free(base_path); //Release it, now that we have it!
+				if (safestrlen(UniPCEmu_root_dir, sizeof(UniPCEmu_root_dir)) > 1) //Valid length?
+				{
+					if (UniPCEmu_root_dir[safestrlen(UniPCEmu_root_dir, sizeof(UniPCEmu_root_dir) - 1)] == '/') //Ending with a slash? Check to strip!
+					{
+						if (UniPCEmu_root_dir[safestrlen(UniPCEmu_root_dir, sizeof(UniPCEmu_root_dir) - 2)] != '/') //Not ending with a double slash? Valid to strip!
+						{
+							UniPCEmu_root_dir[safestrlen(UniPCEmu_root_dir, sizeof(UniPCEmu_root_dir) - 1)] = '\0'; //Strip off the trailing slash!
+						}
+					}
+				}
+				else //Default length?
+				{
+					safestrcpy(UniPCEmu_root_dir, sizeof(UniPCEmu_root_dir), "~/UniPCemu"); //Default path!
+				}
+				recursive_mkdir(UniPCEmu_root_dir); //Make sure our directory exists, if it doesn't yet!
+			}
+			else //Fallback to default path?
+			{
+				safestrcpy(UniPCEmu_root_dir, sizeof(UniPCEmu_root_dir), "~/UniPCemu");
+			}
 		}
 		#else
-		//SDL1.2.x on linux?
-		safestrcpy(UniPCEmu_root_dir, sizeof(UniPCEmu_root_dir), "~/UniPCemu");
+		char* linuxpath = SDL_getenv("UNIPCEMU");
+		if (linuxpath) //Linux path specified?
+		{
+			safestrcpy(UniPCEmu_root_dir, sizeof(UniPCEmu_root_dir), linuxpath);
+			//SDL_free(linuxpath); //Release it, now that we have it! This doesn't seem to work on linux versions of SDL?
+			if (safestrlen(UniPCEmu_root_dir, sizeof(UniPCEmu_root_dir)) > 1) //Valid length?
+			{
+				if (UniPCEmu_root_dir[safestrlen(UniPCEmu_root_dir, sizeof(UniPCEmu_root_dir) - 1)] == '/') //Trailing slash?
+				{
+					UniPCEmu_root_dir[safestrlen(UniPCEmu_root_dir, sizeof(UniPCEmu_root_dir) - 1)] = '\0'; //Strip off the trailing slash!
+				}
+			}
+			else //Invalid length? Fallback!
+			{
+				if (strcmp(UniPCEmu_root_dir, ".") != 0) //Not CWD?
+				{
+					goto handleLinuxBasePathSDL; //Fallback!
+				}
+			}
+		}
+		else
+		{
+			handleLinuxBasePathSDL:
+			//SDL1.2.x on linux?
+			safestrcpy(UniPCEmu_root_dir, sizeof(UniPCEmu_root_dir), "~/UniPCemu");
+		}
 		#endif
 		#endif
 		BIGFILE *f;
