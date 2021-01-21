@@ -333,7 +333,7 @@ Handler BIOS_Menus[] =
 	,BIOS_CPUIDmode //CPUID mode is #83!
 	,BIOS_connectdisconnectpassthrough //Connect/disconnect passthrough is #84!
 	,BIOS_nullModem //Nullmodem is #85!
-	,BIOS_BWMonitor_LuminanceMode(); //Luminance mode is #86!
+	,BIOS_BWMonitor_LuminanceMode //Luminance mode is #86!
 };
 
 //Not implemented?
@@ -4311,7 +4311,7 @@ void BIOS_BWMonitor_LuminanceMode()
 	}
 
 	int current = 0;
-	switch (BIOS_Settings.bwmonitor) //What B/W monitor mode?
+	switch (BIOS_Settings.bwmonitor_luminancemode) //What B/W monitor mode?
 	{
 	case BWMONITOR_LUMINANCEMODE_GREYSCALE: //None
 	case BWMONITOR_LUMINANCEMODE_LUMINANCE: //Black/White
@@ -5028,16 +5028,22 @@ setaspectratiotext:
 setmonitortext: //For fixing it!
 	optioninfo[advancedoptions] = 1; //Monitor!
 	safestrcpy(menuoptions[advancedoptions],sizeof(menuoptions[0]), "Monitor: ");
-	switch (BIOS_Settings.bwmonitor_luminancemode) //B/W monitor?
-	{
-	case BWMONITOR_LUMINANCEMODE_GREYSCALE:
-		safestrcat(menuoptions[advancedoptions++],sizeof(menuoptions[0]), "B/W monitor: white");
-		break;
-	case BWMONITOR_LUMINANCEMODE_LUMINANCE:
-		safestrcat(menuoptions[advancedoptions++],sizeof(menuoptions[0]), "B/W monitor: green");
+	switch (BIOS_Settings.bwmonitor) //B/W monitor?
+ 	{
+	case BWMONITOR_NONE:
+ 		safestrcat(menuoptions[advancedoptions++],sizeof(menuoptions[0]), "Color monitor");
+ 		break;
+	case BWMONITOR_WHITE:
+ 		safestrcat(menuoptions[advancedoptions++],sizeof(menuoptions[0]), "B/W monitor: white");
+ 		break;
+	case BWMONITOR_GREEN:
+ 		safestrcat(menuoptions[advancedoptions++],sizeof(menuoptions[0]), "B/W monitor: green");
+ 		break;
+	case BWMONITOR_AMBER:
+		safestrcat(menuoptions[advancedoptions++],sizeof(menuoptions[0]), "B/W monitor: amber");
 		break;
 	default: //Error: fix it!
-		BIOS_Settings.bwmonitor_luminancemode = 0; //Reset/Fix!
+		BIOS_Settings.bwmonitor = 0; //Reset/Fix!
 		BIOS_Changed = 1; //We've changed!
 		goto setmonitortext; //Goto!
 		break;
@@ -5046,13 +5052,13 @@ setmonitortext: //For fixing it!
 setmonitormodetext: //For fixing it!
 	optioninfo[advancedoptions] = 8; //BW Monitor luminance mode!
 	safestrcpy(menuoptions[advancedoptions],sizeof(menuoptions[0]), "BW Monitor luminance mode: ");
-	switch (BIOS_Settings.bwmonitor) //B/W monitor?
+	switch (BIOS_Settings.bwmonitor_luminancemode) //B/W monitor?
 	{
 	case BWMONITOR_LUMINANCEMODE_GREYSCALE:
-		safestrcat(menuoptions[advancedoptions++],sizeof(menuoptions[0]), "greyscale");
+		safestrcat(menuoptions[advancedoptions++],sizeof(menuoptions[0]), "Greyscale");
 		break;
 	case BWMONITOR_LUMINANCEMODE_LUMINANCE:
-		safestrcat(menuoptions[advancedoptions++],sizeof(menuoptions[0]), "luminance");
+		safestrcat(menuoptions[advancedoptions++],sizeof(menuoptions[0]), "Luminance");
 		break;
 	default: //Error: fix it!
 		BIOS_Settings.bwmonitor_luminancemode = DEFAULT_BWMONITOR_LUMINANCEMODE; //Reset/Fix!
