@@ -33,4 +33,5 @@ void VGA_DUMPColors(); //Dumps the full DAC and Attribute colors!
 void VGA_initBWConversion(); //Init B/W conversion data!
 byte DAC_Use_BWMonitor(byte use); //Use B/W monitor?
 byte DAC_BWColor(byte use); //What B/W color to use?
+byte DAC_Use_BWluminance(byte use); //What luminance method to use?
 #endif

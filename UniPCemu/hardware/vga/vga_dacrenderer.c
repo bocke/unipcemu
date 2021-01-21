@@ -101,6 +101,7 @@ typedef uint_32(*BWconversion_handler)(uint_32 color); //A B/W conversion handle
 
 
 byte BWconversion_ready = 0; //Are we to initialise our tables?
+byte DAC_luminancemethod = 1; //What B/W luminance method?
 byte Luminance_R[0x100]; //What to add to white!
 byte Luminance_G[0x100]; //What to add to green!
 byte Luminance_B[0x100]; //What to add to blue!
@@ -108,7 +109,6 @@ uint_32 BWconversion_white[0x10000]; //Conversion table for b/w totals(white)!
 uint_32 BWconversion_green[0x10000]; //Green channel conversion!
 uint_32 BWconversion_amber[0x10000]; //Amber channel conversion!
 uint_32* BWconversion_palette = &BWconversion_white[0];
-
 
 byte DAC_BWColor(byte use) //What B/W color to use?
 {
@@ -148,41 +148,40 @@ void VGA_initBWConversion()
 	const float amberfactor_R = ((float)0xFF / (float)255); //Red part!
 	const float amberfactor_G = ((float)0xB7 / (float)255); //Green part!
 	const float amberfactor_B = ((float)0x00 / (float)255); //Blue part!
-#ifdef LUMINANCE_WEIGHTED
-	INLINEREGISTER word a; //16-bit!
-#else
 	INLINEREGISTER word a,b; //16-bit!
-#endif
 	INLINEREGISTER uint_32 n; //32-bit!
 	for (n=0;n<0x10000;n++) //Process all possible values!
 	{
 		//Apply the average method!
 		a = n & 0xFF; //Input!
-#ifdef LUMINANCE_WEIGHTED
-		//Here, luminance adds to 255, but R,G,B weigh differently towards that. The greyscale lookup table contains entries for the 0-255 values repeated each 256 items.
-		Luminance_R[a] = (byte)((double)a * LUMINANCE_RFACTOR); //Red weighted!
-		Luminance_G[a] = (byte)((double)a * LUMINANCE_GFACTOR); //Green weighted!
-		Luminance_B[a] = (byte)((double)a * LUMINANCE_BFACTOR); //Blue weighted!
-		//The input is the weighted sum because all factors together add up to 1 for the full luminance range!
-		//a stays the same as the input low 8 bits for a direct 8-bit lookup to be archieved(the input values is the luminance factor of 0-255 because of the above weights)!
-#else //Unweighted?
-		//Here, luninance is ignored(R+G+B adds to up to 3*255), while the total is divided by 3 by the greyscale lookup table!
-		Luminance_R[a] = a; //Unweighted!
-		Luminance_G[a] = a; //Unweighted!
-		Luminance_B[a] = a; //Unweighted!
-		//The input is in the addition of the unweighted sum!
-		//Optimized way of dividing by 3?
-		a = n >> 2;
-		b = (a >> 2);
-		a += b;
-		b >>= 2;
-		a += b;
-		b >>= 2;
-		a += b;
-		b >>= 2;
-		a += b;
-		//a is now the division of the input luminance unweighted(the sum being n), so use the divided value as output!
-#endif
+		if (DAC_luminancemethod) //Weighted?
+		{
+			//Here, luminance adds to 255, but R,G,B weigh differently towards that. The greyscale lookup table contains entries for the 0-255 values repeated each 256 items.
+			Luminance_R[a] = (byte)((double)a * LUMINANCE_RFACTOR); //Red weighted!
+			Luminance_G[a] = (byte)((double)a * LUMINANCE_GFACTOR); //Green weighted!
+			Luminance_B[a] = (byte)((double)a * LUMINANCE_BFACTOR); //Blue weighted!
+			//The input is the weighted sum because all factors together add up to 1 for the full luminance range!
+			//a stays the same as the input low 8 bits for a direct 8-bit lookup to be archieved(the input values is the luminance factor of 0-255 because of the above weights)!
+		}
+		else //Unweighted?
+		{
+			//Here, luninance is ignored(R+G+B adds to up to 3*255), while the total is divided by 3 by the greyscale lookup table!
+			Luminance_R[a] = a; //Unweighted!
+			Luminance_G[a] = a; //Unweighted!
+			Luminance_B[a] = a; //Unweighted!
+			//The input is in the addition of the unweighted sum!
+			//Optimized way of dividing by 3?
+			a = n >> 2;
+			b = (a >> 2);
+			a += b;
+			b >>= 2;
+			a += b;
+			b >>= 2;
+			a += b;
+			b >>= 2;
+			a += b;
+			//a is now the division of the input luminance unweighted(the sum being n), so use the divided value as output!
+		}
 		//Now store the results for greyscale, green and brown! Use the (un)weighted addition as input, depending on the Luminance additions!
 		BWconversion_white[n] = RGB((byte)(((float)a) * whitefactor_R), (byte)(((float)a) * whitefactor_G), (byte)(((float)a) * whitefactor_B)); //Apply basic color: Create RGB in white!
 		BWconversion_green[n] = RGB((byte)(((float)a) * greenfactor_R), (byte)(((float)a) * greenfactor_G), (byte)(((float)a) * greenfactor_B)); //Apply basic color: Create RGB in green!
@@ -228,6 +227,16 @@ byte DAC_Use_BWMonitor(byte use)
 		}
 	}
 	return DAC_whatBWMonitor; //Give the data!
+}
+
+byte DAC_Use_BWluminance(byte use)
+{
+	if (use < 2)
+	{
+		DAC_luminancemethod = use; //Use?
+		VGA_initBWConversion(); //Update the precalcs!
+	}
+	return DAC_luminancemethod; //Give the data!
 }
 
 void DAC_updateEntry(VGA_Type *VGA, byte entry) //Update a DAC entry for rendering!
