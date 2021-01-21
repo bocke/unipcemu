@@ -4301,7 +4301,7 @@ void BIOS_BWMonitor_LuminanceMode()
 		cleardata(&itemlist[i][0], sizeof(itemlist[i])); //Reset!
 	}
 
-	safestrcpy(itemlist[BWMONITOR_LUMINANCEMODE_GREYSCALE],sizeof(itemlist[0]), "Greyscale"); //Set filename from options!
+	safestrcpy(itemlist[BWMONITOR_LUMINANCEMODE_AVERAGED],sizeof(itemlist[0]), "Averaged"); //Set filename from options!
 	safestrcpy(itemlist[BWMONITOR_LUMINANCEMODE_LUMINANCE],sizeof(itemlist[0]), "Luminance"); //Set filename from options!
 
 	if (BIOS_Settings.bwmonitor_luminancemode>=numlist) //Invalid?
@@ -4313,7 +4313,7 @@ void BIOS_BWMonitor_LuminanceMode()
 	int current = 0;
 	switch (BIOS_Settings.bwmonitor_luminancemode) //What B/W monitor mode?
 	{
-	case BWMONITOR_LUMINANCEMODE_GREYSCALE: //None
+	case BWMONITOR_LUMINANCEMODE_AVERAGED: //None
 	case BWMONITOR_LUMINANCEMODE_LUMINANCE: //Black/White
 		current = BIOS_Settings.bwmonitor_luminancemode; //Valid: use!
 		break;
@@ -4335,7 +4335,7 @@ void BIOS_BWMonitor_LuminanceMode()
 	case FILELIST_DEFAULT: //Default?
 		file = DEFAULT_BWMONITOR_LUMINANCEMODE; //Default execution mode: None!
 
-	case BWMONITOR_LUMINANCEMODE_GREYSCALE: //None
+	case BWMONITOR_LUMINANCEMODE_AVERAGED: //None
 	case BWMONITOR_LUMINANCEMODE_LUMINANCE: //Black/White
 	default: //Changed?
 		if (file != current) //Not current?
@@ -5054,8 +5054,8 @@ setmonitormodetext: //For fixing it!
 	safestrcpy(menuoptions[advancedoptions],sizeof(menuoptions[0]), "BW Monitor luminance mode: ");
 	switch (BIOS_Settings.bwmonitor_luminancemode) //B/W monitor?
 	{
-	case BWMONITOR_LUMINANCEMODE_GREYSCALE:
-		safestrcat(menuoptions[advancedoptions++],sizeof(menuoptions[0]), "Greyscale");
+	case BWMONITOR_LUMINANCEMODE_AVERAGED:
+		safestrcat(menuoptions[advancedoptions++],sizeof(menuoptions[0]), "Averaged");
 		break;
 	case BWMONITOR_LUMINANCEMODE_LUMINANCE:
 		safestrcat(menuoptions[advancedoptions++],sizeof(menuoptions[0]), "Luminance");

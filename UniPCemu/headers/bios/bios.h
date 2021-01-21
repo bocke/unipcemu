@@ -246,7 +246,7 @@ enum BIOSROMMode {
 #define BWMONITOR_AMBER 3
 
 //B/W monitor Luminance mode setting
-#define BWMONITOR_LUMINANCEMODE_GREYSCALE 0
+#define BWMONITOR_LUMINANCEMODE_AVERAGED 0
 #define BWMONITOR_LUMINANCEMODE_LUMINANCE 1
 
 //Default values for new BIOS settings:
