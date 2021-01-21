@@ -4284,13 +4284,13 @@ void BIOS_BWMonitor()
 	BIOS_Menu = 29; //Goto Video Settings menu!
 }
 
-void BIOS_BWMonitor()
+void BIOS_BWMonitor_LuminanceMode()
 {
-	BIOS_Title("Monitor");
+	BIOS_Title("BW Monitor Luminance Mode");
 	EMU_locktext();
 	EMU_gotoxy(0, 4); //Goto 4th row!
 	EMU_textcolor(BIOS_ATTR_INACTIVE); //We're using inactive color for label!
-	GPU_EMU_printscreen(0, 4, "Monitor: "); //Show selection init!
+	GPU_EMU_printscreen(0, 4, "Luminance Mode: "); //Show selection init!
 	EMU_unlocktext();
 	int i = 0; //Counter!
 	numlist = 2; //Amount of Execution modes!
@@ -4324,7 +4324,7 @@ void BIOS_BWMonitor()
 		BIOS_Settings.bwmonitor_luminancemode = current; //Safety!
 		BIOS_Changed = 1; //Changed!
 	}
-	int file = ExecuteList(10, 4, itemlist[current], 256,NULL,0); //Show options for the installed CPU!
+	int file = ExecuteList(16, 4, itemlist[current], 256,NULL,0); //Show options for the installed CPU!
 	switch (file) //Which file?
 	{
 	case FILELIST_CANCEL: //Cancelled?
