@@ -1150,6 +1150,7 @@ void BIOS_LoadDefaults(int tosave) //Load BIOS defaults, but not memory size!
 	BIOS_Settings.GPU_AllowDirectPlot = DEFAULT_DIRECTPLOT; //Default: automatic 1:1 mapping!
 	BIOS_Settings.aspectratio = DEFAULT_ASPECTRATIO; //Don't keep aspect ratio by default!
 	BIOS_Settings.bwmonitor = DEFAULT_BWMONITOR; //Default B/W monitor setting!
+	BIOS_Settings.bwmonitor_luminancemode = DEFAULT_BWMONITOR_LUMINANCEMODE; //Default B/W monitor setting!
 	BIOS_Settings.SoundSource_Volume = DEFAULT_SSOURCEVOL; //Default soundsource volume knob!
 	BIOS_Settings.GameBlaster_Volume = DEFAULT_BLASTERVOL; //Default Game Blaster volume knob!
 	BIOS_Settings.ShowFramerate = DEFAULT_FRAMERATE; //Default framerate setting!
@@ -1322,6 +1323,7 @@ void BIOS_LoadData() //Load BIOS settings!
 	BIOS_Settings.GPU_AllowDirectPlot = (byte)get_private_profile_uint64("video", "directplot", DEFAULT_DIRECTPLOT, inifile); //Allow VGA Direct Plot: 1 for automatic 1:1 mapping, 0 for always dynamic, 2 for force 1:1 mapping?
 	BIOS_Settings.aspectratio = (byte)get_private_profile_uint64("video", "aspectratio", DEFAULT_ASPECTRATIO, inifile); //The aspect ratio to use?
 	BIOS_Settings.bwmonitor = (byte)get_private_profile_uint64("video", "bwmonitor", DEFAULT_BWMONITOR, inifile); //Are we a b/w monitor?
+	BIOS_Settings.bwmonitor_luminancemode = LIMITRANGE((byte)get_private_profile_uint64("video", "bwmonitor_luminancemode", DEFAULT_BWMONITOR_LUMINANCEMODE, inifile),0,1); //b/w monitor luminance mode?
 	BIOS_Settings.ShowFramerate = LIMITRANGE((byte)get_private_profile_uint64("video", "showframerate", DEFAULT_FRAMERATE, inifile),0,1); //Show the frame rate?
 
 	//Sound
@@ -1654,6 +1656,7 @@ int BIOS_SaveData() //Save BIOS settings!
 	safestrcat(video_comment, sizeof(video_comment), "directplot: 0=Disabled, 1=Automatic, 2=Forced\n");
 	safestrcat(video_comment, sizeof(video_comment), "aspectratio: 0=Fullscreen stretching, 1=Keep the same, 2=Force 4:3(VGA), 3=Force CGA, 4=Force 4:3(SVGA 768p), 5=Force 4:3(SVGA 1080p), 6=Force 4K, 7=Force 4:3(SVGA 4K)\n");
 	safestrcat(video_comment, sizeof(video_comment), "bwmonitor: 0=Color, 1=B/W monitor: white, 2=B/W monitor: green, 3=B/W monitor: amber\n");
+	safestrcat(video_comment, sizeof(video_comment), "bwmonitor_luminancemode: 0=Averaged, 1=Luminance\n");
 	safestrcat(video_comment, sizeof(video_comment), "showframerate: 0=Disabled, otherwise Enabled");
 	char *video_commentused = NULL;
 	if (video_comment[0]) video_commentused = &video_comment[0];
@@ -1664,6 +1667,7 @@ int BIOS_SaveData() //Save BIOS settings!
 	if (!write_private_profile_uint64("video", video_commentused, "directplot", BIOS_Settings.GPU_AllowDirectPlot, inifile)) ABORT_SAVEDATA //Allow VGA Direct Plot: 1 for automatic 1:1 mapping, 0 for always dynamic, 2 for force 1:1 mapping?
 	if (!write_private_profile_uint64("video", video_commentused, "aspectratio", BIOS_Settings.aspectratio, inifile)) ABORT_SAVEDATA //The aspect ratio to use?
 	if (!write_private_profile_uint64("video", video_commentused, "bwmonitor", BIOS_Settings.bwmonitor, inifile)) ABORT_SAVEDATA //Are we a b/w monitor?
+	if (!write_private_profile_uint64("video", video_commentused, "bwmonitor_luminancemode", BIOS_Settings.bwmonitor_luminancemode, inifile)) ABORT_SAVEDATA //Are we a b/w monitor?
 	if (!write_private_profile_uint64("video", video_commentused, "showframerate", BIOS_Settings.ShowFramerate, inifile)) ABORT_SAVEDATA //Show the frame rate?
 
 	//Sound

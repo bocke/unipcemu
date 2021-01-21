@@ -1644,7 +1644,7 @@ extern BIOS_Settings_TYPE BIOS_Settings; //Our settings!
 
 void EMU_update_VGA_Settings() //Update the VGA settings!
 {
-	DAC_Use_BWluminance(1); //Luminance type! Setting not present yet, so compatibility value!
+	DAC_Use_BWluminance(BIOS_Settings.bwmonitor_luminancemode); //Luminance type!
 	DAC_Use_BWMonitor((BIOS_Settings.bwmonitor>0) ? 1 : 0); //Select color/bw monitor!
 	if (DAC_Use_BWMonitor(0xFF)) //Using a b/w monitor?
 	{

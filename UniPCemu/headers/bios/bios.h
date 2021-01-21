@@ -140,6 +140,7 @@ typedef struct
 	uint_64 FSBreakpoint; //FS to break on
 	uint_64 CR3breakpoint; //CR3 to break on
 	byte nullmodem; //nullmodem mode to TCP when set!
+	byte bwmonitor_luminancemode; //B/w monitor luminance mode?
 } BIOS_Settings_TYPE; //BIOS Settings!
 
 //Debug modes:
@@ -244,6 +245,10 @@ enum BIOSROMMode {
 #define BWMONITOR_GREEN 2
 #define BWMONITOR_AMBER 3
 
+//B/W monitor Luminance mode setting
+#define BWMONITOR_LUMINANCEMODE_GREYSCALE 0
+#define BWMONITOR_LUMINANCEMODE_LUMINANCE 1
+
 //Default values for new BIOS settings:
 #define DEFAULT_BOOT_ORDER 0
 #define DEFAULT_CPUS 1
@@ -261,6 +266,7 @@ enum BIOSROMMode {
 #define DEFAULT_DIRECTPLOT 2
 #endif
 #define DEFAULT_BWMONITOR BWMONITOR_NONE
+#define DEFAULT_LUMINANCEMODE LUMINANCEMODE_LUMINANCE
 #define DEFAULT_SSOURCEVOL 100
 #define DEFAULT_BLASTERVOL 100
 #define DEFAULT_FRAMERATE 0
