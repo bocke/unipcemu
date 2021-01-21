@@ -242,6 +242,7 @@ void BIOS_EmulatedCPUs(); //How many emulated CPUs!
 void BIOS_CPUIDmode(); //CPUID mode!
 void BIOS_connectdisconnectpassthrough(); //Connect/disconnect passthrough!
 void BIOS_nullModem(); //Nullmodem setting!
+void BIOS_BWMonitor_LuminanceMode(); //Luminance mode
 
 //First, global handler!
 Handler BIOS_Menus[] =
@@ -332,6 +333,7 @@ Handler BIOS_Menus[] =
 	,BIOS_CPUIDmode //CPUID mode is #83!
 	,BIOS_connectdisconnectpassthrough //Connect/disconnect passthrough is #84!
 	,BIOS_nullModem //Nullmodem is #85!
+	,BIOS_BWMonitor_LuminanceMode(); //Luminance mode is #86!
 };
 
 //Not implemented?
@@ -4316,7 +4318,7 @@ void BIOS_BWMonitor_LuminanceMode()
 		current = BIOS_Settings.bwmonitor_luminancemode; //Valid: use!
 		break;
 	default: //Invalid
-		current = BWMONITOR_LUMINANCEMODE_LUMINANCE; //Default: none!
+		current = DEFAULT_BWMONITOR_LUMINANCEMODE; //Default: none!
 		break;
 	}
 	if (BIOS_Settings.bwmonitor_luminancemode != current) //Invalid?
@@ -5026,24 +5028,36 @@ setaspectratiotext:
 setmonitortext: //For fixing it!
 	optioninfo[advancedoptions] = 1; //Monitor!
 	safestrcpy(menuoptions[advancedoptions],sizeof(menuoptions[0]), "Monitor: ");
-	switch (BIOS_Settings.bwmonitor) //B/W monitor?
+	switch (BIOS_Settings.bwmonitor_luminancemode) //B/W monitor?
 	{
-	case BWMONITOR_WHITE:
+	case BWMONITOR_LUMINANCEMODE_GREYSCALE:
 		safestrcat(menuoptions[advancedoptions++],sizeof(menuoptions[0]), "B/W monitor: white");
 		break;
-	case BWMONITOR_GREEN:
+	case BWMONITOR_LUMINANCEMODE_LUMINANCE:
 		safestrcat(menuoptions[advancedoptions++],sizeof(menuoptions[0]), "B/W monitor: green");
 		break;
-	case BWMONITOR_AMBER:
-		safestrcat(menuoptions[advancedoptions++],sizeof(menuoptions[0]), "B/W monitor: amber");
-		break;
-	case BWMONITOR_NONE:
-		safestrcat(menuoptions[advancedoptions++],sizeof(menuoptions[0]), "Color monitor");
-		break;
 	default: //Error: fix it!
-		BIOS_Settings.bwmonitor = 0; //Reset/Fix!
+		BIOS_Settings.bwmonitor_luminancemode = 0; //Reset/Fix!
 		BIOS_Changed = 1; //We've changed!
 		goto setmonitortext; //Goto!
+		break;
+	}
+
+setmonitormodetext: //For fixing it!
+	optioninfo[advancedoptions] = 8; //BW Monitor luminance mode!
+	safestrcpy(menuoptions[advancedoptions],sizeof(menuoptions[0]), "BW Monitor luminance mode: ");
+	switch (BIOS_Settings.bwmonitor) //B/W monitor?
+	{
+	case BWMONITOR_LUMINANCEMODE_GREYSCALE:
+		safestrcat(menuoptions[advancedoptions++],sizeof(menuoptions[0]), "greyscale");
+		break;
+	case BWMONITOR_LUMINANCEMODE_LUMINANCE:
+		safestrcat(menuoptions[advancedoptions++],sizeof(menuoptions[0]), "luminance");
+		break;
+	default: //Error: fix it!
+		BIOS_Settings.bwmonitor_luminancemode = DEFAULT_BWMONITOR_LUMINANCEMODE; //Reset/Fix!
+		BIOS_Changed = 1; //We've changed!
+		goto setmonitormodetext; //Goto!
 		break;
 	}
 
@@ -5158,7 +5172,8 @@ void BIOS_VideoSettingsMenu() //Manage stuff concerning input.
 	case 4:
 	case 5:
 	case 6:
-	case 7: //Valid option?
+	case 7:
+	case 8: //Valid option?
 		switch (optioninfo[menuresult]) //What option has been chosen, since we are dynamic size?
 		{
 		case 0: //Direct plot setting?
@@ -5184,6 +5199,9 @@ void BIOS_VideoSettingsMenu() //Manage stuff concerning input.
 			break;
 		case 7: //Dump VGA?
 			BIOS_Menu = 48; //Dump VGA!
+			break;
+		case 8: //BW monitor luminance mode
+			BIOS_Menu = 86; //BW monitor luminance mode!
 			break;
 		default:
 			BIOS_Menu = NOTIMPLEMENTED; //Not implemented yet!
