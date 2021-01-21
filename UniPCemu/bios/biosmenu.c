@@ -4304,9 +4304,9 @@ void BIOS_BWMonitor_LuminanceMode()
 	safestrcpy(itemlist[BWMONITOR_LUMINANCEMODE_GREYSCALE],sizeof(itemlist[0]), "Greyscale"); //Set filename from options!
 	safestrcpy(itemlist[BWMONITOR_LUMINANCEMODE_LUMINANCE],sizeof(itemlist[0]), "Luminance"); //Set filename from options!
 
-	if (BIOS_Settings.bwmonitor>=numlist) //Invalid?
+	if (BIOS_Settings.bwmonitor_luminancemode>=numlist) //Invalid?
 	{
-		BIOS_Settings.bwmonitor = DEFAULT_BWMONITOR_LUMINANCEMODE; //Default!
+		BIOS_Settings.bwmonitor_luminancemode = DEFAULT_BWMONITOR_LUMINANCEMODE; //Default!
 		BIOS_Changed = 1; //We've changed!
 	}
 
