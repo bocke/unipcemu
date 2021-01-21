@@ -237,7 +237,7 @@ byte DAC_Use_BWluminance(byte use)
 		VGA_initBWConversion(); //Update the precalcs!
 		if (getActiveVGA()) //Active VGA?
 		{
-			DAC_UpdateEntries(getActiveVGA()); //Update the active VGA entries!
+			DAC_updateEntries(getActiveVGA()); //Update the active VGA entries!
 		}
 	}
 	return DAC_luminancemethod; //Give the data!
