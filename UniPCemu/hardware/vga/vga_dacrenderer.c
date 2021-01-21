@@ -100,7 +100,7 @@ typedef uint_32(*BWconversion_handler)(uint_32 color); //A B/W conversion handle
 #endif
 
 
-byte BWconversion_ready = 0; //Are we to initialise our tables?
+word BWconversion_ready = 0; //Are we to initialise our tables?
 byte DAC_luminancemethod = 1; //What B/W luminance method?
 byte Luminance_R[0x100]; //What to add to white!
 byte Luminance_G[0x100]; //What to add to green!
@@ -136,8 +136,8 @@ byte DAC_BWColor(byte use) //What B/W color to use?
 
 void VGA_initBWConversion()
 {
-	if (BWconversion_ready) return; //Abort when already ready!
-	BWconversion_ready = 1; //We're ready after this!
+	if (BWconversion_ready==(((word)DAC_luminancemethod)+1)) return; //Abort when already ready!
+	BWconversion_ready = ((word)DAC_luminancemethod)+1; //We're ready after this!
 	//RGB factors for all possible greyscales to apply
 	const float whitefactor_R = ((float)0xFF / (float)255); //Red part!
 	const float whitefactor_G = ((float)0xFF / (float)255); //Green part!
