@@ -4284,6 +4284,68 @@ void BIOS_BWMonitor()
 	BIOS_Menu = 29; //Goto Video Settings menu!
 }
 
+void BIOS_BWMonitor()
+{
+	BIOS_Title("Monitor");
+	EMU_locktext();
+	EMU_gotoxy(0, 4); //Goto 4th row!
+	EMU_textcolor(BIOS_ATTR_INACTIVE); //We're using inactive color for label!
+	GPU_EMU_printscreen(0, 4, "Monitor: "); //Show selection init!
+	EMU_unlocktext();
+	int i = 0; //Counter!
+	numlist = 2; //Amount of Execution modes!
+	for (i = 0; i<numlist; i++) //Process options!
+	{
+		cleardata(&itemlist[i][0], sizeof(itemlist[i])); //Reset!
+	}
+
+	safestrcpy(itemlist[BWMONITOR_LUMINANCEMODE_GREYSCALE],sizeof(itemlist[0]), "Greyscale"); //Set filename from options!
+	safestrcpy(itemlist[BWMONITOR_LUMINANCEMODE_LUMINANCE],sizeof(itemlist[0]), "Luminance"); //Set filename from options!
+
+	if (BIOS_Settings.bwmonitor>=numlist) //Invalid?
+	{
+		BIOS_Settings.bwmonitor = DEFAULT_BWMONITOR_LUMINANCEMODE; //Default!
+		BIOS_Changed = 1; //We've changed!
+	}
+
+	int current = 0;
+	switch (BIOS_Settings.bwmonitor) //What B/W monitor mode?
+	{
+	case BWMONITOR_LUMINANCEMODE_GREYSCALE: //None
+	case BWMONITOR_LUMINANCEMODE_LUMINANCE: //Black/White
+		current = BIOS_Settings.bwmonitor_luminancemode; //Valid: use!
+		break;
+	default: //Invalid
+		current = BWMONITOR_LUMINANCEMODE_LUMINANCE; //Default: none!
+		break;
+	}
+	if (BIOS_Settings.bwmonitor_luminancemode != current) //Invalid?
+	{
+		BIOS_Settings.bwmonitor_luminancemode = current; //Safety!
+		BIOS_Changed = 1; //Changed!
+	}
+	int file = ExecuteList(10, 4, itemlist[current], 256,NULL,0); //Show options for the installed CPU!
+	switch (file) //Which file?
+	{
+	case FILELIST_CANCEL: //Cancelled?
+		//We do nothing with the selected disk!
+		break; //Just calmly return!
+	case FILELIST_DEFAULT: //Default?
+		file = DEFAULT_BWMONITOR_LUMINANCEMODE; //Default execution mode: None!
+
+	case BWMONITOR_LUMINANCEMODE_GREYSCALE: //None
+	case BWMONITOR_LUMINANCEMODE_LUMINANCE: //Black/White
+	default: //Changed?
+		if (file != current) //Not current?
+		{
+			BIOS_Changed = 1; //Changed!
+			BIOS_Settings.bwmonitor_luminancemode = file; //Select Debug Mode!
+		}
+		break;
+	}
+	BIOS_Menu = 29; //Goto Video Settings menu!
+}
+
 void BIOSMenu_LoadDefaults() //Load the defaults option!
 {
 	if (__HW_DISABLED) return; //Abort!
