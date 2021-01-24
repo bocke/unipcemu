@@ -4400,7 +4400,7 @@ uint_32 op_grp2_32(byte cnt, byte varshift)
 		break;
 
 	case 3: //RCR r/m32
-		if (EMULATED_CPU >= CPU_80386) maskcnt %= 33; //Clear the upper 3 bits to become a NEC V20/V30+!
+		if (EMULATED_CPU >= CPU_80386) maskcnt &= 0x1F; //Clear the upper 3 bits to become a NEC V20/V30+!
 		numcnt = maskcnt;
 		//if (EMULATED_CPU >= CPU_NECV30) numcnt &= 0x1F; //Clear the upper 3 bits to become a NEC V20/V30+!
 		overflow = numcnt?0:FLAG_OF; //Default: no overflow!
