@@ -94,6 +94,7 @@ typedef struct {
 	byte CGAColorSelectRegister;
 	byte ExtendedFeatureControlRegister; //Feature control extension(extra bits)!
 	byte useInterlacing; //Interlacing enabled?
+	byte emulatedDAC; //What kind of emulated DAC? 0=SC11487, 1=UMC UM70C178
 } SVGA_ET34K_DATA; //Dosbox ET4000 saved data!
 
 //Retrieve a point to the et4k?

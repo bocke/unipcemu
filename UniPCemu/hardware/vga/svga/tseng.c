@@ -96,18 +96,25 @@ void updateET34Ksegmentselectregister(byte val)
 
 void et34k_updateDAC(SVGA_ET34K_DATA* et34kdata, byte val)
 {
+	if (et34kdata->emulatedDAC) //UMC UM70C178?
+	{
+		val &= 0xE0; //Mask limited!
+	}
 	et34kdata->hicolorDACcommand = val; //Apply the command!
 	//bits 3-4 redirect to the DAC mask register.
 	//bit 0 is set if bits 5-7 is 1 or 3, cleared otherwise(R/O)
 	//bits 1-2 are stored, but unused.
 	//All generic handling of the ET3K/ET4K Hi-color DAC!
-	if (((val & 0xE0) == 0x20) || ((val & 0xE0) == 0x60)) //Set bit 0?
+	if (et34kdata->emulatedDAC == 0) //SC11487?
 	{
-		et34kdata->hicolorDACcommand |= 1; //Set!
-	}
-	else //Clear bit 0?
-	{
-		et34kdata->hicolorDACcommand &= ~1; //Clear!
+		if (((val & 0xE0) == 0x20) || ((val & 0xE0) == 0x60)) //Set bit 0?
+		{
+			et34kdata->hicolorDACcommand |= 1; //Set!
+		}
+		else //Clear bit 0?
+		{
+			et34kdata->hicolorDACcommand &= ~1; //Clear!
+		}
 	}
 	//et34kdata->hicolorDACcommand |= 6; //Always set bits 1-2?
 	//getActiveVGA()->registers->DACMaskRegister = (getActiveVGA()->registers->DACMaskRegister&~0x18)|(et34kdata->hicolorDACcommand&0x18);
@@ -221,7 +228,10 @@ byte Tseng34K_writeIO(word port, byte val)
 		}
 		//16-bit DAC operations!
 		et34k_updateDAC(et34kdata,val); //Update the DAC values to be compatible!
-		et34kdata->hicolorDACcmdmode = 0; //Disable command mode!
+		if (et34kdata->emulatedDAC == 0) //SC11487?
+		{
+			et34kdata->hicolorDACcmdmode = 0; //Disable command mode!
+		}
 		VGA_calcprecalcs(getActiveVGA(),WHEREUPDATED_DACMASKREGISTER); //We've been updated!
 		//et34kdata->hicolorDACcmdmode = 0; //A write to any address will reset the flag that is set when the pixel read mask register is read four times.
 		return 1; //We're overridden!
@@ -608,7 +618,10 @@ byte Tseng34K_readIO(word port, byte *result)
 		else
 		{
 			*result = et34kdata->hicolorDACcommand;
-			*result |= (getActiveVGA()->registers->DACMaskRegister&0x18); //Add in the shared bits!
+			if (et34kdata->emulatedDAC == 0) //SC11487?
+			{
+				*result |= (getActiveVGA()->registers->DACMaskRegister & 0x18); //Add in the shared bits!
+			}
 			return 1; //Handled!
 		}
 		break;
