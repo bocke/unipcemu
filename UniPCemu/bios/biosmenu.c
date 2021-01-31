@@ -243,6 +243,7 @@ void BIOS_CPUIDmode(); //CPUID mode!
 void BIOS_connectdisconnectpassthrough(); //Connect/disconnect passthrough!
 void BIOS_nullModem(); //Nullmodem setting!
 void BIOS_BWMonitor_LuminanceMode(); //Luminance mode
+void BIOS_SVGA_DACMode(); //DAC mode
 
 //First, global handler!
 Handler BIOS_Menus[] =
@@ -334,6 +335,7 @@ Handler BIOS_Menus[] =
 	,BIOS_connectdisconnectpassthrough //Connect/disconnect passthrough is #84!
 	,BIOS_nullModem //Nullmodem is #85!
 	,BIOS_BWMonitor_LuminanceMode //Luminance mode is #86!
+	,BIOS_SVGA_DACMode //SVGA DAC mode is #87!
 };
 
 //Not implemented?
@@ -4348,6 +4350,69 @@ void BIOS_BWMonitor_LuminanceMode()
 	BIOS_Menu = 29; //Goto Video Settings menu!
 }
 
+void BIOS_SVGA_DACMode()
+{
+	BIOS_Title("SVGA DAC Mode");
+	EMU_locktext();
+	EMU_gotoxy(0, 4); //Goto 4th row!
+	EMU_textcolor(BIOS_ATTR_INACTIVE); //We're using inactive color for label!
+	GPU_EMU_printscreen(0, 4, "SVGA DAC Mode: "); //Show selection init!
+	EMU_unlocktext();
+	int i = 0; //Counter!
+	numlist = 2; //Amount of Execution modes!
+	for (i = 0; i < numlist; i++) //Process options!
+	{
+		cleardata(&itemlist[i][0], sizeof(itemlist[i])); //Reset!
+	}
+
+	safestrcpy(itemlist[SVGA_DACMODE_SIERRA_SC11487], sizeof(itemlist[0]), "Sierra SC11487"); //Set filename from options!
+	safestrcpy(itemlist[SVGA_DACMODE_UMC_UM70C178], sizeof(itemlist[0]), "UMC UM70C178"); //Set filename from options!
+
+	if (BIOS_Settings.SVGA_DACmode >= numlist) //Invalid?
+	{
+		BIOS_Settings.SVGA_DACmode = DEFAULT_SVGA_DACMODE; //Default!
+		BIOS_Changed = 1; //We've changed!
+	}
+
+	int current = 0;
+	switch (BIOS_Settings.SVGA_DACmode) //What B/W monitor mode?
+	{
+	case SVGA_DACMODE_SIERRA_SC11487: //Sierra SC11487
+	case SVGA_DACMODE_UMC_UM70C178: //UMC UM70C178
+		current = BIOS_Settings.SVGA_DACmode; //Valid: use!
+		break;
+	default: //Invalid
+		current = DEFAULT_SVGA_DACMODE; //Default: none!
+		break;
+	}
+	if (BIOS_Settings.SVGA_DACmode != current) //Invalid?
+	{
+		BIOS_Settings.SVGA_DACmode = current; //Safety!
+		BIOS_Changed = 1; //Changed!
+	}
+	int file = ExecuteList(15, 4, itemlist[current], 256, NULL, 0); //Show options for the installed CPU!
+	switch (file) //Which file?
+	{
+	case FILELIST_CANCEL: //Cancelled?
+		//We do nothing with the selected disk!
+		break; //Just calmly return!
+	case FILELIST_DEFAULT: //Default?
+		file = DEFAULT_SVGA_DACMODE; //Default execution mode: None!
+
+	case SVGA_DACMODE_SIERRA_SC11487: //Sierra SC11487
+	case SVGA_DACMODE_UMC_UM70C178: //UMC UM70C178
+	default: //Changed?
+		if (file != current) //Not current?
+		{
+			BIOS_Changed = 1; //Changed!
+			reboot_needed |= 1; //Reboot needed to apply!
+			BIOS_Settings.SVGA_DACmode = file; //Select Debug Mode!
+		}
+		break;
+	}
+	BIOS_Menu = 29; //Goto Video Settings menu!
+}
+
 void BIOSMenu_LoadDefaults() //Load the defaults option!
 {
 	if (__HW_DISABLED) return; //Abort!
@@ -5067,6 +5132,24 @@ setmonitormodetext: //For fixing it!
 		break;
 	}
 
+setDACmodetext: //For fixing it!
+	optioninfo[advancedoptions] = 9; //DAC mode!
+	safestrcpy(menuoptions[advancedoptions], sizeof(menuoptions[0]), "SVGA DAC mode: ");
+	switch (BIOS_Settings.SVGA_DACmode) //DAC mode?
+	{
+	case SVGA_DACMODE_SIERRA_SC11487:
+		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Sierra SC11487");
+		break;
+	case SVGA_DACMODE_UMC_UM70C178:
+		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "UMC UM70C178");
+		break;
+	default: //Error: fix it!
+		BIOS_Settings.bwmonitor_luminancemode = DEFAULT_SVGA_DACMODE; //Reset/Fix!
+		BIOS_Changed = 1; //We've changed!
+		goto setDACmodetext; //Goto!
+		break;
+	}
+
 setVGAModetext: //For fixing it!
 	optioninfo[advancedoptions] = 2; //VGA Mode!
 	safestrcpy(menuoptions[advancedoptions],sizeof(menuoptions[0]), "VGA Mode: ");
@@ -5208,6 +5291,9 @@ void BIOS_VideoSettingsMenu() //Manage stuff concerning input.
 			break;
 		case 8: //BW monitor luminance mode
 			BIOS_Menu = 86; //BW monitor luminance mode!
+			break;
+		case 9: //SVGA DAC mode
+			if (!EMU_RUNNING) BIOS_Menu = 87; //SVGA DAC mode!
 			break;
 		default:
 			BIOS_Menu = NOTIMPLEMENTED; //Not implemented yet!

@@ -1154,6 +1154,7 @@ void BIOS_LoadDefaults(int tosave) //Load BIOS defaults, but not memory size!
 	BIOS_Settings.SoundSource_Volume = DEFAULT_SSOURCEVOL; //Default soundsource volume knob!
 	BIOS_Settings.GameBlaster_Volume = DEFAULT_BLASTERVOL; //Default Game Blaster volume knob!
 	BIOS_Settings.ShowFramerate = DEFAULT_FRAMERATE; //Default framerate setting!
+	BIOS_Settings.SVGA_DACmode = DEFAULT_SVGA_DACMODE; //Default SVGA DAC mode!
 	BIOS_Settings.VGASynchronization = DEFAULT_VGASYNCHRONIZATION; //Default VGA synchronization setting!
 	BIOS_Settings.diagnosticsportoutput_breakpoint = DEFAULT_DIAGNOSTICSPORTOUTPUT_BREAKPOINT; //Default breakpoint setting!
 	BIOS_Settings.diagnosticsportoutput_timeout = DEFAULT_DIAGNOSTICSPORTOUTPUT_TIMEOUT; //Default breakpoint setting!
@@ -1325,6 +1326,7 @@ void BIOS_LoadData() //Load BIOS settings!
 	BIOS_Settings.bwmonitor = (byte)get_private_profile_uint64("video", "bwmonitor", DEFAULT_BWMONITOR, inifile); //Are we a b/w monitor?
 	BIOS_Settings.bwmonitor_luminancemode = LIMITRANGE((byte)get_private_profile_uint64("video", "bwmonitor_luminancemode", DEFAULT_BWMONITOR_LUMINANCEMODE, inifile),0,1); //b/w monitor luminance mode?
 	BIOS_Settings.ShowFramerate = LIMITRANGE((byte)get_private_profile_uint64("video", "showframerate", DEFAULT_FRAMERATE, inifile),0,1); //Show the frame rate?
+	BIOS_Settings.SVGA_DACmode = LIMITRANGE((byte)get_private_profile_uint64("video", "SVGA_DACmode", DEFAULT_FRAMERATE, inifile), SVGA_DACMODE_MIN, SVGA_DACMODE_MAX); //Show the frame rate?
 
 	//Sound
 	BIOS_Settings.usePCSpeaker = LIMITRANGE((byte)get_private_profile_uint64("sound", "speaker", 1, inifile),0,1); //Emulate PC Speaker sound?
@@ -1657,7 +1659,8 @@ int BIOS_SaveData() //Save BIOS settings!
 	safestrcat(video_comment, sizeof(video_comment), "aspectratio: 0=Fullscreen stretching, 1=Keep the same, 2=Force 4:3(VGA), 3=Force CGA, 4=Force 4:3(SVGA 768p), 5=Force 4:3(SVGA 1080p), 6=Force 4K, 7=Force 4:3(SVGA 4K)\n");
 	safestrcat(video_comment, sizeof(video_comment), "bwmonitor: 0=Color, 1=B/W monitor: white, 2=B/W monitor: green, 3=B/W monitor: amber\n");
 	safestrcat(video_comment, sizeof(video_comment), "bwmonitor_luminancemode: 0=Averaged, 1=Luminance\n");
-	safestrcat(video_comment, sizeof(video_comment), "showframerate: 0=Disabled, otherwise Enabled");
+	safestrcat(video_comment, sizeof(video_comment), "showframerate: 0=Disabled, otherwise Enabled\n");
+	safestrcat(video_comment, sizeof(video_comment), "SVGA_DACmode: 0=Sierra SC11487, 1=UMC UM70C178");
 	char *video_commentused = NULL;
 	if (video_comment[0]) video_commentused = &video_comment[0];
 	if (!write_private_profile_uint64("video", video_commentused, "videocard", BIOS_Settings.VGA_Mode, inifile)) ABORT_SAVEDATA //Enable VGA NMI on precursors?
@@ -1669,6 +1672,7 @@ int BIOS_SaveData() //Save BIOS settings!
 	if (!write_private_profile_uint64("video", video_commentused, "bwmonitor", BIOS_Settings.bwmonitor, inifile)) ABORT_SAVEDATA //Are we a b/w monitor?
 	if (!write_private_profile_uint64("video", video_commentused, "bwmonitor_luminancemode", BIOS_Settings.bwmonitor_luminancemode, inifile)) ABORT_SAVEDATA //Are we a b/w monitor?
 	if (!write_private_profile_uint64("video", video_commentused, "showframerate", BIOS_Settings.ShowFramerate, inifile)) ABORT_SAVEDATA //Show the frame rate?
+	if (!write_private_profile_uint64("video", video_commentused, "SVGA_DACmode", BIOS_Settings.SVGA_DACmode, inifile)) ABORT_SAVEDATA //Show the frame rate?
 
 	//Sound
 	memset(&sound_comment, 0, sizeof(sound_comment)); //Init!

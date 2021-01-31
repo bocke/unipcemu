@@ -141,6 +141,7 @@ typedef struct
 	uint_64 CR3breakpoint; //CR3 to break on
 	byte nullmodem; //nullmodem mode to TCP when set!
 	byte bwmonitor_luminancemode; //B/w monitor luminance mode?
+	byte SVGA_DACmode; //DAC mode?
 } BIOS_Settings_TYPE; //BIOS Settings!
 
 //Debug modes:
@@ -249,6 +250,14 @@ enum BIOSROMMode {
 #define BWMONITOR_LUMINANCEMODE_AVERAGED 0
 #define BWMONITOR_LUMINANCEMODE_LUMINANCE 1
 
+enum SVGADACMode
+{
+	SVGA_DACMODE_SIERRA_SC11487 = 0,
+	SVGA_DACMODE_UMC_UM70C178 = 1,
+	SVGA_DACMODE_MIN = 0,
+	SVGA_DACMODE_MAX = 1
+};
+
 //Default values for new BIOS settings:
 #define DEFAULT_BOOT_ORDER 0
 #define DEFAULT_CPUS 1
@@ -288,6 +297,7 @@ enum BIOSROMMode {
 #define DEFAULT_CGAMODEL 0
 #define DEFAULT_VIDEOCARD 4
 #define DEFAULT_SOUNDBLASTER 0
+#define DEFAULT_SVGA_DACMODE SVGA_DACMODE_SIERRA_SC11487
 
 //Breakpoint helper constants
 //2-bit mode(0=Disabled, 1=Real, 2=Protected, 3=Virtual 8086)

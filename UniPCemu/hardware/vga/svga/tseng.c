@@ -839,6 +839,7 @@ void Tseng34k_init()
 			et34k(getActiveVGA())->extensionsEnabled = 0; //Disable the extensions by default!
 			et34k(getActiveVGA())->oldextensionsEnabled = 1; //Make sure the extensions are updated in status!
 			et34k(getActiveVGA())->et4k_segmentselectregisterenabled = 0; //Segment select register isn't enabled yet!
+			et34k(getActiveVGA())->emulatedDAC = BIOS_Settings.SVGA_DACmode; //The emulated DAC mode!
 			et34k_updateDAC(et34k(getActiveVGA()), et34k(getActiveVGA())->hicolorDACcommand); //Initialize the DAC command register to compatible values!
 
 			VGA_calcprecalcs(getActiveVGA(),WHEREUPDATED_ALL); //Update all precalcs!
