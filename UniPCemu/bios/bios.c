@@ -1221,13 +1221,13 @@ void loadBIOSCMOS(CMOSDATA *CMOS, char *section, INI_FILE *i)
 	CMOS->floppy1_nodisk_type = (byte)get_private_profile_uint64(section, "floppy1_nodisk_type", 0, i);
 	if (CMOS->floppy1_nodisk_type >= NUMFLOPPYGEOMETRIES) CMOS->floppy1_nodisk_type = 0; //Default if invalid!
 
-	CMOS->emulated_CPU = LIMITRANGE((byte)get_private_profile_uint64(section, "cpu", BIOS_Settings.emulated_CPU, i),0,NUMCPUS-1); //Limited CPU range!
+	CMOS->emulated_CPU = LIMITRANGE((byte)get_private_profile_uint64(section, "cpu", BIOS_Settings.emulated_CPU, i),CPU_MIN,CPU_MAX); //Limited CPU range!
 	CMOS->emulated_CPUs = LIMITRANGE((byte)get_private_profile_uint64(section, "cpus", DEFAULT_CPUS, i),0,MAXCPUS); //Limited CPU range!
 	CMOS->DataBusSize = LIMITRANGE((byte)get_private_profile_uint64(section, "databussize", BIOS_Settings.DataBusSize, i),0,1); //The size of the emulated BUS. 0=Normal bus, 1=8-bit bus when available for the CPU!
 	CMOS->CPUspeed = (uint_32)get_private_profile_uint64(section, "cpuspeed", BIOS_Settings.CPUSpeed, i);
 	CMOS->TurboCPUspeed = (uint_32)get_private_profile_uint64(section, "turbocpuspeed", BIOS_Settings.TurboCPUSpeed, i);
 	CMOS->useTurboCPUSpeed = LIMITRANGE((byte)get_private_profile_uint64(section, "useturbocpuspeed", BIOS_Settings.useTurboSpeed, i),0,1); //Are we to use Turbo CPU speed?
-	CMOS->clockingmode = LIMITRANGE((byte)get_private_profile_uint64(section, "clockingmode", BIOS_Settings.clockingmode, i),0,1); //Are we using the IPS clock?
+	CMOS->clockingmode = LIMITRANGE((byte)get_private_profile_uint64(section, "clockingmode", BIOS_Settings.clockingmode, i),CLOCKINGMODE_MIN,CLOCKINGMODE_MAX); //Are we using the IPS clock?
 	CMOS->CPUIDmode = LIMITRANGE((byte)get_private_profile_uint64(section, "CPUIDmode", DEFAULT_CPUIDMODE, i), 0, 2); //Are we using the CPUID mode?
 
 	for (index=0;index<NUMITEMS(CMOS->DATA80.data);++index) //Process extra RAM data!
@@ -1287,23 +1287,23 @@ void BIOS_LoadData() //Load BIOS settings!
 	BIOS_Settings.backgroundpolicy = (byte)get_private_profile_uint64("general", "backgroundpolicy", DEFAULT_BACKGROUNDPOLICY, inifile); //The selected font for the BIOS menu!
 
 	//Machine
-	BIOS_Settings.emulated_CPU = (word)get_private_profile_uint64("machine", "cpu", DEFAULT_CPU, inifile);
+	BIOS_Settings.emulated_CPU = LIMITRANGE((word)get_private_profile_uint64("machine", "cpu", DEFAULT_CPU, inifile),CPU_MIN,CPU_MAX);
 	BIOS_Settings.DataBusSize = (byte)get_private_profile_uint64("machine", "databussize", 0, inifile); //The size of the emulated BUS. 0=Normal bus, 1=8-bit bus when available for the CPU!
-	BIOS_Settings.architecture = LIMITRANGE((byte)get_private_profile_uint64("machine", "architecture", ARCHITECTURE_XT, inifile),ARCHITECTURE_XT,ARCHITECTURE_i440fx); //Are we using the XT/AT/PS/2 architecture?
-	BIOS_Settings.executionmode = (byte)get_private_profile_uint64("machine", "executionmode", DEFAULT_EXECUTIONMODE, inifile); //What mode to execute in during runtime?
+	BIOS_Settings.architecture = LIMITRANGE((byte)get_private_profile_uint64("machine", "architecture", ARCHITECTURE_XT, inifile),ARCHITECTURE_MIN,ARCHITECTURE_MAX); //Are we using the XT/AT/PS/2 architecture?
+	BIOS_Settings.executionmode = LIMITRANGE((byte)get_private_profile_uint64("machine", "executionmode", DEFAULT_EXECUTIONMODE, inifile),EXECUTIONMODE_MIN,EXECUTIONMODE_MAX); //What mode to execute in during runtime?
 	BIOS_Settings.CPUSpeed = (uint_32)get_private_profile_uint64("machine", "cpuspeed", 0, inifile);
 	BIOS_Settings.ShowCPUSpeed = (byte)get_private_profile_uint64("machine", "showcpuspeed", 0, inifile); //Show the relative CPU speed together with the framerate?
 	BIOS_Settings.TurboCPUSpeed = (uint_32)get_private_profile_uint64("machine", "turbocpuspeed", 0, inifile);
 	BIOS_Settings.useTurboSpeed = LIMITRANGE((byte)get_private_profile_uint64("machine", "useturbocpuspeed", 0, inifile),0,1); //Are we to use Turbo CPU speed?
-	BIOS_Settings.clockingmode = (byte)get_private_profile_uint64("machine", "clockingmode", DEFAULT_CLOCKINGMODE, inifile); //Are we using the IPS clock?
-	BIOS_Settings.BIOSROMmode = (byte)get_private_profile_uint64("machine", "BIOSROMmode", DEFAULT_BIOSROMMODE, inifile); //BIOS ROM mode.
+	BIOS_Settings.clockingmode = LIMITRANGE((byte)get_private_profile_uint64("machine", "clockingmode", DEFAULT_CLOCKINGMODE, inifile),CLOCKINGMODE_MIN,CLOCKINGMODE_MAX); //Are we using the IPS clock?
+	BIOS_Settings.BIOSROMmode = LIMITRANGE((byte)get_private_profile_uint64("machine", "BIOSROMmode", DEFAULT_BIOSROMMODE, inifile),BIOSROMMODE_MIN,BIOSROMMODE_MAX); //BIOS ROM mode.
 	BIOS_Settings.InboardInitialWaitstates = LIMITRANGE((byte)get_private_profile_uint64("machine", "inboardinitialwaitstates", DEFAULT_INBOARDINITIALWAITSTATES, inifile),0,1); //Inboard 386 initial delay used?
 
 	//Debugger
 	BIOS_Settings.debugmode = (byte)get_private_profile_uint64("debugger", "debugmode", DEFAULT_DEBUGMODE, inifile);
-	BIOS_Settings.debugger_log = (byte)get_private_profile_uint64("debugger", "debuggerlog", DEFAULT_DEBUGGERLOG, inifile);
-	BIOS_Settings.debugger_logstates = (byte)get_private_profile_uint64("debugger", "logstates", DEFAULT_DEBUGGERSTATELOG, inifile); //Are we logging states? 1=Log states, 0=Don't log states!
-	BIOS_Settings.debugger_logregisters = LIMITRANGE((byte)get_private_profile_uint64("debugger", "logregisters", DEFAULT_DEBUGGERREGISTERSLOG, inifile),0,1); //Are we logging states? 1=Log states, 0=Don't log states!
+	BIOS_Settings.debugger_log = LIMITRANGE((byte)get_private_profile_uint64("debugger", "debuggerlog", DEFAULT_DEBUGGERLOG, inifile),DEBUGGERLOG_MIN,DEBUGGERLOG_MAX);
+	BIOS_Settings.debugger_logstates = LIMITRANGE((byte)get_private_profile_uint64("debugger", "logstates", DEFAULT_DEBUGGERSTATELOG, inifile),DEBUGGERSTATELOG_MIN,DEBUGGERSTATELOG_MAX); //Are we logging states? 1=Log states, 0=Don't log states!
+	BIOS_Settings.debugger_logregisters = LIMITRANGE((byte)get_private_profile_uint64("debugger", "logregisters", DEFAULT_DEBUGGERREGISTERSLOG, inifile),DEBUGGERREGISTERSLOG_MIN,DEBUGGERREGISTERSLOG_MAX); //Are we logging states? 1=Log states, 0=Don't log states!
 	BIOS_Settings.breakpoint[0] = get_private_profile_uint64("debugger", "breakpoint", 0, inifile); //The used breakpoint segment:offset and mode!
 	BIOS_Settings.breakpoint[1] = get_private_profile_uint64("debugger", "breakpoint2", 0, inifile); //The used breakpoint segment:offset and mode!
 	BIOS_Settings.breakpoint[2] = get_private_profile_uint64("debugger", "breakpoint3", 0, inifile); //The used breakpoint segment:offset and mode!
@@ -1323,8 +1323,8 @@ void BIOS_LoadData() //Load BIOS settings!
 	BIOS_Settings.VGASynchronization = (byte)get_private_profile_uint64("video", "synchronization", DEFAULT_VGASYNCHRONIZATION, inifile); //VGA synchronization setting. 0=Automatic synchronization based on Host CPU. 1=Tight VGA Synchronization with the CPU.
 	BIOS_Settings.GPU_AllowDirectPlot = (byte)get_private_profile_uint64("video", "directplot", DEFAULT_DIRECTPLOT, inifile); //Allow VGA Direct Plot: 1 for automatic 1:1 mapping, 0 for always dynamic, 2 for force 1:1 mapping?
 	BIOS_Settings.aspectratio = (byte)get_private_profile_uint64("video", "aspectratio", DEFAULT_ASPECTRATIO, inifile); //The aspect ratio to use?
-	BIOS_Settings.bwmonitor = (byte)get_private_profile_uint64("video", "bwmonitor", DEFAULT_BWMONITOR, inifile); //Are we a b/w monitor?
-	BIOS_Settings.bwmonitor_luminancemode = LIMITRANGE((byte)get_private_profile_uint64("video", "bwmonitor_luminancemode", DEFAULT_BWMONITOR_LUMINANCEMODE, inifile),0,1); //b/w monitor luminance mode?
+	BIOS_Settings.bwmonitor = LIMITRANGE((byte)get_private_profile_uint64("video", "bwmonitor", DEFAULT_BWMONITOR, inifile),BWMONITOR_MIN,BWMONITOR_MAX); //Are we a b/w monitor?
+	BIOS_Settings.bwmonitor_luminancemode = LIMITRANGE((byte)get_private_profile_uint64("video", "bwmonitor_luminancemode", DEFAULT_BWMONITOR_LUMINANCEMODE, inifile),BWMONITOR_LUMINANCEMODE_MIN,BWMONITOR_LUMINANCEMODE_MAX); //b/w monitor luminance mode?
 	BIOS_Settings.ShowFramerate = LIMITRANGE((byte)get_private_profile_uint64("video", "showframerate", DEFAULT_FRAMERATE, inifile),0,1); //Show the frame rate?
 	BIOS_Settings.SVGA_DACmode = LIMITRANGE((byte)get_private_profile_uint64("video", "SVGA_DACmode", DEFAULT_FRAMERATE, inifile), SVGA_DACMODE_MIN, SVGA_DACMODE_MAX); //Show the frame rate?
 
@@ -1341,7 +1341,7 @@ void BIOS_LoadData() //Load BIOS settings!
 
 	//Modem
 	BIOS_Settings.modemlistenport = LIMITRANGE((word)get_private_profile_uint64("modem", "listenport", DEFAULT_MODEMLISTENPORT, inifile),0,0xFFFF); //Modem listen port!
-	BIOS_Settings.nullmodem = LIMITRANGE((word)get_private_profile_uint64("modem", "nullmodem", DEFAULT_NULLMODEM, inifile), 0, 3); //nullmodem mode!
+	BIOS_Settings.nullmodem = LIMITRANGE((word)get_private_profile_uint64("modem", "nullmodem", DEFAULT_NULLMODEM, inifile), NULLMODEM_MIN, NULLMODEM_MAX); //nullmodem mode!
 	for (c = 0; c < NUMITEMS(BIOS_Settings.phonebook); ++c) //Process all phonebook entries!
 	{
 		snprintf(phonebookentry, sizeof(phonebookentry), "phonebook%u", c); //The entry to use!

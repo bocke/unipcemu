@@ -45,6 +45,8 @@ extern BIOS_Settings_TYPE BIOS_Settings; //BIOS Settings (required for determini
 #define CPU_PENTIUMPRO 6
 #define CPU_PENTIUM2 7
 #define CPU_PENTIUM 5
+#define CPU_MIN 0
+#define CPU_MAX 7
 
 //How many modes are there in the CPU? Currently 2: 16-bit and 32-bit modes!
 #define CPU_MODES 2

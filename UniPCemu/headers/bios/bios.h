@@ -145,80 +145,85 @@ typedef struct
 } BIOS_Settings_TYPE; //BIOS Settings!
 
 //Debug modes:
-//None:
-#define DEBUGMODE_NONE 0
-//Show, RTrigger=Step
-#define DEBUGMODE_RTRIGGER 1
-//Show, Step through.
-#define DEBUGMODE_STEP 2
-//Show, just run, ignore RTRIGGER buttons.
-#define DEBUGMODE_SHOW_RUN 3
-//Don't show, just run, ignore RTRIGGER buttons.
-#define DEBUGMODE_NOSHOW_RUN 4
-
+enum DEBUGMODE
+{
+	DEBUGMODE_NONE = 0, //None:
+	DEBUGMODE_RTRIGGER = 1, //Show, RTrigger=Step
+	DEBUGMODE_STEP = 2, //Show, Step through.
+	DEBUGMODE_SHOW_RUN = 3, //Show, just run, ignore RTRIGGER buttons.
+	DEBUGMODE_NOSHOW_RUN = 4, //Don't show, just run, ignore RTRIGGER buttons.
+	DEBUGMODE_MIN = 0,
+	DEBUGMODE_MAX = 4,
+};
+#define DEFAULT_DEBUGMODE DEBUGMODE_NONE
 
 //Debugger log:
-//None:
-#define DEBUGGERLOG_NONE 0
-//Debugging only:
-#define DEBUGGERLOG_DEBUGGING 1
-//Always
-#define DEBUGGERLOG_ALWAYS 2
-//Interrupt calls only
-#define DEBUGGERLOG_INT 3
-//Debug POST Diagnostic codes only
-#define DEBUGGERLOG_DIAGNOSTICCODES 4
-//Always, don't log register state
-#define DEBUGGERLOG_ALWAYS_NOREGISTERS 5
-//Always, even during skipping?
-#define DEBUGGERLOG_ALWAYS_DURINGSKIPSTEP 6
-//Always, Single line
-#define DEBUGGERLOG_ALWAYS_SINGLELINE 7
-//Debugging only, Single line
-#define DEBUGGERLOG_DEBUGGING_SINGLELINE 8
-//Always, Single line, simplified
-#define DEBUGGERLOG_ALWAYS_SINGLELINE_SIMPLIFIED 9
-//Debugging only, Single line, simplified
-#define DEBUGGERLOG_DEBUGGING_SINGLELINE_SIMPLIFIED 10
-//Universal logging method, always
-#define DEBUGGERLOG_ALWAYS_COMMONLOGFORMAT 11
-//Always, even during skipping?
-#define DEBUGGERLOG_ALWAYS_DURINGSKIPSTEP_COMMONLOGFORMAT 12
-//Universal logging method, when debugging only.
-#define DEBUGGERLOG_DEBUGGING_COMMONLOGFORMAT 13
+enum DEBUGGERLOG
+{
+	DEBUGGERLOG_NONE = 0, //None:
+	DEBUGGERLOG_DEBUGGING = 1, //Debugging only:
+	DEBUGGERLOG_ALWAYS = 2, //Always
+	DEBUGGERLOG_INT = 3, //Interrupt calls only
+	DEBUGGERLOG_DIAGNOSTICCODES = 4, //Debug POST Diagnostic codes only
+	DEBUGGERLOG_ALWAYS_NOREGISTERS = 5, //Always, don't log register state
+	DEBUGGERLOG_ALWAYS_DURINGSKIPSTEP = 6, //Always, even during skipping?
+	DEBUGGERLOG_ALWAYS_SINGLELINE = 7, //Always, Single line
+	DEBUGGERLOG_DEBUGGING_SINGLELINE = 8, //Debugging only, Single line
+	DEBUGGERLOG_ALWAYS_SINGLELINE_SIMPLIFIED = 9, //Always, Single line, simplified
+	DEBUGGERLOG_DEBUGGING_SINGLELINE_SIMPLIFIED = 10, //Debugging only, Single line, simplified
+	DEBUGGERLOG_ALWAYS_COMMONLOGFORMAT = 11, //Universal logging method, always
+	DEBUGGERLOG_ALWAYS_DURINGSKIPSTEP_COMMONLOGFORMAT = 12, //Always, even during skipping?
+	DEBUGGERLOG_DEBUGGING_COMMONLOGFORMAT = 13, //Universal logging method, when debugging only.
+	DEBUGGERLOG_MIN = 0,
+	DEBUGGERLOG_MAX = 13
+};
+#define DEFAULT_DEBUGGERLOG DEBUGGERLOG_NONE
 
 //Debugger state log
-//Disabled state log
-#define DEBUGGERSTATELOG_DISABLED 0
-//Enabled state log
-#define DEBUGGERSTATELOG_ENABLED 1
+enum DEBUGGERSTATELOG
+{
+
+	DEBUGGERSTATELOG_DISABLED = 0, //Disabled state log
+	DEBUGGERSTATELOG_ENABLED = 1, //Enabled state log
+	DEBUGGERSTATELOG_MIN = 0,
+	DEBUGGERSTATELOG_MAX = 1
+};
+#define DEFAULT_DEBUGGERSTATELOG DEBUGGERSTATELOG_DISABLED
 
 //Debugger registers log
-//Disabled registers log
-#define DEBUGGERREGISTERSLOG_DISABLED 0
-//Enabled registers log
-#define DEBUGGERREGISTERSLOG_ENABLED 1
+enum DEBUGGERREGISTERSLOG
+{
 
+	DEBUGGERREGISTERSLOG_DISABLED = 0, //Disabled registers log
+	DEBUGGERREGISTERSLOG_ENABLED = 1, //Enabled registers log
+	DEBUGGERREGISTERSLOG_MIN = 0,
+	DEBUGGERREGISTERSLOG_MAX = 1
+};
+#define DEFAULT_DEBUGGERREGISTERSLOG DEBUGGERREGISTERSLOG_DISABLED
 
 //Execution modes:
-//None:
-#define EXECUTIONMODE_NONE 0
-//Run advanced debugger (debug / *.*):
-#define EXECUTIONMODE_TEST 1
-//Run bootrom.dat
-#define EXECUTIONMODE_TESTROM 2
-//VIDEO CARD MODE debug!
-#define EXECUTIONMODE_VIDEOCARD 3
-//Load external BIOS (at the BIOS address) and run it!
-#define EXECUTIONMODE_BIOS 4
-//Run sound test!
-#define EXECUTIONMODE_SOUND 5
-//Load external BIOS (at the BIOS adress) and run it, enable debugger!
+enum EXECUTIONMODE
+{
+	EXECUTIONMODE_NONE = 0,	//None:
+	EXECUTIONMODE_TEST = 1, //Run advanced debugger (debug / *.*):
+	EXECUTIONMODE_TESTROM = 2, //Run bootrom.dat
+	EXECUTIONMODE_VIDEOCARD = 3, //VIDEO CARD MODE debug!
+	EXECUTIONMODE_BIOS = 4, //Load external BIOS (at the BIOS address) and run it!
+	EXECUTIONMODE_SOUND = 5, //Run sound test!
+	EXECUTIONMODE_MIN = 0,
+	EXECUTIONMODE_MAX = 5
+	//Load external BIOS (at the BIOS adress) and run it, enable debugger!
+};
+#define DEFAULT_EXECUTIONMODE EXECUTIONMODE_BIOS
 
-//Use cycle-accurate clock
-#define CLOCKINGMODE_CYCLEACCURATE 0
-//Use IPS clock
-#define CLOCKINGMODE_IPSCLOCK 1
+enum CLOCKINGMODE
+{
+	CLOCKINGMODE_CYCLEACCURATE = 0, //Use cycle-accurate clock
+	CLOCKINGMODE_IPSCLOCK = 1, //Use IPS clock
+	CLOCKINGMODE_MIN = 0,
+	CLOCKINGMODE_MAX = 1
+};
+#define DEFAULT_CLOCKINGMODE CLOCKINGMODE_IPSCLOCK
 
 //To debug the text mode characters on-screen?
 #define DEBUG_VIDEOCARD (BIOS_Settings.executionmode==EXECUTIONMODE_VIDEOCARD)
@@ -230,25 +235,42 @@ enum Architectures {
 	ARCHITECTURE_COMPAQ = 2,
 	ARCHITECTURE_PS2 = 3,
 	ARCHITECTURE_i430fx = 4,
-	ARCHITECTURE_i440fx = 5
+	ARCHITECTURE_i440fx = 5,
+	ARCHITECTURE_MIN = 0,
+	ARCHITECTURE_MAX = 5
 }; //All possible architectures!
 
 enum BIOSROMMode {
 	BIOSROMMODE_NORMAL = 0,
 	BIOSROMMODE_DIAGNOSTICS = 1,
-	BIOSROMMODE_UROMS = 2
+	BIOSROMMODE_UROMS = 2,
+	BIOSROMMODE_MIN = 0,
+	BIOSROMMODE_MAX = 2,
 }; //All possible priorities!
+#define DEFAULT_BIOSROMMODE BIOSROMMODE_NORMAL
 
 //B/W monitor setting:
 //Color mode
-#define BWMONITOR_NONE 0
-#define BWMONITOR_WHITE 1
-#define BWMONITOR_GREEN 2
-#define BWMONITOR_AMBER 3
+enum BWMONITOR
+{
+	BWMONITOR_NONE = 0,
+	BWMONITOR_WHITE = 1,
+	BWMONITOR_GREEN = 2,
+	BWMONITOR_AMBER = 3,
+	BWMONITOR_MIN = 0,
+	BWMONITOR_MAX = 3
+};
+#define DEFAULT_BWMONITOR BWMONITOR_NONE
 
 //B/W monitor Luminance mode setting
-#define BWMONITOR_LUMINANCEMODE_AVERAGED 0
-#define BWMONITOR_LUMINANCEMODE_LUMINANCE 1
+enum BWMONITOR_LUMINANCEMODE
+{
+	BWMONITOR_LUMINANCEMODE_AVERAGED = 0,
+	BWMONITOR_LUMINANCEMODE_LUMINANCE = 1,
+	BWMONITOR_LUMINANCEMODE_MIN = 0,
+	BWMONITOR_LUMINANCEMODE_MAX = 1
+};
+#define DEFAULT_BWMONITOR_LUMINANCEMODE BWMONITOR_LUMINANCEMODE_LUMINANCE
 
 enum SVGADACMode
 {
@@ -257,16 +279,12 @@ enum SVGADACMode
 	SVGA_DACMODE_MIN = 0,
 	SVGA_DACMODE_MAX = 1
 };
+#define DEFAULT_SVGA_DACMODE SVGA_DACMODE_SIERRA_SC11487
 
 //Default values for new BIOS settings:
 #define DEFAULT_BOOT_ORDER 0
 #define DEFAULT_CPUS 1
 #define DEFAULT_CPU CPU_8086
-#define DEFAULT_DEBUGMODE DEBUGMODE_NONE
-#define DEFAULT_EXECUTIONMODE EXECUTIONMODE_BIOS
-#define DEFAULT_DEBUGGERLOG DEBUGGERLOG_NONE
-#define DEFAULT_DEBUGGERSTATELOG DEBUGGERSTATELOG_DISABLED
-#define DEFAULT_DEBUGGERREGISTERSLOG DEBUGGERREGISTERSLOG_DISABLED
 
 #define DEFAULT_ASPECTRATIO 2
 #ifdef STATICSCREEN
@@ -274,8 +292,6 @@ enum SVGADACMode
 #else
 #define DEFAULT_DIRECTPLOT 2
 #endif
-#define DEFAULT_BWMONITOR BWMONITOR_NONE
-#define DEFAULT_BWMONITOR_LUMINANCEMODE BWMONITOR_LUMINANCEMODE_LUMINANCE
 #define DEFAULT_SSOURCEVOL 100
 #define DEFAULT_BLASTERVOL 100
 #define DEFAULT_FRAMERATE 0
@@ -285,7 +301,6 @@ enum SVGADACMode
 #define DEFAULT_CPUSPEEDMODE 0
 #define DEFAULT_DIRECTMIDIMODE 0
 #define DEFAULT_BREAKPOINT 0
-#define DEFAULT_BIOSROMMODE BIOSROMMODE_NORMAL
 #define DEFAULT_INBOARDINITIALWAITSTATES 0
 #ifdef ANDROID
 #define DEFAULT_MODEMLISTENPORT 65523
@@ -293,11 +308,11 @@ enum SVGADACMode
 #define DEFAULT_MODEMLISTENPORT 23
 #endif
 #define DEFAULT_NULLMODEM 0
-#define DEFAULT_CLOCKINGMODE CLOCKINGMODE_IPSCLOCK
+#define NULLMODEM_MIN 0
+#define NULLMODEM_MAX 3
 #define DEFAULT_CGAMODEL 0
 #define DEFAULT_VIDEOCARD 4
 #define DEFAULT_SOUNDBLASTER 0
-#define DEFAULT_SVGA_DACMODE SVGA_DACMODE_SIERRA_SC11487
 
 //Breakpoint helper constants
 //2-bit mode(0=Disabled, 1=Real, 2=Protected, 3=Virtual 8086)
