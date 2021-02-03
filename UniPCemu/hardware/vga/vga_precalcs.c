@@ -36,9 +36,11 @@ void VGA_updateVRAMmaps(VGA_Type *VGA); //VRAM map updater prototype!
 //Works!
 OPTINLINE uint_32 getcol256(VGA_Type *VGA, byte color) //Convert color to RGB!
 {
+	byte DACbits;
 	DACEntry colorEntry; //For getcol256!
-	readDAC(VGA,(color&VGA->registers->DACMaskRegister),&colorEntry); //Read the DAC entry, masked on/off by the DAC Mask Register!
-	return RGB(convertrel(colorEntry.r, (0x3F | VGA->precalcs.emulatedDACextrabits),0xFF),convertrel(colorEntry.g, (0x3F | VGA->precalcs.emulatedDACextrabits),0xFF),convertrel(colorEntry.b, (0x3F | VGA->precalcs.emulatedDACextrabits),0xFF)); //Convert using DAC (Scale of DAC is RGB64, we use RGB256)!
+	DACbits = (0x3F | VGA->precalcs.emulatedDACextrabits); //How many DAC bits to use?
+	readDAC(VGA, (color & VGA->registers->DACMaskRegister), &colorEntry); //Read the DAC entry, masked on/off by the DAC Mask Register!
+	return RGB(convertrel((colorEntry.r & DACbits), DACbits, 0xFF), convertrel((colorEntry.g & DACbits), DACbits, 0xFF), convertrel((colorEntry.b & DACbits), DACbits, 0xFF)); //Convert using DAC (Scale of DAC is RGB64, we use RGB256)!
 }
 
 extern byte VGA_LOGPRECALCS; //Are we manually updated to log?

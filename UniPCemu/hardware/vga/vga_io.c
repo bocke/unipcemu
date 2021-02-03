@@ -297,7 +297,7 @@ OPTINLINE void PORT_write_DAC_3C9(byte value) //DAC Data register!
 	word index = entrynumber; //Load current DAC index!
 	index <<= 2; //Multiply for the index!
 	index |= getActiveVGA()->registers->current_3C9; //Current index!
-	getActiveVGA()->registers->DAC[index] = (value&0x3F); //Write the data!
+	getActiveVGA()->registers->DAC[index] = value; //Write the data!
 	VGA_calcprecalcs(getActiveVGA(),WHEREUPDATED_DAC|entrynumber); //We've been updated!
 	
 	if (++getActiveVGA()->registers->current_3C9>2) //Next entry?

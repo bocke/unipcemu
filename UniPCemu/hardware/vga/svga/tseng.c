@@ -78,9 +78,11 @@ DOUBLE ET3K_clockFreq[16] = {
 
 OPTINLINE uint_32 getcol256_Tseng(VGA_Type* VGA, byte color) //Convert color to RGB!
 {
+	byte DACbits;
 	DACEntry colorEntry; //For getcol256!
+	DACbits = (0x3F | VGA->precalcs.emulatedDACextrabits); //How many DAC bits to use?
 	readDAC(VGA, (color & VGA->registers->DACMaskRegister), &colorEntry); //Read the DAC entry, masked on/off by the DAC Mask Register!
-	return RGB(convertrel(colorEntry.r, (0x3F | VGA->precalcs.emulatedDACextrabits), 0xFF), convertrel(colorEntry.g, (0x3F | VGA->precalcs.emulatedDACextrabits), 0xFF), convertrel(colorEntry.b, (0x3F | VGA->precalcs.emulatedDACextrabits), 0xFF)); //Convert using DAC (Scale of DAC is RGB64, we use RGB256)!
+	return RGB(convertrel((colorEntry.r & DACbits), DACbits, 0xFF), convertrel((colorEntry.g & DACbits), DACbits, 0xFF), convertrel((colorEntry.b & DACbits), DACbits, 0xFF)); //Convert using DAC (Scale of DAC is RGB64, we use RGB256)!
 }
 
 extern uint_32 VGA_MemoryMapBankRead, VGA_MemoryMapBankWrite; //The memory map bank to use!
