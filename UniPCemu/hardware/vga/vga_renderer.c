@@ -872,6 +872,10 @@ void VGA_ActiveDisplay_noblanking_VGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_At
 		}
 	}
 	doublepixels >>= issplittingpixels; //Halve when using a split-pixel method!
+	if (VGA->precalcs.effectiveDACmode & 8) //Actually 3 times bigger?
+	{
+		doublepixels += (doublepixels << 1); //Times 3!
+	}
 
 	//Convert the pixel to a RGB value before drawing any blocks of pixels!
 	if (VGA->precalcs.effectiveDACmode&2) //16-bit/24-bit color?
