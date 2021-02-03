@@ -1420,6 +1420,7 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 					break;
 				case 7: //24-bit three clocks?
 					DACmode |= 3; //Set bit 0: we're full range, Set bit 1: we're a 16-bit+ mode!
+					DACmode |= 4; //Use multiple pixel clocks to latch the two bytes?
 					DACmode |= 8; //Use three pixel clocks to latch the three bytes?
 					break;
 			}
