@@ -1360,6 +1360,11 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 
 	if ((whereupdated==WHEREUPDATED_ALL) || (whereupdated==WHEREUPDATED_DACMASKREGISTER) || //DAC Mask register has been updated?
 		(AttrUpdated || (whereupdated == WHEREUPDATED_ALL) || (whereupdated == (WHEREUPDATED_ATTRIBUTECONTROLLER | 0x16)) || (whereupdated == (WHEREUPDATED_ATTRIBUTECONTROLLER | 0x10))) //Attribute misc. register?
+		|| (
+			(et34k(VGA)->emulatedDAC == 2) //AT&T 20C490?
+			&& UPDATE_SECTIONFULL(whereupdated, WHEREUPDATED_DAC, FullUpdate) //Single register updated?
+			&& (et34k(VGA)->hicolorDACcommand&1) //Supposed to be masked off?
+			)
 		) 
 	{
 		#ifdef LOG_UNHANDLED_SVGA_ACCESSES
@@ -1438,16 +1443,23 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 			}
 
 			//Update the DAC colors as required!
-			int colorval;
-			colorval = 0; //Init!
-			for (;;) //Precalculate colors for DAC!
+			if (et34k_tempreg & 1) //Sleep mode?
 			{
-				if (VGA->enable_SVGA != 3) //EGA can't change the DAC!
+				memset(&VGA->precalcs.DAC, 0, sizeof(VGA->precalcs.DAC));
+			}
+			else //Normal operating mode?
+			{
+				int colorval;
+				colorval = 0; //Init!
+				for (;;) //Precalculate colors for DAC!
 				{
-					VGA->precalcs.DAC[colorval] = getcol256_Tseng(VGA, colorval); //Translate directly through DAC for output!
+					if (VGA->enable_SVGA != 3) //EGA can't change the DAC!
+					{
+						VGA->precalcs.DAC[colorval] = getcol256_Tseng(VGA, colorval); //Translate directly through DAC for output!
+					}
+					DAC_updateEntry(VGA, colorval); //Update a DAC entry for rendering!
+					if (++colorval & 0xFF00) break; //Overflow?
 				}
-				DAC_updateEntry(VGA, colorval); //Update a DAC entry for rendering!
-				if (++colorval & 0xFF00) break; //Overflow?
 			}
 		}
 		else //Unknown DAC?
