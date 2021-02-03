@@ -908,7 +908,7 @@ void VGA_ActiveDisplay_noblanking_VGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_At
 	}
 	if (VGA->precalcs.turnDACoff) //Turning the DAC off?
 	{
-		DACcolor = RGB(0, 0, 0); //No output on the DAC!
+		DACcolor = RGB(0x00, 0x00, 0x00); //No output on the DAC!
 	}
 	//Draw the pixel(s) that is/are latched!
 	do //We always render at least 1 pixel from the DAC!
@@ -960,13 +960,27 @@ void VGA_Overscan_noblanking_VGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_Attribu
 		if (VGA->precalcs.EGA_DisableInternalVideoDrivers) //Special case: internal video drivers disabled?
 		{
 			VGA->CRTC.DACOutput = (VGA->registers->ExternalRegisters.FEATURECONTROLREGISTER&3); //The FEAT0 and FEAT1 outputs become the new output!
-			drawPixel(VGA, VGA_DAC(VGA, VGA->CRTC.DACOutput)); //Draw overscan in the specified color instead!
+			if (VGA->precalcs.turnDACoff) //Turning the DAC off?
+			{
+				drawPixel(VGA, RGB(0x00, 0x00, 0x00)); //Draw blanked!
+			}
+			else
+			{
+				drawPixel(VGA, VGA_DAC(VGA, VGA->CRTC.DACOutput)); //Draw overscan in the specified color instead!
+			}
 		}
 		else //Normal VGA behaviour?
 		{
 			VGA->CRTC.DACOutput = VGA->precalcs.overscancolor; //Overscan index!
-			//VGA->CRTC.DACOutput = 0x2; //Blue for debugging the overscan!
-			drawPixel(VGA, VGA_DAC(VGA, VGA->precalcs.overscancolor)); //Draw overscan!
+			if (VGA->precalcs.turnDACoff) //Turning the DAC off?
+			{
+				drawPixel(VGA, RGB(0x00, 0x00, 0x00)); //Draw blanked!
+			}
+			else
+			{
+				//VGA->CRTC.DACOutput = 0x2; //Blue for debugging the overscan!
+				drawPixel(VGA, VGA_DAC(VGA, VGA->precalcs.overscancolor)); //Draw overscan!
+			}
 		}
 	//}
 	video_updateLightPen(VGA,0); //Update the light pen!
