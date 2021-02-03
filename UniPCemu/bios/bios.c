@@ -1660,7 +1660,7 @@ int BIOS_SaveData() //Save BIOS settings!
 	safestrcat(video_comment, sizeof(video_comment), "bwmonitor: 0=Color, 1=B/W monitor: white, 2=B/W monitor: green, 3=B/W monitor: amber\n");
 	safestrcat(video_comment, sizeof(video_comment), "bwmonitor_luminancemode: 0=Averaged, 1=Luminance\n");
 	safestrcat(video_comment, sizeof(video_comment), "showframerate: 0=Disabled, otherwise Enabled\n");
-	safestrcat(video_comment, sizeof(video_comment), "SVGA_DACmode: 0=Sierra SC11487, 1=UMC UM70C178");
+	safestrcat(video_comment, sizeof(video_comment), "SVGA_DACmode: 0=Sierra SC11487, 1=UMC UM70C178, 2=AT&T 20C490");
 	char *video_commentused = NULL;
 	if (video_comment[0]) video_commentused = &video_comment[0];
 	if (!write_private_profile_uint64("video", video_commentused, "videocard", BIOS_Settings.VGA_Mode, inifile)) ABORT_SAVEDATA //Enable VGA NMI on precursors?
