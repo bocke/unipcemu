@@ -175,6 +175,7 @@ typedef struct //Contains the precalculated values!
 	byte doublewidthfont; //Enable double width font to be used(index 36h bit 3 of the Tseng chips being set)?
 	byte extendedfont; //Enable extended font dots/char(bits 1-2 of the Sequencer register 6 of the Tseng chips)? 
 	byte charactercode_16bit; //Render the character code as 16-bit character codes?
+	byte emulatedDACextrabits; //6 or 8-bit mask!
 } VGA_PRECALCS; //VGA pre-calculations!
 
 typedef void (*VGA_calcprecalcsextensionhandler)(void *VGA, uint_32 whereupdated); //Calculate them!

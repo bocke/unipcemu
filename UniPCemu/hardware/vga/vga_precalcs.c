@@ -38,7 +38,7 @@ OPTINLINE uint_32 getcol256(VGA_Type *VGA, byte color) //Convert color to RGB!
 {
 	DACEntry colorEntry; //For getcol256!
 	readDAC(VGA,(color&VGA->registers->DACMaskRegister),&colorEntry); //Read the DAC entry, masked on/off by the DAC Mask Register!
-	return RGB(convertrel(colorEntry.r,0x3F,0xFF),convertrel(colorEntry.g,0x3F,0xFF),convertrel(colorEntry.b,0x3F,0xFF)); //Convert using DAC (Scale of DAC is RGB64, we use RGB256)!
+	return RGB(convertrel(colorEntry.r, (0x3F | VGA->precalcs.emulatedDACextrabits),0xFF),convertrel(colorEntry.g, (0x3F | VGA->precalcs.emulatedDACextrabits),0xFF),convertrel(colorEntry.b, (0x3F | VGA->precalcs.emulatedDACextrabits),0xFF)); //Convert using DAC (Scale of DAC is RGB64, we use RGB256)!
 }
 
 extern byte VGA_LOGPRECALCS; //Are we manually updated to log?

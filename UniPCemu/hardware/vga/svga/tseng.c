@@ -75,6 +75,13 @@ DOUBLE ET3K_clockFreq[16] = {
 	0.0 //ET3000 clock!
 };
 
+OPTINLINE uint_32 getcol256_Tseng(VGA_Type* VGA, byte color) //Convert color to RGB!
+{
+	DACEntry colorEntry; //For getcol256!
+	readDAC(VGA, (color & VGA->registers->DACMaskRegister), &colorEntry); //Read the DAC entry, masked on/off by the DAC Mask Register!
+	return RGB(convertrel(colorEntry.r, (0x3F | VGA->precalcs.emulatedDACextrabits), 0xFF), convertrel(colorEntry.g, (0x3F | VGA->precalcs.emulatedDACextrabits), 0xFF), convertrel(colorEntry.b, (0x3F | VGA->precalcs.emulatedDACextrabits), 0xFF)); //Convert using DAC (Scale of DAC is RGB64, we use RGB256)!
+}
+
 extern uint_32 VGA_MemoryMapBankRead, VGA_MemoryMapBankWrite; //The memory map bank to use!
 
 void updateET34Ksegmentselectregister(byte val)
@@ -1397,12 +1404,17 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 		else if (et34k(VGA)->emulatedDAC==2) //AT&T 20C490?
 		{
 			DACmode = 0; //Legacy VGA RAMDAC!
+			VGA->precalcs.emulatedDACextrabits = 0xC0; //Become 8-bits DAC entries by default!
 			switch ((et34k_tempreg>>5)&7) //What rendering mode?
 			{
 				case 0:
 				case 1:
 				case 2:
 				case 3: //VGA mode?
+					if ((et34k_tempreg & 2)==0) //6-bit DAC?
+					{
+						VGA->precalcs.emulatedDACextrabits = 0x00; //Become 6-bits DAC only!
+					}
 					break;
 				case 4: //15-bit HICOLOR1 one clock?
 					DACmode &= ~1; //Clear bit 0: we're one bit less!
@@ -1423,6 +1435,19 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 					DACmode |= 4; //Use multiple pixel clocks to latch the two bytes?
 					DACmode |= 8; //Use three pixel clocks to latch the three bytes?
 					break;
+			}
+
+			//Update the DAC colors as required!
+			int colorval;
+			colorval = 0; //Init!
+			for (;;) //Precalculate colors for DAC!
+			{
+				if (VGA->enable_SVGA != 3) //EGA can't change the DAC!
+				{
+					VGA->precalcs.DAC[colorval] = getcol256_Tseng(VGA, colorval); //Translate directly through DAC for output!
+				}
+				DAC_updateEntry(VGA, colorval); //Update a DAC entry for rendering!
+				if (++colorval & 0xFF00) break; //Overflow?
 			}
 		}
 		else //Unknown DAC?
