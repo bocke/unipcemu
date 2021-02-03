@@ -1448,22 +1448,23 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 			//Update the DAC colors as required!
 			if (et34k_tempreg & 1) //Sleep mode?
 			{
-				memset(&VGA->precalcs.DAC, 0, sizeof(VGA->precalcs.DAC));
-				DAC_updateEntries(VGA); //Update all DAC entries!
+				VGA->precalcs.turnDACoff = 1; //Turn the DAC off!
 			}
-			else //Normal operating mode?
+			else
 			{
-				int colorval;
-				colorval = 0; //Init!
-				for (;;) //Precalculate colors for DAC!
+				VGA->precalcs.turnDACoff = 0; //Turn the DAC on!
+			}
+
+			int colorval;
+			colorval = 0; //Init!
+			for (;;) //Precalculate colors for DAC!
+			{
+				if (VGA->enable_SVGA != 3) //EGA can't change the DAC!
 				{
-					if (VGA->enable_SVGA != 3) //EGA can't change the DAC!
-					{
-						VGA->precalcs.DAC[colorval] = getcol256_Tseng(VGA, colorval); //Translate directly through DAC for output!
-					}
-					DAC_updateEntry(VGA, colorval); //Update a DAC entry for rendering!
-					if (++colorval & 0xFF00) break; //Overflow?
+					VGA->precalcs.DAC[colorval] = getcol256_Tseng(VGA, colorval); //Translate directly through DAC for output!
 				}
+				DAC_updateEntry(VGA, colorval); //Update a DAC entry for rendering!
+				if (++colorval & 0xFF00) break; //Overflow?
 			}
 		}
 		else //Unknown DAC?

@@ -906,6 +906,10 @@ void VGA_ActiveDisplay_noblanking_VGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_At
 			DACcolor = VGA_DAC(VGA,(Sequencer->lastDACcolor&0xFF)); //Render through the 8-bit DAC!
 		}
 	}
+	if (VGA->precalcs.turnDACoff) //Turning the DAC off?
+	{
+		DACcolor = RGB(0, 0, 0); //No output on the DAC!
+	}
 	//Draw the pixel(s) that is/are latched!
 	do //We always render at least 1 pixel from the DAC!
 	{
