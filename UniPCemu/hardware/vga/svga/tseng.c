@@ -25,6 +25,7 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 #include "headers/hardware/vga/vga_precalcs.h" //Precalculation typedefs etc.
 #include "headers/hardware/vga/vga_attributecontroller.h" //Attribute controller support!
 #include "headers/hardware/vga/vga_sequencer_graphicsmode.h" //Graphics mode support!
+#include "headers/hardware/vga/vga_dacrenderer.h" //DAC rendering support!
 #include "headers/hardware/vga/vga_vram.h" //Mapping support for different addressing modes!
 #include "headers/cpu/cpu.h" //NMI support!
 #include "headers/hardware/vga/vga_vramtext.h" //Extended text mode support!
@@ -1446,6 +1447,7 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 			if (et34k_tempreg & 1) //Sleep mode?
 			{
 				memset(&VGA->precalcs.DAC, 0, sizeof(VGA->precalcs.DAC));
+				DAC_updateEntries(VGA); //Update all DAC entries!
 			}
 			else //Normal operating mode?
 			{
