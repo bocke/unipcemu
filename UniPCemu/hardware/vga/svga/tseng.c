@@ -96,7 +96,7 @@ void updateET34Ksegmentselectregister(byte val)
 
 void et34k_updateDAC(SVGA_ET34K_DATA* et34kdata, byte val)
 {
-	if (et34kdata->emulatedDAC) //UMC UM70C178?
+	if (et34kdata->emulatedDAC==1) //UMC UM70C178?
 	{
 		val &= 0xE0; //Mask limited!
 	}
@@ -115,10 +115,22 @@ void et34k_updateDAC(SVGA_ET34K_DATA* et34kdata, byte val)
 		{
 			et34kdata->hicolorDACcommand &= ~1; //Clear!
 		}
+		et34kdata->hicolorDACcommand &= ~0x18; //Ignore the shared bits for the result!
+	}
+	else if (et34kdata->emulatedDAC == 2) //AT&T 20C490?
+	{
+		if ((val&0xE0)==0x60) //Detection logic?
+		{
+			et34kdata->hicolorDACcommand &= ~0xE0; //Clears the mode bits to VGA mode!
+		}
+		//All other settings are valid!
+	}
+	else //UMC UM70C178
+	{
+		et34kdata->hicolorDACcommand &= ~0x18; //Ignore the shared bits for the result!
 	}
 	//et34kdata->hicolorDACcommand |= 6; //Always set bits 1-2?
 	//getActiveVGA()->registers->DACMaskRegister = (getActiveVGA()->registers->DACMaskRegister&~0x18)|(et34kdata->hicolorDACcommand&0x18);
-	et34kdata->hicolorDACcommand &= ~0x18; //Ignore the shared bits for the result!
 }
 
 byte Tseng34K_writeIO(word port, byte val)
@@ -228,7 +240,7 @@ byte Tseng34K_writeIO(word port, byte val)
 		}
 		//16-bit DAC operations!
 		et34k_updateDAC(et34kdata,val); //Update the DAC values to be compatible!
-		if (et34kdata->emulatedDAC == 0) //SC11487?
+		if (et34kdata->emulatedDAC==0) //SC11487?
 		{
 			et34kdata->hicolorDACcmdmode = 0; //Disable command mode!
 		}
@@ -1348,35 +1360,73 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 		#endif
 		et34k_tempreg = et34k(VGA)->hicolorDACcommand; //Load the command to process! (Process like a SC11487)
 		DACmode = VGA->precalcs.DACmode; //Load the current DAC mode!
-		if (VGA->precalcs.AttributeController_16bitDAC == 3) //In 16-bit mode? Raise the DAC's HICOL input, thus making it 16-bit too!
+		DACmode &= ~8; //Legacy DAC modes?
+		if (et34k(VGA)->emulatedDAC!=2) //UMC 70C178 or SC11487?`
 		{
-			//DACmode |= 3; //Set bit 0: we're full range, Set bit 1: we're a 16-bit mode!
-			goto legacyDACmode; //Let the DAC determine what mode it's in normally!
-		}
-		else //Legacy DAC mode? Use the DAC itself for determining the mode it's rendering in!
-		{
-			legacyDACmode:
-			if ((et34k_tempreg & 0xC0) == 0x80) //15-bit hicolor mode?
+			if (VGA->precalcs.AttributeController_16bitDAC == 3) //In 16-bit mode? Raise the DAC's HICOL input, thus making it 16-bit too!
 			{
-				DACmode &= ~1; //Clear bit 0: we're one bit less!
-				DACmode |= 2; //Set bit 1: we're a 16-bit mode!
+				//DACmode |= 3; //Set bit 0: we're full range, Set bit 1: we're a 16-bit mode!
+				goto legacyDACmode; //Let the DAC determine what mode it's in normally!
 			}
-			else if ((et34k_tempreg & 0xC0) == 0xC0) //16-bit hicolor mode?
+			else //Legacy DAC mode? Use the DAC itself for determining the mode it's rendering in!
 			{
-				DACmode |= 3; //Set bit 0: we're full range, Set bit 1: we're a 16-bit mode!
+				legacyDACmode:
+				if ((et34k_tempreg & 0xC0) == 0x80) //15-bit hicolor mode?
+				{
+					DACmode &= ~1; //Clear bit 0: we're one bit less!
+					DACmode |= 2; //Set bit 1: we're a 16-bit mode!
+				}
+				else if ((et34k_tempreg & 0xC0) == 0xC0) //16-bit hicolor mode?
+				{
+					DACmode |= 3; //Set bit 0: we're full range, Set bit 1: we're a 16-bit mode!
+				}
+				else //Normal 8-bit DAC?
+				{
+					DACmode &= ~3; //Set bit 0: we're full range, Set bit 1: we're a 16-bit mode!
+				}
 			}
-			else //Normal 8-bit DAC?
+			if (et34k_tempreg & 0x20) //Two pixel clocks are used to latch the two bytes?
 			{
-				DACmode &= ~3; //Set bit 0: we're full range, Set bit 1: we're a 16-bit mode!
+				DACmode |= 4; //Use two pixel clocks to latch the two bytes?
+			}
+			else
+			{
+				DACmode &= ~4; //Use one pixel clock to latch the two bytes?
 			}
 		}
-		if (et34k_tempreg & 0x20) //Two pixel clocks are used to latch the two bytes?
+		else if (et34k(VGA)->emulatedDAC==2) //AT&T 20C490?
 		{
-			DACmode |= 4; //Use two pixel clocks to latch the two bytes?
+			DACmode = 0; //Legacy VGA RAMDAC!
+			switch ((et34k_tempreg>>5)&7) //What rendering mode?
+			{
+				case 0:
+				case 1:
+				case 2:
+				case 3: //VGA mode?
+					break;
+				case 4: //15-bit HICOLOR1 one clock?
+					DACmode &= ~1; //Clear bit 0: we're one bit less!
+					DACmode |= 2; //Set bit 1: we're a 16-bit mode!
+					DACmode &= ~4; //Use one pixel clock to latch the two bytes?
+					break;
+				case 5: //15-bit HICOLOR2 two clocks?
+					DACmode &= ~1; //Clear bit 0: we're one bit less!
+					DACmode |= 2; //Set bit 1: we're a 16-bit mode!
+					DACmode |= 4; //Use two pixel clocks to latch the two bytes?
+					break;
+				case 6: //16-bit two clocks?
+					DACmode |= 3; //Set bit 0: we're full range, Set bit 1: we're a 16-bit mode!
+					DACmode |= 4; //Use two pixel clocks to latch the two bytes?
+					break;
+				case 7: //24-bit three clocks?
+					DACmode |= 3; //Set bit 0: we're full range, Set bit 1: we're a 16-bit+ mode!
+					DACmode |= 8; //Use three pixel clocks to latch the three bytes?
+					break;
+			}
 		}
-		else
+		else //Unknown DAC?
 		{
-			DACmode &= ~4; //Use one pixel clock to latch the two bytes?
+			DACmode = 0; //Legacy VGA RAMDAC!
 		}
 		VGA->precalcs.DACmode = DACmode; //Apply the new DAC mode!
 		updateVGADAC_Mode(VGA); //Update the effective DAC mode!

@@ -466,16 +466,19 @@ void updateSequencerPixelDivider(VGA_Type* VGA, SEQ_DATA* Sequencer)
 {
 	byte val;
 	val = 0; //Default: don't divide!
-	if (VGA->precalcs.effectiveDACmode & 4) //Doubling enabled?
+	if ((VGA->precalcs.effectiveDACmode&8)==0) //Adjusted?
 	{
-		val = (val << 1) | 1; //Double the amount of clocks we're latching!
+		if (VGA->precalcs.effectiveDACmode & 4) //Doubling enabled?
+		{
+			val = (val << 1) | 1; //Double the amount of clocks we're latching!
+		}
+		/*
+		if (VGA->precalcs.linearmode&8) //Double clocking that's supposed to be divided?
+		{
+			val = (val << 1) | 1; //Double the amount of clocks we're latching!
+		}
+		*/
 	}
-	/*
-	if (VGA->precalcs.linearmode&8) //Double clocking that's supposed to be divided?
-	{
-		val = (val << 1) | 1; //Double the amount of clocks we're latching!
-	}
-	*/
 	Sequencer->pixelclockdivider = val; //Latch this many clocks before processing it!
 }
 
@@ -778,12 +781,15 @@ void VGA_Blank_Overscan_VGA(VGA_Type* VGA, SEQ_DATA* Sequencer, VGA_AttributeInf
 {
 	if (hretrace) return; //Don't handle during horizontal retraces or top screen rendering!
 
-	if ((VGA->precalcs.effectiveDACmode & 4) == 4) //Not latching in 1 raising&lowering(by the attribute controller) clock(Not mode 2, but mode 1)?
+	if ((VGA->precalcs.effectiveDACmode & 8) == 0) //Normal mode?
 	{
-		//Latch a 8-bit pixel?
-		if ((++Sequencer->DACcounter) & ((4 >> attributeinfo->attributesize) - 1)) //To latch and not process yet? This is the least significant byte/bits of the counter!
+		if ((VGA->precalcs.effectiveDACmode & 4) == 4) //Not latching in 1 raising&lowering(by the attribute controller) clock(Not mode 2, but mode 1)?
 		{
-			return; //Skip this data: we only latch every two pixels!
+			//Latch a 8-bit pixel?
+			if ((++Sequencer->DACcounter) & ((4 >> attributeinfo->attributesize) - 1)) //To latch and not process yet? This is the least significant byte/bits of the counter!
+			{
+				return; //Skip this data: we only latch every two pixels!
+			}
 		}
 	}
 
@@ -819,12 +825,26 @@ void VGA_ActiveDisplay_noblanking_VGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_At
 	if ((VGA->precalcs.effectiveDACmode&4)==4) //Not latching in 1 raising&lowering(by the attribute controller) clock(Not mode 2, but mode 1)?
 	{
 		//Latch a 8-bit pixel?
-		Sequencer->lastDACcolor >>= (4<<attributeinfo->attributesize); //Latching 4/8/16 bits, whether used or not!
-		Sequencer->lastDACcolor |= ((attributeinfo->attribute)<< ((8 << (VGA->precalcs.effectiveDACmode & 2) >> 1) - (4 << attributeinfo->attributesize))); //Latching this attribute! Low byte is latched first!
-
-		if ((++Sequencer->DACcounter)&((4>>attributeinfo->attributesize)-1)) //To latch and not process yet? This is the least significant byte/bits of the counter!
+		if ((VGA->precalcs.effectiveDACmode & 8) == 0) //Normal mode?
 		{
-			return; //Skip this data: we only latch every two pixels!
+			Sequencer->lastDACcolor >>= (4<<attributeinfo->attributesize); //Latching 4/8/16 bits, whether used or not!
+			Sequencer->lastDACcolor |= ((attributeinfo->attribute)<< ((8 << (VGA->precalcs.effectiveDACmode & 2) >> 1) - (4 << attributeinfo->attributesize))); //Latching this attribute! Low byte is latched first!
+
+			if ((++Sequencer->DACcounter)&((4>>attributeinfo->attributesize)-1)) //To latch and not process yet? This is the least significant byte/bits of the counter!
+			{
+				return; //Skip this data: we only latch every two pixels!
+			}
+		}
+		else //24BPP mode?
+		{
+			Sequencer->lastDACcolor >>= 8; //Latching 8 bits, whether used or not!
+			Sequencer->lastDACcolor |= ((attributeinfo->attribute)<<16); //Latching this attribute! Low byte is latched first!
+
+			if ((++Sequencer->DACcounter)<3) //To latch and not process yet? This is the least significant byte/bits of the counter!
+			{
+				return; //Skip this data: we only latch every two pixels!
+			}
+			Sequencer->DACcounter = 0; //Simply clear after every 3 pixels!
 		}
 	}
 	else //Pseudo-color mode or Mode 2 15/16-bit DAC?
@@ -843,18 +863,25 @@ void VGA_ActiveDisplay_noblanking_VGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_At
 	}
 
 	doublepixels = ((1<<(VGA->precalcs.ClockingModeRegister_DCR&1))<<attributeinfo->attributesize); //Double the pixels(half horizontal clock) and multiply for each extra pixel clock taken?
-	if ((VGA->precalcs.effectiveDACmode&4)==4) //Multiple inputs are taken?
+	if ((VGA->precalcs.effectiveDACmode & 8) == 0) //Normal mode?
 	{
-		//doublepixels <<= (2>>attributeinfo->attributesize); //On top of the attribute doubling the clocks used, we (qua)druple it again for nibbles, double it for bytes and do nothing for words! 
-		doublepixels <<= 1; //Double the pixels being plotted during active display!
+		if ((VGA->precalcs.effectiveDACmode&4)==4) //Multiple inputs are taken?
+		{
+			//doublepixels <<= (2>>attributeinfo->attributesize); //On top of the attribute doubling the clocks used, we (qua)druple it again for nibbles, double it for bytes and do nothing for words! 
+			doublepixels <<= 1; //Double the pixels being plotted during active display!
+		}
 	}
 	doublepixels >>= issplittingpixels; //Halve when using a split-pixel method!
 
 	//Convert the pixel to a RGB value before drawing any blocks of pixels!
-	if (VGA->precalcs.effectiveDACmode&2) //16-bit color?
+	if (VGA->precalcs.effectiveDACmode&2) //16-bit/24-bit color?
 	{
 		//Now draw in the selected color depth!
-		if (VGA->precalcs.effectiveDACmode&1) //16-bit color?
+		if (VGA->precalcs.effectiveDACmode&8) //24-bit color?
+		{
+			DACcolor = GA_color2bw(RGB(((Sequencer->lastDACcolor>>16)&0xFF),((Sequencer->lastDACcolor>>8)&0xFF),(Sequencer->lastDACcolor&0xFF))); //Draw the 24BPP color pixel!
+		}
+		else if (VGA->precalcs.effectiveDACmode&1) //16-bit color?
 		{
 			DACcolor = GA_color2bw(CLUT16bit[(Sequencer->lastDACcolor&0xFFFF)]); //Draw the 16-bit color pixel!
 		}
