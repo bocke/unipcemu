@@ -5030,7 +5030,7 @@ void BIOS_InitVideoSettingsText()
 {
 	advancedoptions = 0; //Init!
 	int i;
-	for (i=0; i<6; i++) //Clear all possibilities!
+	for (i=0; i<10; i++) //Clear all possibilities!
 	{
 		cleardata(&menuoptions[i][0],sizeof(menuoptions[i])); //Init!
 	}
@@ -5267,7 +5267,8 @@ void BIOS_VideoSettingsMenu() //Manage stuff concerning input.
 	case 5:
 	case 6:
 	case 7:
-	case 8: //Valid option?
+	case 8:
+	case 9: //Valid option?
 		switch (optioninfo[menuresult]) //What option has been chosen, since we are dynamic size?
 		{
 		case 0: //Direct plot setting?
