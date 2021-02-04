@@ -868,7 +868,8 @@ void VGA_ActiveDisplay_noblanking_VGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_At
 		}
 	}
 
-	doublepixels = ((1<<(VGA->precalcs.ClockingModeRegister_DCR&1))<<attributeinfo->attributesize); //Double the pixels(half horizontal clock) and multiply for each extra pixel clock taken?
+	doublepixels = (1 << (VGA->precalcs.ClockingModeRegister_DCR & 1)); /*<<attributeinfo->attributesize)*/ //Double the pixels(half horizontal clock) and multiply for each extra pixel clock taken?
+	//Only send one pixel to the display unless the dot clock is divided by 2! The dot clock input isn't the direct input of the MCLK but instead should use the output rate of the attribute controller instead(to double rendered pixels instead)!
 	if ((VGA->precalcs.effectiveDACmode & 8) == 0) //Normal mode?
 	{
 		if ((VGA->precalcs.effectiveDACmode&4)==4) //Multiple inputs are taken?
@@ -1052,18 +1053,23 @@ void VGA_ActiveDisplay_Text(SEQ_DATA *Sequencer, VGA_Type *VGA)
 
 void VGA_ActiveDisplay_Text_blanking(SEQ_DATA *Sequencer, VGA_Type *VGA)
 {
+	Sequencer->DACcounter = 0; //Reset the DAC counter: the DAC starts scanning again after blanking ends!
 	//Render our active display here!
 	if (VGA_ActiveDisplay_timing(Sequencer, VGA)) //Execute our timings!
 	{
 		VGA_Sequencer_TextMode(VGA, Sequencer, &currentattributeinfo); //Get the color to render!
 		if (VGA_AttributeController(&currentattributeinfo, VGA))
 		{
+			Sequencer->DACcounter = 0; //Reset the DAC counter: the DAC starts scanning again after blanking ends!
 			return; //Nibbled!
 		}
+		Sequencer->DACcounter = 0; //Reset the DAC counter: the DAC starts scanning again after blanking ends!
 	}
 	else if (!CGAMDARenderer) return; //Don't render when not ticking!
 
+	Sequencer->DACcounter = 0; //Reset the DAC counter: the DAC starts scanning again after blanking ends!
 	activedisplay_blank_handler(VGA, Sequencer, &currentattributeinfo); //Blank or active display!
+	Sequencer->DACcounter = 0; //Reset the DAC counter: the DAC starts scanning again after blanking ends!
 }
 
 void VGA_ActiveDisplay_Graphics(SEQ_DATA *Sequencer, VGA_Type *VGA)
@@ -1090,12 +1096,15 @@ void VGA_ActiveDisplay_Graphics_blanking(SEQ_DATA *Sequencer, VGA_Type *VGA)
 		VGA_Sequencer_GraphicsMode(VGA, Sequencer, &currentattributeinfo); //Get the color to render!
 		if (VGA_AttributeController(&currentattributeinfo, VGA))
 		{
+			Sequencer->DACcounter = 0; //Reset the DAC counter: the DAC starts scanning again after blanking ends!
 			return; //Nibbled!
 		}
 	}
 	else if (!CGAMDARenderer) return; //Don't render when not ticking!
 
+	Sequencer->DACcounter = 0; //Reset the DAC counter: the DAC starts scanning again after blanking ends!
 	activedisplay_blank_handler(VGA, Sequencer, &currentattributeinfo); //Blank or active display!
+	Sequencer->DACcounter = 0; //Reset the DAC counter: the DAC starts scanning again after blanking ends!
 }
 
 //Overscan handler!
