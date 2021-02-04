@@ -465,19 +465,23 @@ static VGA_AttributeController_Mode attributecontroller_VGAmodes[2] = { VGA_Attr
 void updateSequencerPixelDivider(VGA_Type* VGA, SEQ_DATA* Sequencer)
 {
 	byte val;
-	val = 0; //Default: don't divide!
+	val = 1; //Default: don't divide!
 	if ((VGA->precalcs.effectiveDACmode&8)==0) //Adjusted?
 	{
 		if (VGA->precalcs.effectiveDACmode & 4) //Doubling enabled?
 		{
-			val = (val << 1) | 1; //Double the amount of clocks we're latching!
+			val <<= 1; //Double the amount of clocks we're latching!
 		}
 		/*
 		if (VGA->precalcs.linearmode&8) //Double clocking that's supposed to be divided?
 		{
-			val = (val << 1) | 1; //Double the amount of clocks we're latching!
+			val <<= 1; //Double the amount of clocks we're latching!
 		}
 		*/
+	}
+	else //24BPP mode?
+	{
+		val = 3; //3 clocks per pixel!
 	}
 	Sequencer->pixelclockdivider = val; //Latch this many clocks before processing it!
 }
@@ -771,8 +775,9 @@ void VGA_Blank_Activedisplay_VGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_Attribu
 	drawPixel(VGA, RGB(0x00, 0x00, 0x00)); //Draw blank!
 	//drawPixel(VGA, RGB(0x00, 0xFF, 0x00)); //Draw blank green for debugging!
 	video_updateLightPen(VGA,0); //Update the light pen!
-	if ((++Sequencer->currentpixelclock & Sequencer->pixelclockdivider) == 0) //Are we to tick the CRTC pixel clock?
+	if (++Sequencer->currentpixelclock >= Sequencer->pixelclockdivider) //Are we to tick the CRTC pixel clock?
 	{
+		Sequencer->currentpixelclock = 0; //Reset clock!
 		++VGA->CRTC.x; //Next x!
 	}
 }
@@ -796,8 +801,9 @@ void VGA_Blank_Overscan_VGA(VGA_Type* VGA, SEQ_DATA* Sequencer, VGA_AttributeInf
 	drawPixel(VGA, RGB(0x00, 0x00, 0x00)); //Draw blank!
 	//drawPixel(VGA, RGB(0x00, 0xFF, 0x00)); //Draw blank green for debugging!
 	video_updateLightPen(VGA, 0); //Update the light pen!
-	if ((++Sequencer->currentpixelclock & Sequencer->pixelclockdivider) == 0) //Are we to tick the CRTC pixel clock?
+	if (++Sequencer->currentpixelclock >= Sequencer->pixelclockdivider) //Are we to tick the CRTC pixel clock?
 	{
+		Sequencer->currentpixelclock = 0; //Reset clock!
 		++VGA->CRTC.x; //Next x!
 	}
 }
@@ -915,8 +921,9 @@ void VGA_ActiveDisplay_noblanking_VGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_At
 	{
 		drawPixel(VGA, DACcolor); //Draw the color pixel(s)!
 		video_updateLightPen(VGA,0); //Update the light pen!
-		if ((++Sequencer->currentpixelclock & Sequencer->pixelclockdivider) == 0) //Are we to tick the CRTC pixel clock?
+		if (++Sequencer->currentpixelclock >= Sequencer->pixelclockdivider) //Are we to tick the CRTC pixel clock?
 		{
+			Sequencer->currentpixelclock = 0; //Reset clock!
 			++VGA->CRTC.x; //Next x!
 		}
 	} while (--doublepixels); //Any pixels left to render?
@@ -986,6 +993,7 @@ void VGA_Overscan_noblanking_VGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_Attribu
 	video_updateLightPen(VGA,0); //Update the light pen!
 	if ((++Sequencer->currentpixelclock & Sequencer->pixelclockdivider) == 0) //Are we to tick the CRTC pixel clock?
 	{
+		Sequencer->currentpixelclock = 0; //Reset clock!
 		++VGA->CRTC.x; //Next x!
 	}
 }
