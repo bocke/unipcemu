@@ -877,6 +877,10 @@ void VGA_ActiveDisplay_noblanking_VGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_At
 			//doublepixels <<= (2>>attributeinfo->attributesize); //On top of the attribute doubling the clocks used, we (qua)druple it again for nibbles, double it for bytes and do nothing for words! 
 			doublepixels <<= 1; //Double the pixels being plotted during active display!
 		}
+		else if ((VGA->precalcs.AttributeModeControlRegister_ColorEnable8Bit == 1) && ((VGA->enable_SVGA >= 1) && (VGA->enable_SVGA <= 2)) && ((VGA->precalcs.ClockingModeRegister_DCR & 2)==0)) //Tseng 8-bit color special mode set?
+		{
+			doublepixels <<= 1; //Double the pixels being plotted during active display!
+		}
 	}
 	doublepixels >>= issplittingpixels; //Halve when using a split-pixel method!
 	if (VGA->precalcs.effectiveDACmode & 8) //Actually 3 times bigger?
