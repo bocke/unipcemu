@@ -1282,10 +1282,10 @@ OPTINLINE uint_32 get_display(VGA_Type *VGA, word Scanline, word x) //Get/adjust
 	INLINEREGISTER uint_32 stat; //The status of the pixel!
 	//We are a maximum of 4096x1024 size!
 	Scanline >>= VGA->precalcs.CRTCModeControlRegister_SLDIV; //Apply Scan Doubling on the row scan counter: we take effect on content (double scanning)!
-	if (unlikely(Scanline > 0xFFF)) Scanline = 0xFFF; //Clip to the allowed range!
-	if (unlikely(x >= 0xFFF)) x = 0xFFF; //Clip to the allowed range!
-	Scanline &= 0xFFF; //Range safety: 4095 scanlines!
-	x &= 0xFFF; //Range safety: 4095 columns!
+	if (unlikely(Scanline > 0x7FFF)) Scanline = 0x7FFF; //Clip to the allowed range!
+	if (unlikely(x >= 0x7FFF)) x = 0x7FFF; //Clip to the allowed range!
+	Scanline &= 0x7FFF; //Range safety: 4095 scanlines!
+	x &= 0x7FFF; //Range safety: 4095 columns!
 	stat = VGA->CRTC.rowstatus[Scanline]; //Get row status!
 	stat |= VGA->CRTC.colstatus[x]; //Get column status!
 	stat |= VGA->precalcs.extrasignal; //Graphics mode etc. display status affects the signal too!
