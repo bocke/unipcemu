@@ -996,7 +996,7 @@ void VGA_Overscan_noblanking_VGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_Attribu
 		}
 	//}
 	video_updateLightPen(VGA,0); //Update the light pen!
-	if ((++Sequencer->currentpixelclock & Sequencer->pixelclockdivider) == 0) //Are we to tick the CRTC pixel clock?
+	if (++Sequencer->currentpixelclock >= Sequencer->pixelclockdivider) //Are we to tick the CRTC pixel clock?
 	{
 		Sequencer->currentpixelclock = 0; //Reset clock!
 		++VGA->CRTC.x; //Next x!
