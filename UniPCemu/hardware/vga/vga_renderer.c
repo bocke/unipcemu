@@ -468,15 +468,17 @@ void updateSequencerPixelDivider(VGA_Type* VGA, SEQ_DATA* Sequencer)
 	val = 1; //Default: don't divide!
 	if ((VGA->precalcs.effectiveDACmode&8)==0) //Adjusted?
 	{
+		/*
 		if (VGA->precalcs.effectiveDACmode & 4) //Doubling enabled?
 		{
 			val <<= 1; //Double the amount of clocks we're latching!
 		}
-		/*
+		/
 		if (VGA->precalcs.linearmode&8) //Double clocking that's supposed to be divided?
 		{
 			val <<= 1; //Double the amount of clocks we're latching!
 		}
+		/
 		*/
 	}
 	else //24BPP mode?
@@ -585,18 +587,7 @@ OPTINLINE void VGA_Sequencer_updateRow(VGA_Type *VGA, SEQ_DATA *Sequencer, byte 
 		shiftcount += Sequencer->scanline_bytepanning; //How much to shift in 9-pixel modes!
 	}
 
-	byte doublepixels;
-	if ((VGA->precalcs.AttributeModeControlRegister_ColorEnable8Bit & 2) && (VGA->precalcs.ClockingModeRegister_DCR & 2) == 2) //Special mode active?
-	{
-		doublepixels = 1; //Double pixels to shift!
-	}
-	else
-	{
-		doublepixels = 0; //No double pixels to shift!
-	}
-
 	//Process any horizontal pixel shift count!
-	retrydoublepixels:
 	if (VGA->precalcs.textmode) //Text mode?
 	{
 		for (x = 0;x < shiftcount;++x) //Process pixel shift count!
@@ -618,11 +609,6 @@ OPTINLINE void VGA_Sequencer_updateRow(VGA_Type *VGA, SEQ_DATA *Sequencer, byte 
 				//VGA_AttributeController(&currentattributeinfo, VGA); //Ignore the nibbled/not nibbled result!
 			}
 		}
-	}
-	if (doublepixels)
-	{
-		doublepixels = 0; //Handled!
-		goto retrydoublepixels; //Handle the double pixels!
 	}
 }
 
@@ -839,7 +825,7 @@ void VGA_Blank_CGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_AttributeInfo *attrib
 void VGA_ActiveDisplay_noblanking_VGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_AttributeInfo *attributeinfo)
 {
 	uint_32 DACcolor; //The latched color!
-	byte splittingpixels=0,issplittingpixels=0;
+	byte splittingpixels=0;
 	INLINEREGISTER byte doublepixels=0;
 	if (hretrace) return; //Don't handle during horizontal retraces!
 	//Active display!
@@ -880,7 +866,6 @@ void VGA_ActiveDisplay_noblanking_VGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_At
 			}
 			Sequencer->lastDACcolor &= 0xFF; //Latching this attribute as 8-bit pixels!
 			splittingpixels ^= 1; //Start or stop a split pixel!
-			issplittingpixels = 1; //We're using the rise/fall method!
 		}
 	}
 
@@ -889,18 +874,26 @@ void VGA_ActiveDisplay_noblanking_VGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_At
 	//Only send one pixel to the display unless the dot clock is divided by 2! The dot clock input isn't the direct input of the MCLK but instead should use the output rate of the attribute controller instead(to double rendered pixels instead)!
 	if ((VGA->precalcs.effectiveDACmode & 8) == 0) //Normal mode?
 	{
-		if ((VGA->precalcs.effectiveDACmode&4)==4) //Multiple inputs are taken?
+		if ((VGA->precalcs.AttributeModeControlRegister_ColorEnable8Bit == 1) && ((VGA->enable_SVGA >= 1) && (VGA->enable_SVGA <= 2))) //ET4000 divide by 2 fix?
 		{
-			//doublepixels <<= (2>>attributeinfo->attributesize); //On top of the attribute doubling the clocks used, we (qua)druple it again for nibbles, double it for bytes and do nothing for words! 
-			doublepixels <<= 1; //Double the pixels being plotted during active display!
 			doublepixels <<= VGA->precalcs.MemoryClockDivide; //MCLK/[1/2/4] causes the output given to increase due to lower speed of the memory clock!
 		}
+		if ((VGA->precalcs.effectiveDACmode&4)==4) //Multiple inputs are taken?
+		{
+			if (((VGA->precalcs.ClockingModeRegister_DCR == 2) && (VGA->precalcs.AttributeModeControlRegister_ColorEnable8Bit == 3)) && ((VGA->enable_SVGA >= 1) && (VGA->enable_SVGA <= 2))) //ET4000 divide by 2 fix?
+			{
+				doublepixels <<= VGA->precalcs.MemoryClockDivide; //Double the pixels being plotted during active display!
+			}
+			//doublepixels <<= (2>>attributeinfo->attributesize); //On top of the attribute doubling the clocks used, we (qua)druple it again for nibbles, double it for bytes and do nothing for words! 
+			//doublepixels <<= 1; //Double the pixels being plotted during active display!
+		}
+		/*
 		else if ((VGA->precalcs.AttributeModeControlRegister_ColorEnable8Bit == 1) && ((VGA->enable_SVGA >= 1) && (VGA->enable_SVGA <= 2)) && ((VGA->precalcs.ClockingModeRegister_DCR & 3)==0)) //Tseng 8-bit color special mode set?
 		{
 			doublepixels <<= 1; //Double the pixels being plotted during active display!
 		}
+		*/
 	}
-	doublepixels >>= issplittingpixels; //Halve when using a split-pixel method!
 	if (VGA->precalcs.effectiveDACmode & 8) //Actually 3 times bigger?
 	{
 		doublepixels += (doublepixels << 1); //Times 3!
