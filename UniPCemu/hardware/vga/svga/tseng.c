@@ -913,6 +913,11 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 		#ifdef LOG_UNHANDLED_SVGA_ACCESSES
 		handled = 1;
 		#endif
+		et34k_reg(et34kdata,3c4,07) |= 0x04; //Always set!
+		if (VGA->enable_SVGA==1) //ET4000?
+		{
+			et34k_reg(et34kdata,3c4,07) |= 0x10; //ET4000 rev E always sets this bit!
+		}
 		et34k_tempreg = et34k_reg(et34kdata,3c4,07); //The TS Auxiliary mode to apply!
 		if (et34k_tempreg&0x1) //MCLK/4?
 		{
