@@ -498,7 +498,7 @@ void updateVGAAttributeController_Mode(VGA_Type *VGA)
 	else //VGA compatibility mode?
 	{
 		VGA->precalcs.planerenderer_16bitDAC = 0; //Don't apply the special plane rendering!
-		attrmode = attributecontroller_VGAmodes[VGA->precalcs.AttributeModeControlRegister_ColorEnable8Bit]; //Apply the current mode according to VGA registers!
+		attrmode = attributecontroller_VGAmodes[VGA->precalcs.AttributeModeControlRegister_ColorEnable8Bit&1]; //Apply the current mode according to VGA registers!
 	}
 	VGA_AttributeController_calcAttributes(VGA); //Recalculate the attributes!
 	updateSequencerPixelDivider(VGA, (SEQ_DATA*)(VGA->Sequencer)); //Update the pixel divider!
@@ -585,7 +585,18 @@ OPTINLINE void VGA_Sequencer_updateRow(VGA_Type *VGA, SEQ_DATA *Sequencer, byte 
 		shiftcount += Sequencer->scanline_bytepanning; //How much to shift in 9-pixel modes!
 	}
 
+	byte doublepixels;
+	if ((VGA->precalcs.AttributeModeControlRegister_ColorEnable8Bit & 2) && (VGA->precalcs.ClockingModeRegister_DCR & 2) == 2) //Special mode active?
+	{
+		doublepixels = 1; //Double pixels to shift!
+	}
+	else
+	{
+		doublepixels = 0; //No double pixels to shift!
+	}
+
 	//Process any horizontal pixel shift count!
+	retrydoublepixels:
 	if (VGA->precalcs.textmode) //Text mode?
 	{
 		for (x = 0;x < shiftcount;++x) //Process pixel shift count!
@@ -607,6 +618,11 @@ OPTINLINE void VGA_Sequencer_updateRow(VGA_Type *VGA, SEQ_DATA *Sequencer, byte 
 				//VGA_AttributeController(&currentattributeinfo, VGA); //Ignore the nibbled/not nibbled result!
 			}
 		}
+	}
+	if (doublepixels)
+	{
+		doublepixels = 0; //Handled!
+		goto retrydoublepixels; //Handle the double pixels!
 	}
 }
 
@@ -869,6 +885,7 @@ void VGA_ActiveDisplay_noblanking_VGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_At
 	}
 
 	doublepixels = (1 << (VGA->precalcs.ClockingModeRegister_DCR & 1)); /*<<attributeinfo->attributesize)*/ //Double the pixels(half horizontal clock) and multiply for each extra pixel clock taken?
+
 	//Only send one pixel to the display unless the dot clock is divided by 2! The dot clock input isn't the direct input of the MCLK but instead should use the output rate of the attribute controller instead(to double rendered pixels instead)!
 	if ((VGA->precalcs.effectiveDACmode & 8) == 0) //Normal mode?
 	{
@@ -876,8 +893,9 @@ void VGA_ActiveDisplay_noblanking_VGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_At
 		{
 			//doublepixels <<= (2>>attributeinfo->attributesize); //On top of the attribute doubling the clocks used, we (qua)druple it again for nibbles, double it for bytes and do nothing for words! 
 			doublepixels <<= 1; //Double the pixels being plotted during active display!
+			doublepixels <<= VGA->precalcs.MemoryClockDivide; //MCLK/[1/2/4] causes the output given to increase due to lower speed of the memory clock!
 		}
-		else if ((VGA->precalcs.AttributeModeControlRegister_ColorEnable8Bit == 1) && ((VGA->enable_SVGA >= 1) && (VGA->enable_SVGA <= 2)) && ((VGA->precalcs.ClockingModeRegister_DCR & 2)==0)) //Tseng 8-bit color special mode set?
+		else if ((VGA->precalcs.AttributeModeControlRegister_ColorEnable8Bit == 1) && ((VGA->enable_SVGA >= 1) && (VGA->enable_SVGA <= 2)) && ((VGA->precalcs.ClockingModeRegister_DCR & 3)==0)) //Tseng 8-bit color special mode set?
 		{
 			doublepixels <<= 1; //Double the pixels being plotted during active display!
 		}
@@ -1042,11 +1060,16 @@ VGA_Sequencer_Mode overscan_blank_handler = NULL;
 void VGA_ActiveDisplay_Text(SEQ_DATA *Sequencer, VGA_Type *VGA)
 {
 	//Render our active display here!
+	retryTimingText: //For linear mode!
 	if (VGA_ActiveDisplay_timing(Sequencer, VGA)) //Execute our timings!
 	{
 		VGA_Sequencer_TextMode(VGA,Sequencer,&currentattributeinfo); //Get the color to render!
 		if (VGA_AttributeController(&currentattributeinfo,VGA))
 		{
+			if ((VGA->precalcs.AttributeModeControlRegister_ColorEnable8Bit & 2) && (VGA->precalcs.ClockingModeRegister_DCR & 2) == 2) //Special mode active?
+			{
+				goto retryTimingText; //Retry text timing!
+			}
 			return; //Nibbled!
 		}
 	}
@@ -1059,12 +1082,17 @@ void VGA_ActiveDisplay_Text_blanking(SEQ_DATA *Sequencer, VGA_Type *VGA)
 {
 	Sequencer->DACcounter = 0; //Reset the DAC counter: the DAC starts scanning again after blanking ends!
 	//Render our active display here!
+	retryTimingTextBlanking: //For linear mode!
 	if (VGA_ActiveDisplay_timing(Sequencer, VGA)) //Execute our timings!
 	{
 		VGA_Sequencer_TextMode(VGA, Sequencer, &currentattributeinfo); //Get the color to render!
 		if (VGA_AttributeController(&currentattributeinfo, VGA))
 		{
 			Sequencer->DACcounter = 0; //Reset the DAC counter: the DAC starts scanning again after blanking ends!
+			if ((VGA->precalcs.AttributeModeControlRegister_ColorEnable8Bit & 2) && (VGA->precalcs.ClockingModeRegister_DCR & 2) == 2) //Special mode active?
+			{
+				goto retryTimingTextBlanking; //Retry text timing!
+			}
 			return; //Nibbled!
 		}
 		Sequencer->DACcounter = 0; //Reset the DAC counter: the DAC starts scanning again after blanking ends!
@@ -1079,11 +1107,16 @@ void VGA_ActiveDisplay_Text_blanking(SEQ_DATA *Sequencer, VGA_Type *VGA)
 void VGA_ActiveDisplay_Graphics(SEQ_DATA *Sequencer, VGA_Type *VGA)
 {
 	//Render our active display here!
+	retryTimingGraphics: //For linear mode!
 	if (VGA_ActiveDisplay_timing(Sequencer, VGA)) //Execute our timings!
 	{
 		VGA_Sequencer_GraphicsMode(VGA, Sequencer, &currentattributeinfo); //Get the color to render!
 		if (VGA_AttributeController(&currentattributeinfo, VGA))
 		{
+			if ((VGA->precalcs.AttributeModeControlRegister_ColorEnable8Bit & 2) && (VGA->precalcs.ClockingModeRegister_DCR & 2) == 2) //Special mode active?
+			{
+				goto retryTimingGraphics; //Retry text timing!
+			}
 			return; //Nibbled!
 		}
 	}
@@ -1095,12 +1128,17 @@ void VGA_ActiveDisplay_Graphics(SEQ_DATA *Sequencer, VGA_Type *VGA)
 void VGA_ActiveDisplay_Graphics_blanking(SEQ_DATA *Sequencer, VGA_Type *VGA)
 {
 	//Render our active display here! Start with text mode!		
+	retryTimingGraphicsBlanking: //For linear mode!
 	if (VGA_ActiveDisplay_timing(Sequencer,VGA)) //Execute our timings!
 	{
 		VGA_Sequencer_GraphicsMode(VGA, Sequencer, &currentattributeinfo); //Get the color to render!
 		if (VGA_AttributeController(&currentattributeinfo, VGA))
 		{
 			Sequencer->DACcounter = 0; //Reset the DAC counter: the DAC starts scanning again after blanking ends!
+			if ((VGA->precalcs.AttributeModeControlRegister_ColorEnable8Bit & 2) && (VGA->precalcs.ClockingModeRegister_DCR & 2) == 2) //Special mode active?
+			{
+				goto retryTimingGraphicsBlanking; //Retry text timing!
+			}
 			return; //Nibbled!
 		}
 	}

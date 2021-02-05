@@ -914,11 +914,7 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 		handled = 1;
 		#endif
 		et34k_tempreg = et34k_reg(et34kdata,3c4,07); //The TS Auxiliary mode to apply!
-		if (et34k_tempreg&0x80) //VGA-compatible settings?
-		{
-			goto VGAcompatibleMCLK;
-		}
-		else if (et34k_tempreg&0x1) //MCLK/4?
+		if (et34k_tempreg&0x1) //MCLK/4?
 		{
 			VGA->precalcs.MemoryClockDivide = 2; //Divide by 4!
 		}
@@ -928,9 +924,13 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 		}
 		else //Normal 1:1 MCLK!
 		{
-			VGAcompatibleMCLK: //VGA compatible MCLK!
 			VGA->precalcs.MemoryClockDivide = 0; //Do not divide!
 		}
+		/*
+		if (et34k_tempreg & 0x80) //VGA-compatible settings instead of EGA-compatible settings?
+		{
+			goto VGAcompatibleMCLK;
+		}*/
 		VGAROM_mapping = ((et34k_tempreg&8)>>2)|((et34k_tempreg&0x20)>>5); //Bit 3 is the high bit, Bit 5 is the low bit!
 	}
 
@@ -1493,7 +1493,7 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 
 		if ((VGA->precalcs.linearmode & 0x10) || GETBITS(VGA->registers->AttributeControllerRegisters.REGISTERS.ATTRIBUTEMODECONTROLREGISTER, 6, 1)) //8-bit rendering has been enabled either through the Attribute Controller or mode set?
 		{
-			VGA->precalcs.AttributeModeControlRegister_ColorEnable8Bit = 1; //Enable 8-bit graphics!
+			VGA->precalcs.AttributeModeControlRegister_ColorEnable8Bit = (VGA->precalcs.linearmode & 0x10)?3:1; //Enable 8-bit graphics!
 			updateVGAAttributeController_Mode(VGA); //Update the attribute controller!
 		}
 		else

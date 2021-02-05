@@ -86,10 +86,10 @@ void VGA_calcprecalcs_CRTC(void *useVGA) //Precalculate CRTC precalcs!
 		theshift = 1; //Handle normally? VGA-compatible!
 		break;
 	case 3:
-		theshift = 1; //Handle normally? VGA-compatible!
+		theshift = 1; //Handle normally? VGA-incompatible!
 		break;
 	case 2: //Special mode?
-		theshift = 1; //When extensions are enabled!
+		theshift = 0; //Handle normally? VGA-comaptible!
 		break;
 	}
 	for (;current<NUMITEMS(VGA->CRTC.colstatus);)
