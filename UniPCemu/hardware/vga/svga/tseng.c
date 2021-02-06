@@ -248,6 +248,7 @@ byte Tseng34K_writeIO(word port, byte val)
 		et34k_updateDAC(et34kdata,val); //Update the DAC values to be compatible!
 		if (et34kdata->emulatedDAC == 2) //AT&T 20C490?
 		{
+			//WhatVGA says this about the UMC70C178 as well, but the identification routine of the AT&T 20C490 would identify it as a AT&T 20C491/20C492 instead, so it should actually be like a Sierra SC11487 instead.
 			et34kdata->hicolorDACcmdmode = 0; //Disable command mode!
 		}
 		VGA_calcprecalcs(getActiveVGA(),WHEREUPDATED_DACMASKREGISTER); //We've been updated!
