@@ -125,7 +125,8 @@ void et34k_updateDAC(SVGA_ET34K_DATA* et34kdata, byte val)
 		{
 			et34kdata->hicolorDACcommand &= ~1; //Clear!
 		}
-		et34kdata->hicolorDACcommand &= ~0x18; //Ignore the shared bits for the result!
+		et34kdata->hicolorDACcommand &= ~0x18; //Ignore the shared bits for the result, since they're in the DAC mask register! ...
+		//... They are read-only(proven by the WhatVGA not supposed to be able to bleed this bit to the DAC mask register!
 	}
 	else if (et34kdata->emulatedDAC == 2) //AT&T 20C490?
 	{
@@ -136,7 +137,6 @@ void et34k_updateDAC(SVGA_ET34K_DATA* et34kdata, byte val)
 		//All other settings are valid!
 	}
 	//et34kdata->hicolorDACcommand |= 6; //Always set bits 1-2?
-	//getActiveVGA()->registers->DACMaskRegister = (getActiveVGA()->registers->DACMaskRegister&~0x18)|(et34kdata->hicolorDACcommand&0x18);
 }
 
 byte Tseng34K_writeIO(word port, byte val)
@@ -246,7 +246,10 @@ byte Tseng34K_writeIO(word port, byte val)
 		}
 		//16-bit DAC operations!
 		et34k_updateDAC(et34kdata,val); //Update the DAC values to be compatible!
-		et34kdata->hicolorDACcmdmode = 0; //Disable command mode!
+		if (et34kdata->emulatedDAC == 2) //AT&T 20C490?
+		{
+			et34kdata->hicolorDACcmdmode = 0; //Disable command mode!
+		}
 		VGA_calcprecalcs(getActiveVGA(),WHEREUPDATED_DACMASKREGISTER); //We've been updated!
 		//et34kdata->hicolorDACcmdmode = 0; //A write to any address will reset the flag that is set when the pixel read mask register is read four times.
 		return 1; //We're overridden!
