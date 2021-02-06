@@ -250,7 +250,7 @@ byte Tseng34K_writeIO(word port, byte val)
 		}
 		//16-bit DAC operations!
 		et34k_updateDAC(et34kdata,val); //Update the DAC values to be compatible!
-		if (et34kdata->emulatedDAC==0) //SC11487?
+		if (et34kdata->emulatedDAC!=2) //SC11487 or UMC UM70C178?
 		{
 			et34kdata->hicolorDACcmdmode = 0; //Disable command mode!
 		}
@@ -1381,7 +1381,7 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 		et34k_tempreg = et34k(VGA)->hicolorDACcommand; //Load the command to process! (Process like a SC11487)
 		DACmode = VGA->precalcs.DACmode; //Load the current DAC mode!
 		DACmode &= ~8; //Legacy DAC modes?
-		if (et34k(VGA)->emulatedDAC!=2) //UMC 70C178 or SC11487?`
+		if (et34k(VGA)->emulatedDAC!=2) //UMC UM70C178 or SC11487?
 		{
 			if (VGA->precalcs.AttributeController_16bitDAC == 3) //In 16-bit mode? Raise the DAC's HICOL input, thus making it 16-bit too!
 			{
