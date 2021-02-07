@@ -99,10 +99,12 @@ typedef uint_32(*BWconversion_handler)(uint_32 color); //A B/W conversion handle
 #define LUMINANCE_BFACTOR 0.0722
 #endif
 
+byte RGBAconversion_ready = 0;
+byte RGBA_channel[0x20000]; //What to use for red/green/blue for mode and depth(24/32-bit)!
 
 word BWconversion_ready = 0; //Are we to initialise our tables?
 byte DAC_luminancemethod = 1; //What B/W luminance method?
-byte Luminance_R[0x100]; //What to add to white!
+byte Luminance_R[0x100]; //What to add to red!
 byte Luminance_G[0x100]; //What to add to green!
 byte Luminance_B[0x100]; //What to add to blue!
 uint_32 BWconversion_white[0x10000]; //Conversion table for b/w totals(white)!
@@ -132,6 +134,25 @@ byte DAC_BWColor(byte use) //What B/W color to use?
 		}
 	}
 	return DAC_whatBWColor;
+}
+
+void VGA_initRGBAconversion()
+{
+	if (RGBAconversion_ready) return; //Abort when already ready!
+	RGBAconversion_ready = 1; //We're ready after this!
+	const float channelfactor = ((float)1.0f / (float)255); //Red/green/blue part normalized!
+	INLINEREGISTER byte a,b; //8/1(c)-bit!
+	INLINEREGISTER uint_32 n; //32-bit!
+	for (n=0;n<0x20000;n++) //Process all possible values!
+	{
+		a = n & 0xFF; //Input and output!
+		b = (n>>8) & 0xFF; //Input alpha!
+		if ((n>>16)&1); //Input 32-bit?
+		{
+			a = (byte)(((float)b)*channelfactor*((float)a)); //Output!
+		}
+		RGBA_channel[n] = a; //Luminance for said channel in said luminance and transparency!
+	}
 }
 
 void VGA_initBWConversion()
@@ -205,8 +226,15 @@ uint_32 leavecoloralone(uint_32 color) //Leave color values alone!
 
 BWconversion_handler currentcolorconversion = &leavecoloralone; //Color to B/W handler!
 
-uint_32 GA_color2bw(uint_32 color) //Convert color values to b/w values!
+uint_32 GA_color2bw(uint_32 color, byte is32bit) //Convert color values to b/w values!
 {
+	uint_32 afactor;
+	afactor = ((GETA(color)|((is32bit&1)<<8))<<8); //A channel and if 32-bit or 24-bit!
+	color = RGB(
+							RGBA_channel[GETR(color)|afactor],
+							RGBA_channel[GETG(color)|afactor],
+							RGBA_channel[GETB(color)|afactor]
+							); //Translate to RGB from RGBA/RGB if needed!
 	return currentcolorconversion(color);
 }
 
@@ -245,7 +273,7 @@ byte DAC_Use_BWluminance(byte use)
 
 void DAC_updateEntry(VGA_Type *VGA, byte entry) //Update a DAC entry for rendering!
 {
-	VGA->precalcs.effectiveDAC[entry] = GA_color2bw(VGA->precalcs.DAC[entry]); //Set the B/W or color entry!
+	VGA->precalcs.effectiveDAC[entry] = GA_color2bw(VGA->precalcs.DAC[entry],0); //Set the B/W or color entry!
 }
 
 void DAC_updateEntries(VGA_Type *VGA)
@@ -254,6 +282,6 @@ void DAC_updateEntries(VGA_Type *VGA)
 	for (i=0;i<0x100;i++) //Process all entries!
 	{
 		DAC_updateEntry(VGA,i); //Update this entry with current values!
-		VGA->precalcs.effectiveMDADAC[i] = GA_color2bw(RGB(i,i,i)); //Update the MDA DAC!
+		VGA->precalcs.effectiveMDADAC[i] = GA_color2bw(RGB(i,i,i),0); //Update the MDA DAC!
 	}
 }

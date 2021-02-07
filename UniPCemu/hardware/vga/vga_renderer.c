@@ -226,7 +226,7 @@ OPTINLINE void drawCGALine(VGA_Type *VGA) //Draw the current CGA line to display
 		drawx = 0; //Start index to draw at!
 		for (;;) //Render all pixels!
 		{
-			drawPixel_real(GA_color2bw(*bufferpos),drawx,VGA->CRTC.y); //Render the converted CGA output signal!
+			drawPixel_real(GA_color2bw(*bufferpos,0),drawx,VGA->CRTC.y); //Render the converted CGA output signal!
 			if (unlikely(++bufferpos==finalpos)) break; //Stop processing when finished!
 			++drawx; //Next line index!
 		}
@@ -466,7 +466,7 @@ void updateSequencerPixelDivider(VGA_Type* VGA, SEQ_DATA* Sequencer)
 {
 	byte val;
 	val = 1; //Default: don't divide!
-	if ((VGA->precalcs.effectiveDACmode&8)==0) //Adjusted?
+	if ((VGA->precalcs.effectiveDACmode&0x18)==0) //Adjusted?
 	{
 		/*
 		if (VGA->precalcs.effectiveDACmode & 4) //Doubling enabled?
@@ -481,9 +481,9 @@ void updateSequencerPixelDivider(VGA_Type* VGA, SEQ_DATA* Sequencer)
 		/
 		*/
 	}
-	else //24BPP mode?
+	else //24BPP/32BPP mode?
 	{
-		val = 3; //3 clocks per pixel!
+		val = 3+(((VGA->precalcs.effectiveDACmode & 0x10)>>4)); //3 clocks per pixel!
 	}
 	Sequencer->pixelclockdivider = val; //Latch this many clocks before processing it!
 }
@@ -833,7 +833,7 @@ void VGA_ActiveDisplay_noblanking_VGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_At
 	if ((VGA->precalcs.effectiveDACmode&4)==4) //Not latching in 1 raising&lowering(by the attribute controller) clock(Not mode 2, but mode 1)?
 	{
 		//Latch a 8-bit pixel?
-		if ((VGA->precalcs.effectiveDACmode & 8) == 0) //Normal mode?
+		if ((VGA->precalcs.effectiveDACmode & 0x18) == 0) //Normal mode?
 		{
 			Sequencer->lastDACcolor >>= (4<<attributeinfo->attributesize); //Latching 4/8/16 bits, whether used or not!
 			Sequencer->lastDACcolor |= ((attributeinfo->attribute)<< ((8 << (VGA->precalcs.effectiveDACmode & 2) >> 1) - (4 << attributeinfo->attributesize))); //Latching this attribute! Low byte is latched first!
@@ -843,12 +843,12 @@ void VGA_ActiveDisplay_noblanking_VGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_At
 				return; //Skip this data: we only latch every two pixels!
 			}
 		}
-		else //24BPP mode?
+		else //24BPP/32BPP mode?
 		{
 			Sequencer->lastDACcolor >>= 8; //Latching 8 bits, whether used or not!
-			Sequencer->lastDACcolor |= ((attributeinfo->attribute)<<16); //Latching this attribute! Low byte is latched first!
+			Sequencer->lastDACcolor |= ((attributeinfo->attribute)<<(((VGA->precalcs.effectiveDACmode & 0x8)<<1)|((VGA->precalcs.effectiveDACmode & 0x10)>>1))); //Latching this attribute to 24 or 32 bits! Low byte is latched first!
 
-			if ((++Sequencer->DACcounter)<3) //To latch and not process yet? This is the least significant byte/bits of the counter!
+			if ((++Sequencer->DACcounter)<(3+((VGA->precalcs.effectiveDACmode & 0x10)>>4))) //To latch and not process yet? This is the least significant byte/bits of the counter!
 			{
 				return; //Skip this data: we only latch every two pixels!
 			}
@@ -872,7 +872,7 @@ void VGA_ActiveDisplay_noblanking_VGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_At
 	doublepixels = (1 << (VGA->precalcs.ClockingModeRegister_DCR & 1)); /*<<attributeinfo->attributesize)*/ //Double the pixels(half horizontal clock) and multiply for each extra pixel clock taken?
 
 	//Only send one pixel to the display unless the dot clock is divided by 2! The dot clock input isn't the direct input of the MCLK but instead should use the output rate of the attribute controller instead(to double rendered pixels instead)!
-	if ((VGA->precalcs.effectiveDACmode & 8) == 0) //Normal mode?
+	if ((VGA->precalcs.effectiveDACmode & 0x18) == 0) //Normal mode?
 	{
 		if ((VGA->precalcs.AttributeModeControlRegister_ColorEnable8Bit == 1) && ((VGA->enable_SVGA >= 1) && (VGA->enable_SVGA <= 2))) //ET4000 divide by 2 fix?
 		{
@@ -894,7 +894,11 @@ void VGA_ActiveDisplay_noblanking_VGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_At
 		}
 		*/
 	}
-	if (VGA->precalcs.effectiveDACmode & 8) //Actually 3 times bigger?
+	if (VGA->precalcs.effectiveDACmode & 0x10) //Actually 4 times bigger?
+	{
+		doublepixels <<= 2; //Times 4!
+	}
+	else if (VGA->precalcs.effectiveDACmode & 8) //Actually 3 times bigger?
 	{
 		doublepixels += (doublepixels << 1); //Times 3!
 	}
@@ -903,17 +907,21 @@ void VGA_ActiveDisplay_noblanking_VGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_At
 	if (VGA->precalcs.effectiveDACmode&2) //16-bit/24-bit color?
 	{
 		//Now draw in the selected color depth!
-		if (VGA->precalcs.effectiveDACmode&8) //24-bit color?
+		if (VGA->precalcs.effectiveDACmode&0x10) //32-bit color?
 		{
-			DACcolor = GA_color2bw(RGB(((Sequencer->lastDACcolor>>16)&0xFF),((Sequencer->lastDACcolor>>8)&0xFF),(Sequencer->lastDACcolor&0xFF))); //Draw the 24BPP color pixel!
+			DACcolor = GA_color2bw(RGBA(((Sequencer->lastDACcolor>>24)&0xFF),((Sequencer->lastDACcolor>>16)&0xFF),((Sequencer->lastDACcolor>>8)&0xFF),((Sequencer->lastDACcolor)&0xFF)),0); //Draw the 24BPP color pixel!
+		}
+		else if (VGA->precalcs.effectiveDACmode&8) //24-bit color?
+		{
+			DACcolor = GA_color2bw(RGB(((Sequencer->lastDACcolor>>16)&0xFF),((Sequencer->lastDACcolor>>8)&0xFF),(Sequencer->lastDACcolor&0xFF)),0); //Draw the 24BPP color pixel!
 		}
 		else if (VGA->precalcs.effectiveDACmode&1) //16-bit color?
 		{
-			DACcolor = GA_color2bw(CLUT16bit[(Sequencer->lastDACcolor&0xFFFF)]); //Draw the 16-bit color pixel!
+			DACcolor = GA_color2bw(CLUT16bit[(Sequencer->lastDACcolor&0xFFFF)],0); //Draw the 16-bit color pixel!
 		}
 		else //15-bit color?
 		{
-			DACcolor = GA_color2bw(CLUT15bit[(Sequencer->lastDACcolor&0xFFFF)]); //Draw the 15-bit color pixel!
+			DACcolor = GA_color2bw(CLUT15bit[(Sequencer->lastDACcolor&0xFFFF)],0); //Draw the 15-bit color pixel!
 		}
 	}
 	else //VGA compatibility mode? 8-bit color!
@@ -1038,7 +1046,7 @@ void updateVGASequencer_Mode(VGA_Type *VGA)
 void updateVGADAC_Mode(VGA_Type* VGA)
 {
 	VGA->precalcs.effectiveDACmode = VGA->precalcs.DACmode; //Use the selected DAC mode!
-	if (unlikely((VGA->precalcs.graphicsmode == 0) && (VGA->precalcs.effectiveDACmode & 0x7))) //Not in graphics mode? Force 8-bit DAC compatiblity mode!
+	if (unlikely((VGA->precalcs.graphicsmode == 0) && (VGA->precalcs.effectiveDACmode & 0x1F))) //Not in graphics mode? Force 8-bit DAC compatiblity mode!
 	{
 		VGA->precalcs.effectiveDACmode = 0; //Force VGA-compatible text mode!
 	}
