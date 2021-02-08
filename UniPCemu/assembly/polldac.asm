@@ -33,7 +33,7 @@ shr dx,4 ; High 4 bits first!
 and dx,0xf ; 4 bits only!
 call near printhex04
 pop dx
-and dx,4 ; Low 4 bits last!
+and dx,0xf ; Low 4 bits last!
 call near printhex04
 pop dx
 ret
