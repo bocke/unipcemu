@@ -147,7 +147,7 @@ void VGA_initRGBAconversion()
 	{
 		a = n & 0xFF; //Input and output!
 		b = (n>>8) & 0xFF; //Input alpha!
-		if ((n>>16)&1); //Input 32-bit?
+		if (((n>>16)&1)!=0) //Input 32-bit?
 		{
 			a = (byte)(((float)b)*channelfactor*((float)a)); //Output!
 		}
