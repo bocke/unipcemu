@@ -5,10 +5,11 @@ BITS 16
 start:
 	; Start of the program!
 push ax ; Original save
+push bx ; Original save
 mov ax,10f1h
 int 10h
 push dx ;Original save
-mov dx,ax ; What number to print to stdout! The result code!
+mov dx,bx ; What number to print to stdout! The result code!
 and dx,0xff ; Only the lower 8 bits are used!
 call near printhex08
 mov dx,13
@@ -16,6 +17,7 @@ call near printchar ;CR
 mov dx,10
 call near printchar ;LF
 pop dx
+pop bx
 pop ax
 mov ax,0x4c00
 int 21h
