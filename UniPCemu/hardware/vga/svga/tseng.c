@@ -640,7 +640,7 @@ byte Tseng34K_readIO(word port, byte *result)
 			*result = et34kdata->hicolorDACcommand;
 			if (et34kdata->emulatedDAC == 0) //SC11487?
 			{
-				*result &= (getActiveVGA()->registers->DACMaskRegister|0xE7); //Mask in the shared bits only!
+				*result &= (getActiveVGA()->registers->DACMaskRegister|0xE1); //Mask in the shared bits only!
 			}
 			if (et34kdata->emulatedDAC==2) //AT&T 20C490?
 			{
