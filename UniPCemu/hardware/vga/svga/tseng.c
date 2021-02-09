@@ -118,14 +118,7 @@ void et34k_updateDAC(SVGA_ET34K_DATA* et34kdata, byte val)
 	if (et34kdata->emulatedDAC == 0) //SC11487?
 	{
 		//It appears that bit 0 is a flag that sets when 16-bit mode isn't selected and 2 pixel clocks per pel are selected, which is an invalid setting.
-		if (((val & 0xE0) == 0x20) || ((val & 0xE0) == 0x60)) //Set bit 0?
-		{
-			et34kdata->hicolorDACcommand |= 1; //Set!
-		}
-		else //Clear bit 0?
-		{
-			et34kdata->hicolorDACcommand &= ~1; //Clear!
-		}
+		et34kdata->hicolorDACcommand = (et34kdata->hicolorDACcommand&~1)|(((val&0xA0)==0x20)&1); //Top 3 bits has bit 7 not set while bit 5 set?
 		//All other bits are fully writable!
 		//... They are read-only(proven by the WhatVGA not supposed to be able to bleed bit 4 to the DAC mask register at least!
 	}
