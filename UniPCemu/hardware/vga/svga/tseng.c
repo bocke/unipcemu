@@ -126,8 +126,8 @@ void et34k_updateDAC(SVGA_ET34K_DATA* et34kdata, byte val)
 		{
 			et34kdata->hicolorDACcommand &= ~1; //Clear!
 		}
-		//All other bits are fully writable!
-		//... They are read-only(proven by the WhatVGA not supposed to be able to bleed bit 4 to the DAC mask register at least!
+		et34kdata->hicolorDACcommand &= ~0x18; //Ignore the shared bits for the result, since they're in the DAC mask register! ...
+		//... They are read-only(proven by the WhatVGA not supposed to be able to bleed this bit to the DAC mask register!
 	}
 	else if (et34kdata->emulatedDAC == 2) //AT&T 20C490?
 	{
@@ -640,7 +640,7 @@ byte Tseng34K_readIO(word port, byte *result)
 			*result = et34kdata->hicolorDACcommand;
 			if (et34kdata->emulatedDAC == 0) //SC11487?
 			{
-				*result &= (getActiveVGA()->registers->DACMaskRegister|0xE7); //Mask in the shared bits only!
+				*result |= (getActiveVGA()->registers->DACMaskRegister & 0x18); //Add in the shared bits!
 			}
 			if (et34kdata->emulatedDAC==2) //AT&T 20C490?
 			{
