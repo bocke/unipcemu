@@ -117,6 +117,7 @@ void et34k_updateDAC(SVGA_ET34K_DATA* et34kdata, byte val)
 	//All generic handling of the ET3K/ET4K Hi-color DAC!
 	if (et34kdata->emulatedDAC == 0) //SC11487?
 	{
+		//It appears that bit 0 is a flag that sets when 16-bit mode isn't selected and 2 pixel clocks per pel are selected, which is an invalid setting.
 		if (((val & 0xE0) == 0x20) || ((val & 0xE0) == 0x60)) //Set bit 0?
 		{
 			et34kdata->hicolorDACcommand |= 1; //Set!
@@ -125,8 +126,8 @@ void et34k_updateDAC(SVGA_ET34K_DATA* et34kdata, byte val)
 		{
 			et34kdata->hicolorDACcommand &= ~1; //Clear!
 		}
-		et34kdata->hicolorDACcommand &= ~0x18; //Ignore the shared bits for the result, since they're in the DAC mask register! ...
-		//... They are read-only(proven by the WhatVGA not supposed to be able to bleed this bit to the DAC mask register!
+		//All other bits are fully writable!
+		//... They are read-only(proven by the WhatVGA not supposed to be able to bleed bit 4 to the DAC mask register at least!
 	}
 	else if (et34kdata->emulatedDAC == 2) //AT&T 20C490?
 	{
@@ -246,7 +247,7 @@ byte Tseng34K_writeIO(word port, byte val)
 		}
 		//16-bit DAC operations!
 		et34k_updateDAC(et34kdata,val); //Update the DAC values to be compatible!
-		if (et34kdata->emulatedDAC == 2) //AT&T 20C490?
+		//if (et34kdata->emulatedDAC == 2) //AT&T 20C490?
 		{
 			//WhatVGA says this about the UMC70C178 as well, but the identification routine of the AT&T 20C490 would identify it as a AT&T 20C491/20C492 instead, so it should actually be like a Sierra SC11487 instead.
 			et34kdata->hicolorDACcmdmode = 0; //Disable command mode!
@@ -639,7 +640,7 @@ byte Tseng34K_readIO(word port, byte *result)
 			*result = et34kdata->hicolorDACcommand;
 			if (et34kdata->emulatedDAC == 0) //SC11487?
 			{
-				*result |= (getActiveVGA()->registers->DACMaskRegister & 0x18); //Add in the shared bits!
+				*result &= (getActiveVGA()->registers->DACMaskRegister|0xEF); //Mask in the shared bits only!
 			}
 			if (et34kdata->emulatedDAC==2) //AT&T 20C490?
 			{
