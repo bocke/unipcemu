@@ -4359,7 +4359,7 @@ void BIOS_SVGA_DACMode()
 	GPU_EMU_printscreen(0, 4, "SVGA DAC Mode: "); //Show selection init!
 	EMU_unlocktext();
 	int i = 0; //Counter!
-	numlist = 3; //Amount of Execution modes!
+	numlist = 4; //Amount of Execution modes!
 	for (i = 0; i < numlist; i++) //Process options!
 	{
 		cleardata(&itemlist[i][0], sizeof(itemlist[i])); //Reset!
