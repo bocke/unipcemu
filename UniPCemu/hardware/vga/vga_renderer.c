@@ -916,39 +916,21 @@ void VGA_ActiveDisplay_noblanking_VGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_At
 		//Now draw in the selected color depth!
 		if (VGA->precalcs.effectiveDACmode&0x10) //32-bit color?
 		{
-			if (VGA->precalcs.effectiveDACmode & 0x20) //BGR mode instead of RGB mode?
+			if (VGA->precalcs.effectiveDACmode & 0x20) //RGB mode instead of BGR mode?
 			{
 				Sequencer->lastDACcolor = (((Sequencer->lastDACcolor >> 16) & 0xFF) | (Sequencer->lastDACcolor&0xFF00)) | ((Sequencer->lastDACcolor & 0xFF) << 16); //Convert RGB to BGR!
 			}
 			Sequencer->lastDACcolor &= getActiveVGA()->precalcs.SC15025_pixelmaskregister; //Apply the pixel mask!
 			DACcolor = RGBA(((Sequencer->lastDACcolor>>24)&0xFF),((Sequencer->lastDACcolor>>16)&0xFF),((Sequencer->lastDACcolor>>8)&0xFF),((Sequencer->lastDACcolor)&0xFF)); //Draw the 24BPP color pixel!
-			if (VGA->precalcs.DACmode & 0x40) //LUT enabled?
-			{
-				DACcolor = RGB(
-					GETR(getrawVGADACentry(GETR(DACcolor))), //Red channel!
-					GETG(getrawVGADACentry(GETG(DACcolor))), //Green channel!
-					GETB(getrawVGADACentry(GETB(DACcolor))) //Blue channel!
-				); //Translate through DAC!
-			}
-			DACcolor = GA_color2bw(DACcolor,0); //Apply the finished color!
 		}
 		else if (VGA->precalcs.effectiveDACmode&8) //24-bit color?
 		{
-			if (VGA->precalcs.effectiveDACmode & 0x20) //BGR mode instead of RGB mode?
+			if (VGA->precalcs.effectiveDACmode & 0x20) //RGB mode instead of BGR mode?
 			{
 				Sequencer->lastDACcolor = (((Sequencer->lastDACcolor >> 16) & 0xFF) | (Sequencer->lastDACcolor & 0xFF00)) | ((Sequencer->lastDACcolor & 0xFF) << 16); //Convert RGB to BGR!
 			}
 			Sequencer->lastDACcolor &= getActiveVGA()->precalcs.SC15025_pixelmaskregister; //Apply the pixel mask!
 			DACcolor = RGB(((Sequencer->lastDACcolor>>16)&0xFF),((Sequencer->lastDACcolor>>8)&0xFF),(Sequencer->lastDACcolor&0xFF)); //Draw the 24BPP color pixel!
-			if (VGA->precalcs.DACmode & 0x40) //LUT enabled?
-			{
-				DACcolor = RGB(
-					GETR(getrawVGADACentry(GETR(DACcolor))), //Red channel!
-					GETG(getrawVGADACentry(GETG(DACcolor))), //Green channel!
-					GETB(getrawVGADACentry(GETB(DACcolor))) //Blue channel!
-				); //Translate through DAC!
-			}
-			DACcolor = GA_color2bw(DACcolor,0); //Apply the finished color!
 		}
 		else if (VGA->precalcs.effectiveDACmode&1) //16-bit color?
 		{
@@ -962,15 +944,6 @@ void VGA_ActiveDisplay_noblanking_VGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_At
 					((GETB(DACcolor) >> 2) | ((VGA->precalcs.effectiveDACmode >> 1) & 0xC0)) //Blue channel!
 					);
 			}
-			DACcolor = GA_color2bw(DACcolor,0); //Apply the finished color!
-			if (VGA->precalcs.DACmode & 0x40) //LUT enabled?
-			{
-				DACcolor = RGB(
-					GETR(getrawVGADACentry(GETR(DACcolor))), //Red channel!
-					GETG(getrawVGADACentry(GETG(DACcolor))), //Green channel!
-					GETB(getrawVGADACentry(GETB(DACcolor))) //Blue channel!
-				); //Translate through DAC!
-			}
 		}
 		else //15-bit color?
 		{
@@ -982,37 +955,36 @@ void VGA_ActiveDisplay_noblanking_VGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_At
 					((GETR(DACcolor) >> 2) | ((VGA->precalcs.effectiveDACmode >> 1) & 0xC0)), //Red channel!
 					((GETG(DACcolor) >> 2) | ((VGA->precalcs.effectiveDACmode >> 1) & 0xC0)), //Green channel!
 					((GETB(DACcolor) >> 2) | ((VGA->precalcs.effectiveDACmode >> 1) & 0xC0)) //Blue channel!
+				);
+				if (VGA->precalcs.effectiveDACmode & 0x20) //Extended mode instead of RGB mode?
+				{
+					DACcolor = RGB(
+						(GETR(DACcolor) | ((Sequencer->lastDACcolor >> 15) & 0x01)), //Red channel!
+						(GETG(DACcolor) | ((Sequencer->lastDACcolor >> 15) & 0x01)), //Green channel!
+						(GETB(DACcolor) | ((Sequencer->lastDACcolor >> 15) & 0x01)) //Blue channel!
+					);
+				}
+			}
+			else if (VGA->precalcs.effectiveDACmode & 0x20) //Extended mode instead of RGB mode?
+			{
+				//LUT is disabled!
+				DACcolor = RGB(
+					(GETR(DACcolor) | ((Sequencer->lastDACcolor >> 13) & 0x04)), //Red channel!
+					(GETG(DACcolor) | ((Sequencer->lastDACcolor >> 13) & 0x04)), //Green channel!
+					(GETB(DACcolor) | ((Sequencer->lastDACcolor >> 13) & 0x04)) //Blue channel!
 					);
 			}
-			if (VGA->precalcs.effectiveDACmode & 0x20) //Extended mode instead of RGB mode?
-			{
-				if (VGA->precalcs.DACmode & 0x40) //LUT enabled?
-				{
-					DACcolor = RGB(
-						((GETR(DACcolor) >> 2) | ((Sequencer->lastDACcolor >> 15) & 0x01)), //Red channel!
-						((GETG(DACcolor) >> 2) | ((Sequencer->lastDACcolor >> 15) & 0x01)), //Green channel!
-						((GETB(DACcolor) >> 2) | ((Sequencer->lastDACcolor >> 15) & 0x01)) //Blue channel!
-						);
-				}
-				else //LUT disabled?
-				{
-					DACcolor = RGB(
-						((GETR(DACcolor) >> 2) | ((Sequencer->lastDACcolor >> 13) & 0x04)), //Red channel!
-						((GETG(DACcolor) >> 2) | ((Sequencer->lastDACcolor >> 13) & 0x04)), //Green channel!
-						((GETB(DACcolor) >> 2) | ((Sequencer->lastDACcolor >> 13) & 0x04)) //Blue channel!
-						);
-				}
-			}
-			if (VGA->precalcs.DACmode & 0x40) //LUT enabled?
-			{
-				DACcolor = RGB(
-					GETR(getrawVGADACentry(GETR(DACcolor))), //Red channel!
-					GETG(getrawVGADACentry(GETG(DACcolor))), //Green channel!
-					GETB(getrawVGADACentry(GETB(DACcolor))) //Blue channel!
-					); //Translate through DAC!
-			}
-			DACcolor = GA_color2bw(DACcolor,0); //Apply the finished color!
 		}
+		//Final step in the translation to the on-screen color: LUT itself and final color conversion if required!
+		if (VGA->precalcs.DACmode & 0x40) //LUT enabled?
+		{
+			DACcolor = RGB(
+				GETR(getrawVGADACentry(GETR(DACcolor))), //Red channel!
+				GETG(getrawVGADACentry(GETG(DACcolor))), //Green channel!
+				GETB(getrawVGADACentry(GETB(DACcolor))) //Blue channel!
+			); //Translate through DAC!
+		}
+		DACcolor = GA_color2bw(DACcolor, 0); //Apply the finished color!
 	}
 	else //VGA compatibility mode? 8-bit color!
 	{

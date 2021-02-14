@@ -1560,6 +1560,15 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 		else if (et34k(VGA)->emulatedDAC == 3) //SC15025?
 		{
 			DACmode = 0; //Legacy VGA RAMDAC! Bit 5 is 32-bit color, otherwise 24-bit color! Bit 6 is translation mode enabled!
+			if (et34k(VGA)->SC15025_auxiliarycontrolregister&4) //Sleep mode? Undocumented!
+			{
+				VGA->precalcs.turnDACoff = 1; //Turn the DAC off!
+			}
+			else
+			{
+				VGA->precalcs.turnDACoff = 0; //Turn the DAC on!
+			}
+			//Bit 1 of the Auxiliary Control Register is PED 75 IRE? Unknown what this is?
 			VGA->precalcs.emulatedDACextrabits = 0xC0; //Become 8-bits DAC entries by default!
 			if ((et34k(VGA)->SC15025_pixelrepackregister & 1) == 0) //6-bit DAC?
 			{
@@ -1579,9 +1588,9 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 					DACmode |= 4; //Use multiple pixel clocks to latch the two bytes?
 					DACmode |= 8; //Use three pixel clocks to latch the three bytes?
 					DACmode |= 0x10; //Use four pixel clocks to latch the three bytes?
-					if (et34k_tempreg & 1) //BGR mode?
+					if ((et34k_tempreg & 1)==0) //RGB mode?
 					{
-						DACmode |= 0x20; //BGR mode is enabled!
+						DACmode |= 0x20; //RGB mode is enabled!
 					}
 					if (et34k_tempreg & 0x8) //D3 set? Enable LUT mode!
 					{
@@ -1598,9 +1607,9 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 					DACmode |= 4; //Use multiple pixel clocks to latch the two bytes?
 					DACmode |= 8; //Use three pixel clocks to latch the three bytes?
 					DACmode |= 0x10; //Use four pixel clocks to latch the three bytes instead!
-					if (et34k_tempreg & 1) //BGR mode?
+					if ((et34k_tempreg & 1)==0) //RGB mode?
 					{
-						DACmode |= 0x20; //BGR mode is enabled!
+						DACmode |= 0x20; //RGB mode is enabled!
 					}
 					if (et34k_tempreg & 0x8) //D3 set? Enable LUT mode!
 					{
