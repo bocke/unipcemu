@@ -4368,6 +4368,7 @@ void BIOS_SVGA_DACMode()
 	safestrcpy(itemlist[SVGA_DACMODE_SIERRA_SC11487], sizeof(itemlist[0]), "Sierra SC11487"); //Set filename from options!
 	safestrcpy(itemlist[SVGA_DACMODE_UMC_UM70C178], sizeof(itemlist[0]), "UMC UM70C178"); //Set filename from options!
 	safestrcpy(itemlist[SVGA_DACMODE_ATT_20C490], sizeof(itemlist[0]), "AT&T 20C490"); //Set filename from options!
+	safestrcpy(itemlist[SVGA_DACMODE_SIERRA_SC15025], sizeof(itemlist[0]), "Sierra SC15025"); //Set filename from options!
 	if (BIOS_Settings.SVGA_DACmode >= numlist) //Invalid?
 	{
 		BIOS_Settings.SVGA_DACmode = DEFAULT_SVGA_DACMODE; //Default!
@@ -4380,6 +4381,7 @@ void BIOS_SVGA_DACMode()
 	case SVGA_DACMODE_SIERRA_SC11487: //Sierra SC11487
 	case SVGA_DACMODE_UMC_UM70C178: //UMC UM70C178
 	case SVGA_DACMODE_ATT_20C490: //AT&T 20C490
+	case SVGA_DACMODE_SIERRA_SC15025: //Sierra SC15025
 		current = BIOS_Settings.SVGA_DACmode; //Valid: use!
 		break;
 	default: //Invalid
@@ -4403,6 +4405,7 @@ void BIOS_SVGA_DACMode()
 	case SVGA_DACMODE_SIERRA_SC11487: //Sierra SC11487
 	case SVGA_DACMODE_UMC_UM70C178: //UMC UM70C178
 	case SVGA_DACMODE_ATT_20C490: //AT&T 20C490
+	case SVGA_DACMODE_SIERRA_SC15025: //Sierra SC15025
 	default: //Changed?
 		if (file != current) //Not current?
 		{
@@ -5148,8 +5151,11 @@ setDACmodetext: //For fixing it!
 	case SVGA_DACMODE_ATT_20C490:
 		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "AT&T 20C490");
 		break;
+	case SVGA_DACMODE_SIERRA_SC15025:
+		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Sierra SC15025");
+		break;
 	default: //Error: fix it!
-		BIOS_Settings.bwmonitor_luminancemode = DEFAULT_SVGA_DACMODE; //Reset/Fix!
+		BIOS_Settings.SVGA_DACmode = DEFAULT_SVGA_DACMODE; //Reset/Fix!
 		BIOS_Changed = 1; //We've changed!
 		goto setDACmodetext; //Goto!
 		break;
