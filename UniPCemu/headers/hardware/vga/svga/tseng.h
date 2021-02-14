@@ -95,6 +95,14 @@ typedef struct {
 	byte ExtendedFeatureControlRegister; //Feature control extension(extra bits)!
 	byte useInterlacing; //Interlacing enabled?
 	byte emulatedDAC; //What kind of emulated DAC? 0=SC11487, 1=UMC UM70C178
+
+	//SC15025 DAC registers!
+	byte SC15025_extendedaddress; //Extended address register!
+	byte SC15025_auxiliarycontrolregister; //Auxiliary control register. Bit 0=8-bit DAC when set. 6-bit otherwise.
+	//ID registers are ROM!
+	byte SC15025_secondarypixelmaskregisters[3]; //Secondary pixel mask registers!
+	byte SC15025_pixelrepackregister; //bit 0=Enable 4-byte fetching in modes 2 and 3!
+	byte SC15025_enableExtendedRegisters; //Enable the extended registers at the color registers?
 } SVGA_ET34K_DATA; //Dosbox ET4000 saved data!
 
 //Retrieve a point to the et4k?

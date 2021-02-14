@@ -130,6 +130,7 @@ void et34k_updateDAC(SVGA_ET34K_DATA* et34kdata, byte val)
 		}
 		//All other settings are valid!
 	}
+	//SC15025 has all bits writable/readable!
 	//et34kdata->hicolorDACcommand |= 6; //Always set bits 1-2?
 }
 
@@ -240,7 +241,7 @@ byte Tseng34K_writeIO(word port, byte val)
 		}
 		//16-bit DAC operations!
 		et34k_updateDAC(et34kdata,val); //Update the DAC values to be compatible!
-		if (et34kdata->emulatedDAC == 2) //AT&T 20C490?
+		if ((et34kdata->emulatedDAC == 2) || (et34kdata->emulatedDAC == 3)) //AT&T 20C490 or Sierra SC15025? This reset of the IPF flag on the SC15025 happens on any write to any address or a read not from the DAC mask address.
 		{
 			//WhatVGA says this about the UMC70C178 as well, but the identification routine of the AT&T 20C490 would identify it as a AT&T 20C491/20C492 instead, so it should actually be like a Sierra SC11487 instead.
 			et34kdata->hicolorDACcmdmode = 0; //Disable command mode!
@@ -250,7 +251,49 @@ byte Tseng34K_writeIO(word port, byte val)
 		return 1; //We're overridden!
 		break;
 	case 0x3C7: //Write: DAC Address Read Mode Register	ADDRESS? Pallette RAM read address register in the manual.
+		if (et34kdata->SC15025_enableExtendedRegisters) //Extended registers?
+		{
+			//Extended index register!
+			et34kdata->SC15025_extendedaddress = val; //The selected address!
+			return 1; //We're overridden!
+		}
+		et34kdata->hicolorDACcmdmode = 0; //Disable command mode!
+		return 0; //Normal execution!
+		break;
 	case 0x3C8: //DAC Address Write Mode Register		ADDRESS? Pallette RAM write address register in the manual.
+		if (et34kdata->SC15025_enableExtendedRegisters) //Extended registers?
+		{
+			switch (et34kdata->SC15025_extendedaddress) //Extended data register?
+			{
+			case 0x08: //Auxiliary Control Register?
+				et34kdata->SC15025_auxiliarycontrolregister = val; //Auxiliary control register. Bit 0=8-bit DAC when set. 6-bit otherwise.
+				VGA_calcprecalcs(getActiveVGA(), WHEREUPDATED_DACMASKREGISTER); //We've been updated!
+				break;
+			case 0x09: //ID #1!
+			case 0x0A: //ID #2!
+			case 0x0B: //ID #3!
+			case 0x0C: //Version!
+				//ID registers are ROM!
+				break;
+			case 0x0D: //Secondary pixel mask, low byte!
+			case 0x0E: //Secondary pixel mask, mid byte!
+			case 0x0F: //Secondary pixel mask, high byte!
+				et34kdata->SC15025_secondarypixelmaskregisters[et34kdata->SC15025_extendedaddress-0x0D] = val; //Secondary pixel mask registers!
+				VGA_calcprecalcs(getActiveVGA(), WHEREUPDATED_DACMASKREGISTER); //We've been updated!
+				break;
+			case 0x10: //Pixel repack register!
+				et34kdata->SC15025_pixelrepackregister = val; //bit 0=Enable 4-byte fetching in modes 2 and 3!
+				VGA_calcprecalcs(getActiveVGA(), WHEREUPDATED_DACMASKREGISTER); //We've been updated!
+				break;
+			default:
+				//Undefined!
+				break;
+			}
+			return 1; //We're overridden!
+		}
+		et34kdata->hicolorDACcmdmode = 0; //Disable command mode!
+		return 0; //Normal execution!
+		break;
 	case 0x3C9: //DAC Data Register				DATA? Pallette RAM in the manual.
 		et34kdata->hicolorDACcmdmode = 0; //Disable command mode!
 		return 0; //Normal execution!
@@ -643,8 +686,51 @@ byte Tseng34K_readIO(word port, byte *result)
 		}
 		break;
 	case 0x3C7: //Write: DAC Address Read Mode Register	ADDRESS? Pallette RAM read address register in the manual.
+		et34kdata->hicolorDACcmdmode = 0; //Disable command mode!
+		return 0; //Execute normally!
+		break;
 	case 0x3C8: //DAC Address Write Mode Register		ADDRESS? Pallette RAM write address register in the manual.
+		if (et34kdata->SC15025_enableExtendedRegisters) //Extended registers?
+		{
+			//Extended data register!
+			switch (et34kdata->SC15025_extendedaddress) //Extended data register?
+			{
+			case 0x08: //Auxiliary Control Register?
+				*result = et34kdata->SC15025_auxiliarycontrolregister; //Auxiliary control register. Bit 0=8-bit DAC when set. 6-bit otherwise.
+				break;
+			case 0x09: //ID #1!
+				*result = 0x53; //ID registers are ROM!
+			case 0x0A: //ID #2!
+				*result = 0x3A; //ID registers are ROM!
+			case 0x0B: //ID #3!
+				*result = 0xB1; //ID registers are ROM!
+			case 0x0C: //Version!
+				*result = 0x41; //Version register is ROM!
+				break;
+			case 0x0D: //Secondary pixel mask, low byte!
+			case 0x0E: //Secondary pixel mask, mid byte!
+			case 0x0F: //Secondary pixel mask, high byte!
+				*result = et34kdata->SC15025_secondarypixelmaskregisters[et34kdata->SC15025_extendedaddress - 0x0D]; //Secondary pixel mask registers!
+				break;
+			case 0x10: //Pixel repack register!
+				*result = et34kdata->SC15025_pixelrepackregister; //bit 0=Enable 4-byte fetching in modes 2 and 3!
+				break;
+			default: //Unknown register!
+				*result = ~0; //Undefined!
+				break;
+			}
+			return 1; //We're overridden!
+		}
+		et34kdata->hicolorDACcmdmode = 0; //Disable command mode!
+		return 0; //Execute normally!
+		break;
 	case 0x3C9: //DAC Data Register				DATA? Pallette RAM in the manual.
+		if (et34kdata->SC15025_enableExtendedRegisters) //Extended registers?
+		{
+			//Extended index register!
+			*result = et34kdata->SC15025_extendedaddress; //Extended index!
+			return 1; //We're overridden!
+		}
 		et34kdata->hicolorDACcmdmode = 0; //Disable command mode!
 		return 0; //Execute normally!
 		break;
@@ -857,6 +943,9 @@ void Tseng34k_init()
 			et34k(getActiveVGA())->oldextensionsEnabled = 1; //Make sure the extensions are updated in status!
 			et34k(getActiveVGA())->et4k_segmentselectregisterenabled = 0; //Segment select register isn't enabled yet!
 			et34k(getActiveVGA())->emulatedDAC = BIOS_Settings.SVGA_DACmode; //The emulated DAC mode!
+			et34k(getActiveVGA())->SC15025_secondarypixelmaskregisters[0] = 0xFF; //Default value!
+			et34k(getActiveVGA())->SC15025_secondarypixelmaskregisters[1] = 0xFF; //Default value!
+			et34k(getActiveVGA())->SC15025_secondarypixelmaskregisters[2] = 0xFF; //Default value!
 			et34k_updateDAC(et34k(getActiveVGA()), et34k(getActiveVGA())->hicolorDACcommand); //Initialize the DAC command register to compatible values!
 
 			VGA_calcprecalcs(getActiveVGA(),WHEREUPDATED_ALL); //Update all precalcs!
@@ -1374,9 +1463,10 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 		handled = 1;
 		#endif
 		et34k_tempreg = et34k(VGA)->hicolorDACcommand; //Load the command to process! (Process like a SC11487)
+		VGA->precalcs.SC15025_pixelmaskregister = ~0; //Default: no filter!
 		DACmode = VGA->precalcs.DACmode; //Load the current DAC mode!
 		DACmode &= ~8; //Legacy DAC modes?
-		if (et34k(VGA)->emulatedDAC!=2) //UMC UM70C178 or SC11487?
+		if ((et34k(VGA)->emulatedDAC!=2) && (et34k(VGA)->emulatedDAC<3)) //UMC UM70C178 or SC11487?
 		{
 			if (VGA->precalcs.AttributeController_16bitDAC == 3) //In 16-bit mode? Raise the DAC's HICOL input, thus making it 16-bit too!
 			{
@@ -1465,6 +1555,121 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 				}
 				DAC_updateEntry(VGA, colorval); //Update a DAC entry for rendering!
 				if (++colorval & 0xFF00) break; //Overflow?
+			}
+		}
+		else if (et34k(VGA)->emulatedDAC == 3) //SC15025?
+		{
+			DACmode = 0; //Legacy VGA RAMDAC! Bit 5 is 32-bit color, otherwise 24-bit color! Bit 6 is translation mode enabled!
+			VGA->precalcs.emulatedDACextrabits = 0xC0; //Become 8-bits DAC entries by default!
+			if ((et34k(VGA)->SC15025_pixelrepackregister & 1) == 0) //6-bit DAC?
+			{
+				VGA->precalcs.emulatedDACextrabits = 0x00; //Become 6-bits DAC only!
+			}
+			VGA->precalcs.SC15025_pixelmaskregister = ((((et34k(VGA)->SC15025_secondarypixelmaskregisters[2]<<8)|et34k(VGA)->SC15025_secondarypixelmaskregisters[1])<<8)|et34k(VGA)->SC15025_secondarypixelmaskregisters[0]); //Pixel mask to use!
+			et34k(VGA)->SC15025_enableExtendedRegisters = ((et34k_tempreg & 0x10) >> 4); //Enable the extended registers at the color registers?
+			switch ((et34k_tempreg >> 5) & 7) //What rendering mode?
+			{
+			case 0:
+			case 1: //VGA mode? Mode 0!
+				break;
+			case 2:  //Mode 3a without bit 0 of the pixel repack register! VGA otherwise!
+				if (et34k(VGA)->SC15025_pixelrepackregister & 1) //Mode 3a?
+				{
+					DACmode |= 3; //Set bit 0: we're full range, Set bit 1: we're a 16-bit+ mode!
+					DACmode |= 4; //Use multiple pixel clocks to latch the two bytes?
+					DACmode |= 8; //Use three pixel clocks to latch the three bytes?
+					DACmode |= 0x10; //Use four pixel clocks to latch the three bytes?
+					if (et34k_tempreg & 1) //BGR mode?
+					{
+						DACmode |= 0x20; //BGR mode is enabled!
+					}
+					if (et34k_tempreg & 0x8) //D3 set? Enable LUT mode!
+					{
+						DACmode |= 0x40; //Enable LUT!
+						DACmode |= ((et34k_tempreg & 0x6) << 6); //Bits 6&7 are to shift in 
+					}
+				}
+				//Otherwise, VGA? Mode 0!
+				break;
+			case 3: //Mode 2 or 3b?
+				if (et34k(VGA)->SC15025_pixelrepackregister & 1) //Mode 3b?
+				{
+					DACmode |= 3; //Set bit 0: we're full range, Set bit 1: we're a 16-bit+ mode!
+					DACmode |= 4; //Use multiple pixel clocks to latch the two bytes?
+					DACmode |= 8; //Use three pixel clocks to latch the three bytes?
+					DACmode |= 0x10; //Use four pixel clocks to latch the three bytes instead!
+					if (et34k_tempreg & 1) //BGR mode?
+					{
+						DACmode |= 0x20; //BGR mode is enabled!
+					}
+					if (et34k_tempreg & 0x8) //D3 set? Enable LUT mode!
+					{
+						DACmode |= 0x40; //Enable LUT!
+						DACmode |= ((et34k_tempreg & 0x6) << 6); //Bits 6&7 are to shift in 
+					}
+				}
+				else //Mode 2? 3-byte mode!
+				{
+					DACmode |= 3; //Set bit 0: we're full range, Set bit 1: we're a 16-bit+ mode!
+					DACmode |= 4; //Use multiple pixel clocks to latch the two bytes?
+					DACmode |= 8; //Use three pixel clocks to latch the three bytes?
+					if (et34k_tempreg & 0x8) //D3 set? Enable LUT mode!
+					{
+						DACmode |= 0x40; //Enable LUT!
+						DACmode |= ((et34k_tempreg & 0x6) << 6); //Bits 6&7 are to shift in 
+					}
+				}
+				break;
+			case 4: //15-bit HICOLOR1 one clock? Mode 1&2! 2 when D0 is set, color mode 1 otherwise! Repack mode 1a!
+				DACmode |= 0x200; //Bit 15 is sent as well!
+				DACmode &= ~1; //Clear bit 0: we're one bit less!
+				DACmode |= 2; //Set bit 1: we're a 16-bit mode!
+				DACmode &= ~4; //Use one pixel clock to latch the two bytes?
+				if (et34k_tempreg & 1) //Extended mode? Color Mode 2!
+				{
+					DACmode |= 0x20; //Extended mode is enabled!
+				}
+				if (et34k_tempreg & 0x8) //D3 set? Enable LUT mode!
+				{
+					DACmode |= 0x40; //Enable LUT!
+					DACmode |= ((et34k_tempreg & 0x6) << 6); //Bits 6&7 are to shift in 
+				}
+				//Otherwise, Color Mode 1?
+				break;
+			case 5: //15-bit HICOLOR2 two clocks? Color Mode 1&2! 2 when D0 is set! Repack mode 1b!
+				DACmode |= 0x200; //Bit 15 is sent as well!
+				DACmode &= ~1; //Clear bit 0: we're one bit less!
+				DACmode |= 2; //Set bit 1: we're a 16-bit mode!
+				DACmode |= 4; //Use two pixel clocks to latch the two bytes?
+				if (et34k_tempreg & 1) //Extended mode? Mode 2!
+				{
+					DACmode |= 0x20; //Extended mode is enabled!
+				}
+				if (et34k_tempreg & 0x8) //D3 set? Enable LUT mode!
+				{
+					DACmode |= 0x40; //Enable LUT!
+					DACmode |= ((et34k_tempreg & 0x6) << 6); //Bits 6&7 are to shift in 
+				}
+				//Othereise, color Mode 1?
+				break;
+			case 6: //16-bit one clock? Color Mode 3! Repack mode 1a!
+				DACmode |= 3; //Set bit 0: we're full range, Set bit 1: we're a 16-bit mode!
+				DACmode &= ~4; //Use one pixel clock to latch the two bytes?
+				if (et34k_tempreg & 0x8) //D3 set? Enable LUT mode!
+				{
+					DACmode |= 0x40; //Enable LUT!
+					DACmode |= ((et34k_tempreg & 0x6) << 6); //Bits 6&7 are to shift in 
+				}
+				break;
+			case 7: //16-bit two clocks? Color Mode 3! Repack mode 1b!
+				DACmode |= 3; //Set bit 0: we're full range, Set bit 1: we're a 16-bit+ mode!
+				DACmode |= 4; //Use multiple pixel clocks to latch the two bytes?
+				if (et34k_tempreg & 0x8) //D3 set? Enable LUT mode!
+				{
+					DACmode |= 0x40; //Enable LUT!
+					DACmode |= ((et34k_tempreg & 0x6) << 6); //Bits 6&7 are to shift in 
+				}
+				break;
 			}
 		}
 		else //Unknown DAC?

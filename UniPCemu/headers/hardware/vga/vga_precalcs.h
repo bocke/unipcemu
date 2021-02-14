@@ -161,8 +161,8 @@ typedef struct //Contains the precalculated values!
 	byte VideoLoadRateMask; //When to load the new pixels (bitmask to result in zero to apply)!
 	byte BypassPalette; //Bypass the palette?
 	byte linearmode; //Linear mode enabled (linear memory window)? Bit 1=1: Use high 4 bits for bank, else bank select. Bit0=1: Use contiguous memory, else VGA mapping.
-	byte DACmode; //The current DAC mode: Bits 0-1: 3=16-bit, 2=15-bit, 1/0: 8-bit(normal VGA DAC). Bit 4: 1=Latch every two pixel clocks, else every pixel clock.
-	byte effectiveDACmode; //The current DAC mode: Bits 0-1: 3=16-bit, 2=15-bit, 1/0: 8-bit(normal VGA DAC). Bit 4: 1=Latch every two pixel clocks, else every pixel clock.
+	word DACmode; //The current DAC mode: Bits 0-1: 3=16-bit, 2=15-bit, 1/0: 8-bit(normal VGA DAC). Bit 4: 1=Latch every two pixel clocks, else every pixel clock.
+	word effectiveDACmode; //The current DAC mode: Bits 0-1: 3=16-bit, 2=15-bit, 1/0: 8-bit(normal VGA DAC). Bit 4: 1=Latch every two pixel clocks, else every pixel clock.
 	byte MemoryClockDivide; //Memory address clock divide by 0, 1 or 2(Stacked on top of the normal memory address clock).
 	uint_32 VMemMask; //Extended VRAMMask.
 	byte charwidthupdated; //Is the charwidth updated(for SVGA)?
@@ -177,6 +177,7 @@ typedef struct //Contains the precalculated values!
 	byte charactercode_16bit; //Render the character code as 16-bit character codes?
 	byte emulatedDACextrabits; //6 or 8-bit mask!
 	byte turnDACoff; //Turn the DAC output off?
+	uint_32 SC15025_pixelmaskregister; //Pixel mask register!
 } VGA_PRECALCS; //VGA pre-calculations!
 
 typedef void (*VGA_calcprecalcsextensionhandler)(void *VGA, uint_32 whereupdated); //Calculate them!
