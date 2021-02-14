@@ -700,10 +700,13 @@ byte Tseng34K_readIO(word port, byte *result)
 				break;
 			case 0x09: //ID #1!
 				*result = 0x53; //ID registers are ROM!
+				break;
 			case 0x0A: //ID #2!
 				*result = 0x3A; //ID registers are ROM!
+				break;
 			case 0x0B: //ID #3!
 				*result = 0xB1; //ID registers are ROM!
+				break;
 			case 0x0C: //Version!
 				*result = 0x41; //Version register is ROM!
 				break;
