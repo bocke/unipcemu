@@ -1210,8 +1210,8 @@ void initStateHandlers()
 
 	for (i = 0;i < 0x10000;++i) //Create the 16&15-bit CLUT! The format is Red on MSB, Green in the middle and Blue in the LSB.
 	{
-		CLUT16bit[i] = RGB((byte)(((((float)((i >> 11) & 0x1F)) / (float)0x1F)*255.0f)), (byte)(((float)((i >> 5) & 0x3F) / (float)0x3F)*255.0f), (byte)((((float)((i >> 0) & 0x1F) / (float)0x1F)*255.0f))); //16-bit color lookup table (5:6:5 format)!
-		CLUT15bit[i] = RGB((byte)(((((float)((i >> 10) & 0x1F)) / (float)0x1F)*255.0f)), (byte)(((float)((i >> 5) & 0x1F) / (float)0x1F)*255.0f), (byte)((((float)((i >> 0) & 0x1F) / (float)0x1F)*255.0f))); //15-bit color lookup table (5:5:5 format)!
+		CLUT16bit[i] = RGB((byte)(((i >> 11) & 0x1F)<<3), (byte)(((i >> 5) & 0x3F)<<2), (byte)(((i >> 0) & 0x1F)<<3)); //16-bit color lookup table (5:6:5 format)! Lower 2 bits or 2 bits of each color channel are cleared!
+		CLUT15bit[i] = RGB((byte)(((i >> 10) & 0x1F)<<3), (byte)(((i >> 5) & 0x1F)<<3), (byte)(((i >> 0) & 0x1F)<<3)); //15-bit color lookup table (5:5:5 format)! Lower 3 bits of each color channel are cleared!
 	}
 	memset(&charxbuffer,0xFF,sizeof(charxbuffer)); //Character x buffer!
 	for (i=0;i<9;++i)
