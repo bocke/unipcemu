@@ -822,11 +822,9 @@ void VGA_Blank_CGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_AttributeInfo *attrib
 	++VGA->CRTC.x; //Next x!
 }
 
-uint_32 getrawVGADACentry(byte index)
+uint_32 getrawVGADACentry(VGA_Type *VGA, byte index)
 {
-	DACEntry entry;
-	readDAC(getActiveVGA(), index, &entry); //Read the entry!
-	return RGBA(entry.r,entry.g,entry.b,0xFF); //Give the entry!
+	return VGA_DAC(VGA,index); //Give the entry!
 }
 
 void VGA_ActiveDisplay_noblanking_VGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_AttributeInfo *attributeinfo)
@@ -979,9 +977,9 @@ void VGA_ActiveDisplay_noblanking_VGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_At
 		if (VGA->precalcs.DACmode & 0x40) //LUT enabled?
 		{
 			DACcolor = RGB(
-				GETR(getrawVGADACentry(GETR(DACcolor))), //Red channel!
-				GETG(getrawVGADACentry(GETG(DACcolor))), //Green channel!
-				GETB(getrawVGADACentry(GETB(DACcolor))) //Blue channel!
+				GETR(getrawVGADACentry(VGA,GETR(DACcolor))), //Red channel!
+				GETG(getrawVGADACentry(VGA,GETG(DACcolor))), //Green channel!
+				GETB(getrawVGADACentry(VGA,GETB(DACcolor))) //Blue channel!
 			); //Translate through DAC!
 		}
 		DACcolor = GA_color2bw(DACcolor, 0); //Apply the finished color!
