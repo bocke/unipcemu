@@ -1573,7 +1573,7 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 			}
 			//Bit 1 of the Auxiliary Control Register is PED 75 IRE? Unknown what this is?
 			VGA->precalcs.emulatedDACextrabits = 0xC0; //Become 8-bits DAC entries by default!
-			if ((et34k(VGA)->SC15025_pixelrepackregister & 1) == 0) //6-bit DAC?
+			if ((et34k(VGA)->SC15025_auxiliarycontrolregister & 1) == 0) //6-bit DAC?
 			{
 				VGA->precalcs.emulatedDACextrabits = 0x00; //Become 6-bits DAC only!
 			}
