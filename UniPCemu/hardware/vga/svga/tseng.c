@@ -980,6 +980,7 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 	byte newfontwidth; //Change detection!
 	uint_32 tempdata; //Saved data!
 	byte tempval;
+	int colorval;
 	if (!et34k(VGA)) return; //No extension registered?
 
 	byte FullUpdate = (whereupdated == 0); //Fully updated?
@@ -1548,7 +1549,6 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 				VGA->precalcs.turnDACoff = 0; //Turn the DAC on!
 			}
 
-			int colorval;
 			colorval = 0; //Init!
 			for (;;) //Precalculate colors for DAC!
 			{
@@ -1692,6 +1692,17 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 		updateVGADAC_Mode(VGA); //Update the effective DAC mode!
 		updateSequencerPixelDivider(VGA, (SEQ_DATA*)VGA->Sequencer); //Update the sequencer as well!
 		updateVGAAttributeController_Mode(VGA); //Update the attribute mode!
+
+		colorval = 0; //Init!
+		for (;;) //Precalculate colors for DAC!
+		{
+			if (VGA->enable_SVGA != 3) //EGA can't change the DAC!
+			{
+				VGA->precalcs.DAC[colorval] = getcol256_Tseng(VGA, colorval); //Translate directly through DAC for output!
+			}
+			DAC_updateEntry(VGA, colorval); //Update a DAC entry for rendering!
+			if (++colorval & 0xFF00) break; //Overflow?
+		}
 	}
 
 	if (SequencerUpdated || AttrUpdated || (whereupdated==(WHEREUPDATED_ATTRIBUTECONTROLLER|0x10)) || (whereupdated == WHEREUPDATED_ALL) || (whereupdated == (WHEREUPDATED_GRAPHICSCONTROLLER | 0x05)) || (whereupdated == (WHEREUPDATED_SEQUENCER | 0x04)) || linearmodeupdated
