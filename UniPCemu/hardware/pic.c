@@ -2519,7 +2519,7 @@ byte PICInterrupt() //We have an interrupt ready to process? This is the primary
 	}
 	if (getunprocessedinterrupt(0) && (IMCR!=0x01)) //Primary PIC interrupt? This is also affected by the IMCR!
 	{
-		if ((LAPIC[activeCPU].enabled==1) || activeCPU) //APIC enabled and taken control of the interrupt pin or not CPU #0? When not BSP, disable INTR (not connected to the other CPUs)!
+		if (((LAPIC[activeCPU].enabled==1) && (((LAPIC[activeCPU].LVTLINT0Register & 0x10000)==0x10000) || ((LAPIC[activeCPU].LVTLINT0Register & 0x700) == 0x700))) || activeCPU) //APIC enabled and taken control of the interrupt pin or not CPU #0? When not BSP, disable INTR (not connected to the other CPUs)!
 		{
 			return 0; //The connection from the INTR pin to the local APIC is active! Disable the normal interrupts(redirected to the LVT LINT0 register)!
 		}
