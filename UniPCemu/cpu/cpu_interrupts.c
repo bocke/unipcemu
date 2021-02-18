@@ -446,7 +446,7 @@ byte CPU_checkNMIAPIC(byte isHLT)
 extern byte IMCR; //Address selected. 00h=Connect INTR and NMI to the CPU. 01h=Disconnect INTR and NMI from the CPU.
 byte CPU_handleNMI(byte isHLT)
 {
-	if ((IMCR == 0x01) || (CPU_NMI_APIC(activeCPU)==0)) //Not connected or available to handle directly?
+	if (((IMCR&1) == 0x01) || (CPU_NMI_APIC(activeCPU)==0)) //Not connected or available to handle directly?
 	{
 		return 1; //Don't perform the NMI as part of the NMI interrupt line!
 	}

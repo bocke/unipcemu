@@ -271,6 +271,7 @@ void resetLAPIC(byte whichCPU, byte isHardReset)
 			APIC_handletermination(); //Handle the termination!
 			activeCPU = backupactiveCPU; //Restore the active CPU!
 			updateLAPICTimerSpeed(whichCPU); //Update the used timer speed!
+			IMCR = addr22 = 0; //Reset the IMCR register as well, as is documented for RESET!
 		}
 	}
 	else //Soft disabled?
@@ -2267,7 +2268,7 @@ byte out8259(word portnum, byte value)
 	{
 		if (addr22 == 0x70) //Selected IMCR?
 		{
-			if ((IMCR == 0) && (value == 1)) //Disconnect NMI and INTR from the CPU?
+			if (((IMCR&1) == 0) && ((value&1) == 1)) //Disconnect NMI and INTR from the CPU?
 			{
 				LINT0_lowerIRQ(); //IRQ line is disconnected, so lowered!
 			}
@@ -2517,7 +2518,7 @@ byte PICInterrupt() //We have an interrupt ready to process? This is the primary
 	{
 		return 2; //APIC IRQ!
 	}
-	if (getunprocessedinterrupt(0) && (IMCR!=0x01)) //Primary PIC interrupt? This is also affected by the IMCR!
+	if (getunprocessedinterrupt(0) && ((IMCR&1)!=0x01)) //Primary PIC interrupt? This is also affected by the IMCR!
 	{
 		if (activeCPU) //APIC enabled and taken control of the interrupt pin or not CPU #0? When not BSP, disable INTR (not connected to the other CPUs)!
 		{
@@ -2716,7 +2717,7 @@ void APIC_raisedIRQ(byte PIC, word irqnum)
 	if (irqnum == 0) //Since we're also connected to the CPU, raise LINT properly!
 	{
 		//Always assume live doesn't match! So that the LINT0 register keeps being up-to-date!
-		if (IMCR == 0) //Connected to the CPU?
+		if ((IMCR&1) == 0) //Connected to the CPU?
 		{
 			LINT0_raiseIRQ(1); //Raise LINT0 input!
 		}
