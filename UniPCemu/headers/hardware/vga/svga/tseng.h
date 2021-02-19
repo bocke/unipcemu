@@ -25,6 +25,7 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 #include "headers/hardware/vga/vga.h" //Basic VGA!
 
 typedef struct {
+	byte tsengExtensions; //0=Normal ET4000, 1=ET4000/W32
 	byte extensionsEnabled;
 	byte oldextensionsEnabled; //Old extensions status for detecting changes!
 
@@ -39,6 +40,8 @@ typedef struct {
 	byte store_et4k_3d4_36;
 	byte store_et4k_3d4_37;
 	byte store_et4k_3d4_3f;
+	//ET4K/W32 registers
+	byte store_et4k_W32_3d4_30;
 
 	//ET3K registers
 	byte store_et3k_3d4_1b;
@@ -68,6 +71,7 @@ typedef struct {
 	//Banking support
 	byte et4k_segmentselectregisterenabled; //Segment select register on the ET4000 has been enabled?
 	byte segmentselectregister; //Containing the below values.
+	byte extendedbankregister; //Containing an extensions of the below values (Extended bank register)! W32 only!
 	byte bank_read; //Read bank number!
 	byte bank_write; //Write bank number!
 	byte bank_size; //The bank size to use(2 bits)!
@@ -115,10 +119,24 @@ typedef struct {
 #define et34k_reg(data,port,index) data->store_##port##_##index
 
 //ET4K register access
+#define STORE_ET4K_W32(port, index, category) \
+	case 0x##index: \
+	if ((getActiveVGA()->enable_SVGA!=1) || ((getActiveVGA()->enable_SVGA==1) && (!et34kdata->extensionsEnabled)) || (et34kdata->tsengExtensions==0)) return 0; \
+	et34k_data->store_et4k_W32_##port##_##index = val; \
+	VGA_calcprecalcs(getActiveVGA(),category|0x##index); \
+	return 1;
+
 #define STORE_ET4K(port, index, category) \
 	case 0x##index: \
 	if ((getActiveVGA()->enable_SVGA!=1) || ((getActiveVGA()->enable_SVGA==1) && (!et34kdata->extensionsEnabled))) return 0; \
 	et34k_data->store_et4k_##port##_##index = val; \
+	VGA_calcprecalcs(getActiveVGA(),category|0x##index); \
+	return 1;
+
+#define STORE_ET4K_W32_UNPROTECTED(port, index, category) \
+	case 0x##index: \
+	if ((getActiveVGA()->enable_SVGA!=1) || (et34kdata->tsengExtensions==0)) return 0; \
+	et34k_data->store_et4k_W32_##port##_##index = val; \
 	VGA_calcprecalcs(getActiveVGA(),category|0x##index); \
 	return 1;
 
@@ -129,10 +147,22 @@ typedef struct {
 	VGA_calcprecalcs(getActiveVGA(),category|0x##index); \
 	return 1;
 
+#define RESTORE_ET4K_W32(port, index) \
+	case 0x##index: \
+		if ((getActiveVGA()->enable_SVGA!=1) || ((getActiveVGA()->enable_SVGA==1) && (!et34kdata->extensionsEnabled)) || (et34kdata->tsengExtensions==0)) return 0; \
+		*result = et34k_data->store_et4k_W32_##port##_##index; \
+		return 1;
+
 #define RESTORE_ET4K(port, index) \
 	case 0x##index: \
 		if ((getActiveVGA()->enable_SVGA!=1) || ((getActiveVGA()->enable_SVGA==1) && (!et34kdata->extensionsEnabled))) return 0; \
 		*result = et34k_data->store_et4k_##port##_##index; \
+		return 1;
+
+#define RESTORE_ET4K_W32_UNPROTECTED(port, index) \
+	case 0x##index: \
+		if ((getActiveVGA()->enable_SVGA!=1) || (et34kdata->tsengExtensions==0)) return 0; \
+		*result = et34k_data->store_et4k_W32_##port##_##index; \
 		return 1;
 
 #define RESTORE_ET4K_UNPROTECTED(port, index) \

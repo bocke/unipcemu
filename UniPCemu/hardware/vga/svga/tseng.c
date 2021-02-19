@@ -101,6 +101,11 @@ void updateET34Ksegmentselectregister(byte val)
 		et34kdata->bank_write = val & 0xF;
 		et34kdata->bank_read = (val >> 4) & 0xF;
 		et34kdata->bank_size = 1; //Bank size to use is always the same(64K)!
+		if (et34kdata->tsengExtensions) //W32 variant? Extensions apply!
+		{
+			et34kdata->bank_write |= ((et34kdata->extendedbankregister&3)<<4);
+			et34kdata->bank_write |= (((et34kdata->extendedbankregister>>2)&0x3) << 4);
+		}
 	}
 }
 
@@ -315,6 +320,10 @@ byte Tseng34K_writeIO(word port, byte val)
 		switch(getActiveVGA()->registers->CRTControllerRegisters_Index)
 		{
 		/*
+		3d4 index 30h (R/W): W32 only: Linear Frame Buffer address in units of 4MB!
+		*/
+		STORE_ET4K_W32(3d4, 30, WHEREUPDATED_CRTCONTROLLER);
+		/*
 		3d4h index 31h (R/W):  General Purpose
 		bit  0-3  Scratch pad
 			 6-7  Clock Select bits 3-4. Bits 0-1 are in 3C2h/3CCh bits 2-3.
@@ -391,7 +400,14 @@ byte Tseng34K_writeIO(word port, byte val)
 			if (getActiveVGA()->enable_SVGA != 1) return 0; //Not implemented on others than ET4000!
 			if (val != et34kdata->store_et4k_3d4_37) {
 				et34kdata->store_et4k_3d4_37 = val;
-				et34kdata->memwrap = (((64*1024)<<((val&8)>>2))<<((val&3)-1))-1; //The mask to use for memory!
+				if (et34kdata->tsengExtensions) //ET4000/W32 variant?
+				{
+					et34kdata->memwrap = ((256 * 1024) << ((val & 8) >> 2)) << (1 + (val & 1)); //Init size to detect! 256k or 1M times(bit 3) 16 or 32 bit bus width(bit 0)!
+				}
+				else //normal ET4000?
+				{
+					et34kdata->memwrap = (((64 * 1024) << ((val & 8) >> 2)) << ((val & 3) - 1)) - 1; //The mask to use for memory!
+				}
 				VGA_calcprecalcs(getActiveVGA(),WHEREUPDATED_CRTCONTROLLER|0x37); //Update all precalcs!
 			}
 			return 1;
@@ -520,6 +536,15 @@ byte Tseng34K_writeIO(word port, byte val)
 		//Apply correct memory banks!
 		updateET34Ksegmentselectregister(et34kdata->segmentselectregister); //Make the segment select register active!
 		VGA_calcprecalcs(getActiveVGA(),WHEREUPDATED_CRTCONTROLLER|0x36); //Update from the CRTC controller registers!
+		return 1;
+		break;
+	case 0x3CB: //Extended bank register (W32)?
+		if ((((getActiveVGA()->enable_SVGA == 1) && (!et34kdata->et4k_segmentselectregisterenabled)))||(et34kdata->tsengExtensions==0)) return 0; //Not available on the ET4000 until having set the KEY at least once after a power-on reset or synchronous reset(TS indexed register 0h bit 1). Also disabled by the non-W32 variants!
+		et34kdata->extendedbankregister = val; //Save the entire extended bank register!
+
+		//Apply correct memory banks!
+		updateET34Ksegmentselectregister(et34kdata->segmentselectregister); //Make the segment select register active!
+		VGA_calcprecalcs(getActiveVGA(), WHEREUPDATED_CRTCONTROLLER | 0x36); //Update from the CRTC controller registers!
 		return 1;
 		break;
 	case 0x3C0: //Attribute controller?
@@ -752,6 +777,7 @@ byte Tseng34K_readIO(word port, byte *result)
 		switch(getActiveVGA()->registers->CRTControllerRegisters_Index)
 		{
 		//ET4K
+		RESTORE_ET4K_W32(3d4, 30);
 		RESTORE_ET4K(3d4, 31);
 		RESTORE_ET4K(3d4, 32);
 		RESTORE_ET4K_UNPROTECTED(3d4, 33);
@@ -790,6 +816,12 @@ byte Tseng34K_readIO(word port, byte *result)
 	//Bitu read_p3cd_et4k(Bitu port, Bitu iolen) {
 		if ((getActiveVGA()->enable_SVGA == 1) && (!et34kdata->et4k_segmentselectregisterenabled)) return 0; //Not available on the ET4000 until having set the KEY at least once after a power-on reset or synchronous reset(TS indexed register 0h bit 1).
 		*result = et34kdata->segmentselectregister; //Give the saved segment select register!
+		return 1; //Supported!
+		break;
+	case 0x3CB: //Extended bank register (W32)?
+	//Bitu read_p3cd_et4k(Bitu port, Bitu iolen) {
+		if (((getActiveVGA()->enable_SVGA == 1) && (!et34kdata->et4k_segmentselectregisterenabled)) || (et34kdata->tsengExtensions == 0)) return 0; //Not available on the ET4000 until having set the KEY at least once after a power-on reset or synchronous reset(TS indexed register 0h bit 1).
+		*result = et34kdata->extendedbankregister; //Give the saved segment select register!
 		return 1; //Supported!
 		break;
 	case 0x3C1: //Attribute controller read?
@@ -884,21 +916,42 @@ void Tseng34k_init()
 		{
 			//Handle all that needs to be initialized for the Tseng 4K!
 			// Default to 1M of VRAM
+			et34k(getActiveVGA())->tsengExtensions = 0; //Default: no Tseng extensions!
 			if (getActiveVGA()->enable_SVGA==1) //ET4000?
 			{
-				byte n,isvalid;
-				isvalid = 0; //Default: invalid!
-				uint_32 maxsize=0,cursize;
-				for (n = 0; n < 0x10; ++n) //Try all VRAM sizes!
+				byte n, isvalid;
+				uint_32 maxsize = 0, cursize;
+				if (et34k(getActiveVGA())->tsengExtensions==0) //Normal ET4000?
 				{
-					cursize = ((64 * 1024) << ((n & 8) >> 2)) << ((n & 3)); //size?
-					if (Tseng4k_VRAMSize == cursize) isvalid = 1; //The memory size for this item!
-					if ((cursize > maxsize) && (cursize <= Tseng4k_VRAMSize)) maxsize = cursize; //Newer within range!
+					isvalid = 0; //Default: invalid!
+					for (n = 0; n < 0x10; ++n) //Try all VRAM sizes!
+					{
+						cursize = ((64 * 1024) << ((n & 8) >> 2)) << ((n & 3)); //size?
+						if (Tseng4k_VRAMSize == cursize) isvalid = 1; //The memory size for this item!
+						if ((cursize > maxsize) && (cursize <= Tseng4k_VRAMSize)) maxsize = cursize; //Newer within range!
+					}
+					if (!isvalid) //Invalid VRAM size?
+					{
+						Tseng4k_VRAMSize = maxsize ? maxsize : 1024 * 1024; //Always 1M or next smaller if possible!
+						BIOS_Settings.VRAM_size = Tseng4k_VRAMSize; //Update VRAM size in BIOS!
+					}
 				}
-				if (!isvalid) //Invalid VRAM size?
+				else //W32 variant of ET4000?
 				{
-					Tseng4k_VRAMSize = maxsize?maxsize:1024 * 1024; //Always 1M or next smaller if possible!
-					BIOS_Settings.VRAM_size = Tseng4k_VRAMSize; //Update VRAM size in BIOS!
+					byte n, isvalid;
+					isvalid = 0; //Default: invalid!
+					uint_32 maxsize = 0, cursize;
+					for (n = 0; n < 0x10; ++n) //Try all VRAM sizes!
+					{
+						cursize = ((256*1024)<<((n&8)>>2))<<(1+(n&1)); //Init size to detect! 256k or 1M times(bit 3) 16 or 32 bit bus width(bit 0)!
+						if (Tseng4k_VRAMSize == cursize) isvalid = 1; //The memory size for this item!
+						if ((cursize > maxsize) && (cursize <= Tseng4k_VRAMSize)) maxsize = cursize; //Newer within range!
+					}
+					if (!isvalid) //Invalid VRAM size?
+					{
+						Tseng4k_VRAMSize = maxsize ? maxsize : 4096 * 1024; //Always 4M or next smaller if possible!
+						BIOS_Settings.VRAM_size = Tseng4k_VRAMSize; //Update VRAM size in BIOS!
+					}
 				}
 				//1M+=OK!
 			}
@@ -923,10 +976,24 @@ void Tseng34k_init()
 			uint_32 lastmemsize = 0; //Last memory size!
 			for (VRAMsize = 0;VRAMsize < 0x10;++VRAMsize) //Try all VRAM sizes!
 			{
-				memsize = ((64 * 1024) << ((VRAMsize & 8) >> 2)) << ((VRAMsize & 3)); //The memory size for this item!
+				if ((getActiveVGA()->enable_SVGA == 1) && et34k(getActiveVGA())->tsengExtensions) //ET4000/W32 variant?
+				{
+					memsize = ((256 * 1024) << ((VRAMsize & 8) >> 2)) << (1 + (VRAMsize & 1)); //Init size to detect! 256k or 1M times(bit 3) 16 or 32 bit bus width(bit 0)!
+				}
+				else //ET3000?
+				{
+					memsize = ((64 * 1024) << ((VRAMsize & 8) >> 2)) << ((VRAMsize & 3)); //The memory size for this item!
+				}
 				if ((memsize > lastmemsize) && (memsize <= Tseng4k_VRAMSize)) //New best match found?
 				{
-					regval = VRAMsize; //Use this as the new best!
+					if ((getActiveVGA()->enable_SVGA == 1) && et34k(getActiveVGA())->tsengExtensions) //ET4000/W32 variant?
+					{
+						regval = (VRAMsize&~2); //Use this as the new best! Bit 2 isn't used by the W32 variants!
+					}
+					else
+					{
+						regval = VRAMsize; //Use this as the new best!
+					}
 					lastmemsize = memsize; //Use this as the last value found!
 				}
 			}
