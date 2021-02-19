@@ -339,10 +339,24 @@ byte Tseng34K_writeIO(word port, byte val)
 			// 3d4 index 33h (R/W): Extended start Address
 			// 0-1 Display Start Address bits 16-17
 			// 2-3 Cursor start address bits 16-17
+			/*
+			ET4000/W32:
+			0-3 Display Start Address bits 16-19
+			4-7 Cursor start address bits 16-19
+			*/
 			// Used by standard Tseng ID scheme
-			et34kdata->store_et4k_3d4_33 = (val&0xF); //According to Windows NT 4, this only stores the low 4 bits!
-			et34kdata->display_start_high = ((val & 0x03)<<16);
-			et34kdata->cursor_start_high = ((val & 0x0c)<<14);
+			if (et34kdata->tsengExtensions) //W32 chip?
+			{
+				et34kdata->store_et4k_3d4_33 = val; //All bits are stored!
+				et34kdata->display_start_high = ((val & 0x0F) << 16);
+				et34kdata->cursor_start_high = ((val & 0xF0) << 12);
+			}
+			else //ET4000 chip?
+			{
+				et34kdata->store_et4k_3d4_33 = (val & 0xF); //According to Windows NT 4, this only stores the low 4 bits!
+				et34kdata->display_start_high = ((val & 0x03) << 16);
+				et34kdata->cursor_start_high = ((val & 0x0c) << 14);
+			}
 			VGA_calcprecalcs(getActiveVGA(),WHEREUPDATED_CRTCONTROLLER|0x33); //Update all precalcs!
 			break;
 
@@ -373,6 +387,7 @@ byte Tseng34K_writeIO(word port, byte val)
 			   6  (4000) Read/Modify/Write Enabled if set. Currently not implemented.
 			   7  Vertical interlace if set. The Vertical timing registers are
 				programmed as if the mode was non-interlaced!!
+			   6  (W32) Source of the Vertical Retrace interrupts. 0=VGA-compatible, 1=CRTCB/Sprite registers
 		*/
 			if (getActiveVGA()->enable_SVGA != 1) return 0; //Not implemented on others than ET4000!
 			if (GETBITS(getActiveVGA()->registers->CRTControllerRegisters.REGISTERS.VERTICALRETRACEENDREGISTER,7,1)) //Are we protected?
@@ -523,7 +538,38 @@ byte Tseng34K_writeIO(word port, byte val)
 			break;
 		}
 		break;
-	/*
+	case 0x217A: //W32 index
+		if ((getActiveVGA()->enable_SVGA != 1) || (et34kdata->tsengExtensions == 0)) return 0; //Not available on the ET4000 until having set the KEY at least once after a power-on reset or synchronous reset(TS indexed register 0h bit 1). Also disabled by the non-W32 variants!
+		et34kdata->W32_21xA_index = val; //Set the index register!
+		return 1; //Handled!
+		break;
+	case 0x217B:
+	case 0x217C:
+	case 0x217D:
+	case 0x217E: //W32 data
+		if ((getActiveVGA()->enable_SVGA != 1) || (et34kdata->tsengExtensions == 0)) return 0; //Not available on the ET4000 until having set the KEY at least once after a power-on reset or synchronous reset(TS indexed register 0h bit 1). Also disabled by the non-W32 variants!
+		if (et34kdata->W32_21xA_index == 0xEF) //CRTC/sprite control?
+		{
+			if (port == 0x217B) //First byte?
+			{
+				et34kdata->W32_21xA_CRTCBSpriteControl = val; //Give the register!
+			}
+			//Other byte are always cleared?
+		}
+		else //Shared addresses?
+		{
+			if ((et34kdata->W32_21xA_CRTCBSpriteControl & 1) == 0) //CRTC?
+			{
+				//Not implemented!
+			}
+			else //Sprite?
+			{
+				//Not implemented!
+			}
+		}
+		return 1; //Handled!
+		break;
+		/*
 	3CDh (R/W): Segment Select
 	bit 0-3  64k Write bank number (0..15)
 	4-7  64k Read bank number (0..15)
@@ -811,6 +857,40 @@ byte Tseng34K_readIO(word port, byte *result)
 			//LOG(LOG_VGAMISC,LOG_NORMAL)("VGA:SEQ:ET4K:Read from illegal index %2X", reg);
 			break;
 		}
+		break;
+	case 0x217A: //W32 index
+		if ((getActiveVGA()->enable_SVGA != 1) || (et34kdata->tsengExtensions == 0)) return 0; //Not available on the ET4000 until having set the KEY at least once after a power-on reset or synchronous reset(TS indexed register 0h bit 1). Also disabled by the non-W32 variants!
+		return et34kdata->W32_21xA_index; //Give the index register!
+		return 1; //Handled!
+		break;
+	case 0x217B:
+	case 0x217C:
+	case 0x217D:
+	case 0x217E: //W32 data
+		if ((getActiveVGA()->enable_SVGA != 1) || (et34kdata->tsengExtensions == 0)) return 0; //Not available on the ET4000 until having set the KEY at least once after a power-on reset or synchronous reset(TS indexed register 0h bit 1). Also disabled by the non-W32 variants!
+		if (et34kdata->W32_21xA_index == 0xEF) //CRTC/sprite control?
+		{
+			*result = et34kdata->W32_21xA_CRTCBSpriteControl>>((port-0x217B)<<3); //Give the register!
+		}
+		else //Shared addresses?
+		{
+			if ((et34kdata->W32_21xA_CRTCBSpriteControl & 1) == 0) //CRTC?
+			{
+				if (et34kdata->W32_21xA_index == 0xEB) //CRTC row offset?
+				{
+					*result = 0x00; //Clear the entire register!
+				}
+				else //Other register?
+				{
+					*result = 0xFF; //Unsupported!
+				}
+			}
+			else //Sprite?
+			{
+				*result = 0xFF; //Unsupported!
+			}
+		}
+		return 1; //Handled!
 		break;
 	case 0x3CD: //Segment select?
 	//Bitu read_p3cd_et4k(Bitu port, Bitu iolen) {
@@ -1116,18 +1196,31 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 		et34kdata->doublehorizontaltimings = (((et34k_tempreg & 0x10) && (VGA->enable_SVGA == 2))?1:0); //Double the horizontal timings?
 		VGA->precalcs.charactercode_16bit = ((et34k_tempreg & 0x40) >> 6); //The new character code size!
 
-		et34k_tempreg >>= 4; //Shift to our position!
-		et34k_tempreg &= 3; //Only 2 bits are used for detection!
+		if (et34k(VGA)->tsengExtensions) //W32 chip?
+		{
+			et34k_tempreg >>= 5; //Only 0 and 2 are defined!
+			et34k_tempreg &= 1; //The high resolution bit only is the 16-bit setting instead!
+			et34k_tempreg |= (et34k_tempreg << 1); //Duplicate bit 1 to bit 2 to obtain either 8-bit or 16-bit modes only!
+		}
+		else //Tseng chip?
+		{
+			et34k_tempreg >>= 4; //Shift to our position!
+			et34k_tempreg &= 3; //Only 2 bits are used for detection!
+		}
 		if (VGA->enable_SVGA==2) et34k_tempreg = 0; //Unused on the ET3000! Force default mode!
 		//Manual says: 00b=Normal power-up default, 01b=High-resolution mode(up to 256 colors), 10b=Reserved, 11b=High-color 16-bit/pixel
-		if (et34k_tempreg==2) //The third value is illegal(reserved in the manual)!
+		if (et34k(VGA)->tsengExtensions == 0) //No W32 chip?
 		{
-			et34k_tempreg = 0; //Ignore the reserved value, forcing VGA mode in that case!
+			if (et34k_tempreg == 2) //The third value is illegal(reserved in the manual)!
+			{
+				et34k_tempreg = 0; //Ignore the reserved value, forcing VGA mode in that case!
+			}
+			if ((et34k_reg(et34kdata, 3c4, 07) & 2) == 0) //SCLK not divided? Then we're in normal mode!
+			{
+				et34k_tempreg = 0; //Ignore the reserved value, forcing VGA mode in that case!
+			}
 		}
-		if ((et34k_reg(et34kdata, 3c4, 07) & 2) == 0) //SCLK not divided? Then we're in normal mode!
-		{
-			et34k_tempreg = 0; //Ignore the reserved value, forcing VGA mode in that case!
-		}
+		//W32: Sequencer index 07 replicates pixels horizontally. bits 2,4=0:x8,1=x4,2=x2,3=x8. Is this correct (according to WhatVGA)?
 		VGA->precalcs.AttributeController_16bitDAC = et34k_tempreg; //Set the new mode to use (mode 2/3 or 0)!
 		//Modes 2&3 set forced 8-bit and 16-bit Attribute modes!
 		updateVGAAttributeController_Mode(VGA); //Update the attribute controller mode, which might have changed!
@@ -1203,6 +1296,8 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 		#endif
 		verticaltimingsupdated |= (et34kdata->useInterlacing != ((et34k_tempreg & 0x80) ? 1 : 0)); //Interlace has changed?
 		et34kdata->useInterlacing = VGA->precalcs.enableInterlacing = (VGA->enable_SVGA==2)?((et34k_tempreg & 0x80) ? 1 : 0):0; //Enable/disable interlacing! Apply with ET3000 only!
+
+		//W32 chips: bit 6=Source of Vertical Retrace interrupt. 0=VGA-compatible, 1=CRTC/Sprite registers based.
 	}
 
 	if (CRTUpdated || verticaltimingsupdated || (whereupdated == WHEREUPDATED_ALL) || (whereupdated == (WHEREUPDATED_CRTCONTROLLER | 0x35)) || (whereupdated == (WHEREUPDATED_CRTCONTROLLER | 0x25)) //Extended bits of the overflow register!
@@ -1436,6 +1531,7 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 
 	//Misc settings
 	if (CRTUpdated || (whereupdated == WHEREUPDATED_ALL) || (whereupdated == (WHEREUPDATED_CRTCONTROLLER | 0x36))
+		|| (whereupdated == (WHEREUPDATED_CRTCONTROLLER | 0x30))
 		|| (whereupdated==(WHEREUPDATED_SEQUENCER|0x4)) || (whereupdated==(WHEREUPDATED_GRAPHICSCONTROLLER|0x5)) //Memory address
 		 ) //Video system configuration #1!
 	{
@@ -1468,17 +1564,38 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 		}
 		else //ET4000 mapping?
 		{
+			if (et34k(VGA)->tsengExtensions) //W32 chip?
+			{
+				VGA->precalcs.linearmemorybase = ((uint_64)et4k_W32_reg(et34kdata, 3d4, 30)<<22); //Base to apply, in 4MB chunks!
+				VGA->precalcs.linearmemorymask = ~((1ULL<<22)-1); //Disabled!
+			}
+			else //Plain ET4000?
+			{
+				VGA->precalcs.linearmemorybase = 0; //No base to apply!
+				VGA->precalcs.linearmemorymask = 0; //Disabled!
+			}
 			if ((et34k_tempreg & 0x10)==0x00) //Segment configuration?
 			{
+				VGA->precalcs.linearmemorymask = 0; //Disable the memory window on W32 chips!
 				VGA_MemoryMapBankRead = et34kdata->bank_read<<16; //Read bank!
 				VGA_MemoryMapBankWrite = et34kdata->bank_write<<16; //Write bank!
 				VGA->precalcs.linearmode &= ~2; //Use normal data addresses!
 			}
 			else //Linear system configuration? Disable the segment and enable linear mode (high 4 bits of the address select the bank)!
 			{
-				VGA_MemoryMapBankRead = 0; //No read bank!
-				VGA_MemoryMapBankWrite = 0; //No write bank!
-				VGA->precalcs.linearmode |= 2; //Linear mode, use high 4-bits!
+				if ((VGA->enable_SVGA == 1) && et34k(VGA)->tsengExtensions) //W32 chip?
+				{
+					VGA_MemoryMapBankRead = 0; //No read bank!
+					VGA_MemoryMapBankWrite = 0; //No write bank!
+					VGA->precalcs.linearmode |= 2; //Linear mode, use high 4-bits!
+				}
+				else
+				{
+					VGA->precalcs.linearmemorymask = 0; //Disabled the memory window on ET4000 chips!
+					VGA_MemoryMapBankRead = 0; //No read bank!
+					VGA_MemoryMapBankWrite = 0; //No write bank!
+					VGA->precalcs.linearmode |= 2; //Linear mode, use high 4-bits!
+				}
 			}
 			if (et34k_tempreg & 0x20) //Continuous memory?
 			{

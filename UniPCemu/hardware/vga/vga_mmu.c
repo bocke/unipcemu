@@ -27,6 +27,8 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 
 //#define ENABLE_SPECIALDEBUGGER
 
+byte VGA_linearmemoryaddressed = 0; //Is the linear memory window addressed?
+uint_32 effectiveVRAMstart = 0xA0000; //Effective VRAM start to use!
 uint_32 VGA_VRAM_START = 0xA0000; //VRAM start address default!
 uint_32 VGA_VRAM_END = 0xC0000; //VRAM end address default!
 
@@ -77,6 +79,14 @@ VRAM base offset!
 OPTINLINE byte is_A000VRAM(uint_32 linearoffset) //In VRAM (for CPU), offset=real memory address (linear memory)?
 {
 	INLINEREGISTER uint_32 addr=linearoffset; //The offset to check!
+	effectiveVRAMstart = VGA_VRAM_START; //Effective start of VRAM!
+	VGA_linearmemoryaddressed = 0; //Not addressed by default!
+	if (((linearoffset & getActiveVGA()->precalcs.linearmemorymask) == getActiveVGA()->precalcs.linearmemorybase) && getActiveVGA()->precalcs.linearmemorymask) //Linear memory addressed?
+	{
+		VGA_linearmemoryaddressed = 1; //Addressed!
+		effectiveVRAMstart = getActiveVGA()->precalcs.linearmemorybase; //Where does the window start!
+		return VGA_RAMEnable; //Enabled if matched and RAM is enabled!
+	}
 	return VGA_RAMEnable && (addr>=VGA_VRAM_START) && (addr<VGA_VRAM_END); //Used when VRAM is enabled and VRAM is addressed!
 }
 
@@ -366,7 +376,21 @@ OPTINLINE void decodeCPUaddress(byte towrite, uint_32 offset, byte *planes, uint
 	{
 		if (getActiveVGA()->precalcs.linearmode & 2) //Use high 4 bits as address!
 		{
-			readbank = writebank = (offset&0xF0000); //Apply read/write bank from the high 4 bits that's unused!
+			if ((getActiveVGA()->enable_SVGA == 1) && getActiveVGA()->precalcs.linearmemorymask) //ET4000/W32 chip high memory address enabled?
+			{
+				if (VGA_linearmemoryaddressed) //Enabled and addressed?
+				{
+					readbank = writebank = (offset & 0x3F0000); //Apply read/write bank from the high 6 bits that's unused for a 4MB offset!
+				}
+				else //Not addressed and enabled? ET4000 compatibility?
+				{
+					readbank = writebank = (offset & 0xF0000); //Apply read/write bank from the high 4 bits that's unused!
+				}
+			}
+			else //Compatibility mode?
+			{
+				readbank = writebank = (offset & 0xF0000); //Apply read/write bank from the high 4 bits that's unused!
+			}
 		}
 		else //Use bank select?
 		{
@@ -427,7 +451,7 @@ byte VGAmemIO_rb(uint_32 offset)
 {
 	if (unlikely(is_A000VRAM(offset))) //VRAM and within range?
 	{
-		offset -= VGA_VRAM_START; //Calculate start offset into VRAM!
+		offset -= effectiveVRAMstart; //Calculate start offset into VRAM!
 		applyCGAMDAOffset(1,&offset); //Apply CGA/MDA offset if needed!
 		decodeCPUaddress(0, offset, &planes, &realoffset); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
 		memory_dataread = VGA_ReadModeOperation(planes, realoffset); //Apply the operation on read mode!
@@ -453,7 +477,7 @@ byte VGAmemIO_wb(uint_32 offset, byte value)
 {
 	if (unlikely(is_A000VRAM(offset))) //VRAM and within range?
 	{
-		offset -= VGA_VRAM_START; //Calculate start offset into VRAM!
+		offset -= effectiveVRAMstart; //Calculate start offset into VRAM!
 		applyCGAMDAOffset(1,&offset); //Apply CGA/MDA offset if needed!
 		decodeCPUaddress(1, offset, &planes, &realoffset); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
 		VGA_WriteModeOperation(planes, realoffset, value); //Apply the operation on write mode!

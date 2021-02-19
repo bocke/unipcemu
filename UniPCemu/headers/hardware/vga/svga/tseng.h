@@ -107,6 +107,10 @@ typedef struct {
 	byte SC15025_secondarypixelmaskregisters[3]; //Secondary pixel mask registers!
 	byte SC15025_pixelrepackregister; //bit 0=Enable 4-byte fetching in modes 2 and 3!
 	byte SC15025_enableExtendedRegisters; //Enable the extended registers at the color registers?
+
+	//W32 registers
+	byte W32_21xA_index; //Index selected
+	byte W32_21xA_CRTCBSpriteControl; //Index EF in both sprite and CRTCB modes. Bit 0=1: Sprite window, 0=CRTC window
 } SVGA_ET34K_DATA; //Dosbox ET4000 saved data!
 
 //Retrieve a point to the et4k?
@@ -115,6 +119,7 @@ typedef struct {
 #define et34k_data et34k(getActiveVGA())
 
 #define et4k_reg(data,port,index) data->store_et4k_##port##_##index
+#define et4k_W32_reg(data,port,index) data->store_et4k_W32_##port##_##index
 #define et3k_reg(data,port,index) data->store_et3k_##port##_##index
 #define et34k_reg(data,port,index) data->store_##port##_##index
 

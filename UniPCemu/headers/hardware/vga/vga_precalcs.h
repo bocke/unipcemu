@@ -178,6 +178,8 @@ typedef struct //Contains the precalculated values!
 	byte emulatedDACextrabits; //6 or 8-bit mask!
 	byte turnDACoff; //Turn the DAC output off?
 	uint_32 SC15025_pixelmaskregister; //Pixel mask register!
+	uint_32 linearmemorybase; //W32 Linear memory base address!
+	uint_32 linearmemorymask; //W32 Linear memory base address mask on the physical memory address!
 } VGA_PRECALCS; //VGA pre-calculations!
 
 typedef void (*VGA_calcprecalcsextensionhandler)(void *VGA, uint_32 whereupdated); //Calculate them!
