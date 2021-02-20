@@ -1009,7 +1009,10 @@ void Tseng34k_init()
 		{
 			//Handle all that needs to be initialized for the Tseng 4K!
 			// Default to 1M of VRAM
-			et34k(getActiveVGA())->tsengExtensions = 0; //Default: no Tseng extensions!
+			if (getActiveVGA()->enable_SVGA == 2) //No extensions supported?
+			{
+				et34k(getActiveVGA())->tsengExtensions = 0; //Default: no Tseng extensions!
+			}
 			if (getActiveVGA()->enable_SVGA==1) //ET4000?
 			{
 				byte n, isvalid;
@@ -2141,5 +2144,6 @@ void SVGA_Setup_TsengET4K(uint_32 VRAMSize) {
 	else //Valid registers?
 	{
 		et34k_reg(et34k(getActiveVGA()),3c4,07) = 0x4|0x8|0x20|0x80; //Default to VGA mode with full memory map, Other bits are set always.
+		et34k(getActiveVGA())->tsengExtensions = LIMITRANGE(0, 0, 1); //What extension is enabled in the settings!
 	}
 }
