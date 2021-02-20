@@ -869,7 +869,7 @@ byte Tseng34K_readIO(word port, byte *result)
 		break;
 	case 0x217A: //W32 index
 		if ((getActiveVGA()->enable_SVGA != 1) || (et34kdata->tsengExtensions == 0)) return 0; //Not available on the ET4000 until having set the KEY at least once after a power-on reset or synchronous reset(TS indexed register 0h bit 1). Also disabled by the non-W32 variants!
-		return et34kdata->W32_21xA_index; //Give the index register!
+		*result = et34kdata->W32_21xA_index; //Give the index register!
 		return 1; //Handled!
 		break;
 	case 0x217B:
@@ -895,12 +895,12 @@ byte Tseng34K_readIO(word port, byte *result)
 				}
 				else //Other register?
 				{
-					*result = 0xFF; //Unsupported!
+					*result = 0x00; //Unsupported!
 				}
 			}
 			else //Sprite?
 			{
-				*result = 0xFF; //Unsupported!
+				*result = 0x00; //Unsupported!
 			}
 		}
 		return 1; //Handled!
