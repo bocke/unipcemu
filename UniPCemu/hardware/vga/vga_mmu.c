@@ -29,6 +29,7 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 //#define ENABLE_SPECIALDEBUGGER
 
 byte VGA_linearmemoryaddressed = 0; //Is the linear memory window addressed? 0=Low VRAM, 1=Linear VRAM, 2=MMU 0-2, 3=External mapped registers, 4=Memory mapped registers
+uint_32 VGA_MMU012_blocksize = 0x2000; //Size of a MMU area inside the block!
 uint_32 effectiveVRAMstart = 0xA0000; //Effective VRAM start to use!
 uint_32 VGA_VRAM_START = 0xA0000; //VRAM start address default!
 uint_32 VGA_VRAM_END = 0xC0000; //VRAM end address default!
@@ -130,6 +131,7 @@ OPTINLINE byte is_A000VRAM(uint_32 linearoffset) //In VRAM (for CPU), offset=rea
 		{
 			effectiveVRAMstart = VGA_MMU012_START_linear; //Where does the window start!
 			VGA_linearmemoryaddressed = 2; //Addressed!
+			VGA_MMU012_blocksize = ((getActiveVGA()->precalcs.linearmemorysize & 0x300000) ? 0x800000 : 0x20000); //Size of a block in the aperture!
 			return 1; //Special!
 		}
 		if (((linearoffset - effectiveVRAMstart) >= (VGA_MMU012_START_linear + ((getActiveVGA()->precalcs.linearmemorysize & 0x300000) ? 0x1800000 : 0x60000))) && ((linearoffset - effectiveVRAMstart) < VGA_MMU012_END_linear) && VGA_MMU012_START_linear_enabled && VGA_MMU012_enabled) //External Mapped Registers?
@@ -155,6 +157,7 @@ OPTINLINE byte is_A000VRAM(uint_32 linearoffset) //In VRAM (for CPU), offset=rea
 	{
 		effectiveVRAMstart = VGA_MMU012_START; //Where does the window start!
 		VGA_linearmemoryaddressed = 2; //Addressed!
+		VGA_MMU012_blocksize = 0x2000; //Size of a block in the aperture!
 		return 1; //Special!
 	}
 	if ((linearoffset >= (VGA_MMU012_START+0x6000)) && (linearoffset < VGA_MMU012_END) && VGA_MMU012_START_enabled && VGA_MMU012_enabled) //External mapped memory?
@@ -223,6 +226,12 @@ Core read/write operations!
 
 typedef uint_32 (*VGA_WriteMode)(uint_32 data);
 
+uint_32 VGA_WriteModeLinear(uint_32 data) //Passthrough operation!
+{
+	data = getActiveVGA()->ExpandTable[data]; //Make sure the data is on the all planes!
+	return data; //Give the resulting data!
+}
+
 uint_32 VGA_WriteMode0(uint_32 data) //Read-Modify-Write operation!
 {
 	INLINEREGISTER byte curplane;
@@ -265,16 +274,24 @@ uint_32 VGA_WriteMode3(uint_32 data) //Ignore enable set reset register!
 }
 
 uint_32 readbank = 0, writebank = 0; //Banked VRAM support!
+byte VGA_forcelinearmode = 0; //Forcing linear mode?
 
 OPTINLINE void VGA_WriteModeOperation(byte planes, uint_32 offset, byte val)
 {
 	static const VGA_WriteMode VGA_WRITE[4] = {VGA_WriteMode0,VGA_WriteMode1,VGA_WriteMode2,VGA_WriteMode3}; //All write modes!
 	INLINEREGISTER byte curplane; //For plane loops!
 	INLINEREGISTER uint_32 data; //Default to the value given!
-	data = VGA_WRITE[GETBITS(getActiveVGA()->registers->GraphicsRegisters.REGISTERS.GRAPHICSMODEREGISTER,0,3)]((uint_32)val); //What write mode?
+	if (VGA_forcelinearmode) //Forced linear mode?
+	{		
+		data = VGA_WriteModeLinear((uint_32)val); //What write mode?
+	}
+	else //Normal mode?
+	{
+		data = VGA_WRITE[GETBITS(getActiveVGA()->registers->GraphicsRegisters.REGISTERS.GRAPHICSMODEREGISTER, 0, 3)]((uint_32)val); //What write mode?
+	}
 
 	byte planeenable = GETBITS(getActiveVGA()->registers->SequencerRegisters.REGISTERS.MAPMASKREGISTER,0,0xF); //What planes to try to write to!
-	if (((getActiveVGA()->precalcs.linearmode & 5) == 5) || (getActiveVGA()->precalcs.linearmode&8)) planeenable = 0xF; //Linear memory ignores this? Or are we to ignore the Write Plane Mask(linear byte mode)?
+	if (((getActiveVGA()->precalcs.linearmode & 5) == 5) || (getActiveVGA()->precalcs.linearmode&8) || VGA_forcelinearmode) planeenable = 0xF; //Linear memory ignores this? Or are we to ignore the Write Plane Mask(linear byte mode)?
 	planeenable &= planes; //The actual planes to write to!
 	byte curplanemask=1;
 	curplane = 0;
@@ -325,7 +342,10 @@ OPTINLINE byte VGA_ReadModeOperation(byte planes, uint_32 offset)
 {
 	static const VGA_ReadMode READ[2] = {VGA_ReadMode0,VGA_ReadMode1}; //Read modes!
 	loadlatch(offset); //Load the latches!
-
+	if (VGA_forcelinearmode) //Forcing linear mode?
+	{
+		return READ[0](planes, offset); //What read mode?
+	}
 	return READ[GETBITS(getActiveVGA()->registers->GraphicsRegisters.REGISTERS.GRAPHICSMODEREGISTER,3,1)](planes,offset); //What read mode?
 }
 
@@ -342,6 +362,8 @@ char towritetext[2][256] = {"Reading","Writing"};
 byte verboseVGA; //Verbose VGA dumping?
 
 byte VGA_WriteMemoryMode=0, VGA_ReadMemoryMode=0;
+
+byte decodingbankunfiltered = 0; //Read bank is unfiltered
 
 void VGA_Chain4_decode(byte towrite, uint_32 offset, byte *planes, uint_32 *realoffset)
 {
@@ -385,10 +407,13 @@ void VGA_OddEven_decode(byte towrite, uint_32 offset, byte *planes, uint_32 *rea
 	{
 		calcplanes |= 2; //Apply high page!
 	}
-	writebank <<= 1; //Shift to it's position!
-	writebank &= 0xE0000; //3 bits only!
-	readbank <<= 1; //Shift to it's postion!
-	readbank &= 0xE0000; //3 bits only!
+	if (decodingbankunfiltered == 0) //Not unfiltered?
+	{
+		writebank <<= 1; //Shift to it's position!
+		writebank &= 0xE0000; //3 bits only!
+		readbank <<= 1; //Shift to it's postion!
+		readbank &= 0xE0000; //3 bits only!
+	}
 	*realoffset = realoffsettmp; //Give the calculated offset!
 	*planes = (0x5 << calcplanes); //Convert to used plane (0&2 or 1&3)!
 	#ifdef ENABLE_SPECIALDEBUGGER
@@ -418,10 +443,13 @@ void VGA_Planar_decode(byte towrite, uint_32 offset, byte *planes, uint_32 *real
 		calcplanes <<= GETBITS(getActiveVGA()->registers->GraphicsRegisters.REGISTERS.READMAPSELECTREGISTER,0,3); //Take this plane!
 	}
 	//Apply new bank base for this mode!
-	writebank <<= 2; //Shift to it's position!
-	writebank &= 0xC0000; //2 bits only!
-	readbank <<= 2; //Shift to it's postion!
-	readbank &= 0xC0000; //2 bits only!
+	if (decodingbankunfiltered == 0) //Not unfiltered?
+	{
+		writebank <<= 2; //Shift to it's position!
+		writebank &= 0xC0000; //2 bits only!
+		readbank <<= 2; //Shift to it's postion!
+		readbank &= 0xC0000; //2 bits only!
+	}
 	*planes = calcplanes; //The planes to apply!
 	*realoffset = offset; //Load the offset directly!
 	//Use planar mode!
@@ -450,9 +478,37 @@ typedef void (*decodeCPUaddressMode)(byte towrite, uint_32 offset, byte *planes,
 
 decodeCPUaddressMode decodeCPUAddressW = VGA_OddEven_decode, decodeCPUAddressR=VGA_OddEven_decode; //Our current MMU decoder for reads and writes!
 
+//First, direct decoding of banked used mode and linear mode addresses for extended chipsets!
+OPTINLINE void directdecodeCPUaddressBanked(byte towrite, uint_32 offset, byte* planes, uint_32* realoffset, uint_32 bank)
+{
+	VGA_forcelinearmode = 0; //Not forcing linear mode!
+	readbank = writebank = bank; //Direct banks are used!
+
+	//Calculate according to the mode in our table and write/read memory mode!
+	if (towrite) //Writing?
+	{
+		decodeCPUAddressW(towrite, offset, planes, realoffset); //Apply the write memory mode!
+	}
+	else //Reading?
+	{
+		decodeCPUAddressR(towrite, offset, planes, realoffset); //Apply the read memory mode!
+	}
+}
+
+OPTINLINE void lineardecodeCPUaddressBanked(byte towrite, uint_32 offset, byte* planes, uint_32* realoffset, uint_32 bank)
+{
+	VGA_forcelinearmode = 1; //Forcing linear mode!
+	readbank = writebank = bank; //Direct banks are used!
+
+	//Calculate according to the mode in our table and write/read memory mode!
+	SVGA_LinearContinuous_decode(towrite, offset, planes, realoffset); //Apply the read memory mode!
+}
+
+//Normal decoding algorithm as specified for VRAM on any chipset
 //decodeCPUaddress(Write from CPU=1; Read from CPU=0, offset (from VRAM start address), planes to read/write (4-bit mask), offset to read/write within the plane(s)).
 OPTINLINE void decodeCPUaddress(byte towrite, uint_32 offset, byte *planes, uint_32 *realoffset)
 {
+	VGA_forcelinearmode = 0; //Not forcing linear mode!
 	//Apply bank when used!
 	if ((getActiveVGA()->precalcs.linearmode&4)==4) //Enable SVGA Normal segmented read/write bank mode support?
 	{
@@ -532,6 +588,7 @@ void applyCGAMDAOffset(byte CPUtiming, uint_32 *offset)
 	}
 }
 
+byte MMUblock; //What block is addressed for MMU0-2?
 byte bit8read;
 extern uint_32 memory_dataread;
 extern byte memory_datasize; //The size of the data that has been read!
@@ -540,6 +597,7 @@ byte VGAmemIO_rb(uint_32 offset)
 	if (unlikely(is_A000VRAM(offset))) //VRAM and within range?
 	{
 		offset -= effectiveVRAMstart; //Calculate start offset into VRAM!
+
 		if (VGA_linearmemoryaddressed) //Special memory addressed?
 		{
 			if (VGA_linearmemoryaddressed == 4) //MMU registers?
@@ -551,11 +609,57 @@ byte VGAmemIO_rb(uint_32 offset)
 					return 1; //Handled!
 				}
 			}
-			//Other MMU or external registers?
+			else if (VGA_linearmemoryaddressed == 2) //MMU 0-2?
+			{
+				if (offset >= (VGA_MMU012_blocksize << 1)) //MMU 2?
+				{
+					offset -= (VGA_MMU012_blocksize << 1); //Convert to relative offset within the block!
+					if (getActiveVGA()->precalcs.MMU2_aperture_linear) //Linear mode?
+					{
+						lineardecodeCPUaddressBanked(0, offset, &planes, &realoffset, getActiveVGA()->precalcs.MMU2_aperture); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
+						goto readdatacurrentmode; //Apply the operation on read mode!
+					}
+					else //According to current display mode?
+					{
+						directdecodeCPUaddressBanked(0, offset, &planes, &realoffset, getActiveVGA()->precalcs.MMU2_aperture); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
+						goto readdatacurrentmode; //Apply the operation on read mode!
+					}
+				}
+				else if (offset >= VGA_MMU012_blocksize) //MMU 1?
+				{
+					offset -= VGA_MMU012_blocksize; //Convert to relative offset within the block!
+					if (getActiveVGA()->precalcs.MMU1_aperture_linear) //Linear mode?
+					{
+						lineardecodeCPUaddressBanked(0, offset, &planes, &realoffset, getActiveVGA()->precalcs.MMU1_aperture); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
+						goto readdatacurrentmode; //Apply the operation on read mode!
+					}
+					else //According to current display mode?
+					{
+						directdecodeCPUaddressBanked(0, offset, &planes, &realoffset, getActiveVGA()->precalcs.MMU1_aperture); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
+						goto readdatacurrentmode; //Apply the operation on read mode!
+					}
+				}
+				else //MMU 0?
+				{
+					offset += getActiveVGA()->precalcs.MMU2_aperture; //Set the aperture in VRAM!
+					if (getActiveVGA()->precalcs.MMU0_aperture_linear) //Linear mode?
+					{
+						lineardecodeCPUaddressBanked(0, offset, &planes, &realoffset, getActiveVGA()->precalcs.MMU0_aperture); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
+						goto readdatacurrentmode; //Apply the operation on read mode!
+					}
+					else //According to current display mode?
+					{
+						directdecodeCPUaddressBanked(0, offset, &planes, &realoffset, getActiveVGA()->precalcs.MMU0_aperture); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
+						goto readdatacurrentmode; //Apply the operation on read mode!
+					}
+				}
+			}
+			//External registers?
 			return 0; //Unmapped!
 		}
 		applyCGAMDAOffset(1,&offset); //Apply CGA/MDA offset if needed!
 		decodeCPUaddress(0, offset, &planes, &realoffset); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
+		readdatacurrentmode:
 		memory_dataread = VGA_ReadModeOperation(planes, realoffset); //Apply the operation on read mode!
 		if (CGAEMULATION_ENABLED(getActiveVGA())||MDAEMULATION_ENABLED(getActiveVGA())) //Unchanged mapping?
 		{
@@ -590,11 +694,57 @@ byte VGAmemIO_wb(uint_32 offset, byte value)
 					return 1; //Handled!
 				}
 			}
-			//Other MMU or external registers?
+			else if (VGA_linearmemoryaddressed == 2) //MMU 0-2?
+			{
+				if (offset >= (VGA_MMU012_blocksize << 1)) //MMU 2?
+				{
+					offset -= (VGA_MMU012_blocksize << 1); //Convert to relative offset within the block!
+					if (getActiveVGA()->precalcs.MMU2_aperture_linear) //Linear mode?
+					{
+						lineardecodeCPUaddressBanked(1, offset, &planes, &realoffset, getActiveVGA()->precalcs.MMU2_aperture); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
+						goto writedatacurrentmode; //Apply the operation on read mode!
+					}
+					else //According to current display mode?
+					{
+						directdecodeCPUaddressBanked(1, offset, &planes, &realoffset, getActiveVGA()->precalcs.MMU2_aperture); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
+						goto writedatacurrentmode; //Apply the operation on read mode!
+					}
+				}
+				else if (offset >= VGA_MMU012_blocksize) //MMU 1?
+				{
+					offset -= VGA_MMU012_blocksize; //Convert to relative offset within the block!
+					if (getActiveVGA()->precalcs.MMU1_aperture_linear) //Linear mode?
+					{
+						lineardecodeCPUaddressBanked(1, offset, &planes, &realoffset, getActiveVGA()->precalcs.MMU1_aperture); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
+						goto writedatacurrentmode; //Apply the operation on read mode!
+					}
+					else //According to current display mode?
+					{
+						directdecodeCPUaddressBanked(1, offset, &planes, &realoffset, getActiveVGA()->precalcs.MMU1_aperture); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
+						goto writedatacurrentmode; //Apply the operation on read mode!
+					}
+				}
+				else //MMU 0?
+				{
+					offset += getActiveVGA()->precalcs.MMU2_aperture; //Set the aperture in VRAM!
+					if (getActiveVGA()->precalcs.MMU0_aperture_linear) //Linear mode?
+					{
+						lineardecodeCPUaddressBanked(1, offset, &planes, &realoffset, getActiveVGA()->precalcs.MMU0_aperture); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
+						goto writedatacurrentmode; //Apply the operation on read mode!
+					}
+					else //According to current display mode?
+					{
+						directdecodeCPUaddressBanked(1, offset, &planes, &realoffset, getActiveVGA()->precalcs.MMU0_aperture); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
+						goto writedatacurrentmode; //Apply the operation on read mode!
+					}
+				}
+			}
+			//External registers?
 			return 0; //Unmapped!
 		}
 		applyCGAMDAOffset(1,&offset); //Apply CGA/MDA offset if needed!
 		decodeCPUaddress(1, offset, &planes, &realoffset); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
+		writedatacurrentmode:
 		VGA_WriteModeOperation(planes, realoffset, value); //Apply the operation on write mode!
 		if (CGAEMULATION_ENABLED(getActiveVGA())||MDAEMULATION_ENABLED(getActiveVGA())) //Unchanged mapping?
 		{

@@ -1300,6 +1300,14 @@ byte Tseng4k_writeMMUregister(byte address, byte value)
 	case 0x0B: //MMU Memory Base Pointer Register 2
 	case 0x13: //MMU Control Register
 		et34k(getActiveVGA())->W32_MMUregisters[address & 0xFF] = value; //Set the register!
+		if (address < 0x13) //Not the control register?
+		{
+			VGA_calcprecalcs(getActiveVGA(), WHEREUPDATED_MEMORYMAPPED | (address & ~3)); //This memory mapped register has been updated!
+		}
+		else
+		{
+			VGA_calcprecalcs(getActiveVGA(), WHEREUPDATED_MEMORYMAPPED | 0x13); //The memory mapped register has been updated!
+		}
 		//We might be having to update some internal variables when they are updated(memory mapping of the 3 base pointer registers and their handling in the MMU).
 		break;
 	case 0x30: //ACL Suspend/Terminate Register
@@ -1356,6 +1364,22 @@ byte Tseng4k_writeMMUregister(byte address, byte value)
 		break;
 	}
 	return 1; //Handled!
+}
+
+//Easy retrieval of bits from an aperture containing a single number in little endian format!
+uint_32 getTsengLE32(byte* list)
+{
+	return (((((list[0x03] << 8) | list[0x02]) << 8) | list[0x01]) << 8) | list[0x00];
+}
+
+uint_32 getTsengLE24(byte* list)
+{
+	return ((((list[0x02]) << 8) | list[0x01]) << 8) | list[0x00];
+}
+
+uint_32 getTsengLE16(byte* list)
+{
+	return (list[0x01] << 8) | list[0x00];
 }
 
 extern byte VGA_WriteMemoryMode, VGA_ReadMemoryMode; //Write/read memory modes used for accessing VRAM!
@@ -1778,6 +1802,11 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 	//Misc settings
 	if (CRTUpdated || (whereupdated == WHEREUPDATED_ALL) || (whereupdated == (WHEREUPDATED_CRTCONTROLLER | 0x36))
 		|| (whereupdated == (WHEREUPDATED_CRTCONTROLLER | 0x30))
+		|| (whereupdated == (WHEREUPDATED_MEMORYMAPPED | 0x13)) //MMU control register
+		|| (whereupdated == (WHEREUPDATED_MEMORYMAPPED | 0x00)) //MMU aperture 0 register
+		|| (whereupdated == (WHEREUPDATED_MEMORYMAPPED | 0x04)) //MMU aperture 1 register
+		|| (whereupdated == (WHEREUPDATED_MEMORYMAPPED | 0x08)) //MMU aperture 2 register
+
 		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xEF)) //Image port updated?
 		|| (whereupdated==(WHEREUPDATED_SEQUENCER|0x4)) || (whereupdated==(WHEREUPDATED_GRAPHICSCONTROLLER|0x5)) //Memory address
 		 ) //Video system configuration #1!
@@ -1789,6 +1818,14 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 		tempval = VGA->precalcs.linearmode; //Old val!
 		VGA->precalcs.MMU012_enabled = 0; //Default: disabled!
 		VGA->precalcs.MMUregs_enabled = 0; //Default: disabled!
+
+		VGA->precalcs.MMU0_aperture = (getTsengLE24(&et34kdata->W32_MMUregisters[0x00]) & 0x3FFFFF); //Full 22-bit address
+		VGA->precalcs.MMU1_aperture = (getTsengLE24(&et34kdata->W32_MMUregisters[0x04]) & 0x3FFFFF); //Full 22-bit address
+		VGA->precalcs.MMU2_aperture = (getTsengLE24(&et34kdata->W32_MMUregisters[0x08]) & 0x3FFFFF); //Full 22-bit address
+		VGA->precalcs.MMU0_aperture_linear = ((et34kdata->W32_MMUregisters[0x13] >> 4) & 1); //Linear mode?
+		VGA->precalcs.MMU1_aperture_linear = ((et34kdata->W32_MMUregisters[0x13] >> 5) & 1); //Linear mode?
+		VGA->precalcs.MMU2_aperture_linear = ((et34kdata->W32_MMUregisters[0x13] >> 6) & 1); //Linear mode?
+
 		if (VGA->enable_SVGA==2) //Special ET3000 mapping?
 		{
 			VGA->precalcs.linearmode &= ~3; //Use normal Bank Select Register with VGA method of access!
