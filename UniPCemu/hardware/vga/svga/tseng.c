@@ -417,7 +417,7 @@ byte Tseng34K_writeIO(word port, byte val)
 				et34kdata->store_et4k_3d4_37 = val;
 				if (et34kdata->tsengExtensions) //ET4000/W32 variant?
 				{
-					et34kdata->memwrap = ((256 * 1024) << ((val & 8) >> 2)) << (1 + (val & 1)) - 1; //Init size to detect! 256k or 1M times(bit 3) 16 or 32 bit bus width(bit 0)!
+					et34kdata->memwrap = (((256 * 1024) << ((val & 8) >> 2)) << (1 + (val & 1))) - 1; //Init size to detect! 256k or 1M times(bit 3) 16 or 32 bit bus width(bit 0)!
 				}
 				else //normal ET4000?
 				{
