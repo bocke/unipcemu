@@ -128,16 +128,19 @@ OPTINLINE byte is_A000VRAM(uint_32 linearoffset) //In VRAM (for CPU), offset=rea
 		effectiveVRAMstart = getActiveVGA()->precalcs.linearmemorybase; //Where does the window start!
 		if ((((linearoffset - effectiveVRAMstart) >= VGA_MMU012_START_linear) && ((linearoffset - effectiveVRAMstart) < (VGA_MMU012_START_linear + ((getActiveVGA()->precalcs.linearmemorysize & 0x300000) ? 0x1800000 : 0x60000)))) && VGA_MMU012_START_linear_enabled && VGA_MMU012_enabled) //MMU0-2 register blocks in 128KB/512KB chunks?
 		{
+			effectiveVRAMstart = VGA_MMU012_START_linear; //Where does the window start!
 			VGA_linearmemoryaddressed = 2; //Addressed!
 			return 1; //Special!
 		}
 		if (((linearoffset - effectiveVRAMstart) >= (VGA_MMU012_START_linear + ((getActiveVGA()->precalcs.linearmemorysize & 0x300000) ? 0x1800000 : 0x60000))) && ((linearoffset - effectiveVRAMstart) < VGA_MMU012_END_linear) && VGA_MMU012_START_linear_enabled && VGA_MMU012_enabled) //External Mapped Registers?
 		{
+			effectiveVRAMstart = (VGA_MMU012_START_linear + ((getActiveVGA()->precalcs.linearmemorysize & 0x300000) ? 0x1800000 : 0x60000)); //Where does the window start!
 			VGA_linearmemoryaddressed = 3; //Addressed!
 			return 1; //Special!
 		}
 		if (((linearoffset - effectiveVRAMstart) >= VGA_MMUregs_START_linear) && ((linearoffset - effectiveVRAMstart) < (VGA_MMUregs_START_linear + 0x100)) && VGA_MMUregs_START_linear_enabled && VGA_MMUregs_enabled) //Memory mapped registers chunks?
 		{
+			effectiveVRAMstart = VGA_MMUregs_START_linear; //Where does the window start!
 			VGA_linearmemoryaddressed = 4; //Addressed!
 			return 1; //Special!
 		}
@@ -148,18 +151,21 @@ OPTINLINE byte is_A000VRAM(uint_32 linearoffset) //In VRAM (for CPU), offset=rea
 		}
 		return VGA_RAMEnable; //Enabled if matched and RAM is enabled!
 	}
-	if ((effectiveVRAMstart >= VGA_MMU012_START) && (effectiveVRAMstart < (VGA_MMU012_START + 0x6000)) && VGA_MMU012_START_enabled && VGA_MMU012_enabled) //MMU0-2 register blocks in 8KB chunks?
+	if ((linearoffset >= VGA_MMU012_START) && (linearoffset < (VGA_MMU012_START + 0x6000)) && VGA_MMU012_START_enabled && VGA_MMU012_enabled) //MMU0-2 register blocks in 8KB chunks?
 	{
+		effectiveVRAMstart = VGA_MMU012_START; //Where does the window start!
 		VGA_linearmemoryaddressed = 2; //Addressed!
 		return 1; //Special!
 	}
-	if ((effectiveVRAMstart >= (VGA_MMU012_START+0x6000)) && (effectiveVRAMstart < VGA_MMU012_END) && VGA_MMU012_START_enabled && VGA_MMU012_enabled) //External mapped memory?
+	if ((linearoffset >= (VGA_MMU012_START+0x6000)) && (linearoffset < VGA_MMU012_END) && VGA_MMU012_START_enabled && VGA_MMU012_enabled) //External mapped memory?
 	{
+		effectiveVRAMstart = (VGA_MMU012_START + 0x6000); //Where does the window start!
 		VGA_linearmemoryaddressed = 3; //Addressed!
 		return 1; //Special!
 	}
-	if ((effectiveVRAMstart >= VGA_MMUregs_START) && (effectiveVRAMstart < (VGA_MMUregs_START+0x100)) && VGA_MMUregs_START_enabled && VGA_MMUregs_enabled) //Memory mapped registers?
+	if ((linearoffset >= VGA_MMUregs_START) && (linearoffset < (VGA_MMUregs_START+0x100)) && VGA_MMUregs_START_enabled && VGA_MMUregs_enabled) //Memory mapped registers?
 	{
+		effectiveVRAMstart = VGA_MMUregs_START; //Where does the window start!
 		VGA_linearmemoryaddressed = 4; //Addressed!
 		return 1; //Special!
 	}
