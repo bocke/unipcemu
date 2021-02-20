@@ -614,6 +614,12 @@ byte VGAmemIO_rb(uint_32 offset)
 				if (offset >= (VGA_MMU012_blocksize << 1)) //MMU 2?
 				{
 					offset -= (VGA_MMU012_blocksize << 1); //Convert to relative offset within the block!
+					if (getActiveVGA()->precalcs.MMU2_aperture_linear & 2) //Accelerator mode?
+					{
+						memory_dataread = 0xFF; //Unsupported!
+						memory_datasize = 1; //Only 1 byte chunks can be read!
+						return 1; //Unsupported!
+					}
 					if (getActiveVGA()->precalcs.MMU2_aperture_linear) //Linear mode?
 					{
 						lineardecodeCPUaddressBanked(0, offset, &planes, &realoffset, getActiveVGA()->precalcs.MMU2_aperture); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
@@ -628,6 +634,12 @@ byte VGAmemIO_rb(uint_32 offset)
 				else if (offset >= VGA_MMU012_blocksize) //MMU 1?
 				{
 					offset -= VGA_MMU012_blocksize; //Convert to relative offset within the block!
+					if (getActiveVGA()->precalcs.MMU1_aperture_linear & 2) //Accelerator mode?
+					{
+						memory_dataread = 0xFF; //Unsupported!
+						memory_datasize = 1; //Only 1 byte chunks can be read!
+						return 1; //Unsupported!
+					}
 					if (getActiveVGA()->precalcs.MMU1_aperture_linear) //Linear mode?
 					{
 						lineardecodeCPUaddressBanked(0, offset, &planes, &realoffset, getActiveVGA()->precalcs.MMU1_aperture); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
@@ -642,6 +654,12 @@ byte VGAmemIO_rb(uint_32 offset)
 				else //MMU 0?
 				{
 					offset += getActiveVGA()->precalcs.MMU2_aperture; //Set the aperture in VRAM!
+					if (getActiveVGA()->precalcs.MMU0_aperture_linear & 2) //Accelerator mode?
+					{
+						memory_dataread = 0xFF; //Unsupported!
+						memory_datasize = 1; //Only 1 byte chunks can be read!
+						return 1; //Unsupported!
+					}
 					if (getActiveVGA()->precalcs.MMU0_aperture_linear) //Linear mode?
 					{
 						lineardecodeCPUaddressBanked(0, offset, &planes, &realoffset, getActiveVGA()->precalcs.MMU0_aperture); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
@@ -699,6 +717,10 @@ byte VGAmemIO_wb(uint_32 offset, byte value)
 				if (offset >= (VGA_MMU012_blocksize << 1)) //MMU 2?
 				{
 					offset -= (VGA_MMU012_blocksize << 1); //Convert to relative offset within the block!
+					if (getActiveVGA()->precalcs.MMU2_aperture_linear & 2) //Accelerator mode?
+					{
+						return 1; //Unsupported!
+					}
 					if (getActiveVGA()->precalcs.MMU2_aperture_linear) //Linear mode?
 					{
 						lineardecodeCPUaddressBanked(1, offset, &planes, &realoffset, getActiveVGA()->precalcs.MMU2_aperture); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
@@ -713,6 +735,10 @@ byte VGAmemIO_wb(uint_32 offset, byte value)
 				else if (offset >= VGA_MMU012_blocksize) //MMU 1?
 				{
 					offset -= VGA_MMU012_blocksize; //Convert to relative offset within the block!
+					if (getActiveVGA()->precalcs.MMU1_aperture_linear & 2) //Accelerator mode?
+					{
+						return 1; //Unsupported!
+					}
 					if (getActiveVGA()->precalcs.MMU1_aperture_linear) //Linear mode?
 					{
 						lineardecodeCPUaddressBanked(1, offset, &planes, &realoffset, getActiveVGA()->precalcs.MMU1_aperture); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
@@ -727,6 +753,10 @@ byte VGAmemIO_wb(uint_32 offset, byte value)
 				else //MMU 0?
 				{
 					offset += getActiveVGA()->precalcs.MMU2_aperture; //Set the aperture in VRAM!
+					if (getActiveVGA()->precalcs.MMU0_aperture_linear & 2) //Accelerator mode?
+					{
+						return 1; //Unsupported!
+					}
 					if (getActiveVGA()->precalcs.MMU0_aperture_linear) //Linear mode?
 					{
 						lineardecodeCPUaddressBanked(1, offset, &planes, &realoffset, getActiveVGA()->precalcs.MMU0_aperture); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
