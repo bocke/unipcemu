@@ -375,7 +375,14 @@ byte BIOS_checkOPTROMS() //Check and load Option ROMs!
 				ISVGA = 1; //We're a VGA!
 				if (BIOS_Settings.VGA_Mode==6) //ET4000?
 				{
-					scanROM("ET4000",&filename[0],sizeof(filename)); //Scan for a ET4000 ROM!
+					if (BIOS_Settings.ET4000_extensions) //W32 variant?
+					{
+						scanROM("ET4000_W32", &filename[0], sizeof(filename)); //Scan for a ET4000/W32 ROM!
+					}
+					else //Normal ET4000AX?
+					{
+						scanROM("ET4000", &filename[0], sizeof(filename)); //Scan for a ET4000 ROM!
+					}
 					//Provide emulator fallback support!
 					if (file_exists(filename)) //Full ET4000?
 					{
