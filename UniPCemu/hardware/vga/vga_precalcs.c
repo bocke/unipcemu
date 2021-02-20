@@ -431,7 +431,7 @@ void VGA_calcprecalcs(void *useVGA, uint_32 whereupdated) //Calculate them, wher
 				VGA_ReadMemoryMode = VGA->precalcs.ReadMemoryMode = 0; //Planar mode!
 			}
 		}
-		updateVGAMMUAddressMode(); //Update the currently assigned memory mode for mapping memory by address!
+		updateVGAMMUAddressMode(VGA); //Update the currently assigned memory mode for mapping memory by address!
 	}
 
 	if ((whereupdated==(WHEREUPDATED_SEQUENCER|0x03)) || (whereupdated==(WHEREUPDATED_SEQUENCER|0x04)) || FullUpdate) //Sequencer character map register updated?

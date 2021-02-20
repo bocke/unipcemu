@@ -24,13 +24,26 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 #include "headers/mmu/mmuhandler.h" //Handling support!
 #include "headers/hardware/vga/vga_cga_mda.h" //CGA/MDA support!
 #include "headers/cpu/cpu.h" //Emulator cpu support for waitstates!
+#include "headers/hardware/vga/svga/tseng.h" //Tseng support!
 
 //#define ENABLE_SPECIALDEBUGGER
 
-byte VGA_linearmemoryaddressed = 0; //Is the linear memory window addressed?
+byte VGA_linearmemoryaddressed = 0; //Is the linear memory window addressed? 0=Low VRAM, 1=Linear VRAM, 2=MMU 0-2, 3=External mapped registers, 4=Memory mapped registers
 uint_32 effectiveVRAMstart = 0xA0000; //Effective VRAM start to use!
 uint_32 VGA_VRAM_START = 0xA0000; //VRAM start address default!
 uint_32 VGA_VRAM_END = 0xC0000; //VRAM end address default!
+uint_32 VGA_MMU012_START = 0x0;
+uint_32 VGA_MMU012_START_linear = 0x0;
+uint_32 VGA_MMU012_END = 0x0;
+uint_32 VGA_MMU012_END_linear = 0x0;
+uint_32 VGA_MMUregs_START = 0x0;
+uint_32 VGA_MMUregs_START_linear = 0x0;
+byte VGA_MMU012_START_enabled = 0; //Enabled VGA_MMU012_START?
+byte VGA_MMU012_START_linear_enabled = 0; //Enabled VGA_MMU012_START for linear addresses?
+byte VGA_MMUregs_START_enabled = 0; //Enabled VGA_MMUregs_START?
+byte VGA_MMUregs_START_linear_enabled = 0; //Enabled VGA_MMUregs_START for linear addresses?
+byte VGA_MMUregs_enabled = 0; //MMU regs enabled at all?
+byte VGA_MMU012_enabled = 0; //MMU012 enabled at all?
 
 byte VGA_RAMEnable = 1; //Is our RAM enabled?
 byte VGA_MemoryMapSelect = 0; //What memory map is active?
@@ -52,18 +65,46 @@ void VGA_updateVRAMmaps(VGA_Type *VGA)
 	case 0: //A0000-BFFFF (128K region)?
 		VGA_VRAM_START = 0xA0000; //Start!
 		VGA_VRAM_END = 0xC0000; //End!
+		VGA_MMU012_START_enabled = 0; //Disabled!
+		VGA_MMU012_START_linear_enabled = 1; //Enabled!
+		VGA_MMUregs_START_enabled = 0; //Disabled!
+		VGA_MMUregs_START_linear_enabled = 1; //Enabled!
+		VGA_MMU012_START = 0; //Unused!
+		VGA_MMUregs_START = 0; //Unused!
+		VGA_MMU012_END = 0; //Unused!
 		break;
 	case 1: //A0000-AFFFF (64K region)?
 		VGA_VRAM_START = 0xA0000; //Start!
 		VGA_VRAM_END = 0xB0000; //End!
+		VGA_MMU012_START_enabled = 1; //Enabled!
+		VGA_MMU012_START_linear_enabled = 1; //Enabled!
+		VGA_MMUregs_START_enabled = 1; //Enabled!
+		VGA_MMUregs_START_linear_enabled = 1; //Enabled!
+		VGA_MMU012_START = 0xB8000; //Used!
+		VGA_MMU012_END = 0xBF000; //Used!
+		VGA_MMUregs_START = 0xBFF00; //Might be used!
 		break;
 	case 2: //B0000-B7FFF (32K region)?
 		VGA_VRAM_START = 0xB0000; //Start!
 		VGA_VRAM_END = 0xB8000; //End!
+		VGA_MMU012_START_enabled = 1; //Enabled!
+		VGA_MMU012_START_linear_enabled = 1; //Enabled!
+		VGA_MMUregs_START_enabled = 1; //Enabled!
+		VGA_MMUregs_START_linear_enabled = 1; //Enabled!
+		VGA_MMU012_START = 0xA8000; //Used!
+		VGA_MMU012_END = 0xAF000; //Used!
+		VGA_MMUregs_START = 0xAFF00; //Might be used!
 		break;
 	case 3: //B8000-BFFFF (32K region)?
 		VGA_VRAM_START = 0xB8000; //Start!
 		VGA_VRAM_END = 0xC0000; //End!
+		VGA_MMU012_START_enabled = 1; //Enabled!
+		VGA_MMU012_START_linear_enabled = 1; //Enabled!
+		VGA_MMUregs_START_enabled = 1; //Enabled!
+		VGA_MMUregs_START_linear_enabled = 1; //Enabled!
+		VGA_MMU012_START = 0xA8000; //Used!
+		VGA_MMU012_END = 0xAF000; //Used!
+		VGA_MMUregs_START = 0xAFF00; //Might be used!
 		break;
 	default:
 		break;
@@ -83,9 +124,44 @@ OPTINLINE byte is_A000VRAM(uint_32 linearoffset) //In VRAM (for CPU), offset=rea
 	VGA_linearmemoryaddressed = 0; //Not addressed by default!
 	if (((linearoffset & getActiveVGA()->precalcs.linearmemorymask) == getActiveVGA()->precalcs.linearmemorybase) && getActiveVGA()->precalcs.linearmemorymask) //Linear memory addressed?
 	{
-		VGA_linearmemoryaddressed = 1; //Addressed!
+		VGA_linearmemoryaddressed = 1; //Addressed VRAM linearly!
 		effectiveVRAMstart = getActiveVGA()->precalcs.linearmemorybase; //Where does the window start!
+		if ((((linearoffset - effectiveVRAMstart) >= VGA_MMU012_START_linear) && ((linearoffset - effectiveVRAMstart) < (VGA_MMU012_START_linear + ((getActiveVGA()->precalcs.linearmemorysize & 0x300000) ? 0x1800000 : 0x60000)))) && VGA_MMU012_START_linear_enabled && VGA_MMU012_enabled) //MMU0-2 register blocks in 128KB/512KB chunks?
+		{
+			VGA_linearmemoryaddressed = 2; //Addressed!
+			return 1; //Special!
+		}
+		if (((linearoffset - effectiveVRAMstart) >= (VGA_MMU012_START_linear + ((getActiveVGA()->precalcs.linearmemorysize & 0x300000) ? 0x1800000 : 0x60000))) && ((linearoffset - effectiveVRAMstart) < VGA_MMU012_END_linear) && VGA_MMU012_START_linear_enabled && VGA_MMU012_enabled) //External Mapped Registers?
+		{
+			VGA_linearmemoryaddressed = 3; //Addressed!
+			return 1; //Special!
+		}
+		if (((linearoffset - effectiveVRAMstart) >= VGA_MMUregs_START_linear) && ((linearoffset - effectiveVRAMstart) < (VGA_MMUregs_START_linear + 0x100)) && VGA_MMUregs_START_linear_enabled && VGA_MMUregs_enabled) //Memory mapped registers chunks?
+		{
+			VGA_linearmemoryaddressed = 4; //Addressed!
+			return 1; //Special!
+		}
+		//We're either the VRAM linear window or unmapped addresses!
+		if ((linearoffset-effectiveVRAMstart) >= getActiveVGA()->precalcs.linearmemorysize) //Past effective VRAM window? Either MMU0-2, memory mapped regs or external regs?
+		{
+			return 0; //Out of range for the VRAM window!
+		}
 		return VGA_RAMEnable; //Enabled if matched and RAM is enabled!
+	}
+	if ((effectiveVRAMstart >= VGA_MMU012_START) && (effectiveVRAMstart < (VGA_MMU012_START + 0x6000)) && VGA_MMU012_START_enabled && VGA_MMU012_enabled) //MMU0-2 register blocks in 8KB chunks?
+	{
+		VGA_linearmemoryaddressed = 2; //Addressed!
+		return 1; //Special!
+	}
+	if ((effectiveVRAMstart >= (VGA_MMU012_START+0x6000)) && (effectiveVRAMstart < VGA_MMU012_END) && VGA_MMU012_START_enabled && VGA_MMU012_enabled) //External mapped memory?
+	{
+		VGA_linearmemoryaddressed = 3; //Addressed!
+		return 1; //Special!
+	}
+	if ((effectiveVRAMstart >= VGA_MMUregs_START) && (effectiveVRAMstart < (VGA_MMUregs_START+0x100)) && VGA_MMUregs_START_enabled && VGA_MMUregs_enabled) //Memory mapped registers?
+	{
+		VGA_linearmemoryaddressed = 4; //Addressed!
+		return 1; //Special!
 	}
 	return VGA_RAMEnable && (addr>=VGA_VRAM_START) && (addr<VGA_VRAM_END); //Used when VRAM is enabled and VRAM is addressed!
 }
@@ -412,11 +488,16 @@ OPTINLINE void decodeCPUaddress(byte towrite, uint_32 offset, byte *planes, uint
 	}
 }
 
-void updateVGAMMUAddressMode()
+void updateVGAMMUAddressMode(VGA_Type *VGA)
 {
 	static const decodeCPUaddressMode decodeCPUaddressmode[4] = {VGA_Planar_decode,VGA_Chain4_decode,VGA_OddEven_decode,SVGA_LinearContinuous_decode}; //All decode modes supported!
 	decodeCPUAddressW = decodeCPUaddressmode[VGA_WriteMemoryMode&3]; //Apply the Write memory mode!
 	decodeCPUAddressR = decodeCPUaddressmode[VGA_ReadMemoryMode&3]; //Apply the Read memory mode!
+	VGA_MMU012_START_linear = VGA->precalcs.linearmemorysize; //Where the 0-2 MMU 8KB blocks and the ones following it start!
+	VGA_MMUregs_START_linear = (VGA->precalcs.linearmemorysize & 0x300000) ? 0x3FFF00 : 0xFFF00; //Where the memory mapped registers start!
+	VGA_MMU012_END_linear = (VGA->precalcs.linearmemorysize & 0x300000) ? 0x3F0000 : 0xF0000; //Where the external mapped registers end!
+	VGA_MMU012_enabled = VGA->precalcs.MMU012_enabled; //MMU0-2 Enabled?
+	VGA_MMUregs_enabled = VGA->precalcs.MMUregs_enabled; //MMU regs Enabled?
 }
 
 byte planes; //What planes to affect!
@@ -445,6 +526,7 @@ void applyCGAMDAOffset(byte CPUtiming, uint_32 *offset)
 	}
 }
 
+byte bit8read;
 extern uint_32 memory_dataread;
 extern byte memory_datasize; //The size of the data that has been read!
 byte VGAmemIO_rb(uint_32 offset)
@@ -452,6 +534,20 @@ byte VGAmemIO_rb(uint_32 offset)
 	if (unlikely(is_A000VRAM(offset))) //VRAM and within range?
 	{
 		offset -= effectiveVRAMstart; //Calculate start offset into VRAM!
+		if (VGA_linearmemoryaddressed) //Special memory addressed?
+		{
+			if (VGA_linearmemoryaddressed == 4) //MMU registers?
+			{
+				if (Tseng4k_readMMUregister(offset, &bit8read))
+				{
+					memory_dataread = bit8read; //What is read!
+					memory_datasize = 1; //Only 1 byte chunks can be read!
+					return 1; //Handled!
+				}
+			}
+			//Other MMU or external registers?
+			return 0; //Unmapped!
+		}
 		applyCGAMDAOffset(1,&offset); //Apply CGA/MDA offset if needed!
 		decodeCPUaddress(0, offset, &planes, &realoffset); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
 		memory_dataread = VGA_ReadModeOperation(planes, realoffset); //Apply the operation on read mode!
@@ -478,6 +574,19 @@ byte VGAmemIO_wb(uint_32 offset, byte value)
 	if (unlikely(is_A000VRAM(offset))) //VRAM and within range?
 	{
 		offset -= effectiveVRAMstart; //Calculate start offset into VRAM!
+		if (VGA_linearmemoryaddressed) //Special memory addressed?
+		{
+			if (VGA_linearmemoryaddressed == 4) //MMU registers?
+			{
+				if (Tseng4k_writeMMUregister(offset, value))
+				{
+					memory_datawrittensize = 1; //Only 1 byte written!
+					return 1; //Handled!
+				}
+			}
+			//Other MMU or external registers?
+			return 0; //Unmapped!
+		}
 		applyCGAMDAOffset(1,&offset); //Apply CGA/MDA offset if needed!
 		decodeCPUaddress(1, offset, &planes, &realoffset); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
 		VGA_WriteModeOperation(planes, realoffset, value); //Apply the operation on write mode!

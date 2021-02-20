@@ -541,6 +541,7 @@ byte Tseng34K_writeIO(word port, byte val)
 	case 0x217A: //W32 index
 		if ((getActiveVGA()->enable_SVGA != 1) || (et34kdata->tsengExtensions == 0)) return 0; //Not available on the ET4000 until having set the KEY at least once after a power-on reset or synchronous reset(TS indexed register 0h bit 1). Also disabled by the non-W32 variants!
 		et34kdata->W32_21xA_index = val; //Set the index register!
+		VGA_calcprecalcs(getActiveVGA(), WHEREUPDATED_INDEX|INDEX_CRTCSPRITE); //Update from the CRTC index registers!
 		return 1; //Handled!
 		break;
 	case 0x217B:
@@ -552,9 +553,16 @@ byte Tseng34K_writeIO(word port, byte val)
 		{
 			if (port == 0x217B) //First byte?
 			{
-				et34kdata->W32_21xA_CRTCBSpriteControl = val; //Give the register!
+				et34kdata->W32_21xA_CRTCBSpriteControl = val; //Set the register!
 			}
 			//Other byte are always cleared?
+		}
+		else if (et34kdata->W32_21xA_index == 0xF7) //Image Port control?
+		{
+			if (port == 0x217B) //First byte?
+			{
+				et34kdata->W32_21xA_ImagePortControl = val; //Set the register!
+			}
 		}
 		else //Shared addresses?
 		{
@@ -567,6 +575,7 @@ byte Tseng34K_writeIO(word port, byte val)
 				//Not implemented!
 			}
 		}
+		VGA_calcprecalcs(getActiveVGA(), WHEREUPDATED_CRTCSPRITE|et34kdata->W32_21xA_index); //Update from the CRTC index registers!
 		return 1; //Handled!
 		break;
 		/*
@@ -870,7 +879,11 @@ byte Tseng34K_readIO(word port, byte *result)
 		if ((getActiveVGA()->enable_SVGA != 1) || (et34kdata->tsengExtensions == 0)) return 0; //Not available on the ET4000 until having set the KEY at least once after a power-on reset or synchronous reset(TS indexed register 0h bit 1). Also disabled by the non-W32 variants!
 		if (et34kdata->W32_21xA_index == 0xEF) //CRTC/sprite control?
 		{
-			*result = et34kdata->W32_21xA_CRTCBSpriteControl>>((port-0x217B)<<3); //Give the register!
+			*result = (et34kdata->W32_21xA_CRTCBSpriteControl >> ((port - 0x217B) << 3)); //Give the register!
+		}
+		else if (et34kdata->W32_21xA_index == 0xF7) //Image port control?
+		{
+			*result = (et34kdata->W32_21xA_ImagePortControl >> ((port - 0x217B) << 3)); //Give the register!
 		}
 		else //Shared addresses?
 		{
@@ -1110,6 +1123,26 @@ byte Tseng34k_doublecharacterclocks(VGA_Type *VGA)
 	if (!(((VGA->enable_SVGA == 2) || (VGA->enable_SVGA == 1)))) return 0; //Not ET3000/ET4000!
 	if (!et34k(VGA)) return 0; //Not registered?
 	return et34k(VGA)->doublehorizontaltimings; //Double the horizontal timings?
+}
+
+byte Tseng4k_readMMUregister(byte address, byte *result)
+{
+	*result = 0xFF; //Unhandled!
+	if (address < 0x10) //Implemented so far?
+	{
+		*result = et34k(getActiveVGA())->W32_MMUregisters[address & 0xFF]; //Give the register!
+	}
+	return 1; //Handled!
+}
+
+byte Tseng4k_writeMMUregister(byte address, byte value)
+{
+	//Unhandled!
+	if (address < 0x10) //Implemented so far?
+	{
+		et34k(getActiveVGA())->W32_MMUregisters[address & 0xFF] = value; //Set the register!
+	}
+	return 1; //Handled!
 }
 
 extern byte VGA_WriteMemoryMode, VGA_ReadMemoryMode; //Write/read memory modes used for accessing VRAM!
@@ -1532,6 +1565,7 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 	//Misc settings
 	if (CRTUpdated || (whereupdated == WHEREUPDATED_ALL) || (whereupdated == (WHEREUPDATED_CRTCONTROLLER | 0x36))
 		|| (whereupdated == (WHEREUPDATED_CRTCONTROLLER | 0x30))
+		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xEF)) //Image port updated?
 		|| (whereupdated==(WHEREUPDATED_SEQUENCER|0x4)) || (whereupdated==(WHEREUPDATED_GRAPHICSCONTROLLER|0x5)) //Memory address
 		 ) //Video system configuration #1!
 	{
@@ -1540,6 +1574,8 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 		#endif
 		et34k_tempreg = et4k_reg(et34kdata, 3d4, 36); //The overflow register!
 		tempval = VGA->precalcs.linearmode; //Old val!
+		VGA->precalcs.MMU012_enabled = 0; //Default: disabled!
+		VGA->precalcs.MMUregs_enabled = 0; //Default: disabled!
 		if (VGA->enable_SVGA==2) //Special ET3000 mapping?
 		{
 			VGA->precalcs.linearmode &= ~3; //Use normal Bank Select Register with VGA method of access!
@@ -1568,6 +1604,9 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 			{
 				VGA->precalcs.linearmemorybase = ((uint_64)et4k_W32_reg(et34kdata, 3d4, 30)<<22); //Base to apply, in 4MB chunks!
 				VGA->precalcs.linearmemorymask = ~((1ULL<<22)-1); //Disabled!
+				VGA->precalcs.linearmemorysize = (1ULL<<22); //The default size of the aperture!
+				VGA->precalcs.MMU012_enabled = (et34k_tempreg & 8) ? 1 : 0; //MMU 0-2 enabled when bit 3 is set (the remainder is handled by the MAP setting itself for the low memory area)?
+				VGA->precalcs.MMUregs_enabled = ((et34k_tempreg & 0x28) == 0x28) ? 1 : 0; //Memory mapped registers are enabled when bits 3 and 5 are set.
 			}
 			else //Plain ET4000?
 			{
@@ -1619,7 +1658,8 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 			VGA_ReadMemoryMode = VGA->precalcs.ReadMemoryMode; //VGA compatibility mode!
 			VGA_WriteMemoryMode = VGA->precalcs.WriteMemoryMode; //VGA compatiblity mode!
 		}
-		updateVGAMMUAddressMode(); //Update the currently assigned memory mode for mapping memory by address!
+
+		updateVGAMMUAddressMode(VGA); //Update the currently assigned memory mode for mapping memory by address!
 
 		newfontwidth = ((et34k_tempreg & 4) >> 2); //Are we to use 16-bit wide fonts?
 		if (unlikely(VGA->precalcs.doublewidthfont != newfontwidth)) //Font width is changed?

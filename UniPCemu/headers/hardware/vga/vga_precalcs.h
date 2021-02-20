@@ -27,7 +27,7 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 //ALL update? (for init)
 #define WHEREUPDATED_ALL 0x0000
 //Section update (from section below), flag. This updates all register within the section!
-#define WHEREUPDATED_ALL_SECTION 0x10000
+#define WHEREUPDATED_ALL_SECTION 0x20000
 
 //Section (used when not all). This is OR-ed with the data index!
 #define WHEREUPDATED_GRAPHICSCONTROLLER 0x1000
@@ -49,6 +49,8 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 #define WHEREUPDATED_CGACRTCONTROLLER_VERTICAL 0xD000
 //CGA misc CRT registers!
 #define WHEREUPDATED_CGACRTCONTROLLER 0xE000
+#define WHEREUPDATED_CRTCSPRITE 0xF000
+#define WHEREUPDATED_MEMORYMAPPED 0x10000
 
 //All index registers that can be updated!
 #define INDEX_GRAPHICSCONTROLLER 0x1
@@ -57,11 +59,12 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 #define INDEX_ATTRIBUTECONTROLLER 0x4
 #define INDEX_DACWRITE 0x5
 #define INDEX_DACREAD 0x6
+#define INDEX_CRTCSPRITE 0x7
 
 //Filter to get all above!
 //The area where it was updated:
 //The area/section to update?
-#define WHEREUPDATED_AREA 0xF000
+#define WHEREUPDATED_AREA 0x1F000
 //The updated register:
 #define WHEREUPDATED_REGISTER 0x0FFF
 
@@ -180,6 +183,9 @@ typedef struct //Contains the precalculated values!
 	uint_32 SC15025_pixelmaskregister; //Pixel mask register!
 	uint_32 linearmemorybase; //W32 Linear memory base address!
 	uint_32 linearmemorymask; //W32 Linear memory base address mask on the physical memory address!
+	uint_32 linearmemorysize; //W32 Linear memory size!
+	byte MMUregs_enabled; //MMU registers enabled?
+	byte MMU012_enabled; //MMU0-2 enabled?
 } VGA_PRECALCS; //VGA pre-calculations!
 
 typedef void (*VGA_calcprecalcsextensionhandler)(void *VGA, uint_32 whereupdated); //Calculate them!
