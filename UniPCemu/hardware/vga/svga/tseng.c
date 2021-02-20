@@ -568,11 +568,47 @@ byte Tseng34K_writeIO(word port, byte val)
 		{
 			if ((et34kdata->W32_21xA_CRTCBSpriteControl & 1) == 0) //CRTC?
 			{
-				//Not implemented!
+				switch (et34kdata->W32_21xA_index) //What index in the CRTC?
+				{
+				case 0xE0: //CRTCB Horizontal Pixel Position (word)
+				case 0xE2: //CRTCB Width (word)
+				case 0xE4: //CRTCB Vertical Pixel Position (word)
+				case 0xE6: //CRTCB Height (word)
+				case 0xE8: //CRTCB Starting Address (24-bit)
+				case 0xEB: //CRTCB Row Offset (word)
+					et34kdata->W32_21xA_shadowRegisters[et34kdata->W32_21xA_index - 0xE0][0] = (et34kdata->W32_21xA_shadowRegisters[et34kdata->W32_21xA_index - 0xE0][0] & ~(0xFF << ((port - 0x217B) << 3))) | (val << ((port - 0x217B) << 3)); //Set the value in the CRTCB registers!
+					break;
+				case 0xED: //CRTCB Pixel Panning
+				case 0xEE: //CRTCB Color Depth
+				case 0xF0: //Image Starting Address (24-bit)
+				case 0xF3: //Image Transfer Length (word)
+				case 0xF5: //Image Row Offset
+					//All shared among both CRTCB and Sprite registers!
+					et34kdata->W32_21xA_shadowRegisters[et34kdata->W32_21xA_index - 0xE0][0] = (et34kdata->W32_21xA_shadowRegisters[et34kdata->W32_21xA_index - 0xE0][0] & ~(0xFF << ((port - 0x217B) << 3))) | (val << ((port - 0x217B) << 3)); //Set the value in the CRTCB registers!
+					break;
+				}
 			}
 			else //Sprite?
 			{
-				//Not implemented!
+				switch (et34kdata->W32_21xA_index) //What index in the Sprite?
+				{
+				case 0xE0: //Sprite Horizontal Pixel Position (word)
+				case 0xE2: //Sprite Horizontal Preset (word)
+				case 0xE4: //Sprite Horizontal Pixel Position (word)
+				case 0xE6: //Sprite Vertical Preset (word)
+				case 0xE8: //Sprite Starting Address (24-bit)
+				case 0xEB: //Sprite Row OFfset (word)
+					et34kdata->W32_21xA_shadowRegisters[et34kdata->W32_21xA_index - 0xE0][1] = (et34kdata->W32_21xA_shadowRegisters[et34kdata->W32_21xA_index - 0xE0][1] & ~(0xFF << ((port - 0x217B) << 3))) | (val << ((port - 0x217B) << 3)); //Set the value in the Sprite registers!
+					break;
+				case 0xED: //CRTCB Pixel Panning
+				case 0xEE: //CRTCB Color Depth
+				case 0xF0: //Image Starting Address (24-bit)
+				case 0xF3: //Image Transfer Length (word)
+				case 0xF5: //Image Row Offset
+					//All shared among both CRTCB and Sprite registers!
+					et34kdata->W32_21xA_shadowRegisters[et34kdata->W32_21xA_index - 0xE0][0] = (et34kdata->W32_21xA_shadowRegisters[et34kdata->W32_21xA_index - 0xE0][0] & ~(0xFF << ((port - 0x217B) << 3))) | (val << ((port - 0x217B) << 3)); //Set the value in the CRTCB registers!
+					break;
+				}
 			}
 		}
 		VGA_calcprecalcs(getActiveVGA(), WHEREUPDATED_CRTCSPRITE|et34kdata->W32_21xA_index); //Update from the CRTC index registers!
@@ -889,18 +925,47 @@ byte Tseng34K_readIO(word port, byte *result)
 		{
 			if ((et34kdata->W32_21xA_CRTCBSpriteControl & 1) == 0) //CRTC?
 			{
-				if (et34kdata->W32_21xA_index == 0xEB) //CRTC row offset?
+				switch (et34kdata->W32_21xA_index) //What index in the CRTC?
 				{
-					*result = 0x00; //Clear the entire register!
-				}
-				else //Other register?
-				{
-					*result = 0x00; //Unsupported!
+				case 0xE0: //CRTCB Horizontal Pixel Position (word)
+				case 0xE2: //CRTCB Width (word)
+				case 0xE4: //CRTCB Vertical Pixel Position (word)
+				case 0xE6: //CRTCB Height (word)
+				case 0xE8: //CRTCB Starting Address (24-bit)
+				case 0xEB: //CRTCB Row Offset (word)
+					*result = (et34kdata->W32_21xA_shadowRegisters[et34kdata->W32_21xA_index][0] >> ((port - 0x217B) << 3)); //Give the register!
+					break;
+				case 0xED: //CRTCB Pixel Panning
+				case 0xEE: //CRTCB Color Depth
+				case 0xF0: //Image Starting Address (24-bit)
+				case 0xF3: //Image Transfer Length (word)
+				case 0xF5: //Image Row Offset
+					//All shared among both CRTCB and Sprite registers!
+					*result = (et34kdata->W32_21xA_shadowRegisters[et34kdata->W32_21xA_index][0] >> ((port - 0x217B) << 3)); //Give the register!
+					break;
 				}
 			}
 			else //Sprite?
 			{
-				*result = 0x00; //Unsupported!
+				switch (et34kdata->W32_21xA_index) //What index in the Sprite?
+				{
+				case 0xE0: //Sprite Horizontal Pixel Position (word)
+				case 0xE2: //Sprite Horizontal Preset (word)
+				case 0xE4: //Sprite Horizontal Pixel Position (word)
+				case 0xE6: //Sprite Vertical Preset (word)
+				case 0xE8: //Sprite Starting Address (24-bit)
+				case 0xEB: //Sprite Row OFfset (word)
+					*result = (et34kdata->W32_21xA_shadowRegisters[et34kdata->W32_21xA_index][1] >> ((port - 0x217B) << 3)); //Give the register!
+					break;
+				case 0xED: //CRTCB Pixel Panning
+				case 0xEE: //CRTCB Color Depth
+				case 0xF0: //Image Starting Address (24-bit)
+				case 0xF3: //Image Transfer Length (word)
+				case 0xF5: //Image Row Offset
+					//All shared among both CRTCB and Sprite registers!
+					*result = (et34kdata->W32_21xA_shadowRegisters[et34kdata->W32_21xA_index][0] >> ((port - 0x217B) << 3)); //Give the register!
+					break;
+				}
 			}
 		}
 		return 1; //Handled!
@@ -1130,10 +1195,88 @@ byte Tseng34k_doublecharacterclocks(VGA_Type *VGA)
 
 byte Tseng4k_readMMUregister(byte address, byte *result)
 {
-	*result = 0xFF; //Unhandled!
-	if (address < 0x10) //Implemented so far?
+	*result = 0xFF; //Unhandled: float the bus by default!
+	if (address == 0x35) //ACL Interrupt Status Register
 	{
-		*result = et34k(getActiveVGA())->W32_MMUregisters[address & 0xFF]; //Give the register!
+		*result = 0x00; //No interrupts are pending!
+	}
+	else if (address == 0x36) //ACL Accelerator Status Register
+	{
+		*result = 0x00; //Give the result of the current status! Report not being busy on anything for software to continue onwards!
+	}
+	else
+	{
+		switch (address) //What register to read?
+		{
+		case 0x00:
+		case 0x01:
+		case 0x02:
+		case 0x03: //MMU Memory Base Pointer Register 0
+		case 0x04:
+		case 0x05:
+		case 0x06:
+		case 0x07: //MMU Memory Base Pointer Register 1
+		case 0x08:
+		case 0x09:
+		case 0x0A:
+		case 0x0B: //MMU Memory Base Pointer Register 2
+		case 0x13: //MMU Control Register
+		case 0x30: //ACL Suspend/Terminate Register
+			*result = et34k(getActiveVGA())->W32_MMUregisters[address & 0xFF]; //Get the register!
+			break;
+		case 0x31: //ACL Operation State Register (W/O?)
+			break;
+		case 0x32: //ACL Sync Enable Register
+		case 0x34: //ACL Interrupt Mask Register
+			*result = et34k(getActiveVGA())->W32_MMUregisters[address & 0xFF]; //Get the register!
+			break;
+		case 0x80:
+		case 0x81:
+		case 0x82:
+		case 0x83: //ACL Pattern Address Register
+		case 0x84:
+		case 0x85:
+		case 0x86:
+		case 0x87: //ACL Source Address Register
+		case 0x88:
+		case 0x89: //ACL Pattern Y Offset Register
+		case 0x8A:
+		case 0x8B: //ACL Source Y Offset Register
+		case 0x8C:
+		case 0x8D: //ACL Destination Y Offset Register
+		case 0x8E: //ACL Virtual Bus Size Register
+		case 0x8F: //ACL X/Y Direction Register
+		case 0x90: //ACL Pattern Wrap Register
+		case 0x92: //ACL Source Wrap Register
+		case 0x94:
+		case 0x95: //ACL X Position Register
+		case 0x96:
+		case 0x97: //ACL Y Position Register
+		case 0x98:
+		case 0x99: //ACL X Count Register
+		case 0x9A:
+		case 0x9B: //ACL Y Count Register
+		case 0x9C: //ACL Routing Control Register
+		case 0x9D: //ACL Reload Control Register
+		case 0x9E: //ACL Background Raster Operation Register
+		case 0x9F: //ACL Foreground Operation Register
+		case 0xA0:
+		case 0xA1:
+		case 0xA2:
+		case 0xA3: //ACL Destination Address Register
+			*result = et34k(getActiveVGA())->W32_MMUregisters[address & 0xFF]; //Get the register!
+			break;
+		case 0xA4:
+		case 0xA5:
+		case 0xA6:
+		case 0xA7: //ACL Internal Pattern Address Register (R/O)
+		case 0xA8:
+		case 0xA9:
+		case 0xAA:
+		case 0xAB: //ACL Internal Source Address Register (R/O)
+			*result = et34k(getActiveVGA())->W32_MMUregisters[address & 0xFF]; //Get the register!
+			break;
+		}
 	}
 	return 1; //Handled!
 }
@@ -1141,9 +1284,76 @@ byte Tseng4k_readMMUregister(byte address, byte *result)
 byte Tseng4k_writeMMUregister(byte address, byte value)
 {
 	//Unhandled!
-	if (address < 0x10) //Implemented so far?
+	switch (address) //What register to read?
 	{
+	case 0x00:
+	case 0x01:
+	case 0x02:
+	case 0x03: //MMU Memory Base Pointer Register 0
+	case 0x04:
+	case 0x05:
+	case 0x06:
+	case 0x07: //MMU Memory Base Pointer Register 1
+	case 0x08:
+	case 0x09:
+	case 0x0A:
+	case 0x0B: //MMU Memory Base Pointer Register 2
+	case 0x13: //MMU Control Register
 		et34k(getActiveVGA())->W32_MMUregisters[address & 0xFF] = value; //Set the register!
+		//We might be having to update some internal variables when they are updated(memory mapping of the 3 base pointer registers and their handling in the MMU).
+		break;
+	case 0x30: //ACL Suspend/Terminate Register
+	case 0x31: //ACL Operation State Register (W/O?)
+	case 0x32: //ACL Sync Enable Register
+	case 0x34: //ACL Interrupt Mask Register
+		et34k(getActiveVGA())->W32_MMUregisters[address & 0xFF] = value; //Set the register!
+		break;
+	case 0x80:
+	case 0x81:
+	case 0x82:
+	case 0x83: //ACL Pattern Address Register
+	case 0x84:
+	case 0x85:
+	case 0x86:
+	case 0x87: //ACL Source Address Register
+	case 0x88:
+	case 0x89: //ACL Pattern Y Offset Register
+	case 0x8A:
+	case 0x8B: //ACL Source Y Offset Register
+	case 0x8C:
+	case 0x8D: //ACL Destination Y Offset Register
+	case 0x8E: //ACL Virtual Bus Size Register
+	case 0x8F: //ACL X/Y Direction Register
+	case 0x90: //ACL Pattern Wrap Register
+	case 0x92: //ACL Source Wrap Register
+	case 0x94:
+	case 0x95: //ACL X Position Register
+	case 0x96:
+	case 0x97: //ACL Y Position Register
+	case 0x98:
+	case 0x99: //ACL X Count Register
+	case 0x9A:
+	case 0x9B: //ACL Y Count Register
+	case 0x9C: //ACL Routing Control Register
+	case 0x9D: //ACL Reload Control Register
+	case 0x9E: //ACL Background Raster Operation Register
+	case 0x9F: //ACL Foreground Operation Register
+	case 0xA0:
+	case 0xA1:
+	case 0xA2:
+	case 0xA3: //ACL Destination Address Register
+		et34k(getActiveVGA())->W32_MMUregisters[address & 0xFF] = value; //Set the register!
+		break;
+	case 0xA4:
+	case 0xA5:
+	case 0xA6:
+	case 0xA7: //ACL Internal Pattern Address Register (R/O)
+	case 0xA8:
+	case 0xA9:
+	case 0xAA:
+	case 0xAB: //ACL Internal Source Address Register (R/O)
+		//Not writable, have not effect!
+		break;
 	}
 	return 1; //Handled!
 }
