@@ -40,7 +40,7 @@ byte readVRAMplane(VGA_Type *VGA, byte plane, uint_32 offset, uint_32 bank) //Re
 
 	fulloffset2 &= VGA->precalcs.VMemMask; //Only 64K memory available, so wrap arround it when needed!
 
-	if (unlikely(fulloffset2>=VGA->VRAM_size)) return 0; //VRAM valid, simple check?
+	if (unlikely(fulloffset2>=VGA->VRAM_size)) return 0xFF; //VRAM valid, simple check?
 	return VGA->VRAM[fulloffset2]; //Read the data from VRAM!
 }
 
