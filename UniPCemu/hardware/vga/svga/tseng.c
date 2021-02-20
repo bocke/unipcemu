@@ -104,7 +104,7 @@ void updateET34Ksegmentselectregister(byte val)
 		if (et34kdata->tsengExtensions) //W32 variant? Extensions apply!
 		{
 			et34kdata->bank_write |= ((et34kdata->extendedbankregister&3)<<4);
-			et34kdata->bank_write |= (((et34kdata->extendedbankregister>>2)&0x3) << 4);
+			et34kdata->bank_read |= (((et34kdata->extendedbankregister>>2)&0x3) << 4);
 		}
 	}
 }
