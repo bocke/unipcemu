@@ -244,6 +244,7 @@ void BIOS_connectdisconnectpassthrough(); //Connect/disconnect passthrough!
 void BIOS_nullModem(); //Nullmodem setting!
 void BIOS_BWMonitor_LuminanceMode(); //Luminance mode
 void BIOS_SVGA_DACMode(); //DAC mode
+void BIOS_ET4000_extensions(); //ET4000 extensions
 
 //First, global handler!
 Handler BIOS_Menus[] =
@@ -336,6 +337,7 @@ Handler BIOS_Menus[] =
 	,BIOS_nullModem //Nullmodem is #85!
 	,BIOS_BWMonitor_LuminanceMode //Luminance mode is #86!
 	,BIOS_SVGA_DACMode //SVGA DAC mode is #87!
+	,BIOS_ET4000_extensions //ET4000 extensions is #88!
 };
 
 //Not implemented?
@@ -4418,6 +4420,68 @@ void BIOS_SVGA_DACMode()
 	BIOS_Menu = 29; //Goto Video Settings menu!
 }
 
+void BIOS_ET4000_extensions()
+{
+	BIOS_Title("ET4000 extensions");
+	EMU_locktext();
+	EMU_gotoxy(0, 4); //Goto 4th row!
+	EMU_textcolor(BIOS_ATTR_INACTIVE); //We're using inactive color for label!
+	GPU_EMU_printscreen(0, 4, "ET4000 extensions: "); //Show selection init!
+	EMU_unlocktext();
+	int i = 0; //Counter!
+	numlist = 2; //Amount of Execution modes!
+	for (i = 0; i < numlist; i++) //Process options!
+	{
+		cleardata(&itemlist[i][0], sizeof(itemlist[i])); //Reset!
+	}
+
+	safestrcpy(itemlist[ET4000_EXTENSIONS_ET4000AX], sizeof(itemlist[0]), "ET4000AX"); //Set filename from options!
+	safestrcpy(itemlist[ET4000_EXTENSIONS_ET4000_W32], sizeof(itemlist[0]), "ET4000/W32"); //Set filename from options!
+	if (BIOS_Settings.ET4000_extensions >= numlist) //Invalid?
+	{
+		BIOS_Settings.ET4000_extensions = DEFAULT_ET4000_EXTENSIONS; //Default!
+		BIOS_Changed = 1; //We've changed!
+	}
+
+	int current = 0;
+	switch (BIOS_Settings.ET4000_extensions) //What B/W monitor mode?
+	{
+	case ET4000_EXTENSIONS_ET4000AX: //ET4000AX
+	case ET4000_EXTENSIONS_ET4000_W32: //ET4000/W32
+		current = BIOS_Settings.ET4000_extensions; //Valid: use!
+		break;
+	default: //Invalid
+		current = DEFAULT_ET4000_EXTENSIONS; //Default: none!
+		break;
+	}
+	if (BIOS_Settings.ET4000_extensions != current) //Invalid?
+	{
+		BIOS_Settings.ET4000_extensions = current; //Safety!
+		BIOS_Changed = 1; //Changed!
+	}
+	int file = ExecuteList(19, 4, itemlist[current], 256, NULL, 0); //Show options for the installed CPU!
+	switch (file) //Which file?
+	{
+	case FILELIST_CANCEL: //Cancelled?
+		//We do nothing with the selected disk!
+		break; //Just calmly return!
+	case FILELIST_DEFAULT: //Default?
+		file = DEFAULT_ET4000_EXTENSIONS; //Default execution mode: None!
+
+	case ET4000_EXTENSIONS_ET4000AX: //ET4000AX
+	case ET4000_EXTENSIONS_ET4000_W32: //ET4000/W32
+	default: //Changed?
+		if (file != current) //Not current?
+		{
+			BIOS_Changed = 1; //Changed!
+			reboot_needed |= 1; //Reboot needed to apply!
+			BIOS_Settings.ET4000_extensions = file; //Select Debug Mode!
+		}
+		break;
+	}
+	BIOS_Menu = 29; //Goto Video Settings menu!
+}
+
 void BIOSMenu_LoadDefaults() //Load the defaults option!
 {
 	if (__HW_DISABLED) return; //Abort!
@@ -5033,7 +5097,7 @@ void BIOS_InitVideoSettingsText()
 {
 	advancedoptions = 0; //Init!
 	int i;
-	for (i=0; i<10; i++) //Clear all possibilities!
+	for (i=0; i<11; i++) //Clear all possibilities!
 	{
 		cleardata(&menuoptions[i][0],sizeof(menuoptions[i])); //Init!
 	}
@@ -5161,6 +5225,24 @@ setDACmodetext: //For fixing it!
 		break;
 	}
 
+setET4000extensionstext: //For fixing it!
+	optioninfo[advancedoptions] = 10; //ET4000 extensions!
+	safestrcpy(menuoptions[advancedoptions], sizeof(menuoptions[0]), "ET4000 extensions: ");
+	switch (BIOS_Settings.ET4000_extensions) //ET4000 extensions?
+	{
+	case ET4000_EXTENSIONS_ET4000AX:
+		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "ET4000AX");
+		break;
+	case ET4000_EXTENSIONS_ET4000_W32:
+		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "ET4000/W32");
+		break;
+	default: //Error: fix it!
+		BIOS_Settings.ET4000_extensions = DEFAULT_ET4000_EXTENSIONS; //Reset/Fix!
+		BIOS_Changed = 1; //We've changed!
+		goto setET4000extensionstext; //Goto!
+		break;
+	}
+
 setVGAModetext: //For fixing it!
 	optioninfo[advancedoptions] = 2; //VGA Mode!
 	safestrcpy(menuoptions[advancedoptions],sizeof(menuoptions[0]), "VGA Mode: ");
@@ -5274,7 +5356,8 @@ void BIOS_VideoSettingsMenu() //Manage stuff concerning input.
 	case 6:
 	case 7:
 	case 8:
-	case 9: //Valid option?
+	case 9:
+	case 10: //Valid option?
 		switch (optioninfo[menuresult]) //What option has been chosen, since we are dynamic size?
 		{
 		case 0: //Direct plot setting?
@@ -5306,6 +5389,9 @@ void BIOS_VideoSettingsMenu() //Manage stuff concerning input.
 			break;
 		case 9: //SVGA DAC mode
 			if (!EMU_RUNNING) BIOS_Menu = 87; //SVGA DAC mode!
+			break;
+		case 10: //ET4000 extensions?
+			if (!EMU_RUNNING) BIOS_Menu = 88; //ET4000 extensions!
 			break;
 		default:
 			BIOS_Menu = NOTIMPLEMENTED; //Not implemented yet!

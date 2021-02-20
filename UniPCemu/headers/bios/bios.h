@@ -142,6 +142,7 @@ typedef struct
 	byte nullmodem; //nullmodem mode to TCP when set!
 	byte bwmonitor_luminancemode; //B/w monitor luminance mode?
 	byte SVGA_DACmode; //DAC mode?
+	byte ET4000_extensions; //ET4000 extensions! 0=ET4000AX, 1=ET4000/W32
 } BIOS_Settings_TYPE; //BIOS Settings!
 
 //Debug modes:
@@ -282,6 +283,15 @@ enum SVGADACMode
 	SVGA_DACMODE_MAX = 3
 };
 #define DEFAULT_SVGA_DACMODE SVGA_DACMODE_SIERRA_SC11487
+
+enum ET4000_Extensions
+{
+	ET4000_EXTENSIONS_ET4000AX = 0,
+	ET4000_EXTENSIONS_ET4000_W32 = 1,
+	ET4000_EXTENSIONS_MIN = 0,
+	ET4000_EXTENSIONS_MAX = 1
+};
+#define DEFAULT_ET4000_EXTENSIONS ET4000_EXTENSIONS_ET4000AX
 
 //Default values for new BIOS settings:
 #define DEFAULT_BOOT_ORDER 0

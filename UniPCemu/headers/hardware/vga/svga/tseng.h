@@ -240,7 +240,7 @@ typedef struct {
 		*result = et34k_data->store_##port##_##index; \
 		return 1;
 
-void SVGA_Setup_TsengET4K(uint_32 VRAMSize);
+void SVGA_Setup_TsengET4K(uint_32 VRAMSize, byte ET4000_extensions);
 void set_clock_index_et4k(VGA_Type *VGA, byte index); //Used by the interrupt 10h handler to set the clock index directly!
 void set_clock_index_et3k(VGA_Type *VGA, byte index); //Used by the interrupt 10h handler to set the clock index directly!
 byte Tseng34k_doublecharacterclocks(VGA_Type * VGA); //Doubled character clocks width?

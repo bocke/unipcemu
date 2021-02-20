@@ -2131,7 +2131,7 @@ DOUBLE Tseng34k_getClockRate(VGA_Type *VGA)
 	return 0.0; //Not an ET3K/ET4K clock rate, default to VGA rate!
 }
 
-void SVGA_Setup_TsengET4K(uint_32 VRAMSize) {
+void SVGA_Setup_TsengET4K(uint_32 VRAMSize, byte ET4000_extensions) {
 	if ((getActiveVGA()->enable_SVGA == 2) || (getActiveVGA()->enable_SVGA == 1)) //ET3000/ET4000?
 		VGA_registerExtension(&Tseng34K_readIO, &Tseng34K_writeIO, &Tseng34k_init,&Tseng34k_calcPrecalcs,&Tseng34k_getClockRate,NULL);
 	else return; //Invalid SVGA!		
@@ -2144,6 +2144,6 @@ void SVGA_Setup_TsengET4K(uint_32 VRAMSize) {
 	else //Valid registers?
 	{
 		et34k_reg(et34k(getActiveVGA()),3c4,07) = 0x4|0x8|0x20|0x80; //Default to VGA mode with full memory map, Other bits are set always.
-		et34k(getActiveVGA())->tsengExtensions = LIMITRANGE(0, 0, 1); //What extension is enabled in the settings!
+		et34k(getActiveVGA())->tsengExtensions = ET4000_extensions; //What extension is enabled in the settings!
 	}
 }
