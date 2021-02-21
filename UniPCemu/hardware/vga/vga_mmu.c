@@ -410,9 +410,9 @@ void VGA_OddEven_decode(byte towrite, uint_32 offset, byte *planes, uint_32 *rea
 	if (decodingbankunfiltered == 0) //Not unfiltered?
 	{
 		writebank <<= 1; //Shift to it's position!
-		writebank &= 0xE0000; //3 bits only!
+		writebank &= (0xE0000|getActiveVGA()->precalcs.extraSegmentSelectLines); //3/5 bits only!
 		readbank <<= 1; //Shift to it's postion!
-		readbank &= 0xE0000; //3 bits only!
+		readbank &= (0xE0000|getActiveVGA()->precalcs.extraSegmentSelectLines); //3/5 bits only!
 	}
 	*realoffset = realoffsettmp; //Give the calculated offset!
 	*planes = (0x5 << calcplanes); //Convert to used plane (0&2 or 1&3)!
@@ -446,9 +446,9 @@ void VGA_Planar_decode(byte towrite, uint_32 offset, byte *planes, uint_32 *real
 	if (decodingbankunfiltered == 0) //Not unfiltered?
 	{
 		writebank <<= 2; //Shift to it's position!
-		writebank &= 0xC0000; //2 bits only!
+		writebank &= (0xC0000|getActiveVGA()->precalcs.extraSegmentSelectLines); //2 bits only and extra lines if required!
 		readbank <<= 2; //Shift to it's postion!
-		readbank &= 0xC0000; //2 bits only!
+		readbank &= (0xC0000|getActiveVGA()->precalcs.extraSegmentSelectLines); //2 bits only!
 	}
 	*planes = calcplanes; //The planes to apply!
 	*realoffset = offset; //Load the offset directly!

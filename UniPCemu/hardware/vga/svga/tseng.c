@@ -1853,6 +1853,7 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 					break;
 			}
 			VGA->precalcs.linearmode |= 4; //Enable the new linear and contiguous modes to affect memory!
+			VGA->precalcs.extraSegmentSelectLines = 0; //We have no extra bits for the segment select lines!
 		}
 		else //ET4000 mapping?
 		{
@@ -1867,11 +1868,13 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 				}
 				VGA->precalcs.MMU012_enabled = (et34k_tempreg & 8) ? 1 : 0; //MMU 0-2 enabled when bit 3 is set (the remainder is handled by the MAP setting itself for the low memory area)?
 				VGA->precalcs.MMUregs_enabled = ((et34k_tempreg & 0x28) == 0x28) ? 1 : 0; //Memory mapped registers are enabled when bits 3 and 5 are set.
+				VGA->precalcs.extraSegmentSelectLines = 0x300000; //We have a bit 20 and 21 for the segment select lines!
 			}
 			else //Plain ET4000?
 			{
 				VGA->precalcs.linearmemorybase = 0; //No base to apply!
 				VGA->precalcs.linearmemorymask = 0; //Disabled!
+				VGA->precalcs.extraSegmentSelectLines = 0; //We have no extra bits for the segment select lines!
 			}
 			if ((et34k_tempreg & 0x10)==0x00) //Segment configuration?
 			{

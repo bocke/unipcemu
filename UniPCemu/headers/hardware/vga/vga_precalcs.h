@@ -192,6 +192,7 @@ typedef struct //Contains the precalculated values!
 	byte MMU0_aperture_linear; //MMU 0 aperture is in linear mode
 	byte MMU1_aperture_linear; //MMU 1 aperture is in linear mode
 	byte MMU2_aperture_linear; //MMU 2 aperture is in linear mode
+	uint_32 extraSegmentSelectLines; //Extra bits to appear on the memory address bus for VRAM when performing the Segment Select Register inputs.
 } VGA_PRECALCS; //VGA pre-calculations!
 
 typedef void (*VGA_calcprecalcsextensionhandler)(void *VGA, uint_32 whereupdated); //Calculate them!
