@@ -1899,7 +1899,7 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 					VGA->precalcs.linearmode |= 2; //Linear mode, use high 4-bits!
 				}
 			}
-			if (et34k_tempreg & 0x20) //Continuous memory?
+			if ((et34k_tempreg & 0x20) && (et34kdata->tsengExtensions==0)) //Continuous memory? Not on W32 variants! Only on the ET4000AX variant!
 			{
 				VGA->precalcs.linearmode |= 1; //Enable contiguous memory!
 			}
@@ -1912,7 +1912,7 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 
 		linearmodeupdated = (tempval!=VGA->precalcs.linearmode); //Linear mode has been updated!
 
-		if ((VGA->precalcs.linearmode&5)==5) //Special ET3K/ET4K linear graphics memory mode?
+		if (((VGA->precalcs.linearmode&5)==5) && (et34kdata->tsengExtensions==0)) //Special ET3K/ET4K linear graphics memory mode?
 		{
 			VGA_ReadMemoryMode = VGA_WriteMemoryMode = 3; //Special ET3000/ET4000 linear graphics memory mode!
 		}
