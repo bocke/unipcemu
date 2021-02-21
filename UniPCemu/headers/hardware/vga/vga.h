@@ -264,6 +264,9 @@ typedef struct
 
 	byte INPUTSTATUS1REGISTER; //Read at 3BAh(mono), Read at 3DAh(color)
 
+	byte VIDEOSUBSYSTEMREGISTER_3C3; //For external boards 
+	byte VIDEOSUBSYSTEMREGISTER_46E8; //For internal boards
+
 	union
 	{
 		uint_32 latch; //The full data latch!

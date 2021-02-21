@@ -389,7 +389,7 @@ byte PORT_readVGA(word port, byte *result) //Read from a port/register!
 	case 0x3C3: //Video subsystem enable?
 		if (getActiveVGA()->enable_SVGA!=3) //VGA+?
 		{
-			*result = GETBITS(getActiveVGA()->registers->ExternalRegisters.MISCOUTPUTREGISTER,1,1); //RAM enabled?
+			*result = getActiveVGA()->registers->ExternalRegisters.VIDEOSUBSYSTEMREGISTER_3C3; //RAM enabled?
 			ok = 1;
 		}
 		break;
@@ -571,7 +571,8 @@ byte PORT_writeVGA(word port, byte value) //Write to a port/register!
 		if (getActiveVGA()->enable_SVGA!=3) //VGA+
 		{
 			value &= 1; //Only 1 bit!
-			SETBITS(getActiveVGA()->registers->ExternalRegisters.MISCOUTPUTREGISTER,1,1,value); //Enable RAM?
+			getActiveVGA()->registers->ExternalRegisters.VIDEOSUBSYSTEMREGISTER_3C3 = value; //Write the port only!
+			//SETBITS(getActiveVGA()->registers->ExternalRegisters.MISCOUTPUTREGISTER,1,1,value); //Enable RAM?
 			VGA_calcprecalcs(getActiveVGA(),WHEREUPDATED_MISCOUTPUTREGISTER); //Updated index!
 			ok = 1;
 		}
