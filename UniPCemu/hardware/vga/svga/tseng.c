@@ -427,6 +427,19 @@ byte Tseng34K_writeIO(word port, byte val)
 				{
 					et34kdata->memwrap = (((64 * 1024) << ((val & 8) >> 2)) << ((val & 3) - 1)) - 1; //The mask to use for memory!
 				}
+				if (et34kdata->memwrap > et34kdata->memwrap_init) //Too much to handle?
+				{
+					if (et34kdata->tsengExtensions) //ET4000/W32 variant?
+					{
+						et34kdata->store_et4k_3d4_37 = ((val & (~0x81)) | (et34kdata->et4k_reg37_init & 0x81)); //Replace with the limited value instead!
+						et34kdata->memwrap = (((256 * 1024) << (((val ^ 8) & 8) >> 2)) << (1 + (val & 1))) - 1; //Init size to detect! 256k or 1M times(bit 3) 16 or 32 bit bus width(bit 0)!
+					}
+					else //normal ET4000?
+					{
+						et34kdata->store_et4k_3d4_37 = ((val & (~0x83)) | (et34kdata->et4k_reg37_init & 0x83)); //Replace with the limited value instead!
+						et34kdata->memwrap = (((64 * 1024) << ((val & 8) >> 2)) << ((val & 3) - 1)) - 1; //The mask to use for memory!
+					}
+				}
 				VGA_calcprecalcs(getActiveVGA(),WHEREUPDATED_CRTCONTROLLER|0x37); //Update all precalcs!
 			}
 			return 1;
@@ -866,7 +879,7 @@ byte Tseng34K_readIO(word port, byte *result)
 		readcrtvalue:
 	//Bitu read_p3d5_et4k(Bitu reg,Bitu iolen) {
 		if (((!et34kdata->extensionsEnabled) && (getActiveVGA()->enable_SVGA == 1)) &&
-			(!((getActiveVGA()->registers->CRTControllerRegisters_Index == 0x33) || (getActiveVGA()->registers->CRTControllerRegisters_Index == 0x35))) //Unprotected registers?
+			(!((getActiveVGA()->registers->CRTControllerRegisters_Index == 0x33) || (getActiveVGA()->registers->CRTControllerRegisters_Index == 0x35) || (getActiveVGA()->registers->CRTControllerRegisters_Index == 0x37))) //Unprotected registers for reads?
 			) //ET4000 blocks this without the KEY?
 			return 0;
 		switch(getActiveVGA()->registers->CRTControllerRegisters_Index)
@@ -879,7 +892,7 @@ byte Tseng34K_readIO(word port, byte *result)
 		RESTORE_ET4K(3d4, 34);
 		RESTORE_ET4K_UNPROTECTED(3d4, 35);
 		RESTORE_ET4K(3d4, 36);
-		RESTORE_ET4K(3d4, 37);
+		RESTORE_ET4K_UNPROTECTED(3d4, 37);
 		RESTORE_ET4K(3d4, 3f);
 		//ET3K
 		RESTORE_ET3K(3d4, 1b);
@@ -1168,8 +1181,8 @@ void Tseng34k_init()
 					lastmemsize = memsize; //Use this as the last value found!
 				}
 			}
-			et4k_reg(et34k(getActiveVGA()),3d4,37) = regval; //Apply the best register value describing our memory!
-			et34k(getActiveVGA())->memwrap = (lastmemsize-1); //The memory size used!
+			et4k_reg(et34k(getActiveVGA()),3d4,37) = et34k(getActiveVGA())->et4k_reg37_init = regval; //Apply the best register value describing our memory!
+			et34k(getActiveVGA())->memwrap = et34k(getActiveVGA())->memwrap_init = (lastmemsize-1); //The memory size used!
 
 			// Tseng ROM signature
 			EMU_VGAROM[0x0075] = ' ';

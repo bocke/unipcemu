@@ -84,6 +84,8 @@ typedef struct {
 
 	//Memory wrapping
 	uint_32 memwrap; //The memory wrap to be AND-ed into the address given!
+	uint_32 memwrap_init; //Poweron value!
+	byte et4k_reg37_init; //Poweron value!
 
 	//Attribute protection?
 	byte protect3C0_Overscan; //Disable writes to bits 0-3 of the Overscan?
