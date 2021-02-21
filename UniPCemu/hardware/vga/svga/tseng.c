@@ -1093,7 +1093,7 @@ void Tseng34k_init()
 					}
 					if (!isvalid) //Invalid VRAM size?
 					{
-						Tseng4k_VRAMSize = maxsize ? maxsize : 1024 * 1024; //Always 1M or next smaller if possible!
+						Tseng4k_VRAMSize = maxsize ? maxsize : 1024 * 1024; //Always 1M by default or next smaller if possible!
 						BIOS_Settings.VRAM_size = Tseng4k_VRAMSize; //Update VRAM size in BIOS!
 					}
 				}
@@ -1110,7 +1110,7 @@ void Tseng34k_init()
 					}
 					if (!isvalid) //Invalid VRAM size?
 					{
-						Tseng4k_VRAMSize = maxsize ? maxsize : 4096 * 1024; //Always 4M or next smaller if possible!
+						Tseng4k_VRAMSize = maxsize ? maxsize : 4096 * 1024; //Always 4M by default or next smaller if possible!
 						BIOS_Settings.VRAM_size = Tseng4k_VRAMSize; //Update VRAM size in BIOS!
 					}
 				}
