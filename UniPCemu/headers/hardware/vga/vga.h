@@ -359,6 +359,7 @@ typedef struct
 //First, VRAM and registers:
 	byte *VRAM; //The VRAM: 64K of 32-bit values, byte align!
 	uint_32 VRAM_size; //The size of the VRAM!
+	uint_32 VRAM_used; //How much VRAM is used?
 	byte CGAMDAShadowRAM[0x4000]; //ShadowRAM for static adapter reads!
 	byte CGAMDAMemoryMode; //What memory mode(for restoring RAM during mode changes).
 //Active video mode:
