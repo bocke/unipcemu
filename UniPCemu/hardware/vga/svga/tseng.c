@@ -1855,6 +1855,10 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 				VGA->precalcs.linearmemorybase = ((uint_64)et4k_W32_reg(et34kdata, 3d4, 30)<<22); //Base to apply, in 4MB chunks!
 				VGA->precalcs.linearmemorymask = ~((1ULL<<22)-1); //Disabled!
 				VGA->precalcs.linearmemorysize = (1ULL<<22); //The default size of the aperture!
+				if (et34k(VGA)->W32_21xA_ImagePortControl & 1) //IMA port enabled?
+				{
+					VGA->precalcs.linearmemorysize >>= 2; //The IMA port takes off 2 bits for quartering the window and moving all other structures following it upwards.
+				}
 				VGA->precalcs.MMU012_enabled = (et34k_tempreg & 8) ? 1 : 0; //MMU 0-2 enabled when bit 3 is set (the remainder is handled by the MAP setting itself for the low memory area)?
 				VGA->precalcs.MMUregs_enabled = ((et34k_tempreg & 0x28) == 0x28) ? 1 : 0; //Memory mapped registers are enabled when bits 3 and 5 are set.
 			}
