@@ -421,7 +421,7 @@ byte Tseng34K_writeIO(word port, byte val)
 				et34kdata->store_et4k_3d4_37 = val;
 				if (et34kdata->tsengExtensions) //ET4000/W32 variant?
 				{
-					et34kdata->memwrap = (((256 * 1024) << ((val & 8) >> 2)) << (1 + (val & 1))) - 1; //Init size to detect! 256k or 1M times(bit 3) 16 or 32 bit bus width(bit 0)!
+					et34kdata->memwrap = (((256 * 1024) << (((val^8) & 8) >> 2)) << (1 + (val & 1))) - 1; //Init size to detect! 256k or 1M times(bit 3) 16 or 32 bit bus width(bit 0)!
 				}
 				else //normal ET4000?
 				{
@@ -1109,7 +1109,7 @@ void Tseng34k_init()
 					uint_32 maxsize = 0, cursize;
 					for (n = 0; n < 0x10; ++n) //Try all VRAM sizes!
 					{
-						cursize = ((256*1024)<<((n&8)>>2))<<(1+(n&1)); //Init size to detect! 256k or 1M times(bit 3) 16 or 32 bit bus width(bit 0)!
+						cursize = ((256*1024)<<(((n^8)&8)>>2))<<(1+(n&1)); //Init size to detect! 256k or 1M times(bit 3) 16 or 32 bit bus width(bit 0)!
 						if (Tseng4k_VRAMSize == cursize) isvalid = 1; //The memory size for this item!
 						if ((cursize > maxsize) && (cursize <= Tseng4k_VRAMSize)) maxsize = cursize; //Newer within range!
 					}
@@ -1149,7 +1149,7 @@ void Tseng34k_init()
 			{
 				if ((getActiveVGA()->enable_SVGA == 1) && et34k(getActiveVGA())->tsengExtensions) //ET4000/W32 variant?
 				{
-					memsize = ((256 * 1024) << ((VRAMsize & 8) >> 2)) << (1 + (VRAMsize & 1)); //Init size to detect! 256k or 1M times(bit 3) 16 or 32 bit bus width(bit 0)!
+					memsize = ((256 * 1024) << (((VRAMsize^8) & 8) >> 2)) << (1 + (VRAMsize & 1)); //Init size to detect! 256k or 1M times(bit 3) 16 or 32 bit bus width(bit 0)!
 				}
 				else //ET3000?
 				{
