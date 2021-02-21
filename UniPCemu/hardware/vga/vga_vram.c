@@ -41,6 +41,7 @@ byte readVRAMplane(VGA_Type *VGA, byte plane, uint_32 offset, uint_32 bank) //Re
 	fulloffset2 &= VGA->precalcs.VMemMask; //Only 64K memory available, so wrap arround it when needed!
 
 	if (unlikely(fulloffset2>=VGA->VRAM_size)) return 0xFF; //VRAM valid, simple check?
+	if (fulloffset2 > VGA->VRAM_used) VGA->VRAM_used = fulloffset2; //How much VRAM is actually used by software?
 	return VGA->VRAM[fulloffset2]; //Read the data from VRAM!
 }
 
@@ -62,6 +63,6 @@ void writeVRAMplane(VGA_Type *VGA, byte plane, uint_32 offset, uint_32 bank, byt
 	if (fulloffset2 > VGA->VRAM_used) VGA->VRAM_used = fulloffset2; //How much VRAM is actually used by software?
 	if (unlikely(plane&2)) //Character RAM updated(both plane 2/3)?
 	{
-		VGA_plane23updated(VGA,offset); //Plane 2 has been updated!	
+		VGA_plane23updated(VGA,(offset+(bank&(~3)))); //Plane 2 has been updated!	
 	}
 }
