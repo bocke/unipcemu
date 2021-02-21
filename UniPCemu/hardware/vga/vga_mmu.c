@@ -600,7 +600,12 @@ byte VGAmemIO_rb(uint_32 offset)
 
 		if (VGA_linearmemoryaddressed) //Special memory addressed?
 		{
-			if (VGA_linearmemoryaddressed == 4) //MMU registers?
+			if (VGA_linearmemoryaddressed == 1) //Linear address map?
+			{
+				lineardecodeCPUaddressBanked(0, offset, &planes, &realoffset, 0); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
+				goto readdatacurrentmode; //Apply the operation on read mode!
+			}
+			else if (VGA_linearmemoryaddressed == 4) //MMU registers?
 			{
 				if (Tseng4k_readMMUregister(offset, &bit8read))
 				{
@@ -704,7 +709,12 @@ byte VGAmemIO_wb(uint_32 offset, byte value)
 		offset -= effectiveVRAMstart; //Calculate start offset into VRAM!
 		if (VGA_linearmemoryaddressed) //Special memory addressed?
 		{
-			if (VGA_linearmemoryaddressed == 4) //MMU registers?
+			if (VGA_linearmemoryaddressed == 1) //Linear mode?
+			{
+				lineardecodeCPUaddressBanked(1, offset, &planes, &realoffset, 0); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
+				goto writedatacurrentmode; //Apply the operation on read mode!
+			}
+			else if (VGA_linearmemoryaddressed == 4) //MMU registers?
 			{
 				if (Tseng4k_writeMMUregister(offset, value))
 				{
