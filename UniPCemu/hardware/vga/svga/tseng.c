@@ -419,6 +419,7 @@ byte Tseng34K_writeIO(word port, byte val)
 			if (getActiveVGA()->enable_SVGA != 1) return 0; //Not implemented on others than ET4000!
 			if (val != et34kdata->store_et4k_3d4_37) {
 				et34kdata->store_et4k_3d4_37 = val;
+				/*
 				if (et34kdata->tsengExtensions) //ET4000/W32 variant?
 				{
 					et34kdata->memwrap = (((256 * 1024) << (((val^8) & 8) >> 2)) << (1 + (val & 1))) - 1; //Init size to detect! 256k or 1M times(bit 3) 16 or 32 bit bus width(bit 0)!
@@ -441,6 +442,7 @@ byte Tseng34K_writeIO(word port, byte val)
 					}
 				}
 				VGA_calcprecalcs(getActiveVGA(),WHEREUPDATED_CRTCONTROLLER|0x37); //Update all precalcs!
+				*/ //This does nothing, apparently?
 			}
 			return 1;
 			break;
