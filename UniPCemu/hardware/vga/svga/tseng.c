@@ -1095,6 +1095,7 @@ void Tseng34k_init()
 					{
 						Tseng4k_VRAMSize = maxsize ? maxsize : 1024 * 1024; //Always 1M by default or next smaller if possible!
 						BIOS_Settings.VRAM_size = Tseng4k_VRAMSize; //Update VRAM size in BIOS!
+						forceBIOSSave(); //Save the BIOS setting!
 					}
 				}
 				else //W32 variant of ET4000?
@@ -1112,14 +1113,19 @@ void Tseng34k_init()
 					{
 						Tseng4k_VRAMSize = maxsize ? maxsize : 4096 * 1024; //Always 4M by default or next smaller if possible!
 						BIOS_Settings.VRAM_size = Tseng4k_VRAMSize; //Update VRAM size in BIOS!
+						forceBIOSSave(); //Save the BIOS setting!
 					}
 				}
 				//1M+=OK!
 			}
 			else //ET3000?
 			{
-				Tseng4k_VRAMSize = 512 * 1024; //Always 512K! (Dosbox says: "Cannot figure how this was supposed to work on the real card")
-				BIOS_Settings.VRAM_size = Tseng4k_VRAMSize; //Update VRAM size in BIOS!
+				if (Tseng4k_VRAMSize != (512 * 1024)) //Different than supported?
+				{
+					Tseng4k_VRAMSize = 512 * 1024; //Always 512K! (Dosbox says: "Cannot figure how this was supposed to work on the real card")
+					BIOS_Settings.VRAM_size = Tseng4k_VRAMSize; //Update VRAM size in BIOS!
+					forceBIOSSave(); //Save the BIOS setting!
+				}
 			}
 
 			debugrow("VGA: Allocating SVGA VRAM...");
