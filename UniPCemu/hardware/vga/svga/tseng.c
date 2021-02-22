@@ -1969,6 +1969,7 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 		#ifdef LOG_UNHANDLED_SVGA_ACCESSES
 		handled = 1;
 		#endif
+		VGA->precalcs.VRAMmask = (VGA->VRAM_size - 1); //Don't limit VGA memory, wrap normally! Undocumented, but only affects multiple fonts in the font select register on the Tseng chipsets!
 		VGA->precalcs.VMemMask = VGA->precalcs.VRAMmask&et34kdata->memwrap; //Apply the SVGA memory wrap on top of the normal memory wrapping!
 	}
 
