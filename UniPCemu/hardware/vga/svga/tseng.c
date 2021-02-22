@@ -424,7 +424,7 @@ byte Tseng34K_writeIO(word port, byte val)
 				memsize = ((256 * 1024) << (((val^8) & 8) >> 2)); //Init size to detect! 256k or 1M times(bit 3) 16 or 32 bit bus width(bit 0)!
 				memsize <<= 1+(val & 1); //setting bit 1 doubles it and setting bits 1 and 0 together doubles it again(value 2=x2, value 3=x3).
 			}
-			else //ET3000?
+			else //ET4000AX?
 			{
 				memsize = ((64 * 1024) << ((val & 8) >> 2)); //The memory size for this item!
 				memsize <<= ((val & 2) >> 1) + (((val & 2) >> 1) & (val & 1)); //setting bit 1 doubles it and setting bits 1 and 0 together doubles it again(value 2=x2, value 3=x3).
