@@ -1888,8 +1888,8 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 		{
 			if (et34k(VGA)->tsengExtensions) //W32 chip?
 			{
-				VGA->precalcs.linearmemorybase = ((uint_64)et4k_W32_reg(et34kdata, 3d4, 30)<<22); //Base to apply, in 4MB chunks!
-				VGA->precalcs.linearmemorymask = ~((1ULL<<22)-1); //Disabled!
+				VGA->precalcs.linearmemorybase = ((uint_32)et4k_W32_reg(et34kdata, 3d4, 30)<<22); //Base to apply, in 4MB chunks!
+				VGA->precalcs.linearmemorymask = ~((((uint_32)1)<<22)-1); //Disabled!
 				VGA->precalcs.linearmemorysize = (1ULL<<22); //The default size of the aperture!
 				if (et34k(VGA)->W32_21xA_ImagePortControl & 1) //IMA port enabled?
 				{
