@@ -431,7 +431,8 @@ byte Tseng34K_writeIO(word port, byte val)
 			}
 			//Now, apply the bus width
 			--memsize; //Get wrapping mask!
-			if ((memsize>et34k(getActiveVGA())->memwrap_init)||((val&0xF)==0xF)) //Too much or aurodetection probing?
+			/*
+			if (memsize>et34k(getActiveVGA())->memwrap_init) //Too much or autodetection probing?
 			{
 				if ((getActiveVGA()->enable_SVGA == 1) && et34k(getActiveVGA())->tsengExtensions) //ET4000/W32 variant?
 				{
@@ -443,6 +444,7 @@ byte Tseng34K_writeIO(word port, byte val)
 				}
 				memsize = et34k(getActiveVGA())->memwrap_init; //Back to the original value!
 			}
+			*/ //Disable probing like this!
 				
 			et34kdata->store_et4k_3d4_37 = val;
 			et34k(getActiveVGA())->memwrap = memsize; //What to wrap against!
