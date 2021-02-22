@@ -413,33 +413,42 @@ byte Tseng34K_writeIO(word port, byte val)
 
 		// 3d4h index 37 - Video System Configuration 2 (R/W)
 		// Bits 0,1, and 3 provides information about memory size:
-		// 0-1 Bus width (1: 8 bit, 2: 16 bit, 3: 32 bit)
-		// 3   Size of RAM chips (0: 64Kx, 1: 256Kx)
+		// 0-1 Bus width ET4000AX: (1: 8 bit, 2: 16 bit, 3: 32 bit)
+		// 0 Bus width ET4000/W32: (0: 16 bit, 1: 32 bit)
+		// 3   Size of RAM chips ET4000AX: (0: 64Kx, 1: 256Kx) ET4000/W32*: (0: 1NB, 1: 256k)
 		// Other bits have no effect on emulation.
 		case 0x37:
 			if (getActiveVGA()->enable_SVGA != 1) return 0; //Not implemented on others than ET4000!
-			if (val != et34kdata->store_et4k_3d4_37) {
+			if ((getActiveVGA()->enable_SVGA == 1) && et34k(getActiveVGA())->tsengExtensions) //ET4000/W32 variant?
+			{
+				memsize = ((256 * 1024) << (((val^8) & 8) >> 2)); //Init size to detect! 256k or 1M times(bit 3) 16 or 32 bit bus width(bit 0)!
+				memsize <<= 1+(val & 1); //setting bit 1 doubles it and setting bits 1 and 0 together doubles it again(value 2=x2, value 3=x3).
+			}
+			else //ET3000?
+			{
+				memsize = ((64 * 1024) << ((val & 8) >> 2)); //The memory size for this item!
+				memsize <<= ((val & 2) >> 1) + (((val & 2) >> 1) & (val & 1)); //setting bit 1 doubles it and setting bits 1 and 0 together doubles it again(value 2=x2, value 3=x3).
+			}
+			//Now, apply the bus width
+			--memsize; //Get wrapping mask!
+			/*
+			if ((memsize>et34k(getActiveVGA())->memwrap_init)|((val&0xF)==0xF)) //Too much or aurodetection probing?
+			{
 				if ((getActiveVGA()->enable_SVGA == 1) && et34k(getActiveVGA())->tsengExtensions) //ET4000/W32 variant?
 				{
-					memsize = ((256 * 1024) << (((val^8) & 8) >> 2)); //Init size to detect! 256k or 1M times(bit 3) 16 or 32 bit bus width(bit 0)!
+					val = (val & ~0x9) | (et34k(getActiveVGA())->et4k_reg37_init & 0x9); //Apply max!
 				}
-				else //ET3000?
+				else
 				{
-					memsize = ((64 * 1024) << ((val & 8) >> 2)); //The memory size for this item!
+					val = (val & ~0xB) | (et34k(getActiveVGA())->et4k_reg37_init & 0xB); //Apply max!
 				}
-				//Now, apply the bus width
-				memsize <<= ((val&2)>>1) + (((val&2)>>1)&(val&1)); //setting bit 1 doubles it and setting bits 1 and 0 together doubles it again(value 2=x2, value 3=x3).
-				--memsize; //Get wrapping mask!
-				if (memsize>et34k(getActiveVGA())->memwrap_init) //Too much?
-				{
-					val = (val&~0xB)|(et34k(getActiveVGA())->et4k_reg37_init&0xB); //Apply max!
-					memsize = et34k(getActiveVGA())->memwrap_init; //Back to the original value!
-				}
-				
-				et34kdata->store_et4k_3d4_37 = val;
-				et34k(getActiveVGA())->memwrap = memsize; //What to wrap against!
-				VGA_calcprecalcs(getActiveVGA(),WHEREUPDATED_CRTCONTROLLER|0x37); //Update all precalcs!
+				memsize = et34k(getActiveVGA())->memwrap_init; //Back to the original value!
 			}
+			*/
+				
+			et34kdata->store_et4k_3d4_37 = val;
+			et34k(getActiveVGA())->memwrap = memsize; //What to wrap against!
+			VGA_calcprecalcs(getActiveVGA(),WHEREUPDATED_CRTCONTROLLER|0x37); //Update all precalcs!
 			return 1;
 			break;
 
@@ -1097,7 +1106,7 @@ void Tseng34k_init()
 			{
 				byte n, isvalid;
 				uint_32 maxsize = 0, cursize;
-				if (et34k(getActiveVGA())->tsengExtensions==0) //Normal ET4000?
+				if (et34k(getActiveVGA())->tsengExtensions==0) //Normal ET4000AX?
 				{
 					isvalid = 0; //Default: invalid!
 					for (n = 0; n < 0x10; ++n) //Try all VRAM sizes!
@@ -1124,7 +1133,7 @@ void Tseng34k_init()
 					{
 						cursize = ((256 * 1024) << (((n^8) & 8) >> 2)); //Init size to detect! 256k or 1M times(bit 3) 16 or 32 bit bus width(bit 0)!
 						//Now, apply the bus width
-						cursize <<= ((n&2)>>1) + (((n&2)>>1)&(n&1)); //setting bit 1 doubles it and setting bits 1 and 0 together doubles it again(value 2=x2, value 3=x3).
+						cursize <<= 1+(n&1); //setting bit 1 doubles it and setting bits 1 and 0 together doubles it again(value 2=x2, value 3=x3).
 						if (Tseng4k_VRAMSize == cursize) isvalid = 1; //The memory size for this item!
 						if ((cursize > maxsize) && (cursize <= Tseng4k_VRAMSize)) maxsize = cursize; //Newer within range!
 					}
@@ -1164,17 +1173,25 @@ void Tseng34k_init()
 			{
 				if ((getActiveVGA()->enable_SVGA == 1) && et34k(getActiveVGA())->tsengExtensions) //ET4000/W32 variant?
 				{
-					memsize = ((256 * 1024) << (((VRAMsize^8) & 8) >> 2)); //Init size to detect! 256k or 1M times(bit 3) 16 or 32 bit bus width(bit 0)!
+					memsize = ((256 * 1024) << (((VRAMsize^8) & 8) >> 2)); //Init size to detect! 256k or 1M times(bit 3 set for 256K) 16 or 32 bit bus width(bit 0)!
+					memsize <<= 1+(VRAMsize&1); //setting bit 1 doubles it and setting bits 1 and 0 together doubles it again(value 2=x2, value 3=x3).
 				}
-				else //ET3000?
+				else //ET4000AX?
 				{
 					memsize = ((64 * 1024) << ((VRAMsize & 8) >> 2)); //The memory size for this item!
+					memsize <<= ((VRAMsize&2)>>1) + (((VRAMsize&2)>>1)&(VRAMsize&1)); //setting bit 1 doubles it and setting bits 1 and 0 together doubles it again(value 2=x2, value 3=x4).
 				}
 				//Now, apply the bus width
-				memsize <<= ((VRAMsize&2)>>1) + (((VRAMsize&2)>>1)&(VRAMsize&1)); //setting bit 1 doubles it and setting bits 1 and 0 together doubles it again(value 2=x2, value 3=x3).
 				if ((memsize > lastmemsize) && (memsize <= Tseng4k_VRAMSize)) //New best match found?
 				{
-					regval = (VRAMsize&0xB); //Use this as the new best!
+					if ((getActiveVGA()->enable_SVGA == 1) && et34k(getActiveVGA())->tsengExtensions) //ET4000/W32 variant?
+					{
+						regval = (VRAMsize & 0x9); //Use this as the new best!
+					}
+					else //ET4000AX?
+					{
+						regval = (VRAMsize & 0xB); //Use this as the new best!
+					}
 					lastmemsize = memsize; //Use this as the last value found!
 				}
 			}
