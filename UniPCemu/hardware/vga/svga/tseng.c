@@ -884,7 +884,7 @@ byte Tseng34K_readIO(word port, byte *result)
 		readcrtvalue:
 	//Bitu read_p3d5_et4k(Bitu reg,Bitu iolen) {
 		if (((!et34kdata->extensionsEnabled) && (getActiveVGA()->enable_SVGA == 1)) &&
-			(!((getActiveVGA()->registers->CRTControllerRegisters_Index == 0x33) || (getActiveVGA()->registers->CRTControllerRegisters_Index == 0x35) || (getActiveVGA()->registers->CRTControllerRegisters_Index == 0x37))) //Unprotected registers for reads?
+			(!((getActiveVGA()->registers->CRTControllerRegisters_Index == 0x33) || (getActiveVGA()->registers->CRTControllerRegisters_Index == 0x35))) //Unprotected registers for reads?
 			) //ET4000 blocks this without the KEY?
 			return 0;
 		switch(getActiveVGA()->registers->CRTControllerRegisters_Index)
@@ -897,7 +897,7 @@ byte Tseng34K_readIO(word port, byte *result)
 		RESTORE_ET4K(3d4, 34);
 		RESTORE_ET4K_UNPROTECTED(3d4, 35);
 		RESTORE_ET4K(3d4, 36);
-		RESTORE_ET4K_UNPROTECTED(3d4, 37);
+		RESTORE_ET4K(3d4, 37);
 		RESTORE_ET4K(3d4, 3f);
 		//ET3K
 		RESTORE_ET3K(3d4, 1b);
