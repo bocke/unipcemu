@@ -431,8 +431,7 @@ byte Tseng34K_writeIO(word port, byte val)
 			}
 			//Now, apply the bus width
 			--memsize; //Get wrapping mask!
-			/*
-			if ((memsize>et34k(getActiveVGA())->memwrap_init)|((val&0xF)==0xF)) //Too much or aurodetection probing?
+			if ((memsize>et34k(getActiveVGA())->memwrap_init)||((val&0xF)==0xF)) //Too much or aurodetection probing?
 			{
 				if ((getActiveVGA()->enable_SVGA == 1) && et34k(getActiveVGA())->tsengExtensions) //ET4000/W32 variant?
 				{
@@ -444,7 +443,6 @@ byte Tseng34K_writeIO(word port, byte val)
 				}
 				memsize = et34k(getActiveVGA())->memwrap_init; //Back to the original value!
 			}
-			*/
 				
 			et34kdata->store_et4k_3d4_37 = val;
 			et34k(getActiveVGA())->memwrap = memsize; //What to wrap against!
@@ -886,7 +884,7 @@ byte Tseng34K_readIO(word port, byte *result)
 		readcrtvalue:
 	//Bitu read_p3d5_et4k(Bitu reg,Bitu iolen) {
 		if (((!et34kdata->extensionsEnabled) && (getActiveVGA()->enable_SVGA == 1)) &&
-			(!((getActiveVGA()->registers->CRTControllerRegisters_Index == 0x33) || (getActiveVGA()->registers->CRTControllerRegisters_Index == 0x35))) //Unprotected registers for reads?
+			(!((getActiveVGA()->registers->CRTControllerRegisters_Index == 0x33) || (getActiveVGA()->registers->CRTControllerRegisters_Index == 0x35) || (getActiveVGA()->registers->CRTControllerRegisters_Index == 0x37))) //Unprotected registers for reads?
 			) //ET4000 blocks this without the KEY?
 			return 0;
 		switch(getActiveVGA()->registers->CRTControllerRegisters_Index)
@@ -899,7 +897,7 @@ byte Tseng34K_readIO(word port, byte *result)
 		RESTORE_ET4K(3d4, 34);
 		RESTORE_ET4K_UNPROTECTED(3d4, 35);
 		RESTORE_ET4K(3d4, 36);
-		RESTORE_ET4K(3d4, 37);
+		RESTORE_ET4K_UNPROTECTED(3d4, 37);
 		RESTORE_ET4K(3d4, 3f);
 		//ET3K
 		RESTORE_ET3K(3d4, 1b);
