@@ -969,6 +969,9 @@ byte Tseng34K_readIO(word port, byte *result)
 					//All shared among both CRTCB and Sprite registers!
 					*result = (et34kdata->W32_21xA_shadowRegisters[et34kdata->W32_21xA_index][0] >> ((port - 0x217B) << 3)); //Give the register!
 					break;
+				default: //Nothing connected?
+					*result = 0xFF; //Float the bus!
+					break;
 				}
 			}
 			else //Sprite?
@@ -990,6 +993,9 @@ byte Tseng34K_readIO(word port, byte *result)
 				case 0xF5: //Image Row Offset
 					//All shared among both CRTCB and Sprite registers!
 					*result = (et34kdata->W32_21xA_shadowRegisters[et34kdata->W32_21xA_index][0] >> ((port - 0x217B) << 3)); //Give the register!
+					break;
+				default: //Nothing connected?
+					*result = 0xFF; //Float the bus!
 					break;
 				}
 			}
@@ -1908,6 +1914,8 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 				VGA->precalcs.linearmemorybase = 0; //No base to apply!
 				VGA->precalcs.linearmemorymask = 0; //Disabled!
 				VGA->precalcs.extraSegmentSelectLines = 0; //We have no extra bits for the segment select lines!
+				VGA->precalcs.MMU012_enabled = 0; //No MMU 0-2 enabled when bit 3 is set (the remainder is handled by the MAP setting itself for the low memory area)?
+				VGA->precalcs.MMUregs_enabled = 0; //No memory mapped registers are enabled when bits 3 and 5 are set.
 			}
 			if ((et34k_tempreg & 0x10)==0x00) //Segment configuration?
 			{
@@ -1922,7 +1930,7 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 				{
 					VGA_MemoryMapBankRead = 0; //No read bank!
 					VGA_MemoryMapBankWrite = 0; //No write bank!
-					VGA->precalcs.linearmode |= 2; //Linear mode, use high 4-bits!
+					VGA->precalcs.linearmode |= 2; //Linear mode, use high bits!
 				}
 				else
 				{
