@@ -387,8 +387,8 @@ byte PORT_readVGA(word port, byte *result) //Read from a port/register!
 		*result &= VGA_RegisterWriteMasks_InputStatus0[(getActiveVGA()->enable_SVGA==3)?1:0]; //Apply the write mask to the data written to the register!
 		ok = 1;
 		break;
-	case 0x3C3: //Video subsystem enable?
-		if ((getActiveVGA()->enable_SVGA != 3) && (getActiveVGA()->enable_SVGA != 1) && (getActiveVGA()->enable_SVGA < 3)) //VGA+ and not ET4000?
+	case 0x3C3: //Video subsystem enable
+		if (getActiveVGA()->enable_SVGA < 3) //VGA+?
 		{
 			//*result = getActiveVGA()->registers->ExternalRegisters.VIDEOSUBSYSTEMREGISTER_3C3; //RAM enabled?
 			*result = GETBITS(getActiveVGA()->registers->VGA_enabled, 1, 1); //Get from the register!
@@ -571,7 +571,7 @@ byte PORT_writeVGA(word port, byte value) //Write to a port/register!
 		ok = 1;
 		break;
 	case 0x3C3: //Video subsystem enable
-		if ((getActiveVGA()->enable_SVGA != 3) && (getActiveVGA()->enable_SVGA != 1) && (getActiveVGA()->enable_SVGA < 3)) //VGA+ and not ET4000?
+		if (getActiveVGA()->enable_SVGA < 3) //VGA+?
 		{
 			//getActiveVGA()->registers->ExternalRegisters.VIDEOSUBSYSTEMREGISTER_3C3 = value; //Write the port only!
 			SETBITS(getActiveVGA()->registers->VGA_enabled, 1, 1, (value & 1)); //RAM and I/O enabled?

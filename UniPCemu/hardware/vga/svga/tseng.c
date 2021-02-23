@@ -150,14 +150,12 @@ byte Tseng34K_writeIO(word port, byte val)
 	{
 	case 0x46E8: //Video subsystem enable register?
 		if (((et4k_reg(et34kdata, 3d4, 34) & 8) == 0) && (getActiveVGA()->enable_SVGA == 1)) return 0; //Undefined on ET4000!
-		//getActiveVGA()->registers->ExternalRegisters.VIDEOSUBSYSTEMREGISTER_46E8 = val; //What is written to the port!
 		SETBITS(getActiveVGA()->registers->VGA_enabled, 1, 1,(val & 8) ? 1 : 0); //RAM enabled?
 		VGA_calcprecalcs(getActiveVGA(), WHEREUPDATED_MISCOUTPUTREGISTER); //Updated index!
 		return 1; //OK
 		break;
 	case 0x3C3: //Video subsystem enable register in VGA mode?
 		if ((et4k_reg(et34kdata, 3d4, 34) & 8) && (getActiveVGA()->enable_SVGA == 1)) return 2; //Undefined on ET4000!
-		//getActiveVGA()->registers->ExternalRegisters.VIDEOSUBSYSTEMREGISTER_3C3 = val; //What is written to the port!
 		SETBITS(getActiveVGA()->registers->VGA_enabled,1,1,(val & 1)); //RAM enabled?
 		VGA_calcprecalcs(getActiveVGA(), WHEREUPDATED_MISCOUTPUTREGISTER); //Updated index!
 		return 1; //OK
@@ -751,13 +749,11 @@ byte Tseng34K_readIO(word port, byte *result)
 	{
 	case 0x46E8: //Video subsystem enable register?
 		if ((et4k_reg(et34kdata,3d4,34)&8)==0) return 0; //Undefined!
-		//*result = getActiveVGA()->registers->ExternalRegisters.VIDEOSUBSYSTEMREGISTER_46E8; //RAM enabled?
 		*result = (GETBITS(getActiveVGA()->registers->VGA_enabled, 1, 1)<<3); //Get from the register!
 		return 1; //OK!
 		break;
 	case 0x3C3: //Video subsystem enable register in VGA mode?
 		if (et4k_reg(et34kdata,3d4,34)&8) return 2; //Undefined!
-		//*result = getActiveVGA()->registers->ExternalRegisters.VIDEOSUBSYSTEMREGISTER_3C3; //RAM enabled?
 		*result = GETBITS(getActiveVGA()->registers->VGA_enabled, 1, 1); //Get from the register!
 		return 1; //OK!
 		break;
