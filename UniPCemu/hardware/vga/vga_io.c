@@ -327,6 +327,7 @@ byte PORT_readVGA(word port, byte *result) //Read from a port/register!
 	{
 		if ((ok = VGA_readIOExtension(port,result))) goto finishinput; //Finish us! Don't use the VGA registers!
 	}
+	if (((getActiveVGA()->registers->VGA_enabled & 1) == 0) && (port != 0x3C3)) return 0; //Disabled I/O?
 	switch (port) //What port?
 	{
 	case 0x3B0:
@@ -387,10 +388,10 @@ byte PORT_readVGA(word port, byte *result) //Read from a port/register!
 		ok = 1;
 		break;
 	case 0x3C3: //Video subsystem enable?
-		if (getActiveVGA()->enable_SVGA!=3) //VGA+?
+		if ((getActiveVGA()->enable_SVGA!=3) && (getActiveVGA()->enable_SVGA<3)) //VGA+?
 		{
 			//*result = getActiveVGA()->registers->ExternalRegisters.VIDEOSUBSYSTEMREGISTER_3C3; //RAM enabled?
-			*result = GETBITS(getActiveVGA()->registers->ExternalRegisters.MISCOUTPUTREGISTER, 1, 1); //Get from the register!
+			*result = GETBITS(getActiveVGA()->registers->VGA_enabled, 1, 1); //Get from the register!
 			ok = 1;
 		}
 		break;
@@ -514,6 +515,7 @@ byte PORT_writeVGA(word port, byte value) //Write to a port/register!
 	{
 		if ((ok = VGA_writeIOExtension(port,value))) goto finishoutput; //Finish us! Don't use the VGA registers!
 	}
+	if (((getActiveVGA()->registers->VGA_enabled & 1) == 0) && (port != 0x3C3)) return 0; //Disabled I/O?
 	switch (port) //What port?
 	{
 	case 0x3B0:
@@ -569,10 +571,10 @@ byte PORT_writeVGA(word port, byte value) //Write to a port/register!
 		ok = 1;
 		break;
 	case 0x3C3: //Video subsystem enable
-		if (getActiveVGA()->enable_SVGA!=3) //VGA+
+		if ((getActiveVGA()->enable_SVGA!=3) && (getActiveVGA()->enable_SVGA < 3)) //VGA+
 		{
 			//getActiveVGA()->registers->ExternalRegisters.VIDEOSUBSYSTEMREGISTER_3C3 = value; //Write the port only!
-			SETBITS(getActiveVGA()->registers->ExternalRegisters.MISCOUTPUTREGISTER, 1, 1, (value & 1)); //RAM enabled?
+			SETBITS(getActiveVGA()->registers->VGA_enabled, 1, 1, (value & 1)); //RAM and I/O enabled?
 			VGA_calcprecalcs(getActiveVGA(),WHEREUPDATED_MISCOUTPUTREGISTER); //Updated index!
 			ok = 1;
 		}

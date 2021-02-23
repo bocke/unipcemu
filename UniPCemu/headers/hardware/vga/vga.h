@@ -264,9 +264,6 @@ typedef struct
 
 	byte INPUTSTATUS1REGISTER; //Read at 3BAh(mono), Read at 3DAh(color)
 
-	byte VIDEOSUBSYSTEMREGISTER_3C3; //For external boards 
-	byte VIDEOSUBSYSTEMREGISTER_46E8; //For internal boards
-
 	union
 	{
 		uint_32 latch; //The full data latch!
@@ -339,6 +336,7 @@ typedef struct PACKED
 	byte CGARegistersMasked[18]; //18 Masked CGA registers!
 	byte EGA_lightpenstrobeswitch; //Strobe/switch status of the light pen! Bit0=1: Light pen trigger has been set and is pending. Bit1=Light pen has been triggered and stopped pending(light pen register contents are valid). Bit2=1: Light pen switch is open(button on the light pen has been pressed).
 	byte verticalinterruptflipflop; //Current vertical interrupt flipflop!
+	byte VGA_enabled; //Responding to MMU and IO ports other than the enable bits?
 } VGA_REGISTERS;
 #include "headers/endpacked.h" //We're packed!
 

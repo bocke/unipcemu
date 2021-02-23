@@ -235,6 +235,7 @@ VGA_Type *VGAalloc(uint_32 custom_vram_size, int update_bios, byte extension) //
 			break;
 		default: //Non VGA?
 			//Leave it to the hardware defaults!
+			VGA->registers->VGA_enabled = 1; //Always enabled!
 			break;
 	}
 
