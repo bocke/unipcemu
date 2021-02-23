@@ -319,7 +319,7 @@ byte Tseng34K_writeIO(word port, byte val)
 		if (((!et34kdata->extensionsEnabled) && (getActiveVGA()->enable_SVGA == 1)) &&
 			(!((getActiveVGA()->registers->CRTControllerRegisters_Index==0x33) || (getActiveVGA()->registers->CRTControllerRegisters_Index==0x35))) //Unprotected registers?
 			) //ET4000 blocks this without the KEY?
-		return 0;
+			return 0;
 
 		switch(getActiveVGA()->registers->CRTControllerRegisters_Index)
 		{
