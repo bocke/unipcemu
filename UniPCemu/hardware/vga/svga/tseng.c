@@ -462,6 +462,7 @@ byte Tseng34K_writeIO(word port, byte val)
 		// The only unimplemented one is bit 7
 			if (getActiveVGA()->enable_SVGA != 1) return 0; //Not implemented on others than ET4000!
 			et34kdata->store_et4k_3d4_3f = val;
+			if ((val & 2) && (et34kdata->tsengExtensions)) et34kdata->store_et4k_3d4_3f &= ~2; //Bit 1 is always cleared on the W32!
 		// Abusing s3 ex_hor_overflow field which very similar. This is
 		// to be cleaned up later
 			VGA_calcprecalcs(getActiveVGA(),WHEREUPDATED_CRTCONTROLLER|0x3F); //Update all precalcs!
