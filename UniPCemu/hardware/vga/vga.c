@@ -232,6 +232,7 @@ VGA_Type *VGAalloc(uint_32 custom_vram_size, int update_bios, byte extension) //
 		case 1: //SVGA?
 		case 2: //SVGA?
 			VGA->registers->ExternalRegisters.MISCOUTPUTREGISTER |= 1; //We're starting in color mode always!
+			VGA->registers->VGA_enabled = 1; //Always enabled!
 			break;
 		default: //Non VGA?
 			//Leave it to the hardware defaults!
