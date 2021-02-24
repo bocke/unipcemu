@@ -530,6 +530,7 @@ byte Tseng34K_writeIO(word port, byte val)
 			break;
 		default:
 			//LOG(LOG_VGAMISC,LOG_NORMAL)("VGA:CRTC:ET4K:Write to illegal index %2X", reg);
+			return 0; //Unhandled!
 			break;
 		}
 		break;
