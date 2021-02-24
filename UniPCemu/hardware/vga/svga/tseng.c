@@ -315,11 +315,13 @@ byte Tseng34K_writeIO(word port, byte val)
 		goto accesscrtvalue;
 	case 0x3D5: //CRTC Controller Data Register		DATA
 		if (!GETBITS(getActiveVGA()->registers->ExternalRegisters.MISCOUTPUTREGISTER,0,1)) goto finishoutput; //Block: we're a mono mode addressing as color!
-		accesscrtvalue:
-		if (((!et34kdata->extensionsEnabled) && (getActiveVGA()->enable_SVGA == 1)) &&
-			(!((getActiveVGA()->registers->CRTControllerRegisters_Index==0x33) || (getActiveVGA()->registers->CRTControllerRegisters_Index==0x35))) //Unprotected registers?
-			) //ET4000 blocks this without the KEY?
-			return 0;
+	accesscrtvalue:
+		if (
+			((!et34kdata->extensionsEnabled) && (getActiveVGA()->enable_SVGA == 1)) && //ET4000 blocks this without the KEY?
+			(!((getActiveVGA()->registers->CRTControllerRegisters_Index == 0x33) || (getActiveVGA()->registers->CRTControllerRegisters_Index == 0x35))) //Unprotected registers for reads that can be read without the key?
+			&& (getActiveVGA()->registers->CRTControllerRegisters_Index > 0x18) //For the ET4000 range of registers?
+			)
+			return 2; //Float the bus!
 
 		switch(getActiveVGA()->registers->CRTControllerRegisters_Index)
 		{
