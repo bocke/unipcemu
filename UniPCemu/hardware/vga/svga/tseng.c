@@ -886,12 +886,14 @@ byte Tseng34K_readIO(word port, byte *result)
 		if (!GETBITS(getActiveVGA()->registers->ExternalRegisters.MISCOUTPUTREGISTER,0,1)) goto finishinput; //Block: we're a mono mode addressing as color!
 		readcrtvalue:
 	//Bitu read_p3d5_et4k(Bitu reg,Bitu iolen) {
-		/*
 		if (((!et34kdata->extensionsEnabled) && (getActiveVGA()->enable_SVGA == 1)) &&
 			(!((getActiveVGA()->registers->CRTControllerRegisters_Index == 0x33) || (getActiveVGA()->registers->CRTControllerRegisters_Index == 0x35))) //Unprotected registers for reads?
+			&& (getActiveVGA()->registers->CRTControllerRegisters_Index>0x18) //Within extended range of registers?
 			) //ET4000 blocks this without the KEY?
-			return 0;
-			*/
+		{
+			*result = 0x00; //0 is given according to Dosbox-X?
+			return 1;
+		}
 		switch(getActiveVGA()->registers->CRTControllerRegisters_Index)
 		{
 		//ET4K
