@@ -622,9 +622,18 @@ byte VGAmemIO_rb(uint_32 offset)
 					offset -= (VGA_MMU012_blocksize << 1); //Convert to relative offset within the block!
 					if (getActiveVGA()->precalcs.MMU2_aperture_linear & 2) //Accelerator mode?
 					{
-						memory_dataread = 0xFF; //Unsupported!
-						memory_datasize = 1; //Only 1 byte chunks can be read!
-						return 1; //Unsupported!
+						if (Tseng4k_readMMUaccelerator(2, offset, &bit8read)) //Read?
+						{
+							memory_dataread = bit8read; //What is read!
+							memory_datasize = 1; //Only 1 byte chunks can be read!
+							return 1; //G
+						}
+						else //Floating bus?
+						{
+							memory_dataread = 0xFF; //Unsupported!
+							memory_datasize = 1; //Only 1 byte chunks can be read!
+							return 1; //Unsupported!
+						}
 					}
 					if (getActiveVGA()->precalcs.MMU2_aperture_linear) //Linear mode?
 					{
@@ -642,9 +651,18 @@ byte VGAmemIO_rb(uint_32 offset)
 					offset -= VGA_MMU012_blocksize; //Convert to relative offset within the block!
 					if (getActiveVGA()->precalcs.MMU1_aperture_linear & 2) //Accelerator mode?
 					{
-						memory_dataread = 0xFF; //Unsupported!
-						memory_datasize = 1; //Only 1 byte chunks can be read!
-						return 1; //Unsupported!
+						if (Tseng4k_readMMUaccelerator(1, offset, &bit8read)) //Read?
+						{
+							memory_dataread = bit8read; //What is read!
+							memory_datasize = 1; //Only 1 byte chunks can be read!
+							return 1; //G
+						}
+						else //Floating bus?
+						{
+							memory_dataread = 0xFF; //Unsupported!
+							memory_datasize = 1; //Only 1 byte chunks can be read!
+							return 1; //Unsupported!
+						}
 					}
 					if (getActiveVGA()->precalcs.MMU1_aperture_linear) //Linear mode?
 					{
@@ -662,9 +680,18 @@ byte VGAmemIO_rb(uint_32 offset)
 					offset += getActiveVGA()->precalcs.MMU2_aperture; //Set the aperture in VRAM!
 					if (getActiveVGA()->precalcs.MMU0_aperture_linear & 2) //Accelerator mode?
 					{
-						memory_dataread = 0xFF; //Unsupported!
-						memory_datasize = 1; //Only 1 byte chunks can be read!
-						return 1; //Unsupported!
+						if (Tseng4k_readMMUaccelerator(0, offset, &bit8read)) //Read?
+						{
+							memory_dataread = bit8read; //What is read!
+							memory_datasize = 1; //Only 1 byte chunks can be read!
+							return 1; //G
+						}
+						else //Floating bus?
+						{
+							memory_dataread = 0xFF; //Unsupported!
+							memory_datasize = 1; //Only 1 byte chunks can be read!
+							return 1; //Unsupported!
+						}
 					}
 					if (getActiveVGA()->precalcs.MMU0_aperture_linear) //Linear mode?
 					{
@@ -730,7 +757,12 @@ byte VGAmemIO_wb(uint_32 offset, byte value)
 					offset -= (VGA_MMU012_blocksize << 1); //Convert to relative offset within the block!
 					if (getActiveVGA()->precalcs.MMU2_aperture_linear & 2) //Accelerator mode?
 					{
-						return 1; //Unsupported!
+						if (Tseng4k_writeMMUaccelerator(2, offset, value)) //Read?
+						{
+							memory_datawrittensize = 1; //Only 1 byte written!
+							return 1; //Handled!
+						}
+						return 1; //Unmapped!
 					}
 					if (getActiveVGA()->precalcs.MMU2_aperture_linear) //Linear mode?
 					{
@@ -748,7 +780,12 @@ byte VGAmemIO_wb(uint_32 offset, byte value)
 					offset -= VGA_MMU012_blocksize; //Convert to relative offset within the block!
 					if (getActiveVGA()->precalcs.MMU1_aperture_linear & 2) //Accelerator mode?
 					{
-						return 1; //Unsupported!
+						if (Tseng4k_writeMMUaccelerator(1, offset, value)) //Read?
+						{
+							memory_datawrittensize = 1; //Only 1 byte written!
+							return 1; //Handled!
+						}
+						return 1; //Unmapped!
 					}
 					if (getActiveVGA()->precalcs.MMU1_aperture_linear) //Linear mode?
 					{
@@ -766,7 +803,12 @@ byte VGAmemIO_wb(uint_32 offset, byte value)
 					offset += getActiveVGA()->precalcs.MMU2_aperture; //Set the aperture in VRAM!
 					if (getActiveVGA()->precalcs.MMU0_aperture_linear & 2) //Accelerator mode?
 					{
-						return 1; //Unsupported!
+						if (Tseng4k_writeMMUaccelerator(0, offset, value)) //Read?
+						{
+							memory_datawrittensize = 1; //Only 1 byte written!
+							return 1; //Handled!
+						}
+						return 1; //Unmapped!
 					}
 					if (getActiveVGA()->precalcs.MMU0_aperture_linear) //Linear mode?
 					{

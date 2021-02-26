@@ -1415,6 +1415,17 @@ byte Tseng4k_writeMMUregister(byte address, byte value)
 	return 1; //Handled!
 }
 
+byte Tseng4k_readMMUaccelerator(byte area, uint_32 address, byte* result)
+{
+	*result = 0xFF; //Not implemented yet!
+	return 1; //Handled!
+}
+
+byte Tseng4k_writeMMUaccelerator(byte area, uint_32 address, byte value)
+{
+	return 1; //Handled!
+}
+
 //Easy retrieval of bits from an aperture containing a single number in little endian format!
 uint_32 getTsengLE32(byte* list)
 {
