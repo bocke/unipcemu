@@ -1277,7 +1277,7 @@ byte Tseng4k_readMMUregister(byte address, byte *result)
 			break;
 		case 0x32: //ACL Sync Enable Register
 		case 0x34: //ACL Interrupt Mask Register
-			*result = et34k(getActiveVGA())->W32_MMUregisters[1][address & 0xFF]; //Get the register, from the currently processing register!
+			*result = et34k(getActiveVGA())->W32_MMUregisters[0][address & 0xFF]; //Get the register, from the currently processing register!
 			break;
 		case 0x80:
 		case 0x81:
@@ -1330,6 +1330,11 @@ byte Tseng4k_readMMUregister(byte address, byte *result)
 	return 1; //Handled!
 }
 
+void et4k_transferQueuedMMURegisters()
+{
+	memcpy(&et34k(getActiveVGA())->W32_MMUregisters[1][0x80], &et34k(getActiveVGA())->W32_MMUregisters[0][0x80], 0x80); //Load all queued registers into the internal state!
+}
+
 byte Tseng4k_writeMMUregister(byte address, byte value)
 {
 	//Unhandled!
@@ -1364,6 +1369,10 @@ byte Tseng4k_writeMMUregister(byte address, byte value)
 	case 0x32: //ACL Sync Enable Register
 	case 0x34: //ACL Interrupt Mask Register
 		et34k(getActiveVGA())->W32_MMUregisters[0][address & 0xFF] = value; //Set the register!
+		if ((address == 0x31) && (value & 1)) //Restore operation?
+		{
+			et4k_transferQueuedMMURegisters(); //Load the queued MMU registers!
+		}
 		break;
 	case 0x80:
 	case 0x81:
@@ -1400,6 +1409,11 @@ byte Tseng4k_writeMMUregister(byte address, byte value)
 	case 0xA2:
 	case 0xA3: //ACL Destination Address Register
 		et34k(getActiveVGA())->W32_MMUregisters[0][address & 0xFF] = value; //Set the register, queued!
+		if ((address == 0xA3) && (et34k(getActiveVGA())->W32_MMUregisters[0][0x31] & 0x10)) //Operation state ASEN enabled and Final byte of the ACL Destination Address Register written?
+		{
+			et4k_transferQueuedMMURegisters(); //Load the queued registers to become active!
+			//Start a new operation!
+		}
 		break;
 	case 0xA4:
 	case 0xA5:
