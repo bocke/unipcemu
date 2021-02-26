@@ -1271,13 +1271,13 @@ byte Tseng4k_readMMUregister(byte address, byte *result)
 		case 0x0B: //MMU Memory Base Pointer Register 2
 		case 0x13: //MMU Control Register
 		case 0x30: //ACL Suspend/Terminate Register
-			*result = et34k(getActiveVGA())->W32_MMUregisters[address & 0xFF]; //Get the register!
+			*result = et34k(getActiveVGA())->W32_MMUregisters[0][address & 0xFF]; //Get the register!
 			break;
 		case 0x31: //ACL Operation State Register (W/O?)
 			break;
 		case 0x32: //ACL Sync Enable Register
 		case 0x34: //ACL Interrupt Mask Register
-			*result = et34k(getActiveVGA())->W32_MMUregisters[address & 0xFF]; //Get the register!
+			*result = et34k(getActiveVGA())->W32_MMUregisters[1][address & 0xFF]; //Get the register, from the currently processing register!
 			break;
 		case 0x80:
 		case 0x81:
@@ -1313,7 +1313,7 @@ byte Tseng4k_readMMUregister(byte address, byte *result)
 		case 0xA1:
 		case 0xA2:
 		case 0xA3: //ACL Destination Address Register
-			*result = et34k(getActiveVGA())->W32_MMUregisters[address & 0xFF]; //Get the register!
+			*result = et34k(getActiveVGA())->W32_MMUregisters[1][address & 0xFF]; //Get the register! Unqueued registers!
 			break;
 		case 0xA4:
 		case 0xA5:
@@ -1323,7 +1323,7 @@ byte Tseng4k_readMMUregister(byte address, byte *result)
 		case 0xA9:
 		case 0xAA:
 		case 0xAB: //ACL Internal Source Address Register (R/O)
-			*result = et34k(getActiveVGA())->W32_MMUregisters[address & 0xFF]; //Get the register!
+			*result = et34k(getActiveVGA())->W32_MMUregisters[0][address & 0xFF]; //Get the register! Unqueued registers!
 			break;
 		}
 	}
@@ -1348,7 +1348,7 @@ byte Tseng4k_writeMMUregister(byte address, byte value)
 	case 0x0A:
 	case 0x0B: //MMU Memory Base Pointer Register 2
 	case 0x13: //MMU Control Register
-		et34k(getActiveVGA())->W32_MMUregisters[address & 0xFF] = value; //Set the register!
+		et34k(getActiveVGA())->W32_MMUregisters[0][address & 0xFF] = value; //Set the register!
 		if (address < 0x13) //Not the control register?
 		{
 			VGA_calcprecalcs(getActiveVGA(), WHEREUPDATED_MEMORYMAPPED | (address & ~3)); //This memory mapped register has been updated!
@@ -1363,7 +1363,7 @@ byte Tseng4k_writeMMUregister(byte address, byte value)
 	case 0x31: //ACL Operation State Register (W/O?)
 	case 0x32: //ACL Sync Enable Register
 	case 0x34: //ACL Interrupt Mask Register
-		et34k(getActiveVGA())->W32_MMUregisters[address & 0xFF] = value; //Set the register!
+		et34k(getActiveVGA())->W32_MMUregisters[0][address & 0xFF] = value; //Set the register!
 		break;
 	case 0x80:
 	case 0x81:
@@ -1399,7 +1399,7 @@ byte Tseng4k_writeMMUregister(byte address, byte value)
 	case 0xA1:
 	case 0xA2:
 	case 0xA3: //ACL Destination Address Register
-		et34k(getActiveVGA())->W32_MMUregisters[address & 0xFF] = value; //Set the register!
+		et34k(getActiveVGA())->W32_MMUregisters[0][address & 0xFF] = value; //Set the register, queued!
 		break;
 	case 0xA4:
 	case 0xA5:
@@ -1409,7 +1409,7 @@ byte Tseng4k_writeMMUregister(byte address, byte value)
 	case 0xA9:
 	case 0xAA:
 	case 0xAB: //ACL Internal Source Address Register (R/O)
-		//Not writable, have not effect!
+		//Not writable, have no effect!
 		break;
 	}
 	return 1; //Handled!
