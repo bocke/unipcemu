@@ -1879,12 +1879,12 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 		VGA->precalcs.MMU012_enabled = 0; //Default: disabled!
 		VGA->precalcs.MMUregs_enabled = 0; //Default: disabled!
 
-		VGA->precalcs.MMU0_aperture = (getTsengLE24(&et34kdata->W32_MMUregisters[0x00]) & 0x3FFFFF); //Full 22-bit address
-		VGA->precalcs.MMU1_aperture = (getTsengLE24(&et34kdata->W32_MMUregisters[0x04]) & 0x3FFFFF); //Full 22-bit address
-		VGA->precalcs.MMU2_aperture = (getTsengLE24(&et34kdata->W32_MMUregisters[0x08]) & 0x3FFFFF); //Full 22-bit address
-		VGA->precalcs.MMU0_aperture_linear = ((et34kdata->W32_MMUregisters[0x13] >> 4) & 1) | ((et34kdata->W32_MMUregisters[0x13] & 1) << 1); //Linear/accelerator mode?
-		VGA->precalcs.MMU1_aperture_linear = ((et34kdata->W32_MMUregisters[0x13] >> 5) & 1) | (et34kdata->W32_MMUregisters[0x13] & 2); //Linear/accelerator mode?
-		VGA->precalcs.MMU2_aperture_linear = ((et34kdata->W32_MMUregisters[0x13] >> 6) & 1) | ((et34kdata->W32_MMUregisters[0x13] & 4) >> 1); //Linear/accelerator mode?
+		VGA->precalcs.MMU0_aperture = (getTsengLE24(&et34kdata->W32_MMUregisters[0][0x00]) & 0x3FFFFF); //Full 22-bit address
+		VGA->precalcs.MMU1_aperture = (getTsengLE24(&et34kdata->W32_MMUregisters[0][0x04]) & 0x3FFFFF); //Full 22-bit address
+		VGA->precalcs.MMU2_aperture = (getTsengLE24(&et34kdata->W32_MMUregisters[0][0x08]) & 0x3FFFFF); //Full 22-bit address
+		VGA->precalcs.MMU0_aperture_linear = ((et34kdata->W32_MMUregisters[0][0x13] >> 4) & 1) | ((et34kdata->W32_MMUregisters[0][0x13] & 1) << 1); //Linear/accelerator mode?
+		VGA->precalcs.MMU1_aperture_linear = ((et34kdata->W32_MMUregisters[0][0x13] >> 5) & 1) | (et34kdata->W32_MMUregisters[0][0x13] & 2); //Linear/accelerator mode?
+		VGA->precalcs.MMU2_aperture_linear = ((et34kdata->W32_MMUregisters[0][0x13] >> 6) & 1) | ((et34kdata->W32_MMUregisters[0][0x13] & 4) >> 1); //Linear/accelerator mode?
 
 		if (VGA->enable_SVGA==2) //Special ET3000 mapping?
 		{
