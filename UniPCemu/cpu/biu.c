@@ -566,6 +566,10 @@ OPTINLINE void CPU_fillPIQ() //Fill the PIQ until it's full!
 		physaddr = mappage((uint_32)physaddr,0,getCPL()); //Map it using the paging mechanism to a physical address!		
 	}
 	value = BIU_directrb(physaddr, 0 | 0x20 | 0x100); //Read the memory location!
+	if (MMU_waitstateactive) //No result yet?
+	{
+		return; //Keep polling!
+	}
 	writefifobuffer(BIU[activeCPU].PIQ, value); //Add the next byte from memory into the buffer!
 
 	//Next data! Take 4 cycles on 8088, 2 on 8086 when loading words/4 on 8086 when loading a single byte.
@@ -909,6 +913,8 @@ byte BIU_obtainbuslock()
 	return 0; //Obtained the bus lock!
 }
 
+extern byte MMU_waitstateactive; //Waitstate active?
+
 OPTINLINE byte BIU_processRequests(byte memory_waitstates, byte bus_waitstates)
 {
 	INLINEREGISTER uint_64 physicaladdress;
@@ -932,6 +938,10 @@ OPTINLINE byte BIU_processRequests(byte memory_waitstates, byte bus_waitstates)
 				}
 
 				BIU[activeCPU].currentresult |= ((value = BIU_directrb((physicaladdress),(((BIU[activeCPU].currentrequest&REQUEST_SUBMASK)>>REQUEST_SUBSHIFT)>>8)|0x100))<<(BIU_access_readshift[((BIU[activeCPU].currentrequest&REQUEST_SUBMASK)>>REQUEST_SUBSHIFT)])); //Read subsequent byte!
+				if (MMU_waitstateactive) //No result yet?
+				{
+					return 1; //Keep polling!
+				}
 				if (unlikely((MMU_logging == 1) && (BIU[activeCPU].currentpayload[1] & 1))) //To log the paged layer?
 				{
 					debugger_logmemoryaccess(0, BIU[activeCPU].currentaddress, value, LOGMEMORYACCESS_PAGED | (((0 & 0x20) >> 5) << LOGMEMORYACCESS_PREFETCHBITSHIFT)); //Log it!
@@ -968,6 +978,10 @@ OPTINLINE byte BIU_processRequests(byte memory_waitstates, byte bus_waitstates)
 					}
 				}
 				value = (BIU[activeCPU].currentpayload[0] >> (BIU_access_writeshift[((BIU[activeCPU].currentrequest&REQUEST_SUBMASK) >> REQUEST_SUBSHIFT)]) & 0xFF);
+				if (MMU_waitstateactive) //No result yet?
+				{
+					return 1; //Keep polling!
+				}
 				if (unlikely((MMU_logging == 1) && (BIU[activeCPU].currentpayload[1] & 1))) //To log the paged layer?
 				{
 					debugger_logmemoryaccess(1, BIU[activeCPU].currentaddress, value, LOGMEMORYACCESS_PAGED | (((0 & 0x20) >> 5) << LOGMEMORYACCESS_PREFETCHBITSHIFT)); //Log it!
@@ -1094,6 +1108,12 @@ OPTINLINE byte BIU_processRequests(byte memory_waitstates, byte bus_waitstates)
 						}
 					}
 					BIU[activeCPU].currentresult = ((value = BIU_directrb((physicaladdress), 0x100)) << BIU_access_readshift[0]); //Read first byte!
+					if (MMU_waitstateactive) //No result yet?
+					{
+						BIU[activeCPU].currentrequest &= ~REQUEST_SUB1; //Request 8-bit half again(low byte)!
+						BIU[activeCPU].newrequest = 0; //We're not a new request!
+						return 1; //Keep polling!
+					}
 					if (unlikely((MMU_logging == 1) && (BIU[activeCPU].currentpayload[1] & 1))) //To log the paged layer?
 					{
 						debugger_logmemoryaccess(0, BIU[activeCPU].currentaddress, value, LOGMEMORYACCESS_PAGED | (((0 & 0x20) >> 5) << LOGMEMORYACCESS_PREFETCHBITSHIFT)); //Log it!
@@ -1179,6 +1199,14 @@ OPTINLINE byte BIU_processRequests(byte memory_waitstates, byte bus_waitstates)
 							}
 							memory_datawritesize = 1; //1 byte only!
 							BIU_directwb(physicaladdress, value, 0x100); //Write directly to memory now!
+							if (MMU_waitstateactive) //No result yet?
+							{
+								uint_64 temp;
+								BIU_readResponse(&temp); //Discard the response!
+								BIU[activeCPU].currentrequest &= ~REQUEST_SUB1; //Request 8-bit half again(low byte)!
+								BIU[activeCPU].newrequest = 0; //We're not a new request!
+								return 1; //Keep polling!
+							}
 							BIU[activeCPU].currentrequest = REQUEST_NONE; //No request anymore! We're finished!
 							BIU_terminatemem();
 							BIU[activeCPU].newrequest = 0; //We're not a new request!
@@ -1214,6 +1242,10 @@ OPTINLINE byte BIU_processRequests(byte memory_waitstates, byte bus_waitstates)
 							BIU[activeCPU].datawritesizeexpected = 1; //1 byte only!
 						}
 						BIU_directwb(physicaladdress, value, 0x100); //Write directly to memory now!
+						if (MMU_waitstateactive) //No result yet?
+						{
+							return 1; //Keep polling!
+						}
 						if (unlikely(memory_datawrittensize != BIU[activeCPU].datawritesizeexpected)) //Wrong size than expected?
 						{
 							BIU[activeCPU].datawritesizeexpected = 1; //Expect 1 byte for all other bytes!
@@ -1433,7 +1465,7 @@ void BIU_handleRequestsIPS() //Handle all pending requests at once!
 		{
 			checkBIUBUSrelease(); //Check for release!
 			BIU[activeCPU].requestready = 1; //The request is ready to be served!
-			if (BIU[activeCPU]._lock == 2) //Waiting for the BUS to be unlocked? Abort this handling!
+			if ((BIU[activeCPU]._lock == 2) || MMU_waitstateactive) //Waiting for the BUS to be unlocked? Abort this handling!
 			{
 				BIU[activeCPU].handlerequestPending = &BIU_handleRequestsIPS; //We're keeping pending to handle!
 				goto handleBusLockPending; //Handle the bus locking pending!

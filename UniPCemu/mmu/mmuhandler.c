@@ -70,6 +70,7 @@ uint_32 mem_BUSValue = 0; //Last memory read/written, BUS value stored during re
 const uint_32 BUSmask[4] = { 0xFFFFFF00,0xFFFF00FF,0xFF00FFFF,0x00FFFFFF }; //Bus mask for easy toggling!
 byte LOG_MMU_WRITES = 0; //Log MMU writes?
 byte enableMMUbuffer = 0; //To buffer the MMU writes?
+byte MMU_waitstateactive = 0; //Waitstate active?
 
 struct
 {

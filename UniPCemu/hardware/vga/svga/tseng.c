@@ -1429,14 +1429,18 @@ byte Tseng4k_writeMMUregister(byte address, byte value)
 	return 1; //Handled!
 }
 
+extern byte MMU_waitstateactive; //Waitstate active?
+
 byte Tseng4k_readMMUaccelerator(byte area, uint_32 address, byte* result)
 {
+	MMU_waitstateactive = 0; //No wait state!
 	*result = 0xFF; //Not implemented yet!
 	return 1; //Handled!
 }
 
 byte Tseng4k_writeMMUaccelerator(byte area, uint_32 address, byte value)
 {
+	MMU_waitstateactive = 0; //No wait state!
 	return 1; //Handled!
 }
 
