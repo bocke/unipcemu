@@ -446,7 +446,7 @@ OPTINLINE byte BIU_directrb(uint_64 realaddress, word index)
 		}
 		BIU_cachedmemoryaddr[activeCPU] = memory_dataaddr; //The address that's cached now!
 		BIU_cachedmemoryread[activeCPU] = memory_dataread; //What has been read!
-		if (unlikely(memory_datasize > 1)) //Valid to cache?
+		if (unlikely((memory_datasize > 1) && (MMU_waitstateactive==0))) //Valid to cache? Not waiting for a result?
 		{
 			BIU_cachedmemorysize[activeCPU] = memory_datasize; //How much has been read!
 		}
@@ -978,10 +978,6 @@ OPTINLINE byte BIU_processRequests(byte memory_waitstates, byte bus_waitstates)
 					}
 				}
 				value = (BIU[activeCPU].currentpayload[0] >> (BIU_access_writeshift[((BIU[activeCPU].currentrequest&REQUEST_SUBMASK) >> REQUEST_SUBSHIFT)]) & 0xFF);
-				if (MMU_waitstateactive) //No result yet?
-				{
-					return 1; //Keep polling!
-				}
 				if (unlikely((MMU_logging == 1) && (BIU[activeCPU].currentpayload[1] & 1))) //To log the paged layer?
 				{
 					debugger_logmemoryaccess(1, BIU[activeCPU].currentaddress, value, LOGMEMORYACCESS_PAGED | (((0 & 0x20) >> 5) << LOGMEMORYACCESS_PREFETCHBITSHIFT)); //Log it!
@@ -990,6 +986,10 @@ OPTINLINE byte BIU_processRequests(byte memory_waitstates, byte bus_waitstates)
 				{
 					memory_datawritesize = BIU[activeCPU].datawritesizeexpected = 1; //1 bvte only for now!
 					BIU_directwb((physicaladdress), value, ((BIU[activeCPU].currentrequest & REQUEST_SUBMASK) >> REQUEST_SUBSHIFT) | 0x100); //Write directly to memory now!
+					if (MMU_waitstateactive) //No result yet?
+					{
+						return 1; //Keep polling!
+					}
 				}
 				if ((BIU[activeCPU].currentrequest&REQUEST_SUBMASK)==((BIU[activeCPU].currentrequest&REQUEST_16BIT)?REQUEST_SUB1:REQUEST_SUB3)) //Finished the request?
 				{
@@ -1202,7 +1202,7 @@ OPTINLINE byte BIU_processRequests(byte memory_waitstates, byte bus_waitstates)
 							if (MMU_waitstateactive) //No result yet?
 							{
 								uint_64 temp;
-								BIU_readResponse(&temp); //Discard the response!
+								temp = BIU_readResponse(&temp); //Discard the response!
 								BIU[activeCPU].currentrequest &= ~REQUEST_SUB1; //Request 8-bit half again(low byte)!
 								BIU[activeCPU].newrequest = 0; //We're not a new request!
 								return 1; //Keep polling!
