@@ -590,6 +590,7 @@ resetmmu:
 	BIOSROM_LowMemoryBecomesHighMemory = BIOSROM_DisableLowMemory = 0; //Default low memory behaviour!
 	memoryprotect_FE0000 = 0; //Don't enable memory protection on FE0000+ by default!
 	//Reset the register!
+	MMU_waitstateactive = 0; //No waitstate to start with!
 	MMU.maxsize = -1; //Default to not using any maximum size: full memory addressable!
 	memset(&memorymapinfo, 0, sizeof(memorymapinfo)); //Initialize the memory map info properly!
 	MMU_updatemaxsize(); //updated the maximum size!
