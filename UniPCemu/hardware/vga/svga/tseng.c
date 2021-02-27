@@ -1245,87 +1245,78 @@ byte Tseng34k_doublecharacterclocks(VGA_Type *VGA)
 byte Tseng4k_readMMUregister(byte address, byte *result)
 {
 	*result = 0xFF; //Unhandled: float the bus by default!
-	if (address == 0x35) //ACL Interrupt Status Register
+	switch (address) //What register to read?
 	{
-		*result = 0x00; //No interrupts are pending!
-	}
-	else if (address == 0x36) //ACL Accelerator Status Register
-	{
-		*result = 0x00; //Give the result of the current status! Report not being busy on anything for software to continue onwards!
-	}
-	else
-	{
-		switch (address) //What register to read?
-		{
-		case 0x00:
-		case 0x01:
-		case 0x02:
-		case 0x03: //MMU Memory Base Pointer Register 0
-		case 0x04:
-		case 0x05:
-		case 0x06:
-		case 0x07: //MMU Memory Base Pointer Register 1
-		case 0x08:
-		case 0x09:
-		case 0x0A:
-		case 0x0B: //MMU Memory Base Pointer Register 2
-		case 0x13: //MMU Control Register
-		case 0x30: //ACL Suspend/Terminate Register
-			*result = et34k(getActiveVGA())->W32_MMUregisters[0][address & 0xFF]; //Get the register!
-			break;
-		case 0x31: //ACL Operation State Register (W/O?)
-			break;
-		case 0x32: //ACL Sync Enable Register
-		case 0x34: //ACL Interrupt Mask Register
-			*result = et34k(getActiveVGA())->W32_MMUregisters[0][address & 0xFF]; //Get the register, from the currently processing register!
-			break;
-		case 0x80:
-		case 0x81:
-		case 0x82:
-		case 0x83: //ACL Pattern Address Register
-		case 0x84:
-		case 0x85:
-		case 0x86:
-		case 0x87: //ACL Source Address Register
-		case 0x88:
-		case 0x89: //ACL Pattern Y Offset Register
-		case 0x8A:
-		case 0x8B: //ACL Source Y Offset Register
-		case 0x8C:
-		case 0x8D: //ACL Destination Y Offset Register
-		case 0x8E: //ACL Virtual Bus Size Register
-		case 0x8F: //ACL X/Y Direction Register
-		case 0x90: //ACL Pattern Wrap Register
-		case 0x92: //ACL Source Wrap Register
-		case 0x94:
-		case 0x95: //ACL X Position Register
-		case 0x96:
-		case 0x97: //ACL Y Position Register
-		case 0x98:
-		case 0x99: //ACL X Count Register
-		case 0x9A:
-		case 0x9B: //ACL Y Count Register
-		case 0x9C: //ACL Routing Control Register
-		case 0x9D: //ACL Reload Control Register
-		case 0x9E: //ACL Background Raster Operation Register
-		case 0x9F: //ACL Foreground Operation Register
-		case 0xA0:
-		case 0xA1:
-		case 0xA2:
-		case 0xA3: //ACL Destination Address Register
-			*result = et34k(getActiveVGA())->W32_MMUregisters[1][address & 0xFF]; //Get the register! Unqueued registers!
-			break;
-		case 0xA4:
-		case 0xA5:
-		case 0xA6:
-		case 0xA7: //ACL Internal Pattern Address Register (R/O)
-		case 0xA8:
-		case 0xA9:
-		case 0xAA:
-		case 0xAB: //ACL Internal Source Address Register (R/O)
-			*result = et34k(getActiveVGA())->W32_MMUregisters[0][address & 0xFF]; //Get the register! Unqueued registers!
-			break;
-		}
+	case 0x00:
+	case 0x01:
+	case 0x02:
+	case 0x03: //MMU Memory Base Pointer Register 0
+	case 0x04:
+	case 0x05:
+	case 0x06:
+	case 0x07: //MMU Memory Base Pointer Register 1
+	case 0x08:
+	case 0x09:
+	case 0x0A:
+	case 0x0B: //MMU Memory Base Pointer Register 2
+	case 0x13: //MMU Control Register
+	case 0x30: //ACL Suspend/Terminate Register
+		*result = et34k(getActiveVGA())->W32_MMUregisters[0][address & 0xFF]; //Get the register!
+		break;
+	case 0x31: //ACL Operation State Register (W/O?)
+		break;
+	case 0x32: //ACL Sync Enable Register
+	case 0x34: //ACL Interrupt Mask Register
+	case 0x35: //ACL Interrupt Status Register
+	case 0x36: //ACL Accelerator Status Register
+		*result = et34k(getActiveVGA())->W32_MMUregisters[0][address & 0xFF]; //Get the register, from the currently processing register!
+		break;
+	case 0x80:
+	case 0x81:
+	case 0x82:
+	case 0x83: //ACL Pattern Address Register
+	case 0x84:
+	case 0x85:
+	case 0x86:
+	case 0x87: //ACL Source Address Register
+	case 0x88:
+	case 0x89: //ACL Pattern Y Offset Register
+	case 0x8A:
+	case 0x8B: //ACL Source Y Offset Register
+	case 0x8C:
+	case 0x8D: //ACL Destination Y Offset Register
+	case 0x8E: //ACL Virtual Bus Size Register
+	case 0x8F: //ACL X/Y Direction Register
+	case 0x90: //ACL Pattern Wrap Register
+	case 0x92: //ACL Source Wrap Register
+	case 0x94:
+	case 0x95: //ACL X Position Register
+	case 0x96:
+	case 0x97: //ACL Y Position Register
+	case 0x98:
+	case 0x99: //ACL X Count Register
+	case 0x9A:
+	case 0x9B: //ACL Y Count Register
+	case 0x9C: //ACL Routing Control Register
+	case 0x9D: //ACL Reload Control Register
+	case 0x9E: //ACL Background Raster Operation Register
+	case 0x9F: //ACL Foreground Operation Register
+	case 0xA0:
+	case 0xA1:
+	case 0xA2:
+	case 0xA3: //ACL Destination Address Register
+		*result = et34k(getActiveVGA())->W32_MMUregisters[1][address & 0xFF]; //Get the register! Unqueued registers!
+		break;
+	case 0xA4:
+	case 0xA5:
+	case 0xA6:
+	case 0xA7: //ACL Internal Pattern Address Register (R/O)
+	case 0xA8:
+	case 0xA9:
+	case 0xAA:
+	case 0xAB: //ACL Internal Source Address Register (R/O)
+		*result = et34k(getActiveVGA())->W32_MMUregisters[0][address & 0xFF]; //Get the register! Unqueued registers!
+		break;
 	}
 	return 1; //Handled!
 }
@@ -1357,7 +1348,7 @@ void Tseng4k_status_startXYblock(byte is_screentoscreen) //Starting an X/Y block
 	et34k(getActiveVGA())->W32_MMUregisters[0][0x36] |= is_screentoscreen ? 0x10 : 0x00; //Screen-to-screen operation?
 }
 
-void Tseng4k_status_XYblockTerminalCouint() //Finished an X/Y block and Terminal Count reached?
+void Tseng4k_status_XYblockTerminalCount() //Finished an X/Y block and Terminal Count reached?
 {
 	et34k(getActiveVGA())->W32_MMUregisters[0][0x36] &= ~0x08; //Finished X/Y block!
 }
@@ -1398,13 +1389,15 @@ void Tseng4k_status_queueEmptied() //Queue has been emptied by processing?
 	et34k(getActiveVGA())->W32_MMUregisters[0][0x36] &= ~0x01; //Lower status!
 }
 
-void Tseng4k_doEmptyQueue() //Try and perform an emptying of the queue!
+byte Tseng4k_doEmptyQueue() //Try and perform an emptying of the queue! Result: 1=Was filled, 0=Was already empty
 {
 	if (et34k(getActiveVGA())->W32_MMUqueuefilled) //The queue was filled?
 	{
 		et34k(getActiveVGA())->W32_MMUqueuefilled = 0; //The queue isn't filled anymore!
 		Tseng4k_status_queueEmptied(); //The queue has been emptied now!
+		return 1; //Was filled!
 	}
+	return 0; //Was empty already!
 }
 
 void Tseng4k_doBecomeIdle() //Accelerator becomes idle!
@@ -1414,6 +1407,8 @@ void Tseng4k_doBecomeIdle() //Accelerator becomes idle!
 		Tseng4k_status_becameIdleAndQueueisempty(); //Became idle and queue is empty!
 	}
 }
+
+byte et4k_emptyqueuedummy = 0;
 
 byte Tseng4k_writeMMUregister(byte address, byte value)
 {
@@ -1517,7 +1512,8 @@ byte Tseng4k_writeMMUregister(byte address, byte value)
 		{
 			et4k_transferQueuedMMURegisters(); //Load the queued registers to become active!
 			//Start a new operation!
-			Tseng4k_doEmptyQueue(); //Empty the queue if possible for the new operation to start!
+			et4k_emptyqueuedummy = Tseng4k_doEmptyQueue(); //Empty the queue if possible for the new operation to start!
+			Tseng4k_status_startXYblock(0); //Screen-to-screen is unknown atm. Starting a transfer!
 		}
 		break;
 	case 0xA4:
@@ -1565,6 +1561,30 @@ byte Tseng4k_writeMMUaccelerator(byte area, uint_32 address, byte value)
 	et34k(getActiveVGA())->W32_MMUqueueval[et34k(getActiveVGA())->W32_MMUqueueval_offset] = value; //Fill the specific offset that's filled!
 	Tseng4k_status_queueFilled(); //The queue has been filled!
 	return 1; //Handled!
+}
+
+void Tseng4k_tickAccelerator()
+{
+	//For now, just empty the queue, if filled and become idle!
+	if (!(et34k(getActiveVGA()) && (getActiveVGA()->enable_SVGA == 1))) return; //Not ET4000/W32? Do nothing!
+	if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x36] & 0x04) == 0) return; //Transfer isn't active? Don't do anything!
+	if (Tseng4k_doEmptyQueue()) //Try and perform an emptying of the queue, if it's filled (act like it's processed into the accelerator)!
+	{
+		et34k(getActiveVGA())->W32_acceleratorbusy = 1; //Become a busy accelerator!
+		//TODO: Tick some accelerator status to process given data to process inputted by the CPU (or not when using no CPU inputs)!
+		//Tick the accelerator with the specified address and value loaded!
+		//Latch the value written if a valid address that's requested!
+		return; //Wait for the next tick to finish the accelerator! Abort!
+	}
+	if (et34k(getActiveVGA())->W32_acceleratorbusy) //Accelerator was busy?
+	{
+		//TODO: Tick some accelerator status to process given data to process inputted by the CPU (or not when using no CPU inputs)!
+		//Tick the accelerator with the specified address and value loaded!
+		//Abort if still processing! Otherwise, finish up below:
+		Tseng4k_status_XYblockTerminalCount(); //Terminal count reached during the tranfer!
+		et34k(getActiveVGA())->W32_acceleratorbusy = 0; //Accelerator becomes idle!
+		Tseng4k_doBecomeIdle(); //Accelerator becomes idle now!
+	}
 }
 
 //Easy retrieval of bits from an aperture containing a single number in little endian format!
