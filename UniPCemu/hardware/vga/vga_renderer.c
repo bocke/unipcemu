@@ -32,7 +32,7 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 #include "headers/hardware/vga/vga_cga_mda.h" //CGA/MDA support!
 #include "headers/hardware/vga/vga_cga_ntsc.h" //CGA NTSC support!
 #include "headers/support/log.h" //Logging support!
-#include "headers/hardware/vga/svga/tseng.h" //ET3/4K DWord mode support!
+#include "headers/hardware/vga/svga/tseng.h" //ET3/4K DWord mode support! Also ET4K accelerator support!
 #include "headers/support/zalloc.h" //Memory protection support for vertical refresh rate!
 
 //Basic timings support(originally emu_VGA.c)
@@ -1696,6 +1696,7 @@ OPTINLINE void VGA_Renderer(SEQ_DATA *Sequencer)
 	displaystate = get_display(getActiveVGA(), Sequencer->Scanline, Sequencer->x++); //Current display state!
 	VGA_SIGNAL_HANDLER(Sequencer, getActiveVGA(),&totalretracing,(displaystate&VGA_HBLANKRETRACEMASK)?1:0); //Handle any change in display state first!
 	displayrenderhandler[totalretracing][displaystate](Sequencer, getActiveVGA()); //Execute our signal!
+	Tseng4k_tickAccelerator(); //Tick the accelerator one clock, if it's present and operating!
 }
 
 //CPU cycle locked version of VGA rendering!

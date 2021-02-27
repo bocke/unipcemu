@@ -256,4 +256,5 @@ byte Tseng4k_readMMUregister(byte address, byte *result);
 byte Tseng4k_writeMMUregister(byte address, byte value);
 byte Tseng4k_readMMUaccelerator(byte area, uint_32 address, byte * result);
 byte Tseng4k_writeMMUaccelerator(byte area, uint_32 address, byte value);
+void Tseng4k_tickAccelerator(); //Tick the accelerator one clock!
 #endif
