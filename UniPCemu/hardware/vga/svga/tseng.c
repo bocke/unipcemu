@@ -1326,6 +1326,7 @@ void et4k_transferQueuedMMURegisters()
 	memcpy(&et34k(getActiveVGA())->W32_MMUregisters[1][0x80], &et34k(getActiveVGA())->W32_MMUregisters[0][0x80], 0x80); //Load all queued registers into the internal state!
 }
 
+extern byte is_XT; //Are we emulating an XT architecture?
 void Tseng4k_raiseMMUinterrupt(byte cause) //Cause is 0-2!
 {
 	//Interrupt causes: Bit 0=Queue not full, 1=Queue empty and accelerator goes idle (is finished), 2=Write to a full queue
@@ -1337,6 +1338,7 @@ void Tseng4k_raiseMMUinterrupt(byte cause) //Cause is 0-2!
 	if ((~oldintstatus & (et34k(getActiveVGA())->W32_MMUregisters[0][0x35] & 7))) //Raised a interrupt cause?
 	{
 		//Raise the interrupt line!
+		raiseirq(is_XT ? VGA_IRQ_XT : VGA_IRQ_AT); //Execute the CRT interrupt when possible!
 	}
 }
 
@@ -1470,6 +1472,7 @@ byte Tseng4k_writeMMUregister(byte address, byte value)
 		if ((oldintstatus & ~(value & 7)) == 0) //Cleared all interrupt causes?
 		{
 			//Lower the interrupt line!
+			lowerirq(is_XT ? VGA_IRQ_XT : VGA_IRQ_AT); //Lower the CRT interrupt when possible!
 		}
 		//Interrupt causes: Bit 0=Queue not full, 1=Queue empty and accelerator goes idle, 2=Write to a full queue
 		break;
