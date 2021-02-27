@@ -1335,8 +1335,21 @@ void et4k_transferQueuedMMURegisters()
 	memcpy(&et34k(getActiveVGA())->W32_MMUregisters[1][0x80], &et34k(getActiveVGA())->W32_MMUregisters[0][0x80], 0x80); //Load all queued registers into the internal state!
 }
 
+void Tseng4k_raiseMMUinterrupt(byte cause) //Cause is 0-2!
+{
+	//Interrupt causes: Bit 0=Queue not full, 1=Queue empty and accelerator goes idle (is finished), 2=Write to a full queue
+	byte oldintstatus;
+	oldintstatus = et34k(getActiveVGA())->W32_MMUregisters[0][0x35]; //What was active before?
+	et34k(getActiveVGA())->W32_MMUregisters[0][0x35] |= ((1<<cause)&7); //Clear all acnowledged interrupts!
+	if ((~oldintstatus & (et34k(getActiveVGA())->W32_MMUregisters[0][0x35] & 7))) //Raised a interrupt cause?
+	{
+		//Raise the interrupt line!
+	}
+}
+
 byte Tseng4k_writeMMUregister(byte address, byte value)
 {
+	byte oldintstatus;
 	//Unhandled!
 	switch (address) //What register to read?
 	{
@@ -1373,6 +1386,17 @@ byte Tseng4k_writeMMUregister(byte address, byte value)
 		{
 			et4k_transferQueuedMMURegisters(); //Load the queued MMU registers!
 		}
+		break;
+	case 0x35: //ACL Interrupt Status Register
+		//Writing bits 0-2 with a set bit clears said interrupt condition!
+		//Clearing all set bits clears the interrupt status!
+		oldintstatus = et34k(getActiveVGA())->W32_MMUregisters[0][0x35]; //What is causing the interrupt!
+		et34k(getActiveVGA())->W32_MMUregisters[0][0x35] &= ~(value & 7); //Clear all acnowledged interrupts!
+		if ((oldintstatus & ~(value & 7)) == 0) //Cleared all interrupt causes?
+		{
+			//Lower the interrupt line!
+		}
+		//Interrupt causes: Bit 0=Queue not full, 1=Queue empty and accelerator goes idle, 2=Write to a full queue
 		break;
 	case 0x80:
 	case 0x81:
@@ -1441,6 +1465,8 @@ byte Tseng4k_readMMUaccelerator(byte area, uint_32 address, byte* result)
 byte Tseng4k_writeMMUaccelerator(byte area, uint_32 address, byte value)
 {
 	MMU_waitstateactive = 0; //No wait state!
+	//Index 32 bit 0 being set causes this to set MMU_waitstateactive to 1 when not ready yet and abort (waitstate).
+	//Otherwise, when not ready yet, ignore!
 	return 1; //Handled!
 }
 
