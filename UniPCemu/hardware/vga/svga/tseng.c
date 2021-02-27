@@ -1338,9 +1338,11 @@ void et4k_transferQueuedMMURegisters()
 void Tseng4k_raiseMMUinterrupt(byte cause) //Cause is 0-2!
 {
 	//Interrupt causes: Bit 0=Queue not full, 1=Queue empty and accelerator goes idle (is finished), 2=Write to a full queue
-	byte oldintstatus;
+	byte oldintstatus, interrupttrigger;
 	oldintstatus = et34k(getActiveVGA())->W32_MMUregisters[0][0x35]; //What was active before?
-	et34k(getActiveVGA())->W32_MMUregisters[0][0x35] |= ((1<<cause)&7); //Clear all acnowledged interrupts!
+	interrupttrigger = ((1 << cause) & 7); //What cause is triggered?
+	interrupttrigger &= et34k(getActiveVGA())->W32_MMUregisters[0][0x34]; //Mask the interrupt if needed!
+	et34k(getActiveVGA())->W32_MMUregisters[0][0x35] |= interrupttrigger; //Set all acnowledged and unmasked interrupts!
 	if ((~oldintstatus & (et34k(getActiveVGA())->W32_MMUregisters[0][0x35] & 7))) //Raised a interrupt cause?
 	{
 		//Raise the interrupt line!
