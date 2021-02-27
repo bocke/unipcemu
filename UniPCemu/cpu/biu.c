@@ -407,6 +407,8 @@ void BIU_terminatemem()
 	}
 }
 
+extern byte MMU_waitstateactive; //Waitstate active?
+
 OPTINLINE byte BIU_directrb(uint_64 realaddress, word index)
 {
 	INLINEREGISTER uint_64 cachedmemorybyte;
@@ -530,8 +532,6 @@ void BIU_directwdw(uint_64 realaddress, uint_32 value, word index)
 }
 
 extern MMU_realaddrHandler realaddrHandlerCS; //CS real addr handler!
-
-extern byte MMU_waitstateactive; //Waitstate active?
 
 extern uint_32 checkMMUaccess_linearaddr; //Saved linear address for the BIU to use!
 byte PIQ_block[MAXCPUS] = { 0,0 }; //Blocking any PIQ access now?
