@@ -120,6 +120,7 @@ typedef struct {
 	byte W32_MMUqueueval[8]; //What value is stored inside the queue?
 	byte W32_MMUqueueval_offset; //What offset inside the queue is filled!
 	byte W32_acceleratorbusy; //Is the accelerator started up in a processing?
+	byte W32_acceleratorleft; //How many ticks are left to process!
 } SVGA_ET34K_DATA; //Dosbox ET4000 saved data!
 
 //Retrieve a point to the et4k?

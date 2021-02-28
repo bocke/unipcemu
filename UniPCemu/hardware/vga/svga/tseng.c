@@ -1410,6 +1410,24 @@ void Tseng4k_doBecomeIdle() //Accelerator becomes idle!
 	}
 }
 
+void Tseng4k_decodeAcceleratorRegisters()
+{
+	//TODO: Load and decode all accelerator registers into easy to use variables in the accelerator
+}
+
+void Tseng4k_encodeAcceleratorRegisters()
+{
+	//TODO: Save and encode all accelerator registers that can be modified into the accelerator registers for the CPU to read.
+}
+
+void Tseng4k_startAccelerator()
+{
+	//Start the accelerator's function.
+	//Load all internal precalcs required and initialize all local required CPU-readonly variables.
+	Tseng4k_decodeAcceleratorRegisters(); //Load all registers into the accelerator's precalcs!
+	//TODO: Load the read-only variables for the accelerator to start using.
+}
+
 byte et4k_emptyqueuedummy = 0;
 
 byte Tseng4k_writeMMUregister(byte address, byte value)
@@ -1453,15 +1471,17 @@ byte Tseng4k_writeMMUregister(byte address, byte value)
 		}
 		if ((address == 0x31) && (value & 8)) //Resume operation? Can be combined with above restore operation!
 		{
-
+			et4k_emptyqueuedummy = Tseng4k_doEmptyQueue(); //Empty the queue if possible for the new operation to start!
+			Tseng4k_status_startXYblock(0); //Screen-to-screen is unknown atm. Starting a transfer!
+			Tseng4k_startAccelerator(); //Starting the accelerator!
 		}
 		if ((address == 0x30) && (value & 1)) //Suspend operation requested?
 		{
-
+			//The accelerator should now be suspending operation and become idle!
 		}
 		if ((address == 0x30 && (value & 0x10))) //Terminate operation requested?
 		{
-
+			//The accelerator should now be terminating operation and become idle!
 		}
 		break;
 	case 0x35: //ACL Interrupt Status Register
@@ -1517,6 +1537,7 @@ byte Tseng4k_writeMMUregister(byte address, byte value)
 			//Start a new operation!
 			et4k_emptyqueuedummy = Tseng4k_doEmptyQueue(); //Empty the queue if possible for the new operation to start!
 			Tseng4k_status_startXYblock(0); //Screen-to-screen is unknown atm. Starting a transfer!
+			Tseng4k_startAccelerator(); //Starting the accelerator!
 		}
 		break;
 	case 0xA4:
@@ -1566,27 +1587,127 @@ byte Tseng4k_writeMMUaccelerator(byte area, uint_32 address, byte value)
 	return 1; //Handled!
 }
 
+//result: 1: blocking the queue from being processed because we're not ready to process yet.
+byte Tseng4k_blockQueueAccelerator()
+{
+	if (et34k(getActiveVGA())->W32_acceleratorleft) //Anything left to process? This is cleared by the noqueue accelerator stepping!
+	{
+		return 1; //Blocking the queue, because we're not ready to process yet!
+	}
+	if ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 0) //CPU data isn't used?
+	{
+		return 1; //Always blocking the queue!
+	}
+	return 0; //Blocking the queue from being processed (not ready yet)?
+}
+
+//result: bit0=Set to have handled tick, bit1=Set to immediately check for termination on the same clock.
+byte Tseng4k_tickAccelerator_step(byte noqueue)
+{
+	//noqueue: handle without queue only. Otherwise, ticking an input on the currently loaded queue or no queue processing.
+	//acceleratorleft is used to process an queued 8-pixel block from the CPU! In 1:1 ration instead of 1:8 ratio, it's simply set to 1!
+	if (et34k(getActiveVGA())->W32_acceleratorleft == 0) //Need to start a new block?
+	{
+		et34k(getActiveVGA())->W32_acceleratorleft = 1; //Default: only processing 1!
+		switch (et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) //What kind of operation is used?
+		{
+		case 0: //CPU data isn't used!
+			if (!noqueue) //Using the queue? We're CPU data!
+			{
+				return 1; //Not handled yet! Terminate immediately on the same clock!
+			}
+			//Handling without CPU data now!
+			break;
+		case 1: //CPU data is source data!
+			//Only 1 pixel is processed!
+			break;
+		case 2: //CPU data is mix data!
+			et34k(getActiveVGA())->W32_acceleratorleft = 8; //Processing 8 pixels!
+			break;
+		case 4: //CPU data is X count
+			//Only 1 pixel is processed!
+			break;
+		case 5: //CPU data is Y count
+			//Only 1 pixel is processed!
+			break;
+		default: //Reserved
+			return 1; //Not handled yet! Terminate immediately on the same clock!
+			break;
+		}
+	}
+
+	//We're ready to start handling a pixel. Now, handle the pixel!
+
+	if (et34k(getActiveVGA())->W32_acceleratorleft) //Anything left ticking?
+	{
+		--et34k(getActiveVGA())->W32_acceleratorleft; //Ticked one pixel of the current block!
+	}
+	return 1|2; //Not handled yet! Terminate immediately on the same clock!
+}
+
 void Tseng4k_tickAccelerator()
 {
+	byte result;
 	//For now, just empty the queue, if filled and become idle!
 	if (!(et34k(getActiveVGA()) && (getActiveVGA()->enable_SVGA == 1))) return; //Not ET4000/W32? Do nothing!
 	if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x36] & 0x04) == 0) return; //Transfer isn't active? Don't do anything!
-	if (Tseng4k_doEmptyQueue()) //Try and perform an emptying of the queue, if it's filled (act like it's processed into the accelerator)!
+	if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x30] & 0x11)) //Suspend or Terminate requested?
 	{
-		et34k(getActiveVGA())->W32_acceleratorbusy = 1; //Become a busy accelerator!
-		//TODO: Tick some accelerator status to process given data to process inputted by the CPU (or not when using no CPU inputs)!
-		//Tick the accelerator with the specified address and value loaded!
-		//Latch the value written if a valid address that's requested!
-		return; //Wait for the next tick to finish the accelerator! Abort!
+		if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x30] & 0x10)==0x10) //Terminate requested?
+		{
+			et34k(getActiveVGA())->W32_acceleratorbusy = 0; //Not busy anymore!
+		}
+	}
+	if (result = Tseng4k_tickAccelerator_step(1)) //No queue version of ticking the accelerator?
+	{
+		et34k(getActiveVGA())->W32_acceleratorbusy |= 1; //Become a busy accelerator!
+		if ((result & 2) == 0) //Keep ticking?
+		{
+			return; //Abort!
+		}
+	}
+	//TODO: Always process here when not requiring CPU input
+	else if (Tseng4k_blockQueueAccelerator(et34k(getActiveVGA())->W32_MMUqueuefilled)) //Not ready to process the queue yet?
+	{
+		return; //Not ready to process yet!
+	}
+	else if (Tseng4k_doEmptyQueue()) //Try and perform an emptying of the queue, if it's filled (act like it's processed into the accelerator)!
+	{
+		if ((et34k(getActiveVGA())->W32_acceleratorbusy & 2) != 0) //Not terminated?
+		{
+			if (Tseng4k_tickAccelerator_step(0)) //Queue version of ticking the accelerator?
+			{
+				et34k(getActiveVGA())->W32_acceleratorbusy |= 1; //Become a busy accelerator!
+				//TODO: Tick some accelerator status to process given data to process inputted by the CPU (or not when using no CPU inputs)!
+				//Tick the accelerator with the specified address and value loaded!
+				//Latch the value written if a valid address that's requested!
+				if ((result & 2) == 0) //Keep ticking?
+				{
+					return; //Wait for the next tick to finish the accelerator! Abort!
+				}
+			}
+		}
 	}
 	if (et34k(getActiveVGA())->W32_acceleratorbusy) //Accelerator was busy?
 	{
+		if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x30] & 0x11)) //Suspend or Terminate requested?
+		{
+			if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x30] & 0x10) == 0x00) //Suspend requested?
+			{
+				et34k(getActiveVGA())->W32_acceleratorbusy = 0; //Not busy anymore!
+				Tseng4k_encodeAcceleratorRegisters(); //Encode the registers, updating them for the CPU!
+				Tseng4k_status_acceleratorsuspended(); //Accelerator has been suspended!
+			}
+		}
 		//TODO: Tick some accelerator status to process given data to process inputted by the CPU (or not when using no CPU inputs)!
 		//Tick the accelerator with the specified address and value loaded!
 		//Abort if still processing! Otherwise, finish up below:
-		Tseng4k_status_XYblockTerminalCount(); //Terminal count reached during the tranfer!
-		et34k(getActiveVGA())->W32_acceleratorbusy = 0; //Accelerator becomes idle!
-		Tseng4k_doBecomeIdle(); //Accelerator becomes idle now!
+		if ((et34k(getActiveVGA())->W32_acceleratorbusy & 2) == 0) //Terminated?
+		{
+			Tseng4k_status_XYblockTerminalCount(); //Terminal count reached during the tranfer!
+			Tseng4k_doBecomeIdle(); //Accelerator becomes idle now!
+		}
+		et34k(getActiveVGA())->W32_acceleratorbusy &= ~1; //Accelerator becomes idle!
 	}
 }
 
