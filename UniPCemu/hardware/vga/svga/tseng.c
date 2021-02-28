@@ -572,24 +572,14 @@ byte Tseng34K_writeIO(word port, byte val)
 		return 1; //Handled!
 		break;
 	case 0x217B:
-	case 0x217C:
-	case 0x217D:
-	case 0x217E: //W32 data
 		if ((getActiveVGA()->enable_SVGA != 1) || (et34kdata->tsengExtensions == 0)) return 0; //Not available on the ET4000 until having set the KEY at least once after a power-on reset or synchronous reset(TS indexed register 0h bit 1). Also disabled by the non-W32 variants!
 		if (et34kdata->W32_21xA_index == 0xEF) //CRTC/sprite control?
 		{
-			if (port == 0x217B) //First byte?
-			{
-				et34kdata->W32_21xA_CRTCBSpriteControl = val; //Set the register!
-			}
-			//Other byte are always cleared?
+			et34kdata->W32_21xA_CRTCBSpriteControl = val; //Set the register!
 		}
 		else if (et34kdata->W32_21xA_index == 0xF7) //Image Port control?
 		{
-			if (port == 0x217B) //First byte?
-			{
-				et34kdata->W32_21xA_ImagePortControl = val; //Set the register!
-			}
+			et34kdata->W32_21xA_ImagePortControl = val; //Set the register!
 		}
 		else //Shared addresses?
 		{
@@ -610,7 +600,7 @@ byte Tseng34K_writeIO(word port, byte val)
 				case 0xEA:
 				case 0xEB: //CRTCB Row Offset (word)
 				case 0xEC:
-					et34kdata->W32_21xA_shadowRegisters[(et34kdata->W32_21xA_index - 0xE0 + (port - 0x217B))&0x1F][0] = val; //Set the value in the CRTCB registers!
+					et34kdata->W32_21xA_shadowRegisters[(et34kdata->W32_21xA_index - 0xE0))&0x1F][0] = val; //Set the value in the CRTCB registers!
 					break;
 				case 0xED: //CRTCB Pixel Panning
 				case 0xEE: //CRTCB Color Depth
@@ -622,7 +612,7 @@ byte Tseng34K_writeIO(word port, byte val)
 				case 0xF5: //Image Row Offset
 				case 0xF6:
 					//All shared among both CRTCB and Sprite registers!
-					et34kdata->W32_21xA_shadowRegisters[(et34kdata->W32_21xA_index - 0xE0 + (port - 0x217B))&0x1F][0] = val; //Set the value in the CRTCB registers!
+					et34kdata->W32_21xA_shadowRegisters[(et34kdata->W32_21xA_index - 0xE0)&0x1F][0] = val; //Set the value in the CRTCB registers!
 					break;
 				}
 			}
@@ -643,7 +633,7 @@ byte Tseng34K_writeIO(word port, byte val)
 				case 0xEA:
 				case 0xEB: //Sprite Row OFfset (word)
 				case 0xEC:
-					et34kdata->W32_21xA_shadowRegisters[(et34kdata->W32_21xA_index - 0xE0 + (port - 0x217B))&0x1F][1] = val; //Set the value in the CRTCB registers!
+					et34kdata->W32_21xA_shadowRegisters[(et34kdata->W32_21xA_index - 0xE0)&0x1F][1] = val; //Set the value in the CRTCB registers!
 					break;
 				case 0xED: //CRTCB Pixel Panning
 				case 0xEE: //CRTCB Color Depth
@@ -655,12 +645,12 @@ byte Tseng34K_writeIO(word port, byte val)
 				case 0xF5: //Image Row Offset
 				case 0xF6:
 					//All shared among both CRTCB and Sprite registers!
-					et34kdata->W32_21xA_shadowRegisters[(et34kdata->W32_21xA_index - 0xE0 + (port - 0x217B))&0x1F][0] = val; //Set the value in the CRTCB registers!
+					et34kdata->W32_21xA_shadowRegisters[(et34kdata->W32_21xA_index - 0xE0)&0x1F][0] = val; //Set the value in the CRTCB registers!
 					break;
 				}
 			}
 		}
-		VGA_calcprecalcs(getActiveVGA(), WHEREUPDATED_CRTCSPRITE|((et34kdata->W32_21xA_index+(port-0x217B))&0xFF)); //Update from the CRTC index registers!
+		VGA_calcprecalcs(getActiveVGA(), WHEREUPDATED_CRTCSPRITE|((et34kdata->W32_21xA_index)&0xFF)); //Update from the CRTC index registers!
 		return 1; //Handled!
 		break;
 		/*
@@ -961,17 +951,14 @@ byte Tseng34K_readIO(word port, byte *result)
 		return 1; //Handled!
 		break;
 	case 0x217B:
-	case 0x217C:
-	case 0x217D:
-	case 0x217E: //W32 data
 		if ((getActiveVGA()->enable_SVGA != 1) || (et34kdata->tsengExtensions == 0)) return 0; //Not available on the ET4000 until having set the KEY at least once after a power-on reset or synchronous reset(TS indexed register 0h bit 1). Also disabled by the non-W32 variants!
 		if (et34kdata->W32_21xA_index == 0xEF) //CRTC/sprite control?
 		{
-			*result = (et34kdata->W32_21xA_CRTCBSpriteControl >> ((port - 0x217B) << 3)); //Give the register!
+			*result = et34kdata->W32_21xA_CRTCBSpriteControl; //Give the register!
 		}
 		else if (et34kdata->W32_21xA_index == 0xF7) //Image port control?
 		{
-			*result = (et34kdata->W32_21xA_ImagePortControl >> ((port - 0x217B) << 3)); //Give the register!
+			*result = et34kdata->W32_21xA_ImagePortControl; //Give the register!
 		}
 		else //Shared addresses?
 		{
@@ -992,7 +979,7 @@ byte Tseng34K_readIO(word port, byte *result)
 				case 0xEA:
 				case 0xEB: //CRTCB Row Offset (word)
 				case 0xEC:
-					*result = (et34kdata->W32_21xA_shadowRegisters[(et34kdata->W32_21xA_index+(port - 0x217B))&0x1F][0]); //Give the register!
+					*result = (et34kdata->W32_21xA_shadowRegisters[(et34kdata->W32_21xA_index)&0x1F][0]); //Give the register!
 					break;
 				case 0xED: //CRTCB Pixel Panning
 				case 0xEE: //CRTCB Color Depth
@@ -1004,7 +991,7 @@ byte Tseng34K_readIO(word port, byte *result)
 				case 0xF5: //Image Row Offset
 				case 0xF6:
 					//All shared among both CRTCB and Sprite registers!
-					*result = (et34kdata->W32_21xA_shadowRegisters[(et34kdata->W32_21xA_index+(port - 0x217B))&0x1F][0]); //Give the register!
+					*result = (et34kdata->W32_21xA_shadowRegisters[(et34kdata->W32_21xA_index)&0x1F][0]); //Give the register!
 					break;
 				default: //Nothing connected?
 					*result = 0xFF; //Float the bus!
@@ -1027,7 +1014,7 @@ byte Tseng34K_readIO(word port, byte *result)
 				case 0xE9:
 				case 0xEA:
 				case 0xEB: //Sprite Row OFfset (word)
-					*result = (et34kdata->W32_21xA_shadowRegisters[(et34kdata->W32_21xA_index+(port - 0x217B))&0x1F][1]); //Give the register!
+					*result = (et34kdata->W32_21xA_shadowRegisters[(et34kdata->W32_21xA_index)&0x1F][1]); //Give the register!
 					break;
 				case 0xED: //CRTCB Pixel Panning
 				case 0xEE: //CRTCB Color Depth
@@ -1039,7 +1026,7 @@ byte Tseng34K_readIO(word port, byte *result)
 				case 0xF5: //Image Row Offset
 				case 0xF6:
 					//All shared among both CRTCB and Sprite registers!
-					*result = (et34kdata->W32_21xA_shadowRegisters[(et34kdata->W32_21xA_index+(port - 0x217B))&0x1F][0]); //Give the register!
+					*result = (et34kdata->W32_21xA_shadowRegisters[(et34kdata->W32_21xA_index)&0x1F][0]); //Give the register!
 					break;
 				default: //Nothing connected?
 					*result = 0xFF; //Float the bus!
