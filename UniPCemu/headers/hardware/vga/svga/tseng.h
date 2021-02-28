@@ -45,7 +45,7 @@ typedef struct
 	byte reloadSourceAddress;
 	byte BGFG_RasterOperation[2]; //Index 0=BG, 1=FG
 	uint_32 destinationaddress; //Destination address
-	//
+	//TODO: Intermediate variables
 } ET4000_W32_ACL_PRECALCS;
 
 typedef struct {
