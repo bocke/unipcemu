@@ -2762,7 +2762,7 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xF2)) //Image Starting Address (24-bit) updated?
 		) //Image port
 	{
-		VGA->precalcs.imageport_startingaddress = getTsengLE24(&et34k(getActiveVGA())->W32_21xA_shadowRegisters[0xF0-0xE0][0]); //Starting address!
+		VGA->precalcs.imageport_startingaddress = (getTsengLE24(&et34k(getActiveVGA())->W32_21xA_shadowRegisters[0xF0-0xE0][0])<<2); //Starting address!
 	}
 
 	if ((whereupdated == WHEREUPDATED_ALL)
