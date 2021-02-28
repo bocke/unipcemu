@@ -24,6 +24,30 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 #include "headers/types.h" //Basic types!
 #include "headers/hardware/vga/vga.h" //Basic VGA!
 
+typedef struct
+{
+	uint_32 patternmapaddress; //Pattern map address
+	uint_32 sourcemapaddress; //Source map address
+	uint_32 patternYoffset; //Pattern Y offset
+	uint_32 sourceYoffset; //Source Y offset
+	uint_32 destinationYoffset; //Destination Y offset
+	byte virtualbussize; //Virtual bus size, powers of 2! 0=1, 1=2, 2=4, 3=Reserved
+	byte XYdirection; //0=+1,+1; 1=-1,+1; 2=+1,-1; 3=-1,-1. Essentially bit 0=X direction, bit 1=Y direction. Set=Decreasing, Cleared=Increasing
+	byte Xpatternwrap; //Power of 2. more than 64 or less than 4 is none.
+	byte Ypatternwrap; //Power of 2. more than 8 is none.
+	byte Xsourcewrap; //See pattern wrap
+	byte Ysourcewrap; //See pattern wrap
+	uint_32 Xposition;
+	uint_32 Yposition;
+	uint_32 Xcount;
+	uint_32 Ycount;
+	byte reloadPatternAddress;
+	byte reloadSourceAddress;
+	byte BGFG_RasterOperation[2]; //Index 0=BG, 1=FG
+	uint_32 destinationaddress; //Destination address
+	//
+} ET4000_W32_ACL_PRECALCS;
+
 typedef struct {
 	byte tsengExtensions; //0=Normal ET4000, 1=ET4000/W32
 	byte extensionsEnabled;
@@ -121,6 +145,7 @@ typedef struct {
 	byte W32_MMUqueueval_offset; //What offset inside the queue is filled!
 	byte W32_acceleratorbusy; //Is the accelerator started up in a processing?
 	byte W32_acceleratorleft; //How many ticks are left to process!
+	ET4000_W32_ACL_PRECALCS W32_ACLregs; //ACL registers used during rendering
 } SVGA_ET34K_DATA; //Dosbox ET4000 saved data!
 
 //Retrieve a point to the et4k?
