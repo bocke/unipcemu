@@ -147,6 +147,12 @@ OPTINLINE byte is_A000VRAM(uint_32 linearoffset) //In VRAM (for CPU), offset=rea
 			VGA_linearmemoryaddressed = 4; //Addressed!
 			return 1; //Special!
 		}
+		if (((linearoffset - effectiveVRAMstart) & 0x300000) && ((getActiveVGA()->precalcs.linearmemorysize & 0x300000) == 0)) //Image port?
+		{
+			effectiveVRAMstart += 0x100000; //Start of the VRAM window!
+			VGA_linearmemoryaddressed = 5; //Addressed!
+			return 1; //Special!
+		}
 		//We're either the VRAM linear window or unmapped addresses!
 		if ((linearoffset-effectiveVRAMstart) >= getActiveVGA()->precalcs.linearmemorysize) //Past effective VRAM window? Either MMU0-2, memory mapped regs or external regs?
 		{
@@ -705,6 +711,14 @@ byte VGAmemIO_rb(uint_32 offset)
 					}
 				}
 			}
+			else if (VGA_linearmemoryaddressed == 5) //Image Port?
+			{
+				//Calculate the linear offset using linear addresses, replace offset with the linear address to use(minus the starting address), converting between formats!
+				//Unknown how to handle interlacing?
+				offset = SAFEMOD(offset, getActiveVGA()->precalcs.imageport_transferlength) + (SAFEDIV(offset, getActiveVGA()->precalcs.imageport_transferlength) * getActiveVGA()->precalcs.imageport_rowoffset); //Convert between original lengths vs destination row length!
+				lineardecodeCPUaddressBanked(0, offset, &planes, &realoffset, getActiveVGA()->precalcs.imageport_startingaddress); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
+				goto readdatacurrentmode; //Apply the operation on read mode!
+			}
 			//External registers?
 			return 0; //Unmapped!
 		}
@@ -821,6 +835,14 @@ byte VGAmemIO_wb(uint_32 offset, byte value)
 						goto writedatacurrentmode; //Apply the operation on read mode!
 					}
 				}
+			}
+			else if (VGA_linearmemoryaddressed == 5) //Image Port?
+			{
+				//Calculate the linear offset using linear addresses, replace offset with the linear address to use(minus the starting address), converting between formats!
+				//Unknown how to handle interlacing?
+				offset = SAFEMOD(offset, getActiveVGA()->precalcs.imageport_transferlength) + (SAFEDIV(offset, getActiveVGA()->precalcs.imageport_transferlength) * getActiveVGA()->precalcs.imageport_rowoffset); //Convert between original lengths vs destination row length!
+				lineardecodeCPUaddressBanked(1, offset, &planes, &realoffset, getActiveVGA()->precalcs.imageport_startingaddress); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
+				goto writedatacurrentmode; //Apply the operation on read mode!
 			}
 			//External registers?
 			return 0; //Unmapped!
