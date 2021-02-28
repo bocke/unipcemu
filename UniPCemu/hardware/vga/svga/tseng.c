@@ -1242,6 +1242,49 @@ byte Tseng34k_doublecharacterclocks(VGA_Type *VGA)
 	return et34k(VGA)->doublehorizontaltimings; //Double the horizontal timings?
 }
 
+//Easy retrieval and storage of bits from an aperture containing a single number in little endian format!
+uint_32 getTsengLE32(byte* list)
+{
+	return (((((list[0x03] << 8) | list[0x02]) << 8) | list[0x01]) << 8) | list[0x00];
+}
+
+uint_32 getTsengLE24(byte* list)
+{
+	return ((((list[0x02]) << 8) | list[0x01]) << 8) | list[0x00];
+}
+
+uint_32 getTsengLE16(byte* list)
+{
+	return (list[0x01] << 8) | list[0x00];
+}
+
+void setTsengLE32(byte* list, uint_32 val)
+{
+	list[0] = (val&0xFF);
+	val >>= 8;
+	list[1] = (val & 0xFF);
+	val >>= 8;
+	list[2] = (val & 0xFF);
+	val >>= 8;
+	list[3] = (val & 0xFF);
+}
+
+void setTsengLE24(byte* list, uint_32 val)
+{
+	list[0] = (val & 0xFF);
+	val >>= 8;
+	list[1] = (val & 0xFF);
+	val >>= 8;
+	list[2] = (val & 0xFF);
+}
+
+void setTsengLE16(byte* list, word val)
+{
+	list[0] = (val & 0xFF);
+	val >>= 8;
+	list[1] = (val & 0xFF);
+}
+
 byte Tseng4k_readMMUregister(byte address, byte *result)
 {
 	*result = 0xFF; //Unhandled: float the bus by default!
@@ -1413,11 +1456,33 @@ void Tseng4k_doBecomeIdle() //Accelerator becomes idle!
 void Tseng4k_decodeAcceleratorRegisters()
 {
 	//TODO: Load and decode all accelerator registers into easy to use variables in the accelerator
+	et34k(getActiveVGA())->W32_ACLregs.patternmapaddress = (getTsengLE24(&et34k(getActiveVGA())->W32_MMUregisters[1][0x80]) & 0x3FFFFF); //Pattern map address
+	et34k(getActiveVGA())->W32_ACLregs.sourcemapaddress = (getTsengLE24(&et34k(getActiveVGA())->W32_MMUregisters[1][0x84]) & 0x3FFFFF); //Source map address
+	et34k(getActiveVGA())->W32_ACLregs.patternYoffset = (getTsengLE16(&et34k(getActiveVGA())->W32_MMUregisters[1][0x88]) & 0xFFF); //Pattern Y offset
+	et34k(getActiveVGA())->W32_ACLregs.sourceYoffset = (getTsengLE16(&et34k(getActiveVGA())->W32_MMUregisters[1][0x8A]) & 0xFFF); //Source Y offset
+	et34k(getActiveVGA())->W32_ACLregs.destinationYoffset = (getTsengLE16(&et34k(getActiveVGA())->W32_MMUregisters[1][0x8C]) & 0xFFF); //Destination Y offset
+	et34k(getActiveVGA())->W32_ACLregs.virtualbussize = (et34k(getActiveVGA())->W32_MMUregisters[1][0x8E]&3); //Virtual bus size, powers of 2! 0=1, 1=2, 2=4, 3=Reserved
+	et34k(getActiveVGA())->W32_ACLregs.XYdirection = (et34k(getActiveVGA())->W32_MMUregisters[1][0x8F] & 3); //0=+1,+1; 1=-1,+1; 2=+1,-1; 3=-1,-1. Essentially bit 0=X direction, bit 1=Y direction. Set=Decreasing, Cleared=Increasing
+	et34k(getActiveVGA())->W32_ACLregs.Xpatternwrap = (et34k(getActiveVGA())->W32_MMUregisters[1][0x90] & 7); //Power of 2. more than 64 or less than 4 is none.
+	et34k(getActiveVGA())->W32_ACLregs.Ypatternwrap = ((et34k(getActiveVGA())->W32_MMUregisters[1][0x90] >> 4) & 7); //Power of 2. more than 8 is none.
+	et34k(getActiveVGA())->W32_ACLregs.Xsourcewrap = (et34k(getActiveVGA())->W32_MMUregisters[1][0x92] & 7); //See pattern wrap
+	et34k(getActiveVGA())->W32_ACLregs.Ysourcewrap = ((et34k(getActiveVGA())->W32_MMUregisters[1][0x92] >> 4) & 7); //See pattern wrap
+	et34k(getActiveVGA())->W32_ACLregs.Xposition = (getTsengLE16(&et34k(getActiveVGA())->W32_MMUregisters[1][0x94]) & 0xFFF); //X position
+	et34k(getActiveVGA())->W32_ACLregs.Yposition = (getTsengLE16(&et34k(getActiveVGA())->W32_MMUregisters[1][0x96]) & 0xFFF); //X position
+	et34k(getActiveVGA())->W32_ACLregs.Xcount = (getTsengLE16(&et34k(getActiveVGA())->W32_MMUregisters[1][0x98]) & 0xFFF); //X count
+	et34k(getActiveVGA())->W32_ACLregs.Ycount = (getTsengLE16(&et34k(getActiveVGA())->W32_MMUregisters[1][0x9A]) & 0xFFF); //Y count
+	et34k(getActiveVGA())->W32_ACLregs.reloadPatternAddress = GETBITS(et34k(getActiveVGA())->W32_MMUregisters[1][0x9D],1,1); //Reload of pattern address. When 1, use the internal pattern address register.
+	et34k(getActiveVGA())->W32_ACLregs.reloadSourceAddress = GETBITS(et34k(getActiveVGA())->W32_MMUregisters[1][0x9D],0,1); //Reload of source address. When 1, use the internal source address register.
+	et34k(getActiveVGA())->W32_ACLregs.BGFG_RasterOperation[0] = et34k(getActiveVGA())->W32_MMUregisters[1][0x9E]; //Index 0=BG, 1=FG
+	et34k(getActiveVGA())->W32_ACLregs.BGFG_RasterOperation[1] = et34k(getActiveVGA())->W32_MMUregisters[1][0x9F]; //Index 0=BG, 1=FG
+	et34k(getActiveVGA())->W32_ACLregs.destinationaddress = (getTsengLE24(&et34k(getActiveVGA())->W32_MMUregisters[1][0xA0]) & 0x3FFFFF); //Destination address
 }
 
 void Tseng4k_encodeAcceleratorRegisters()
 {
 	//TODO: Save and encode all accelerator registers that can be modified into the accelerator registers for the CPU to read.
+	setTsengLE24(&et34k(getActiveVGA())->W32_MMUregisters[1][0xA4], (et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress & 0x3FFFFF)); //Internal Pattern address
+	setTsengLE24(&et34k(getActiveVGA())->W32_MMUregisters[1][0xA8], (et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress & 0x3FFFFF)); //Internal Source address
 }
 
 void Tseng4k_startAccelerator()
@@ -1425,7 +1490,15 @@ void Tseng4k_startAccelerator()
 	//Start the accelerator's function.
 	//Load all internal precalcs required and initialize all local required CPU-readonly variables.
 	Tseng4k_decodeAcceleratorRegisters(); //Load all registers into the accelerator's precalcs!
-	//TODO: Load the read-only variables for the accelerator to start using.
+	//TODO: Load the read-only variables for the accelerator to start using. Also depends on the reloadPatternAddress and reloadSourceAddress ACL settings.
+	if (et34k(getActiveVGA())->W32_ACLregs.reloadPatternAddress == 0) //To reload the pattern address?
+	{
+		et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress = et34k(getActiveVGA())->W32_ACLregs.patternmapaddress; //Pattern address reload!
+	}
+	if (et34k(getActiveVGA())->W32_ACLregs.reloadSourceAddress == 0) //To reload the pattern address?
+	{
+		et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress = et34k(getActiveVGA())->W32_ACLregs.sourcemapaddress; //Pattern address reload!
+	}
 }
 
 byte et4k_emptyqueuedummy = 0;
@@ -1709,22 +1782,6 @@ void Tseng4k_tickAccelerator()
 		}
 		et34k(getActiveVGA())->W32_acceleratorbusy &= ~1; //Accelerator becomes idle!
 	}
-}
-
-//Easy retrieval of bits from an aperture containing a single number in little endian format!
-uint_32 getTsengLE32(byte* list)
-{
-	return (((((list[0x03] << 8) | list[0x02]) << 8) | list[0x01]) << 8) | list[0x00];
-}
-
-uint_32 getTsengLE24(byte* list)
-{
-	return ((((list[0x02]) << 8) | list[0x01]) << 8) | list[0x00];
-}
-
-uint_32 getTsengLE16(byte* list)
-{
-	return (list[0x01] << 8) | list[0x00];
 }
 
 extern byte VGA_WriteMemoryMode, VGA_ReadMemoryMode; //Write/read memory modes used for accessing VRAM!
