@@ -49,6 +49,14 @@ typedef struct
 	uint_32 internalpatternaddress;
 	uint_32 internalsourceaddress;
 	byte latchedmixmap; //The mixmap input that's latched!
+	uint_32 patternmap_x;
+	uint_32 sourcemap_x;
+	uint_32 patternmap_y;
+	uint_32 sourcemap_y;
+	uint_32 patternmap_x_backup;
+	uint_32 sourcemap_x_backup;
+	uint_32 patternmapaddress_backup; //Used for wrapping
+	uint_32 sourcemapaddress_backup; //Used for wrapping
 } ET4000_W32_ACL_PRECALCS;
 
 typedef struct {
