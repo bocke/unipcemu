@@ -1863,7 +1863,7 @@ byte Tseng4k_tickAccelerator_step(byte noqueue)
 	{
 		operationx = 7-operationx; //Reversed order!
 	}
-	ROP = et34k(getActiveVGA())->W32_ACLregsBGFG_RasterOperation[((mixmap>>(operationx&7))&1)];
+	ROP = et34k(getActiveVGA())->W32_ACLregs.BGFG_RasterOperation[((mixmap>>(operationx&7))&1)];
 	result = 0; //Initialize the result!
 	ROPbits = 0x01; //What bit to process!
 	for (;ROPbits!=0x100;) //Check all bits!
