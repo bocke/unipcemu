@@ -1877,13 +1877,17 @@ byte Tseng4k_tickAccelerator_step(byte noqueue)
 	ROP = et34k(getActiveVGA())->W32_ACLregs.BGFG_RasterOperation[((mixmap>>(operationx&7))&1)];
 	result = 0; //Initialize the result!
 	ROPbits = 0x01; //What bit to process!
-	for (;ROPbits!=0x100;) //Check all bits!
+	for (;ROPbits<0x100;) //Check all bits!
 	{
-		if ((ROP&ROPmaskdestination[((destination&ROPbits)!=0)&1]&ROPmasksource[((source&ROPbits)!=0)&1]&ROPmaskpattern[((pattern&ROPbits)!=0)&1])!=0)
+		if ((ROP&ROPmaskdestination[(destination&1)]&ROPmasksource[(source&1)]&ROPmaskpattern[(pattern&1)])!=0)
 		{
 			result |= ROPbits; //Set in the result!
 		}
 		ROPbits <<= 1; //Next bit to check!
+		//Shift in the next bit to check!
+		destination >>= 1;
+		source >>= 1;
+		pattern >>= 1;
 	}
 
 	//Finally, writeback the result to destination in VRAM!
