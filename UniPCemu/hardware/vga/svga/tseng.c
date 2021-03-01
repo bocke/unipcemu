@@ -1430,6 +1430,10 @@ void Tseng4k_raiseMMUinterrupt(byte cause) //Cause is 0-2!
 //Basic X/Y block start/termination conditions
 void Tseng4k_status_startXYblock(byte is_screentoscreen) //Starting an X/Y block!
 {
+	if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x36]&0x04)==0) //Starting a new block?
+	{
+		et34k(getActiveVGA())->W32_newXYblock = 1; //Starting a new transfer now!
+	}
 	et34k(getActiveVGA())->W32_MMUregisters[0][0x36] |= 0x04; //Raise X/Y status!
 	et34k(getActiveVGA())->W32_MMUregisters[0][0x36] &= ~0x10; //To set!
 	et34k(getActiveVGA())->W32_MMUregisters[0][0x36] |= is_screentoscreen ? 0x10 : 0x00; //Screen-to-screen operation?
@@ -1703,6 +1707,19 @@ byte Tseng4k_writeMMUaccelerator(byte area, uint_32 address, byte value)
 		return 1; //Otherwise, the write is ignored!
 	}
 	//Handle any storage needed!
+	if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x36] & 0x04) == 0) //Transfer isn't active yet?
+	{
+		Tseng4k_status_startXYblock(0); //Screen-to-screen is unknown atm. Starting a transfer!
+		Tseng4k_startAccelerator(); //Starting the accelerator!
+	}
+	if (
+		((et34k(getActiveVGA())->W32_newXYblock) && ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 0x30) == 0)) || //Load destination address during first write?
+		((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 0x30) == 1) //Always reload destination address?
+		) //To load the destination address?
+	{
+		et34k(getActiveVGA())->W32_ACLregs.destinationaddress = address; //Load the destination address!
+	}
+	et34k(getActiveVGA())->W32_newXYblock = 0; //Not a new block anymore!
 	et34k(getActiveVGA())->W32_MMUqueuefilled = 1; //The queue is now filled!
 	et34k(getActiveVGA())->W32_MMUqueueval_offset = (address & 7); //What offset is filled!
 	et34k(getActiveVGA())->W32_MMUqueueval[et34k(getActiveVGA())->W32_MMUqueueval_offset] = value; //Fill the specific offset that's filled!

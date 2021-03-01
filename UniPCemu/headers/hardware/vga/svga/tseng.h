@@ -58,6 +58,7 @@ typedef struct
 	uint_32 patternmapaddress_backup; //Used for wrapping
 	uint_32 sourcemapaddress_backup; //Used for wrapping
 	uint_32 destinationaddress_backup; //Used for wrapping and newlines
+	byte W32_newXYblock; //Starting a new X/Y block?
 } ET4000_W32_ACL_PRECALCS;
 
 typedef struct {
