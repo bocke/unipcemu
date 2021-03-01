@@ -1788,7 +1788,7 @@ byte Tseng4k_tickAccelerator_step(byte noqueue)
 	{
 	case 0: //CPU data isn't used!
 		//Handling without CPU data now!
-		if (!noqueue) return 0; //NOP when a queue version!
+		if (noqueue && (et34k(getActiveVGA())->W32_acceleratorleft == 0)) return 0; //NOP when not a queue version and not processing!		
 		break;
 	case 1: //CPU data is source data!
 		if (noqueue && (et34k(getActiveVGA())->W32_acceleratorleft==0)) return 0; //NOP when not a queue version and not processing!		
