@@ -603,7 +603,7 @@ byte Tseng34K_writeIO(word port, byte val)
 					et34kdata->W32_21xA_shadowRegisters[(et34kdata->W32_21xA_index - 0xE0)&0x1F][0] = val; //Set the value in the CRTCB registers!
 					if (et34kdata->W32_21xA_index == 0xEC)
 					{
-						SETBITS(et34kdata->W32_21xA_shadowRegisters[(et34kdata->W32_21xA_index - 0xE0) & 0x1F][0], 4, 0xF, 0); //Clear the high 4 bits to indicate ET4000/W32!
+						SETBITS(et34kdata->W32_21xA_shadowRegisters[(et34kdata->W32_21xA_index - 0xE0) & 0x1F][0], 4, 0xF, et34kdata->W32_version); //Set the high 4 bits to indicate ET4000/W32!
 					}
 					break;
 				case 0xED: //CRTCB Pixel Panning
@@ -640,7 +640,7 @@ byte Tseng34K_writeIO(word port, byte val)
 					et34kdata->W32_21xA_shadowRegisters[(et34kdata->W32_21xA_index - 0xE0)&0x1F][1] = val; //Set the value in the CRTCB registers!
 					if (et34kdata->W32_21xA_index == 0xEC)
 					{
-						SETBITS(et34kdata->W32_21xA_shadowRegisters[(et34kdata->W32_21xA_index - 0xE0) & 0x1F][1],4,0xF,0); //Clear the high 4 bits to indicate ET4000/W32!
+						SETBITS(et34kdata->W32_21xA_shadowRegisters[(et34kdata->W32_21xA_index - 0xE0) & 0x1F][1], 4, 0xF, et34kdata->W32_version); //Set the high 4 bits to indicate ET4000/W32!
 					}
 					break;
 				case 0xED: //CRTCB Pixel Panning
@@ -1267,6 +1267,9 @@ void Tseng34k_init()
 			et34k_updateDAC(et34k(getActiveVGA()), et34k(getActiveVGA())->hicolorDACcommand); //Initialize the DAC command register to compatible values!
 
 			VGA_calcprecalcs(getActiveVGA(),WHEREUPDATED_ALL); //Update all precalcs!
+			et34k(getActiveVGA())->W32_version = 0; //What version is reported to the user!
+			SETBITS(et34k(getActiveVGA())->W32_21xA_shadowRegisters[(0xEC - 0xE0) & 0x1F][0], 4, 0xF, et34k(getActiveVGA())->W32_version); //Set the high 4 bits to indicate ET4000/W32!
+			SETBITS(et34k(getActiveVGA())->W32_21xA_shadowRegisters[(0xEC - 0xE0) & 0x1F][1], 4, 0xF, et34k(getActiveVGA())->W32_version); //Set the high 4 bits to indicate ET4000/W32!
 		}
 	}
 }
