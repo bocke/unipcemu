@@ -1427,6 +1427,12 @@ void Tseng4k_raiseMMUinterrupt(byte cause) //Cause is 0-2!
 	}
 }
 
+//Set when not using the CPU each clock
+byte Tseng4k_accelerator_calcSSO()
+{
+	return (((et34k(getActiveVGA())->W32_MMUregisters[0][0x9C]&0x07)==0) || ((et34k(getActiveVGA())->W32_MMUregisters[0][0x9C]&0x07)==0x04) || ((et34k(getActiveVGA())->W32_MMUregisters[0][0x39C]&0x07)==5))?1:0;
+}
+
 //Basic X/Y block start/termination conditions
 void Tseng4k_status_startXYblock(byte is_screentoscreen) //Starting an X/Y block!
 {
@@ -1599,7 +1605,7 @@ byte Tseng4k_writeMMUregister(byte address, byte value)
 		if ((address == 0x31) && (value & 8)) //Resume operation? Can be combined with above restore operation!
 		{
 			et4k_emptyqueuedummy = Tseng4k_doEmptyQueue(); //Empty the queue if possible for the new operation to start!
-			Tseng4k_status_startXYblock(0); //Screen-to-screen is unknown atm. Starting a transfer!
+			Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO()); //Screen-to-screen is unknown atm. Starting a transfer!
 			Tseng4k_startAccelerator(); //Starting the accelerator!
 		}
 		if ((address == 0x30) && (value & 1)) //Suspend operation requested?
@@ -1663,7 +1669,7 @@ byte Tseng4k_writeMMUregister(byte address, byte value)
 			et4k_transferQueuedMMURegisters(); //Load the queued registers to become active!
 			//Start a new operation!
 			et4k_emptyqueuedummy = Tseng4k_doEmptyQueue(); //Empty the queue if possible for the new operation to start!
-			Tseng4k_status_startXYblock(0); //Screen-to-screen is unknown atm. Starting a transfer!
+			Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO()); //Screen-to-screen is unknown atm. Starting a transfer!
 			Tseng4k_startAccelerator(); //Starting the accelerator!
 		}
 		break;
@@ -1709,7 +1715,7 @@ byte Tseng4k_writeMMUaccelerator(byte area, uint_32 address, byte value)
 	//Handle any storage needed!
 	if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x36] & 0x04) == 0) //Transfer isn't active yet?
 	{
-		Tseng4k_status_startXYblock(0); //Screen-to-screen is unknown atm. Starting a transfer!
+		Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO()); //Screen-to-screen is unknown atm. Starting a transfer!
 		Tseng4k_startAccelerator(); //Starting the accelerator!
 	}
 	if (
