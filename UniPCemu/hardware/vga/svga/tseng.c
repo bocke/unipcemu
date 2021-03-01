@@ -601,6 +601,10 @@ byte Tseng34K_writeIO(word port, byte val)
 				case 0xEB: //CRTCB Row Offset (word)
 				case 0xEC:
 					et34kdata->W32_21xA_shadowRegisters[(et34kdata->W32_21xA_index - 0xE0)&0x1F][0] = val; //Set the value in the CRTCB registers!
+					if (et34kdata->W32_21xA_index == 0xEC)
+					{
+						SETBITS(et34kdata->W32_21xA_shadowRegisters[(et34kdata->W32_21xA_index - 0xE0) & 0x1F][0], 4, 0xF, 0); //Clear the high 4 bits to indicate ET4000/W32!
+					}
 					break;
 				case 0xED: //CRTCB Pixel Panning
 				case 0xEE: //CRTCB Color Depth
@@ -634,6 +638,10 @@ byte Tseng34K_writeIO(word port, byte val)
 				case 0xEB: //Sprite Row OFfset (word)
 				case 0xEC:
 					et34kdata->W32_21xA_shadowRegisters[(et34kdata->W32_21xA_index - 0xE0)&0x1F][1] = val; //Set the value in the CRTCB registers!
+					if (et34kdata->W32_21xA_index == 0xEC)
+					{
+						SETBITS(et34kdata->W32_21xA_shadowRegisters[(et34kdata->W32_21xA_index - 0xE0) & 0x1F][1],4,0xF,0); //Clear the high 4 bits to indicate ET4000/W32!
+					}
 					break;
 				case 0xED: //CRTCB Pixel Panning
 				case 0xEE: //CRTCB Color Depth
