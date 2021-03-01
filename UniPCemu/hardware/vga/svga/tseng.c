@@ -1725,9 +1725,9 @@ byte et4k_stepy()
 	}
 	else //Positive Y?
 	{
-		++et34k(getActiveVGA())->W32_ACLregs.destinationaddress += et34k(getActiveVGA())->W32_ACLregs.destinationYoffset + 1; //Next address!
-		++et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress += et34k(getActiveVGA())->W32_ACLregs.patternYoffset + 1; //Next address!
-		++et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress += et34k(getActiveVGA())->W32_ACLregs.sourceYoffset + 1; //Next address!
+		et34k(getActiveVGA())->W32_ACLregs.destinationaddress += et34k(getActiveVGA())->W32_ACLregs.destinationYoffset + 1; //Next address!
+		et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress += et34k(getActiveVGA())->W32_ACLregs.patternYoffset + 1; //Next address!
+		et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress += et34k(getActiveVGA())->W32_ACLregs.sourceYoffset + 1; //Next address!
 	}
 	if (et34k(getActiveVGA())->W32_ACLregs.Yposition>et34k(getActiveVGA())->W32_ACLregs.Ycount)
 	{
