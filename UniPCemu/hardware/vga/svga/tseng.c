@@ -1536,6 +1536,7 @@ void Tseng4k_startAccelerator()
 	et34k(getActiveVGA())->W32_ACLregs.sourcemap_x_backup = et34k(getActiveVGA())->W32_ACLregs.sourcemap_x; //Backup!
 	et34k(getActiveVGA())->W32_ACLregs.patternmapaddress_backup = et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress; //Backup!
 	et34k(getActiveVGA())->W32_ACLregs.sourcemapaddress_backup = et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress; //Backup!
+	et34k(getActiveVGA())->W32_ACLregs.destinationaddress_backup = et34k(getActiveVGA())->W32_ACLregs.destinationaddress; //Backup!
 }
 
 byte et4k_emptyqueuedummy = 0;
@@ -1724,6 +1725,7 @@ void et4k_writelinearVRAM(uint_32 addr, byte value)
 byte et4k_stepy()
 {
 	++et34k(getActiveVGA())->W32_ACLregs.Yposition;
+	et34k(getActiveVGA())->W32_ACLregs.destinationaddress = et34k(getActiveVGA())->W32_ACLregs.destinationaddress_backup; //Make sure that we're jumping from the original!
 	if (et34k(getActiveVGA())->W32_ACLregs.XYdirection&2) //Negative Y?
 	{
 		et34k(getActiveVGA())->W32_ACLregs.destinationaddress -= et34k(getActiveVGA())->W32_ACLregs.destinationYoffset + 1; //Next address!
@@ -1736,6 +1738,7 @@ byte et4k_stepy()
 		et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress += et34k(getActiveVGA())->W32_ACLregs.patternYoffset + 1; //Next address!
 		et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress += et34k(getActiveVGA())->W32_ACLregs.sourceYoffset + 1; //Next address!
 	}
+	et34k(getActiveVGA())->W32_ACLregs.destinationaddress_backup = et34k(getActiveVGA())->W32_ACLregs.destinationaddress; //Save the new line on the destination address to jump back to!
 	if (et34k(getActiveVGA())->W32_ACLregs.Yposition>et34k(getActiveVGA())->W32_ACLregs.Ycount)
 	{
 		//Leave Y position and addresses alone!
@@ -1837,8 +1840,7 @@ byte Tseng4k_tickAccelerator_step(byte noqueue)
 	}
 
 	//We're ready to start handling a pixel. Now, handle the pixel!
-	destinationaddress = (et34k(getActiveVGA())->W32_ACLregs.destinationaddress); //Calc destination address!
-	destination = et4k_readlinearVRAM(destinationaddress); //Read destination!
+	destination = et4k_readlinearVRAM(et34k(getActiveVGA())->W32_ACLregs.destinationaddress); //Read destination!
 	source = et4k_readlinearVRAM(et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress + et34k(getActiveVGA())->W32_ACLregs.patternmap_x);
 	pattern = et4k_readlinearVRAM(et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress + et34k(getActiveVGA())->W32_ACLregs.sourcemap_x);
 	mixmap = 0xFF; //Assumed 1 if not provided by CPU!
@@ -1873,7 +1875,7 @@ byte Tseng4k_tickAccelerator_step(byte noqueue)
 	}
 
 	//Finally, writeback the result to destination in VRAM!
-	et4k_writelinearVRAM(destinationaddress,result); //Write back!
+	et4k_writelinearVRAM(et34k(getActiveVGA())->W32_ACLregs.destinationaddress,result); //Write back!
 
 	//Increase X/Y positions accordingly!
 	//Clear et34k(getActiveVGA())->W32_acceleratorbusy on terminal count reached!
