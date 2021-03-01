@@ -1022,6 +1022,7 @@ byte Tseng34K_readIO(word port, byte *result)
 				case 0xE9:
 				case 0xEA:
 				case 0xEB: //Sprite Row OFfset (word)
+				case 0xEC:
 					*result = (et34kdata->W32_21xA_shadowRegisters[(et34kdata->W32_21xA_index)&0x1F][1]); //Give the register!
 					break;
 				case 0xED: //CRTCB Pixel Panning
