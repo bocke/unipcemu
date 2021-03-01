@@ -48,6 +48,7 @@ typedef struct
 	//Intermediate variables
 	uint_32 internalpatternaddress;
 	uint_32 internalsourceaddress;
+	byte latchedmixmap; //The mixmap input that's latched!
 } ET4000_W32_ACL_PRECALCS;
 
 typedef struct {

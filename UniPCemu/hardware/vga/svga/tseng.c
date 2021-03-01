@@ -1704,48 +1704,195 @@ byte Tseng4k_blockQueueAccelerator()
 	return 0; //Blocking the queue from being processed (not ready yet)?
 }
 
+byte et4k_readlinearVRAM(uint_32 addr)
+{
+	return readVRAMplane(getActiveVGA(),(addr&3),(addr>>2),0); //Read VRAM!
+}
+
+void et4k_writelinearVRAM(uint_32 addr, byte value)
+{
+	writeVRAMplane(getActiveVGA(),(addr&3),(addr>>2),0,value); //Write VRAM!
+}
+
+byte et4k_stepy()
+{
+	++et34k(getActiveVGA())->W32_ACLregs.Yposition;
+	if (et34k(getActiveVGA())->W32_ACLregs.XYdirection&2) //Negative Y?
+	{
+		et34k(getActiveVGA())->W32_ACLregs.destinationaddress -= et34k(getActiveVGA())->W32_ACLregs.destinationYoffset + 1; //Next address!
+		et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress -= et34k(getActiveVGA())->W32_ACLregs.patternYoffset + 1; //Next address!
+		et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress -= et34k(getActiveVGA())->W32_ACLregs.sourceYoffset + 1; //Next address!
+	}
+	else //Positive Y?
+	{
+		++et34k(getActiveVGA())->W32_ACLregs.destinationaddress += et34k(getActiveVGA())->W32_ACLregs.destinationYoffset + 1; //Next address!
+		++et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress += et34k(getActiveVGA())->W32_ACLregs.patternYoffset + 1; //Next address!
+		++et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress += et34k(getActiveVGA())->W32_ACLregs.sourceYoffset + 1; //Next address!
+	}
+	if (et34k(getActiveVGA())->W32_ACLregs.Yposition>et34k(getActiveVGA())->W32_ACLregs.Ycount)
+	{
+		//Leave Y position and addresses alone!
+		return 2; //Y count reached!
+	}
+	return 0; //No overflow!
+}
+
+byte et4k_stepx()
+{
+	++et34k(getActiveVGA())->W32_ACLregs.Xposition;
+	if (et34k(getActiveVGA())->W32_ACLregs.XYdirection&1) //Negative X?
+	{
+		--et34k(getActiveVGA())->W32_ACLregs.destinationaddress; //Next address!
+		--et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress; //Next address!
+		--et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress; //Next address!
+	}
+	else //Positive X?
+	{
+		++et34k(getActiveVGA())->W32_ACLregs.destinationaddress; //Next address!
+		++et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress; //Next address!
+		++et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress; //Next address!
+	}
+	if (et34k(getActiveVGA())->W32_ACLregs.Xposition>et34k(getActiveVGA())->W32_ACLregs.Xcount)
+	{
+		//X overflow? Step vertically!
+		if (et34k(getActiveVGA())->W32_ACLregs.XYdirection&1) //Negative X?
+		{
+			et34k(getActiveVGA())->W32_ACLregs.destinationaddress += (et34k(getActiveVGA())->W32_ACLregs.Xposition); //Reset address!
+			et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress += (et34k(getActiveVGA())->W32_ACLregs.Xposition); //Reset address!
+			et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress += (et34k(getActiveVGA())->W32_ACLregs.Xposition); //Reset address!
+		}
+		else //Positive X?
+		{
+			et34k(getActiveVGA())->W32_ACLregs.destinationaddress -= (et34k(getActiveVGA())->W32_ACLregs.Xposition); //Reset address!
+			et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress -= (et34k(getActiveVGA())->W32_ACLregs.Xposition); //Reset address!
+			et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress -= (et34k(getActiveVGA())->W32_ACLregs.Xposition); //Reset address!
+		}
+		et34k(getActiveVGA())->W32_ACLregs.Xposition = 0; //Reset
+		return 1|(et4k_stepy()); //Step Y! X count reached!
+	}
+	return 0; //No overflow!
+}
+
 //result: bit0=Set to have handled tick, bit1=Set to immediately check for termination on the same clock.
 byte Tseng4k_tickAccelerator_step(byte noqueue)
 {
+	byte destination,source,pattern,mixmap,ROP,result,operationx,ROPmask;
+	uint_32 destinationaddress;
+	word ROPbits;
+	byte ROPmaskdestination[2] = {0x55,0xAA};
+	byte ROPmasksource[2] = {0x33,0xCC};
+	byte ROPmaskpattern[2] = {0x0F,0xF0};
 	//noqueue: handle without queue only. Otherwise, ticking an input on the currently loaded queue or no queue processing.
 	//acceleratorleft is used to process an queued 8-pixel block from the CPU! In 1:1 ration instead of 1:8 ratio, it's simply set to 1!
+	switch (et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) //What kind of operation is used?
+	{
+	case 0: //CPU data isn't used!
+		//Handling without CPU data now!
+		if (!noqueue) return 0; //NOP when a queue version!
+		break;
+	case 1: //CPU data is source data!
+		if (noqueue && (et34k(getActiveVGA())->W32_acceleratorleft==0)) return 0; //NOP when not a queue version and not processing!		
+		break;
+	case 2: //CPU data is mix data!
+		if (noqueue && (et34k(getActiveVGA())->W32_acceleratorleft==0)) return 0; //NOP when not a queue version and not processing!		
+		break;
+	case 4: //CPU data is X count
+		if (noqueue && (et34k(getActiveVGA())->W32_acceleratorleft==0)) return 0; //NOP when not a queue version and not processing!		
+		break;
+	case 5: //CPU data is Y count
+		if (noqueue && (et34k(getActiveVGA())->W32_acceleratorleft==0)) return 0; //NOP when not a queue version and not processing!		
+		break;
+	default: //Reserved
+		return 1|2; //Not handled yet! Terminate immediately on the same clock!
+		break;
+	}
+
+	et34k(getActiveVGA())->W32_acceleratorbusy |= 2; //Busy accelerator!
+
 	if (et34k(getActiveVGA())->W32_acceleratorleft == 0) //Need to start a new block?
 	{
-		et34k(getActiveVGA())->W32_acceleratorleft = 1; //Default: only processing 1!
 		switch (et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) //What kind of operation is used?
 		{
 		case 0: //CPU data isn't used!
-			if (!noqueue) //Using the queue? We're CPU data!
-			{
-				return 1; //Not handled yet! Terminate immediately on the same clock!
-			}
 			//Handling without CPU data now!
+			et34k(getActiveVGA())->W32_acceleratorleft = 1; //Default: only processing 1!
 			break;
 		case 1: //CPU data is source data!
 			//Only 1 pixel is processed!
+			et34k(getActiveVGA())->W32_acceleratorleft = 1; //Default: only processing 1!
 			break;
 		case 2: //CPU data is mix data!
 			et34k(getActiveVGA())->W32_acceleratorleft = 8; //Processing 8 pixels!
+			et34k(getActiveVGA())->W32_ACLregs.latchedmixmap = et34k(getActiveVGA())->W32_MMUqueueval[et34k(getActiveVGA())->W32_MMUqueueval_offset]; //Latch the written value!
 			break;
 		case 4: //CPU data is X count
 			//Only 1 pixel is processed!
+			et34k(getActiveVGA())->W32_acceleratorleft = 1; //Default: only processing 1!
 			break;
 		case 5: //CPU data is Y count
 			//Only 1 pixel is processed!
+			et34k(getActiveVGA())->W32_acceleratorleft = 1; //Default: only processing 1!
 			break;
 		default: //Reserved
-			return 1; //Not handled yet! Terminate immediately on the same clock!
+			return 1|2; //Not handled yet! Terminate immediately on the same clock!
 			break;
 		}
 	}
 
 	//We're ready to start handling a pixel. Now, handle the pixel!
+	destinationaddress = (et34k(getActiveVGA())->W32_ACLregs.destinationaddress); //Calc destination address!
+	destination = et4k_readlinearVRAM(destinationaddress); //Read destination!
+	source = et4k_readlinearVRAM(et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress);
+	pattern = et4k_readlinearVRAM(et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress);
+	mixmap = 0xFF; //Assumed 1 if not provided by CPU!
+	operationx = et34k(getActiveVGA())->W32_ACLregs.Xposition; //TODO
 
+	//Apply CPU custom inputs!
+	if ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7)==2) //Mixmap from CPU?
+	{
+		mixmap = et34k(getActiveVGA())->W32_ACLregs.latchedmixmap; //The used mixmap instead!
+	}
+	else if ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7)==1) //Source is from CPU?
+	{
+		source = et34k(getActiveVGA())->W32_MMUqueueval[et34k(getActiveVGA())->W32_MMUqueueval_offset]; //Latch the written value!
+	}
+
+	//Now, determine and apply the Raster Operation!
+	operationx &= 7; //Wrap!
+	if (et34k(getActiveVGA())->W32_ACLregs.XYdirection&1) //Negative X?
+	{
+		operationx = 7-operationx; //Reversed order!
+	}
+	ROP = et34k(getActiveVGA())->W32_ACLregsBGFG_RasterOperation[((mixmap>>(operationx&7))&1)];
+	result = 0; //Initialize the result!
+	ROPbits = 0x01; //What bit to process!
+	for (;ROPbits!=0x100;) //Check all bits!
+	{
+		if ((ROP&ROPmaskdestination[((destination&ROPbits)!=0)&1]&ROPmasksource[((source&ROPbits)!=0)&1]&ROPmaskpattern[((pattern&ROPbits)!=0)&1])!=0)
+		{
+			result |= ROPbits; //Set in the result!
+		}
+		ROPbits <<= 1; //Next bit to check!
+	}
+
+	//Finally, writeback the result to destination in VRAM!
+	et4k_writelinearVRAM(destinationaddress,result); //Write back!
+
+	//Increase X/Y positions accordingly!
+	//Clear et34k(getActiveVGA())->W32_acceleratorbusy on terminal count reached!
+	if (et4k_stepx()==3) //X and Y overflow?
+	{
+		et34k(getActiveVGA())->W32_acceleratorbusy &= ~2; //Finish operation!
+		et34k(getActiveVGA())->W32_acceleratorleft = 0; //Nothing left!
+		return 1|2; //Terminated immediately on the same clock!
+	}
+
+	//Apply timing remainder calculation
 	if (et34k(getActiveVGA())->W32_acceleratorleft) //Anything left ticking?
 	{
 		--et34k(getActiveVGA())->W32_acceleratorleft; //Ticked one pixel of the current block!
 	}
-	return 1|2; //Not handled yet! Terminate immediately on the same clock!
+	return 1|2; //Handled! Terminated immediately on the same clock!
 }
 
 void Tseng4k_tickAccelerator()
@@ -1778,7 +1925,7 @@ void Tseng4k_tickAccelerator()
 	{
 		if ((et34k(getActiveVGA())->W32_acceleratorbusy & 2) != 0) //Not terminated?
 		{
-			if (Tseng4k_tickAccelerator_step(0)) //Queue version of ticking the accelerator?
+			if ((result = Tseng4k_tickAccelerator_step(0))!=0) //Queue version of ticking the accelerator?
 			{
 				et34k(getActiveVGA())->W32_acceleratorbusy |= 1; //Become a busy accelerator!
 				//TODO: Tick some accelerator status to process given data to process inputted by the CPU (or not when using no CPU inputs)!
