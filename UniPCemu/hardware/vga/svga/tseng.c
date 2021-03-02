@@ -1430,7 +1430,7 @@ void Tseng4k_raiseMMUinterrupt(byte cause) //Cause is 0-2!
 //Set when not using the CPU each clock
 byte Tseng4k_accelerator_calcSSO()
 {
-	return (((et34k(getActiveVGA())->W32_MMUregisters[0][0x9C]&0x07)==0) || ((et34k(getActiveVGA())->W32_MMUregisters[0][0x9C]&0x07)==0x04) || ((et34k(getActiveVGA())->W32_MMUregisters[0][0x39C]&0x07)==5))?1:0;
+	return (((et34k(getActiveVGA())->W32_MMUregisters[0][0x9C]&0x07)==0) || ((et34k(getActiveVGA())->W32_MMUregisters[0][0x9C]&0x07)==0x04) || ((et34k(getActiveVGA())->W32_MMUregisters[0][0x9C]&0x07)==5))?1:0;
 }
 
 //Basic X/Y block start/termination conditions
@@ -1559,6 +1559,10 @@ void Tseng4k_startAccelerator()
 	et34k(getActiveVGA())->W32_ACLregs.patternmapaddress_backup = et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress; //Backup!
 	et34k(getActiveVGA())->W32_ACLregs.sourcemapaddress_backup = et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress; //Backup!
 	et34k(getActiveVGA())->W32_ACLregs.destinationaddress_backup = et34k(getActiveVGA())->W32_ACLregs.destinationaddress; //Backup!
+	if ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 0) //No CPU version?
+	{
+		et34k(getActiveVGA())->W32_acceleratorleft = 1; //Always more left until finishing! This keeps us running!
+	}
 }
 
 byte et4k_emptyqueuedummy = 0;
@@ -1715,6 +1719,7 @@ byte Tseng4k_writeMMUaccelerator(byte area, uint_32 address, byte value)
 	//Otherwise, when not ready yet, ignore!
 	if (et34k(getActiveVGA())->W32_MMUqueuefilled) //Queue already filled?
 	{
+		handleQueueWaiting:
 		if (et34k(getActiveVGA())->W32_MMUregisters[0][0x32] & 1) //Waitstate to apply for writes?
 		{
 			MMU_waitstateactive = 1; //Start waitstate to become ready!
@@ -1725,11 +1730,41 @@ byte Tseng4k_writeMMUaccelerator(byte area, uint_32 address, byte value)
 		return 1; //Otherwise, the write is ignored!
 	}
 	//Handle any storage needed!
+	if (((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 4) || //CPU data is used only once to start an operation?
+		((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 5) //CPU data is used only once to start an operation?
+		)
+	{
+		if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x36] & 0x04) == 0) //Starting a new operation?
+		{
+			if ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 4) //X count?
+			{
+				et34k(getActiveVGA())->W32_MMUregisters[1][0x98] = value; //X count low byte!
+			}
+			else //Y count?
+			{
+				et34k(getActiveVGA())->W32_MMUregisters[1][0x9A] = value; //Y count low byte!
+			}
+			//Start the operation from loading the registers!
+			//Manually update the X and Y count precalcs to have their proper values!
+			et34k(getActiveVGA())->W32_ACLregs.Xcount = (getTsengLE16(&et34k(getActiveVGA())->W32_MMUregisters[1][0x98]) & 0xFFF); //X count
+			et34k(getActiveVGA())->W32_ACLregs.Ycount = (getTsengLE16(&et34k(getActiveVGA())->W32_MMUregisters[1][0x9A]) & 0xFFF); //Y count
+			if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x36] & 0x04) == 0) //Transfer isn't active yet?
+			{
+				et34k(getActiveVGA())->W32_ACLregs.Xposition = et34k(getActiveVGA())->W32_ACLregs.Yposition = 0; //Initialize the position!
+			}
+		}
+		else //An operation is running? ignore the input!
+		{
+			goto handleQueueWaiting; //The write is ignored as if the queue was full until it's done!
+		}
+	}
+		
 	if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x36] & 0x04) == 0) //Transfer isn't active yet?
 	{
 		Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO()); //Screen-to-screen is unknown atm. Starting a transfer!
 		Tseng4k_startAccelerator(); //Starting the accelerator!
 	}
+
 	if (
 		((et34k(getActiveVGA())->W32_ACLregs.W32_newXYblock) && ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 0x30) == 0)) || //Load destination address during first write?
 		((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 0x30) == 1) //Always reload destination address?
@@ -1756,7 +1791,14 @@ byte Tseng4k_blockQueueAccelerator()
 	{
 		return 1; //Always blocking the queue!
 	}
-	return 0; //Blocking the queue from being processed (not ready yet)?
+	if (
+		((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 4) || //CPU data is used only once to start an operation?
+		((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 5) //CPU data is used only once to start an operation?
+		)
+	{
+		return 1; //Always blocking the queue!
+	}
+	return 0; //Not blocking the queue from being processed (not ready yet)?
 }
 
 byte et4k_readlinearVRAM(uint_32 addr)
@@ -1835,7 +1877,7 @@ byte Tseng4k_tickAccelerator_step(byte noqueue)
 	{
 	case 0: //CPU data isn't used!
 		//Handling without CPU data now!
-		if (noqueue && (et34k(getActiveVGA())->W32_acceleratorleft == 0)) return 0; //NOP when not a queue version and not processing!		
+		if ((!noqueue) || (et34k(getActiveVGA())->W32_acceleratorleft == 0)) return 0; //NOP when a queue version or not processing!		
 		break;
 	case 1: //CPU data is source data!
 		if (noqueue && (et34k(getActiveVGA())->W32_acceleratorleft==0)) return 0; //NOP when not a queue version and not processing!		
@@ -1942,6 +1984,14 @@ byte Tseng4k_tickAccelerator_step(byte noqueue)
 	{
 		--et34k(getActiveVGA())->W32_acceleratorleft; //Ticked one pixel of the current block!
 	}
+	if (
+		((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 0) || //No CPU version?
+		((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 4) || //Once CPU version?
+		((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 5) //Once CPU version?
+		)
+	{
+		et34k(getActiveVGA())->W32_acceleratorleft = 1; //Always more left until finishing! This keeps us running until terminal count!
+	}
 	return 1|2; //Handled! Terminated immediately on the same clock!
 }
 
@@ -2007,7 +2057,7 @@ void Tseng4k_tickAccelerator()
 			Tseng4k_status_XYblockTerminalCount(); //Terminal count reached during the tranfer!
 			Tseng4k_doBecomeIdle(); //Accelerator becomes idle now!
 		}
-		et34k(getActiveVGA())->W32_acceleratorbusy &= ~1; //Accelerator becomes idle!
+		et34k(getActiveVGA())->W32_acceleratorbusy &= ~1; //Accelerator stepping becomes idle!
 	}
 }
 
