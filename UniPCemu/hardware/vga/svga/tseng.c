@@ -1947,10 +1947,12 @@ byte Tseng4k_tickAccelerator_step(byte noqueue)
 
 	//Now, determine and apply the Raster Operation!
 	operationx &= 7; //Wrap!
+	/*
 	if (et34k(getActiveVGA())->W32_ACLregs.XYdirection&1) //Negative X?
 	{
 		operationx = 7-operationx; //Reversed order!
 	}
+	*/
 	ROP = et34k(getActiveVGA())->W32_ACLregs.BGFG_RasterOperation[((mixmap>>(operationx&7))&1)];
 	result = 0; //Initialize the result!
 	ROPbits = 0x01; //What bit to process!
