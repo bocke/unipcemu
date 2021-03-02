@@ -1629,6 +1629,17 @@ byte Tseng4k_writeMMUregister(byte address, byte value)
 		}
 		//Interrupt causes: Bit 0=Queue not full, 1=Queue empty and accelerator goes idle, 2=Write to a full queue
 		break;
+	case 0x36: //ACL Accelerator Status Register
+		if ((value & 4) && ((et34k(getActiveVGA())->W32_MMUregisters[0][0x36] & 4) == 0)) //Raised XYST?
+		{
+			Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO()); //Screen-to-screen is unknown atm. Starting a transfer!
+			Tseng4k_startAccelerator(); //Starting the accelerator!
+		}
+		else if (((value & 4) == 0) && (et34k(getActiveVGA())->W32_MMUregisters[0][0x36] & 4)) //Lowered XYST?
+		{
+			Tseng4k_status_XYblockTerminalCount(); //Perform like a terminal count!
+		}
+		break;
 	case 0x80:
 	case 0x81:
 	case 0x82:
