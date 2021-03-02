@@ -1441,13 +1441,13 @@ void Tseng4k_status_startXYblock(byte is_screentoscreen) //Starting an X/Y block
 		et34k(getActiveVGA())->W32_ACLregs.W32_newXYblock = 1; //Starting a new transfer now!
 	}
 	et34k(getActiveVGA())->W32_MMUregisters[0][0x36] |= 0x04; //Raise X/Y status!
-	et34k(getActiveVGA())->W32_MMUregisters[0][0x36] &= ~0x10; //To set!
-	et34k(getActiveVGA())->W32_MMUregisters[0][0x36] |= is_screentoscreen ? 0x10 : 0x00; //Screen-to-screen operation?
+	et34k(getActiveVGA())->W32_MMUregisters[0][0x36] &= ~0x08; //To set!
+	et34k(getActiveVGA())->W32_MMUregisters[0][0x36] |= is_screentoscreen ? 0x08 : 0x00; //Screen-to-screen operation?
 }
 
 void Tseng4k_status_XYblockTerminalCount() //Finished an X/Y block and Terminal Count reached?
 {
-	et34k(getActiveVGA())->W32_MMUregisters[0][0x36] &= ~0x08; //Finished X/Y block!
+	et34k(getActiveVGA())->W32_MMUregisters[0][0x36] &= ~0x0C; //Finished X/Y block!
 }
 
 //Helper functions for below
