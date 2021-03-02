@@ -1671,6 +1671,7 @@ byte Tseng4k_writeMMUregister(byte address, byte value)
 			et4k_emptyqueuedummy = Tseng4k_doEmptyQueue(); //Empty the queue if possible for the new operation to start!
 			Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO()); //Screen-to-screen is unknown atm. Starting a transfer!
 			Tseng4k_startAccelerator(); //Starting the accelerator!
+			et34k(getActiveVGA())->W32_ACLregs.Xposition = et34k(getActiveVGA())->W32_ACLregs.Yposition = 0; //Initialize the position!
 		}
 		break;
 	case 0xA4:
