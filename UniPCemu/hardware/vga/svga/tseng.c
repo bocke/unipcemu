@@ -2480,6 +2480,7 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 
 	if (CRTUpdated || horizontaltimingsupdated || CRTUpdatedCharwidth || (whereupdated == WHEREUPDATED_ALL) || (whereupdated == (WHEREUPDATED_CRTCONTROLLER | 0x3F)) //Extended bits of the overflow register!
 		//Finally, bits needed by the overflow register itself(of which we are an extension)!
+		|| ((whereupdated == WHEREUPDATED_ALL) || (whereupdated == (WHEREUPDATED_SEQUENCER | 0x07))) //VGA/EGA mode updated?
 		|| (whereupdated == WHEREUPDATED_CRTCONTROLLER) //Horizontal total
 		)
 	{
@@ -2489,7 +2490,7 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 		//bit0=Horizontal total bit 8
 		tempdata = VGA->registers->CRTControllerRegisters.REGISTERS.HORIZONTALTOTALREGISTER;
 		tempdata |= ((et34k_tempreg & 1) << 8); //To be updated?
-		tempdata += 5; //Actually five clocks more!
+		tempdata += et34k_reg(et34kdata, 3c4, 07)&0x80?5:2; //Actually five clocks more on VGA mode! Only two clocks on EGA mode!
 		tempdata *= VGA->precalcs.characterwidth; //We're character units!
 		tempdata <<= et34kdata->doublehorizontaltimings; //Double the horizontal timings if needed!
 		updateCRTC |= (VGA->precalcs.horizontaltotal != tempdata); //To be updated?
