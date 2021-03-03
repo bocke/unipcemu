@@ -1820,6 +1820,11 @@ byte Tseng4k_writeMMUaccelerator(byte area, uint_32 address, byte value)
 		Tseng4k_startAccelerator(); //Starting the accelerator!
 	}
 
+	if ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 2) //Address is multiplied by 8?
+	{
+		address <<= 3; //Multiply the address by 8!
+	}
+
 	if (
 		((et34k(getActiveVGA())->W32_ACLregs.W32_newXYblock) && ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 0x30) == 0)) || //Load destination address during first write?
 		((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 0x30) == 1) //Always reload destination address?
