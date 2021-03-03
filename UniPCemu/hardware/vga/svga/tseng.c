@@ -2633,8 +2633,10 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 					break;
 				case 2: //1M linear memory?
 				case 3: //1M linear memory? Unverified!
+					//256K memory banking is used!
+					VGA_MemoryMapBankRead = et34kdata->bank_read << 18; //Read bank!
+					VGA_MemoryMapBankWrite = et34kdata->bank_write << 18; //Write bank!
 					VGA->precalcs.linearmode |= 1; //Use contiguous memory accessing!
-					//Same memory banking is used! 64k banks!
 				case 1: //64k segments?
 					VGA_MemoryMapBankRead = et34kdata->bank_read<<16; //Read bank!
 					VGA_MemoryMapBankWrite = et34kdata->bank_write<<16; //Write bank!
