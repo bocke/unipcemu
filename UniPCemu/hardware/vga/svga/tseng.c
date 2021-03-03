@@ -2490,7 +2490,7 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 		//bit0=Horizontal total bit 8
 		tempdata = VGA->registers->CRTControllerRegisters.REGISTERS.HORIZONTALTOTALREGISTER;
 		tempdata |= ((et34k_tempreg & 1) << 8); //To be updated?
-		tempdata += et34k_reg(et34kdata, 3c4, 07)&0x80?5:2; //Actually five clocks more on VGA mode! Only two clocks on EGA mode!
+		tempdata += (et34k_reg(et34kdata, 3c4, 07)&0x80)?5:2; //Actually five clocks more on VGA mode! Only two clocks on EGA mode!
 		tempdata *= VGA->precalcs.characterwidth; //We're character units!
 		tempdata <<= et34kdata->doublehorizontaltimings; //Double the horizontal timings if needed!
 		updateCRTC |= (VGA->precalcs.horizontaltotal != tempdata); //To be updated?
