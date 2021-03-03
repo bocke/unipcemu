@@ -619,7 +619,7 @@ void VGA_calcprecalcs(void *useVGA, uint_32 whereupdated) //Calculate them, wher
 		{
 			word htotal;
 			htotal = VGA->registers->CRTControllerRegisters.REGISTERS.HORIZONTALTOTALREGISTER;
-			htotal += 5;
+			htotal += (getActiveVGA()->enable_SVGA != 3)?5:2; //VGA=+5, EGA=+2
 			htotal *= VGA->precalcs.characterwidth; //We're character units!
 			//dolog("VGA","HTotal updated: %u",htotal);
 			//dolog("VGA","VTotal after: %u",VGA->precalcs.verticaltotal); //Log it!
