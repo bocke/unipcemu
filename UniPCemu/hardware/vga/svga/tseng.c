@@ -1532,9 +1532,13 @@ void Tseng4k_decodeAcceleratorRegisters()
 
 void Tseng4k_encodeAcceleratorRegisters()
 {
-	//TODO: Save and encode all accelerator registers that can be modified into the accelerator registers for the CPU to read.
+	//TODO: Save and encode all changable accelerator registers that can be modified into the accelerator registers for the CPU to read.
+	setTsengLE24(&et34k(getActiveVGA())->W32_MMUregisters[1][0x80], (et34k(getActiveVGA())->W32_ACLregs.patternmapaddress & 0x3FFFFF)); //Internal Pattern address
+	setTsengLE24(&et34k(getActiveVGA())->W32_MMUregisters[1][0x84], (et34k(getActiveVGA())->W32_ACLregs.sourcemapaddress & 0x3FFFFF)); //Internal Source address
 	setTsengLE24(&et34k(getActiveVGA())->W32_MMUregisters[1][0xA4], (et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress & 0x3FFFFF)); //Internal Pattern address
 	setTsengLE24(&et34k(getActiveVGA())->W32_MMUregisters[1][0xA8], (et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress & 0x3FFFFF)); //Internal Source address
+	setTsengLE16(&et34k(getActiveVGA())->W32_MMUregisters[1][0x94], (et34k(getActiveVGA())->W32_ACLregs.Xposition) & 0xFFF); //X position
+	setTsengLE16(&et34k(getActiveVGA())->W32_MMUregisters[1][0x96], (et34k(getActiveVGA())->W32_ACLregs.Yposition) & 0xFFF); //Y position
 }
 
 uint_32 Tseng4k_wrap_x[8] = { 0,0,3,7,0xF,0x1F,0x3F,~0 }; //X wrapping masks
@@ -1542,6 +1546,7 @@ uint_32 Tseng4k_wrap_y[8] = { 1,2,4,8,~0,~0,~0,~0 }; //Y wrapping masks
 
 void Tseng4k_startAccelerator()
 {
+	uint_32 horizontalwrappings,horizontalsize;
 	//Start the accelerator's function.
 	//Load all internal precalcs required and initialize all local required CPU-readonly variables.
 	Tseng4k_decodeAcceleratorRegisters(); //Load all registers into the accelerator's precalcs!
@@ -1554,7 +1559,6 @@ void Tseng4k_startAccelerator()
 	{
 		et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress = et34k(getActiveVGA())->W32_ACLregs.sourcemapaddress; //Pattern address reload!
 	}
-	et34k(getActiveVGA())->W32_ACLregs.patternmap_x = et34k(getActiveVGA())->W32_ACLregs.patternmap_y = et34k(getActiveVGA())->W32_ACLregs.sourcemap_x = et34k(getActiveVGA())->W32_ACLregs.sourcemap_y = 0; //Init!
 	//Perform what wrapping?
 	et34k(getActiveVGA())->W32_ACLregs.patternwrap_x = Tseng4k_wrap_x[et34k(getActiveVGA())->W32_ACLregs.Xpatternwrap]; //What horizontal wrapping to use!
 	et34k(getActiveVGA())->W32_ACLregs.patternwrap_y = Tseng4k_wrap_x[et34k(getActiveVGA())->W32_ACLregs.Ypatternwrap]; //What horizontal wrapping to use!
@@ -1562,27 +1566,47 @@ void Tseng4k_startAccelerator()
 	et34k(getActiveVGA())->W32_ACLregs.sourcewrap_y = Tseng4k_wrap_x[et34k(getActiveVGA())->W32_ACLregs.Ysourcewrap]; //What horizontal wrapping to use!
 	//Perform wrapping of the inputs!
 	//First, wrap pattern!
+	et34k(getActiveVGA())->W32_ACLregs.patternmap_x = et34k(getActiveVGA())->W32_ACLregs.Xposition; //Don't wrap our idea of X!
+	et34k(getActiveVGA())->W32_ACLregs.patternmap_y = et34k(getActiveVGA())->W32_ACLregs.Yposition; //Don't wrap our idea of Y!
+	/*
+	horizontalwrappings = 0; //Default: nothing is horizontally wrapped!
+	horizontalsize = (et34k(getActiveVGA())->W32_ACLregs.patternYoffset + 1); //How large is the horizontal row?
 	if (et34k(getActiveVGA())->W32_ACLregs.patternwrap_x!=(uint_32)~0) //X wrapping?
 	{
-		et34k(getActiveVGA())->W32_ACLregs.patternmap_x = et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress & et34k(getActiveVGA())->W32_ACLregs.patternwrap_x; //Wrap X!
-		et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress &= ~et34k(getActiveVGA())->W32_ACLregs.patternwrap_x; //Mask off what's moved to patternmap x!
+		horizontalwrappings = et34k(getActiveVGA())->W32_ACLregs.Xposition / (et34k(getActiveVGA())->W32_ACLregs.patternwrap_x + 1); //How many times is X wrapped?
+		et34k(getActiveVGA())->W32_ACLregs.patternmap_x = et34k(getActiveVGA())->W32_ACLregs.Xposition & et34k(getActiveVGA())->W32_ACLregs.patternwrap_x; //Wrap our idea of X!
 	}
+	et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress -= horizontalwrappings * (et34k(getActiveVGA())->W32_ACLregs.patternYoffset + 1); //How many times is X wrapped, adding to Y at the address level?
 	if (et34k(getActiveVGA())->W32_ACLregs.patternwrap_y!=(uint_32)~0) //Y wrapping?
 	{
-		et34k(getActiveVGA())->W32_ACLregs.patternmap_y = (et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress / (((uint_64)et34k(getActiveVGA())->W32_ACLregs.patternwrap_x) + 1)) & (et34k(getActiveVGA())->W32_ACLregs.Ypatternwrap - 1);
-		et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress &= ~((((uint_64)et34k(getActiveVGA())->W32_ACLregs.patternwrap_x + 1) * (uint_64)et34k(getActiveVGA())->W32_ACLregs.patternwrap_y) - 1);
+		horizontalwrappings -= (et34k(getActiveVGA())->W32_ACLregs.patternmap_y / (et34k(getActiveVGA())->W32_ACLregs.patternwrap_y + 1)) * (et34k(getActiveVGA())->W32_ACLregs.patternwrap_y + 1); //How much is wrapped in the Y coordinate!
+		et34k(getActiveVGA())->W32_ACLregs.patternmap_y = et34k(getActiveVGA())->W32_ACLregs.patternmap_y & et34k(getActiveVGA())->W32_ACLregs.patternwrap_y; //Wrap our idea of Y!
 	}
-	//Next, wrap source!
-	if (et34k(getActiveVGA())->W32_ACLregs.sourcewrap_x!=(uint_32)~0) //X wrapping?
+	else
 	{
-		et34k(getActiveVGA())->W32_ACLregs.sourcemap_x = et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress & et34k(getActiveVGA())->W32_ACLregs.sourcewrap_x; //Wrap X!
-		et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress &= ~et34k(getActiveVGA())->W32_ACLregs.sourcewrap_x; //Mask off what's moved to patternmap x!
+		horizontalwrappings = 0; //Nothing to wrap!
+	}
+	et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress -= horizontalwrappings * (et34k(getActiveVGA())->W32_ACLregs.patternYoffset + 1); //How many times is X wrapped, adding to Y at the address level?
+	*/
+	//Next, wrap source!
+	et34k(getActiveVGA())->W32_ACLregs.sourcemap_x = et34k(getActiveVGA())->W32_ACLregs.Xposition; //Don't wrap our idea of X!
+	et34k(getActiveVGA())->W32_ACLregs.sourcemap_y = et34k(getActiveVGA())->W32_ACLregs.Yposition; //Don't wrap our idea of Y!
+	/*
+	horizontalwrappings = 0; //Default: nothing is horizontally wrapped!
+	horizontalsize = (et34k(getActiveVGA())->W32_ACLregs.sourceYoffset + 1); //How large is the horizontal row?
+	if (et34k(getActiveVGA())->W32_ACLregs.sourcewrap_x != (uint_32)~0) //X wrapping?
+	{
+		horizontalwrappings = et34k(getActiveVGA())->W32_ACLregs.Xposition / (et34k(getActiveVGA())->W32_ACLregs.sourcewrap_x + 1); //How many times is X wrapped?
+		et34k(getActiveVGA())->W32_ACLregs.sourcemap_x = et34k(getActiveVGA())->W32_ACLregs.Xposition & et34k(getActiveVGA())->W32_ACLregs.sourcewrap_x; //Wrap our idea of X!
 	}
 	if (et34k(getActiveVGA())->W32_ACLregs.sourcewrap_y != (uint_32)~0) //Y wrapping?
 	{
-		et34k(getActiveVGA())->W32_ACLregs.sourcemap_y = (et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress / (((uint_64)et34k(getActiveVGA())->W32_ACLregs.sourcewrap_x) + 1)) & (et34k(getActiveVGA())->W32_ACLregs.Ysourcewrap - 1);
-		et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress &= ~((((uint_64)et34k(getActiveVGA())->W32_ACLregs.sourcewrap_x + 1) * (uint_64)et34k(getActiveVGA())->W32_ACLregs.sourcewrap_y) - 1);
+		horizontalwrappings -= (et34k(getActiveVGA())->W32_ACLregs.sourcemap_y / (et34k(getActiveVGA())->W32_ACLregs.sourcewrap_y + 1)) * (et34k(getActiveVGA())->W32_ACLregs.sourcewrap_y + 1); //How much is wrapped in the Y coordinate!
+		et34k(getActiveVGA())->W32_ACLregs.sourcemap_y = et34k(getActiveVGA())->W32_ACLregs.sourcemap_y & et34k(getActiveVGA())->W32_ACLregs.sourcewrap_y; //Wrap our idea of Y!
 	}
+	et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress -= horizontalwrappings * (et34k(getActiveVGA())->W32_ACLregs.sourceYoffset + 1); //How many times is X wrapped, adding to Y at the address level?
+	*/
+
 	//Backup the original values before starting!
 	et34k(getActiveVGA())->W32_ACLregs.patternmap_x_backup = et34k(getActiveVGA())->W32_ACLregs.patternmap_x; //Backup!
 	et34k(getActiveVGA())->W32_ACLregs.sourcemap_x_backup = et34k(getActiveVGA())->W32_ACLregs.sourcemap_x; //Backup!
@@ -2067,6 +2091,14 @@ byte Tseng4k_tickAccelerator_step(byte noqueue)
 	return 1|2; //Handled! Terminated immediately on the same clock!
 }
 
+void Tseng4k_processRegisters_finished()
+{
+	//What register processing to do for the client when a blit has finished?
+	//Move the internal registers back to the readable ones!
+	et34k(getActiveVGA())->W32_ACLregs.patternmapaddress = (et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress & 0x3FFFFF); //Internal Pattern address
+	et34k(getActiveVGA())->W32_ACLregs.sourcemapaddress = (et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress & 0x3FFFFF); //Internal Pattern address
+}
+
 void Tseng4k_tickAccelerator()
 {
 	byte result;
@@ -2082,6 +2114,7 @@ void Tseng4k_tickAccelerator()
 	}
 	if (result = Tseng4k_tickAccelerator_step(1)) //No queue version of ticking the accelerator?
 	{
+		Tseng4k_encodeAcceleratorRegisters(); //Encode the registers, updating them for the CPU!
 		et34k(getActiveVGA())->W32_acceleratorbusy |= 1; //Become a busy accelerator!
 		if ((result & 2) == 0) //Keep ticking?
 		{
@@ -2099,6 +2132,7 @@ void Tseng4k_tickAccelerator()
 		{
 			if ((result = Tseng4k_tickAccelerator_step(0))!=0) //Queue version of ticking the accelerator?
 			{
+				Tseng4k_encodeAcceleratorRegisters(); //Encode the registers, updating them for the CPU!
 				et34k(getActiveVGA())->W32_acceleratorbusy |= 1; //Become a busy accelerator!
 				//TODO: Tick some accelerator status to process given data to process inputted by the CPU (or not when using no CPU inputs)!
 				//Tick the accelerator with the specified address and value loaded!
@@ -2117,6 +2151,9 @@ void Tseng4k_tickAccelerator()
 			if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x30] & 0x10) == 0x00) //Suspend requested?
 			{
 				et34k(getActiveVGA())->W32_acceleratorbusy = 0; //Not busy anymore!
+				et34k(getActiveVGA())->W32_ACLregs.patternmapaddress = (et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress & 0x3FFFFF); //Internal Pattern address
+				et34k(getActiveVGA())->W32_ACLregs.sourcemapaddress = (et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress & 0x3FFFFF); //Internal Pattern address
+				Tseng4k_processRegisters_finished(); //What to do when a blit has finished?
 				Tseng4k_encodeAcceleratorRegisters(); //Encode the registers, updating them for the CPU!
 				Tseng4k_status_acceleratorsuspended(); //Accelerator has been suspended!
 			}
@@ -2128,6 +2165,8 @@ void Tseng4k_tickAccelerator()
 		{
 			Tseng4k_status_XYblockTerminalCount(); //Terminal count reached during the tranfer!
 			Tseng4k_doBecomeIdle(); //Accelerator becomes idle now!
+			Tseng4k_processRegisters_finished();
+			Tseng4k_encodeAcceleratorRegisters(); //Encode the registers, updating them for the CPU!
 		}
 		et34k(getActiveVGA())->W32_acceleratorbusy &= ~1; //Accelerator stepping becomes idle!
 	}
