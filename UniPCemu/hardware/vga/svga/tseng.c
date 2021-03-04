@@ -423,7 +423,7 @@ byte Tseng34K_writeIO(word port, byte val)
 		// Bits 0,1, and 3 provides information about memory size:
 		// 0-1 Bus width ET4000AX: (1: 8 bit, 2: 16 bit, 3: 32 bit)
 		// 0 Bus width ET4000/W32: (0: 16 bit, 1: 32 bit)
-		// 3   Size of RAM chips ET4000AX: (0: 64Kx, 1: 256Kx) ET4000/W32*: (0: 1NB, 1: 256k)
+		// 3   Size of RAM chips ET4000AX: (0: 64Kx, 1: 256Kx) ET4000/W32*: (0: 1MB, 1: 256k)
 		// Other bits have no effect on emulation.
 		case 0x37:
 			if (getActiveVGA()->enable_SVGA != 1) return 0; //Not implemented on others than ET4000!
