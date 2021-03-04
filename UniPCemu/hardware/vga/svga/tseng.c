@@ -1665,7 +1665,7 @@ byte Tseng4k_writeMMUregister(byte address, byte value)
 		if ((address == 0x31) && (value & 8)) //Resume operation? Can be combined with above restore operation!
 		{
 			et4k_emptyqueuedummy = Tseng4k_doEmptyQueue(); //Empty the queue if possible for the new operation to start!
-			Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO()); //Screen-to-screen is unknown atm. Starting a transfer!
+			Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO()); //Starting a transfer!
 			Tseng4k_startAccelerator(); //Starting the accelerator!
 		}
 		if ((address == 0x30) && (value & 1)) //Suspend operation requested?
@@ -1692,7 +1692,7 @@ byte Tseng4k_writeMMUregister(byte address, byte value)
 	case 0x36: //ACL Accelerator Status Register
 		if ((value & 4) && ((et34k(getActiveVGA())->W32_MMUregisters[0][0x36] & 4) == 0)) //Raised XYST?
 		{
-			Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO()); //Screen-to-screen is unknown atm. Starting a transfer!
+			Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO()); //Starting a transfer!
 			Tseng4k_startAccelerator(); //Starting the accelerator!
 		}
 		else if (((value & 4) == 0) && (et34k(getActiveVGA())->W32_MMUregisters[0][0x36] & 4)) //Lowered XYST?
@@ -1740,7 +1740,7 @@ byte Tseng4k_writeMMUregister(byte address, byte value)
 			et4k_transferQueuedMMURegisters(); //Load the queued registers to become active!
 			//Start a new operation!
 			et4k_emptyqueuedummy = Tseng4k_doEmptyQueue(); //Empty the queue if possible for the new operation to start!
-			Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO()); //Screen-to-screen is unknown atm. Starting a transfer!
+			Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO()); //Starting a transfer!
 			Tseng4k_startAccelerator(); //Starting the accelerator!
 			et34k(getActiveVGA())->W32_ACLregs.Xposition = et34k(getActiveVGA())->W32_ACLregs.Yposition = 0; //Initialize the position!
 		}
@@ -1790,40 +1790,17 @@ byte Tseng4k_writeMMUaccelerator(byte area, uint_32 address, byte value)
 		((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 5) //CPU data is used only once to start an operation?
 		)
 	{
-		if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x36] & 0x04) == 0) //Starting a new operation?
+		if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x36] & 0x04) == 0x04) //Not starting a new operation?
 		{
-			if ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 4) //X count?
-			{
-				et34k(getActiveVGA())->W32_MMUregisters[1][0x98] = value; //X count low byte!
-			}
-			else //Y count?
-			{
-				et34k(getActiveVGA())->W32_MMUregisters[1][0x9A] = value; //Y count low byte!
-			}
-			//Start the operation from loading the registers!
-			//Manually update the X and Y count precalcs to have their proper values!
-			et34k(getActiveVGA())->W32_ACLregs.Xcount = (getTsengLE16(&et34k(getActiveVGA())->W32_MMUregisters[1][0x98]) & 0xFFF); //X count
-			et34k(getActiveVGA())->W32_ACLregs.Ycount = (getTsengLE16(&et34k(getActiveVGA())->W32_MMUregisters[1][0x9A]) & 0xFFF); //Y count
-			if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x36] & 0x04) == 0) //Transfer isn't active yet?
-			{
-				et34k(getActiveVGA())->W32_ACLregs.Xposition = et34k(getActiveVGA())->W32_ACLregs.Yposition = 0; //Initialize the position!
-			}
-		}
-		else //An operation is running? ignore the input!
-		{
+			//An operation is running? ignore the input!
 			goto handleQueueWaiting; //The write is ignored as if the queue was full until it's done!
 		}
 	}
 		
 	if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x36] & 0x04) == 0) //Transfer isn't active yet?
 	{
-		Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO()); //Screen-to-screen is unknown atm. Starting a transfer!
+		Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO()); //Starting a transfer!
 		Tseng4k_startAccelerator(); //Starting the accelerator!
-	}
-
-	if ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 2) //Address is multiplied by 8?
-	{
-		address <<= 3; //Multiply the address by 8!
 	}
 
 	et34k(getActiveVGA())->W32_MMUqueuefilled = 1; //The queue is now filled!
@@ -1844,13 +1821,7 @@ byte Tseng4k_blockQueueAccelerator()
 	{
 		return 1; //Always blocking the queue!
 	}
-	if (
-		((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 4) || //CPU data is used only once to start an operation?
-		((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 5) //CPU data is used only once to start an operation?
-		)
-	{
-		return 1; //Always blocking the queue!
-	}
+	//Cases 4 and 5 are always blocked because they keep W32_acceleratorleft set to 1 all the time after receiving their starting byte with the respective X and Y counts!
 	return 0; //Not blocking the queue from being processed (not ready yet)?
 }
 
@@ -1958,6 +1929,7 @@ byte et4k_stepx()
 //result: bit0=Set to have handled tick, bit1=Set to immediately check for termination on the same clock.
 byte Tseng4k_tickAccelerator_step(byte noqueue)
 {
+	uint_32 queueaddress;
 	byte destination,source,pattern,mixmap,ROP,result,operationx;
 	word ROPbits;
 	byte ROPmaskdestination[2] = {0x55,0xAA};
@@ -1992,6 +1964,7 @@ byte Tseng4k_tickAccelerator_step(byte noqueue)
 
 	if (et34k(getActiveVGA())->W32_acceleratorleft == 0) //Need to start a new block?
 	{
+		queueaddress = et34k(getActiveVGA())->W32_MMUqueueval_address; //What address was written to?
 		switch (et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) //What kind of operation is used?
 		{
 		case 0: //CPU data isn't used!
@@ -2005,14 +1978,26 @@ byte Tseng4k_tickAccelerator_step(byte noqueue)
 		case 2: //CPU data is mix data!
 			et34k(getActiveVGA())->W32_acceleratorleft = 8; //Processing 8 pixels!
 			et34k(getActiveVGA())->W32_ACLregs.latchedmixmap = et34k(getActiveVGA())->W32_MMUqueueval; //Latch the written value!
+			queueaddress <<= 3; //Multiply the address by 8!
 			break;
 		case 4: //CPU data is X count
-			//Only 1 pixel is processed!
-			et34k(getActiveVGA())->W32_acceleratorleft = 1; //Default: only processing 1!
-			break;
 		case 5: //CPU data is Y count
 			//Only 1 pixel is processed!
 			et34k(getActiveVGA())->W32_acceleratorleft = 1; //Default: only processing 1!
+			//CPU data is used only once to start an operation?
+			//Manually update the X and Y count precalcs to have their proper values!
+			if ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 4) //X count?
+			{
+				et34k(getActiveVGA())->W32_MMUregisters[1][0x98] = et34k(getActiveVGA())->W32_MMUqueueval; //X count low byte!
+				et34k(getActiveVGA())->W32_ACLregs.Xcount = (getTsengLE16(&et34k(getActiveVGA())->W32_MMUregisters[1][0x98]) & 0xFFF); //X count
+			}
+			else //Y count?
+			{
+				et34k(getActiveVGA())->W32_MMUregisters[1][0x9A] = et34k(getActiveVGA())->W32_MMUqueueval; //Y count low byte!
+				et34k(getActiveVGA())->W32_ACLregs.Ycount = (getTsengLE16(&et34k(getActiveVGA())->W32_MMUregisters[1][0x9A]) & 0xFFF); //Y count
+			}
+			//Start the operation from loading the registers!
+			et34k(getActiveVGA())->W32_ACLregs.Xposition = et34k(getActiveVGA())->W32_ACLregs.Yposition = 0; //Initialize the position!
 			break;
 		default: //Reserved
 			return 1|2; //Not handled yet! Terminate immediately on the same clock!
@@ -2024,7 +2009,7 @@ byte Tseng4k_tickAccelerator_step(byte noqueue)
 			((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 0x30) == 1) //Always reload destination address?
 			) //To load the destination address?
 		{
-			et34k(getActiveVGA())->W32_ACLregs.destinationaddress = et34k(getActiveVGA())->W32_MMUqueueval_address; //Load the destination address!
+			et34k(getActiveVGA())->W32_ACLregs.destinationaddress = queueaddress; //Load the destination address!
 		}
 		et34k(getActiveVGA())->W32_ACLregs.W32_newXYblock = 0; //Not a new block anymore!
 	}
