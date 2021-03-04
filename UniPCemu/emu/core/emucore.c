@@ -1101,6 +1101,7 @@ extern byte backgroundpolicy; //Background task policy. 0=Full halt of the appli
 extern byte lastHLTstatus; //Last halt status for debugger! 1=Was halting, 0=Not halting!
 
 extern byte debugger_is_logging; //Are we logging?
+extern byte MMU_waitstateactive; //Waitstate active?
 
 byte applysinglestep;
 byte applysinglestepBP;
@@ -1413,7 +1414,7 @@ OPTINLINE byte coreHandler()
 		}
 		else
 		{
-			instructiontime = ((CPU[activeCPU].executed)|(((BIU[activeCPU]._lock==2)|(BUSactive==2))&1))*CPU_speed_cycle; //Increase timing with the instruction time or bus lock in IPS clocking mode!
+			instructiontime = ((CPU[activeCPU].executed)|(((BIU[activeCPU]._lock==2)|(BUSactive==2)|(MMU_waitstateactive&1))&1))*CPU_speed_cycle; //Increase timing with the instruction time or bus lock/MMU waitstate timing in IPS clocking mode!
 		}
 
 		effectiveinstructiontime = MAX(effectiveinstructiontime,instructiontime); //Maximum CPU time passed!
