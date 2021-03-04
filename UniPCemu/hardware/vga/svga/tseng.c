@@ -1826,17 +1826,9 @@ byte Tseng4k_writeMMUaccelerator(byte area, uint_32 address, byte value)
 		address <<= 3; //Multiply the address by 8!
 	}
 
-	if (
-		((et34k(getActiveVGA())->W32_ACLregs.W32_newXYblock) && ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 0x30) == 0)) || //Load destination address during first write?
-		((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 0x30) == 1) //Always reload destination address?
-		) //To load the destination address?
-	{
-		et34k(getActiveVGA())->W32_ACLregs.destinationaddress = address; //Load the destination address!
-	}
-	et34k(getActiveVGA())->W32_ACLregs.W32_newXYblock = 0; //Not a new block anymore!
 	et34k(getActiveVGA())->W32_MMUqueuefilled = 1; //The queue is now filled!
-	et34k(getActiveVGA())->W32_MMUqueueval_offset = (address & 7); //What offset is filled!
-	et34k(getActiveVGA())->W32_MMUqueueval[et34k(getActiveVGA())->W32_MMUqueueval_offset] = value; //Fill the specific offset that's filled!
+	et34k(getActiveVGA())->W32_MMUqueueval_address = address; //What offset is filled!
+	et34k(getActiveVGA())->W32_MMUqueueval = value; //Fill the specific offset that's filled!
 	Tseng4k_status_queueFilled(); //The queue has been filled!
 	return 1; //Handled!
 }
@@ -2012,7 +2004,7 @@ byte Tseng4k_tickAccelerator_step(byte noqueue)
 			break;
 		case 2: //CPU data is mix data!
 			et34k(getActiveVGA())->W32_acceleratorleft = 8; //Processing 8 pixels!
-			et34k(getActiveVGA())->W32_ACLregs.latchedmixmap = et34k(getActiveVGA())->W32_MMUqueueval[et34k(getActiveVGA())->W32_MMUqueueval_offset]; //Latch the written value!
+			et34k(getActiveVGA())->W32_ACLregs.latchedmixmap = et34k(getActiveVGA())->W32_MMUqueueval; //Latch the written value!
 			break;
 		case 4: //CPU data is X count
 			//Only 1 pixel is processed!
@@ -2026,6 +2018,15 @@ byte Tseng4k_tickAccelerator_step(byte noqueue)
 			return 1|2; //Not handled yet! Terminate immediately on the same clock!
 			break;
 		}
+		//Since we're starting a new block processing, check for address updates!
+		if (
+			((et34k(getActiveVGA())->W32_ACLregs.W32_newXYblock) && ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 0x30) == 0)) || //Load destination address during first write?
+			((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 0x30) == 1) //Always reload destination address?
+			) //To load the destination address?
+		{
+			et34k(getActiveVGA())->W32_ACLregs.destinationaddress = et34k(getActiveVGA())->W32_MMUqueueval_address; //Load the destination address!
+		}
+		et34k(getActiveVGA())->W32_ACLregs.W32_newXYblock = 0; //Not a new block anymore!
 	}
 
 	//We're ready to start handling a pixel. Now, handle the pixel!
@@ -2041,7 +2042,7 @@ byte Tseng4k_tickAccelerator_step(byte noqueue)
 	}
 	else if ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7)==1) //Source is from CPU?
 	{
-		source = et34k(getActiveVGA())->W32_MMUqueueval[et34k(getActiveVGA())->W32_MMUqueueval_offset]; //Latch the written value!
+		source = et34k(getActiveVGA())->W32_MMUqueueval; //Latch the written value!
 	}
 
 	//Now, determine and apply the Raster Operation!

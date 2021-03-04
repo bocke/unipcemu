@@ -158,8 +158,8 @@ typedef struct {
 	byte W32_21xA_ImagePortControl; //Index F7 in both sprite and CRTCB modes. Bit 0=Enable the Image Port. Bit 1=Odd/even interlace transfers, Bit 7=Enable CRTCB window or hardware cursor(Sprite).
 	byte W32_MMUregisters[2][0x100]; //All W32 memory mapped registers! First is the queued registers(or non-queued). Second is the processing registers.
 	byte W32_MMUqueuefilled; //Is the queue filled?
-	byte W32_MMUqueueval[8]; //What value is stored inside the queue?
-	byte W32_MMUqueueval_offset; //What offset inside the queue is filled!
+	byte W32_MMUqueueval; //What value is stored inside the queue?
+	uint_32 W32_MMUqueueval_address; //What offset inside the queue is filled!
 	byte W32_acceleratorbusy; //Is the accelerator started up in a processing?
 	byte W32_acceleratorleft; //How many ticks are left to process!
 	ET4000_W32_ACL_PRECALCS W32_ACLregs; //ACL registers used during rendering
