@@ -565,7 +565,7 @@ byte Tseng34K_writeIO(word port, byte val)
 			{
 				et34kdata->et4k_segmentselectregisterenabled = 0; //We're stopping to respond to the Segment Select Register until the KEY is set again!
 				updateET34Ksegmentselectregister(0); //Make the segment select register inactive!
-				VGA_calcprecalcs(getActiveVGA(), WHEREUPDATED_CRTCONTROLLER | 0x36); //Update from the CRTC controller registers!
+				VGA_calcprecalcs(getActiveVGA(), WHEREUPDATED_INDEX|INDEX_BANKREGISTERS); //Update from the CRTC controller registers!
 			}
 		default:
 			//LOG(LOG_VGAMISC,LOG_NORMAL)("VGA:SEQ:ET4K:Write to illegal index %2X", reg);
@@ -680,7 +680,7 @@ byte Tseng34K_writeIO(word port, byte val)
 
 		//Apply correct memory banks!
 		updateET34Ksegmentselectregister(et34kdata->segmentselectregister); //Make the segment select register active!
-		VGA_calcprecalcs(getActiveVGA(),WHEREUPDATED_CRTCONTROLLER|0x36); //Update from the CRTC controller registers!
+		VGA_calcprecalcs(getActiveVGA(),WHEREUPDATED_INDEX | INDEX_BANKREGISTERS); //Update from the bank registers!
 		return 1;
 		break;
 	case 0x3CB: //Extended bank register (W32)?
@@ -689,7 +689,7 @@ byte Tseng34K_writeIO(word port, byte val)
 
 		//Apply correct memory banks!
 		updateET34Ksegmentselectregister(et34kdata->segmentselectregister); //Make the segment select register active!
-		VGA_calcprecalcs(getActiveVGA(), WHEREUPDATED_CRTCONTROLLER | 0x36); //Update from the CRTC controller registers!
+		VGA_calcprecalcs(getActiveVGA(), WHEREUPDATED_INDEX | INDEX_BANKREGISTERS); //Update from the bank registers!
 		return 1;
 		break;
 	case 0x3C0: //Attribute controller?
@@ -2592,6 +2592,7 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 
 	//Misc settings
 	if (CRTUpdated || (whereupdated == WHEREUPDATED_ALL) || (whereupdated == (WHEREUPDATED_CRTCONTROLLER | 0x36))
+		|| (whereupdated == (WHEREUPDATED_INDEX | INDEX_BANKREGISTERS)) //Bank registers?
 		|| (whereupdated == (WHEREUPDATED_CRTCONTROLLER | 0x30))
 		|| (whereupdated == (WHEREUPDATED_MEMORYMAPPED | 0x13)) //MMU control register
 		|| (whereupdated == (WHEREUPDATED_MEMORYMAPPED | 0x00)) //MMU aperture 0 register

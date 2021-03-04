@@ -60,6 +60,8 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 #define INDEX_DACWRITE 0x5
 #define INDEX_DACREAD 0x6
 #define INDEX_CRTCSPRITE 0x7
+//Not really an indexed register, but a single register:
+#define INDEX_BANKREGISTERS 0x8
 
 //Filter to get all above!
 //The area where it was updated:
