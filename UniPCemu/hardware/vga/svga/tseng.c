@@ -29,6 +29,7 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 #include "headers/hardware/vga/vga_vram.h" //Mapping support for different addressing modes!
 #include "headers/cpu/cpu.h" //NMI support!
 #include "headers/hardware/vga/vga_vramtext.h" //Extended text mode support!
+#include "headers/hardware/pic.h" //IRQ support!
 
 //Log unhandled (S)VGA accesses on the ET34k emulation?
 //#define LOG_UNHANDLED_SVGA_ACCESSES
@@ -1965,8 +1966,7 @@ byte et4k_stepx()
 //result: bit0=Set to have handled tick, bit1=Set to immediately check for termination on the same clock.
 byte Tseng4k_tickAccelerator_step(byte noqueue)
 {
-	byte destination,source,pattern,mixmap,ROP,result,operationx,ROPmask;
-	uint_32 destinationaddress;
+	byte destination,source,pattern,mixmap,ROP,result,operationx;
 	word ROPbits;
 	byte ROPmaskdestination[2] = {0x55,0xAA};
 	byte ROPmasksource[2] = {0x33,0xCC};
@@ -2033,7 +2033,6 @@ byte Tseng4k_tickAccelerator_step(byte noqueue)
 	source = et4k_readlinearVRAM(et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress + et34k(getActiveVGA())->W32_ACLregs.patternmap_x);
 	pattern = et4k_readlinearVRAM(et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress + et34k(getActiveVGA())->W32_ACLregs.sourcemap_x);
 	mixmap = 0xFF; //Assumed 1 if not provided by CPU!
-	operationx = et34k(getActiveVGA())->W32_ACLregs.Xposition; //TODO
 
 	//Apply CPU custom inputs!
 	if ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7)==2) //Mixmap from CPU?
@@ -2046,6 +2045,7 @@ byte Tseng4k_tickAccelerator_step(byte noqueue)
 	}
 
 	//Now, determine and apply the Raster Operation!
+	operationx = et34k(getActiveVGA())->W32_ACLregs.Xposition; //X position to work on!
 	operationx &= 7; //Wrap!
 	/*
 	if (et34k(getActiveVGA())->W32_ACLregs.XYdirection&1) //Negative X?
@@ -2053,7 +2053,7 @@ byte Tseng4k_tickAccelerator_step(byte noqueue)
 		operationx = 7-operationx; //Reversed order!
 	}
 	*/
-	ROP = et34k(getActiveVGA())->W32_ACLregs.BGFG_RasterOperation[((mixmap>>(operationx&7))&1)];
+	ROP = et34k(getActiveVGA())->W32_ACLregs.BGFG_RasterOperation[((mixmap>>operationx)&1)];
 	result = 0; //Initialize the result!
 	ROPbits = 0x01; //What bit to process!
 	for (;ROPbits<0x100;) //Check all bits!
@@ -2118,7 +2118,7 @@ void Tseng4k_tickAccelerator()
 			et34k(getActiveVGA())->W32_acceleratorbusy = 0; //Not busy anymore!
 		}
 	}
-	if (result = Tseng4k_tickAccelerator_step(1)) //No queue version of ticking the accelerator?
+	if ((result = Tseng4k_tickAccelerator_step(1))!=0) //No queue version of ticking the accelerator?
 	{
 		Tseng4k_encodeAcceleratorRegisters(); //Encode the registers, updating them for the CPU!
 		et34k(getActiveVGA())->W32_acceleratorbusy |= 1; //Become a busy accelerator!
@@ -2128,7 +2128,7 @@ void Tseng4k_tickAccelerator()
 		}
 	}
 	//TODO: Always process here when not requiring CPU input
-	else if (Tseng4k_blockQueueAccelerator(et34k(getActiveVGA())->W32_MMUqueuefilled)) //Not ready to process the queue yet?
+	else if (Tseng4k_blockQueueAccelerator()) //Not ready to process the queue yet?
 	{
 		return; //Not ready to process yet!
 	}
