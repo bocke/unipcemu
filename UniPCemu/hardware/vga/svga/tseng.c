@@ -2746,11 +2746,14 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 		#endif
 		if (CRTUpdated || (whereupdated == (WHEREUPDATED_SEQUENCER | 0x04))) //Need to update the VRAM limits itself instead of the wrapping?
 		{
-			VGA->precalcs.VRAM_limit = 0xFFFF; //Limit to 64K memory!
-		}
-		else
-		{
-			VGA->precalcs.VRAM_limit = 0; //Unlimited!
+			if (GETBITS(VGA->registers->SequencerRegisters.REGISTERS.SEQUENCERMEMORYMODEREGISTER,1,1)==0) //Extended memory bit not set?
+			{
+				VGA->precalcs.VRAM_limit = 0xFFFF; //Limit to 64K memory!
+			}
+			else
+			{
+				VGA->precalcs.VRAM_limit = 0; //Unlimited!
+			}
 		}
 		VGA->precalcs.VRAMmask = (VGA->VRAM_size - 1); //Don't limit VGA memory, wrap normally! Undocumented, but only affects multiple fonts in the font select register on the Tseng chipsets!
 		VGA->precalcs.VMemMask = VGA->precalcs.VRAMmask&et34kdata->memwrap; //Apply the SVGA memory wrap on top of the normal memory wrapping!
