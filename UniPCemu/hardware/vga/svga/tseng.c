@@ -1267,6 +1267,14 @@ void Tseng34k_init()
 			EMU_VGAROM[0x007a] = 'g';
 			EMU_VGAROM[0x007b] = ' ';
 
+			if ((getActiveVGA()->VRAM_size == 0x200000) && (getActiveVGA()->enable_SVGA == 1)) //ET4000 with 2MB VRAM?
+			{
+				if (et34k(getActiveVGA())->tsengExtensions) //W32 variant?
+				{
+					et34k(getActiveVGA())->store_et4k_3d4_32 |= 0x80; //VRAM is interleaved!
+				}
+			}
+
 			et34k(getActiveVGA())->extensionsEnabled = 0; //Disable the extensions by default!
 			et34k(getActiveVGA())->oldextensionsEnabled = 1; //Make sure the extensions are updated in status!
 			et34k(getActiveVGA())->et4k_segmentselectregisterenabled = 0; //Segment select register isn't enabled yet!
