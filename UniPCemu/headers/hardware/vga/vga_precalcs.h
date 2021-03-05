@@ -200,6 +200,7 @@ typedef struct //Contains the precalculated values!
 	uint_32 imageport_transferlength; //Transfer length for a scanline, in bytes!
 	uint_32 imageport_rowoffset; //Length of a transferred scanline in VRAM, in bytes!
 	byte imageport_interlace; //Enable interlacing of data in the image port!
+	byte disableVGAlegacymemoryaperture; //Disable the VGA legacy memory aperture?
 } VGA_PRECALCS; //VGA pre-calculations!
 
 typedef void (*VGA_calcprecalcsextensionhandler)(void *VGA, uint_32 whereupdated); //Calculate them!

@@ -179,6 +179,7 @@ OPTINLINE byte is_A000VRAM(uint_32 linearoffset) //In VRAM (for CPU), offset=rea
 		VGA_linearmemoryaddressed = 4; //Addressed!
 		return 1; //Special!
 	}
+	if (getActiveVGA()->precalcs.disableVGAlegacymemoryaperture) return 0; //Disable the legacy VRAM aperture?
 	return VGA_RAMEnable && (addr>=VGA_VRAM_START) && (addr<VGA_VRAM_END); //Used when VRAM is enabled and VRAM is addressed!
 }
 

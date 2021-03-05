@@ -2594,6 +2594,7 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 	if (CRTUpdated || (whereupdated == WHEREUPDATED_ALL) || (whereupdated == (WHEREUPDATED_CRTCONTROLLER | 0x36))
 		|| (whereupdated == (WHEREUPDATED_INDEX | INDEX_BANKREGISTERS)) //Bank registers?
 		|| (whereupdated == (WHEREUPDATED_CRTCONTROLLER | 0x30))
+		|| (whereupdated == (WHEREUPDATED_CRTCONTROLLER | 0x32)) //Interleaved check?
 		|| (whereupdated == (WHEREUPDATED_MEMORYMAPPED | 0x13)) //MMU control register
 		|| (whereupdated == (WHEREUPDATED_MEMORYMAPPED | 0x00)) //MMU aperture 0 register
 		|| (whereupdated == (WHEREUPDATED_MEMORYMAPPED | 0x04)) //MMU aperture 1 register
@@ -2610,6 +2611,7 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 		tempval = VGA->precalcs.linearmode; //Old val!
 		VGA->precalcs.MMU012_enabled = 0; //Default: disabled!
 		VGA->precalcs.MMUregs_enabled = 0; //Default: disabled!
+		VGA->precalcs.disableVGAlegacymemoryaperture = 0; //Enabling VGA memory access through the low aperture!
 
 		VGA->precalcs.MMU0_aperture = (getTsengLE24(&et34kdata->W32_MMUregisters[0][0x00]) & 0x3FFFFF); //Full 22-bit address
 		VGA->precalcs.MMU1_aperture = (getTsengLE24(&et34kdata->W32_MMUregisters[0][0x04]) & 0x3FFFFF); //Full 22-bit address
@@ -2678,6 +2680,7 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 			{
 				if ((VGA->enable_SVGA == 1) && et34k(VGA)->tsengExtensions) //W32 chip?
 				{
+					VGA->precalcs.disableVGAlegacymemoryaperture = 1; //Enforce disabling VGA memory access through the low aperture!
 					VGA_MemoryMapBankRead = 0; //No read bank!
 					VGA_MemoryMapBankWrite = 0; //No write bank!
 					VGA->precalcs.linearmode |= 2; //Linear mode, use high bits!
@@ -2712,7 +2715,11 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 			VGA_ReadMemoryMode = VGA->precalcs.ReadMemoryMode; //VGA compatibility mode!
 			VGA_WriteMemoryMode = VGA->precalcs.WriteMemoryMode; //VGA compatiblity mode!
 		}
-
+		et34k_tempreg = et4k_reg(et34kdata, 3d4, 32); //The RAS/CAS configuration register!
+		if ((et34k_tempreg&0x80) && (VGA->VRAM_size!=0x200000)) //Interleaved set without 2MB installed?
+		{
+			VGA->precalcs.disableVGAlegacymemoryaperture = 1; //Enforce disabling VGA memory access through the low aperture!
+		}
 		updateVGAMMUAddressMode(VGA); //Update the currently assigned memory mode for mapping memory by address!
 
 		newfontwidth = ((et34k_tempreg & 4) >> 2); //Are we to use 16-bit wide fonts?
