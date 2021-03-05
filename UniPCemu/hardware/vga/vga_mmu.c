@@ -715,7 +715,8 @@ byte VGAmemIO_rb(uint_32 offset)
 			{
 				//Calculate the linear offset using linear addresses, replace offset with the linear address to use(minus the starting address), converting between formats!
 				//Unknown how to handle interlacing?
-				offset = SAFEMOD(offset, getActiveVGA()->precalcs.imageport_transferlength) + (SAFEDIV(offset, getActiveVGA()->precalcs.imageport_transferlength) * getActiveVGA()->precalcs.imageport_rowoffset); //Convert between original lengths vs destination row length!
+				offset = SAFEMOD(offset, getActiveVGA()->precalcs.imageport_transferlength) + ((SAFEDIV(offset, getActiveVGA()->precalcs.imageport_transferlength) * getActiveVGA()->precalcs.imageport_rowoffset)<<getActiveVGA()->precalcs.imageport_interlace); //Convert between original lengths vs destination row length!
+				//IXOF input adds 1 scanline in VRAM during interlaced operation?
 				lineardecodeCPUaddressBanked(0, offset, &planes, &realoffset, getActiveVGA()->precalcs.imageport_startingaddress); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
 				goto readdatacurrentmode; //Apply the operation on read mode!
 			}
@@ -840,7 +841,8 @@ byte VGAmemIO_wb(uint_32 offset, byte value)
 			{
 				//Calculate the linear offset using linear addresses, replace offset with the linear address to use(minus the starting address), converting between formats!
 				//Unknown how to handle interlacing?
-				offset = SAFEMOD(offset, getActiveVGA()->precalcs.imageport_transferlength) + (SAFEDIV(offset, getActiveVGA()->precalcs.imageport_transferlength) * getActiveVGA()->precalcs.imageport_rowoffset); //Convert between original lengths vs destination row length!
+				offset = SAFEMOD(offset, getActiveVGA()->precalcs.imageport_transferlength) + ((SAFEDIV(offset, getActiveVGA()->precalcs.imageport_transferlength) * getActiveVGA()->precalcs.imageport_rowoffset)<<getActiveVGA()->precalcs.imageport_interlace); //Convert between original lengths vs destination row length!
+				//IXOF input adds 1 scanline in VRAM during interlaced operation?
 				lineardecodeCPUaddressBanked(1, offset, &planes, &realoffset, getActiveVGA()->precalcs.imageport_startingaddress); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
 				goto writedatacurrentmode; //Apply the operation on read mode!
 			}
