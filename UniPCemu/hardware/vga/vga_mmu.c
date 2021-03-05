@@ -26,6 +26,12 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 #include "headers/cpu/cpu.h" //Emulator cpu support for waitstates!
 #include "headers/hardware/vga/svga/tseng.h" //Tseng support!
 
+#ifndef IS_PSP
+#define LE32(x) SDL_SwapLE32(x)
+#else
+#define LE32(x) (x)
+#endif
+
 //#define ENABLE_SPECIALDEBUGGER
 
 byte VGA_linearmemoryaddressed = 0; //Is the linear memory window addressed? 0=Low VRAM, 1=Linear VRAM, 2=MMU 0-2, 3=External mapped registers, 4=Memory mapped registers
@@ -198,11 +204,11 @@ OPTINLINE uint_32 LogicalOperation(uint_32 input)
 	case 0x00:	/* None */
 		return input; //Unmodified
 	case 0x01:	/* AND */
-		return input & getActiveVGA()->registers->ExternalRegisters.DATALATCH.latch;
+		return input & LE32(getActiveVGA()->registers->ExternalRegisters.DATALATCH.latch);
 	case 0x02:	/* OR */
-		return input | getActiveVGA()->registers->ExternalRegisters.DATALATCH.latch;
+		return input | LE32(getActiveVGA()->registers->ExternalRegisters.DATALATCH.latch);
 	case 0x03:	/* XOR */
-		return input ^ getActiveVGA()->registers->ExternalRegisters.DATALATCH.latch;
+		return input ^ LE32(getActiveVGA()->registers->ExternalRegisters.DATALATCH.latch);
 	default:
 		break;
 	};
@@ -220,7 +226,7 @@ OPTINLINE uint_32 BitmaskOperation(uint_32 input, byte bitmaskregister)
 	inputdata &= mask; //Apply the mask to get the bits to turn on!
 	result |= inputdata; //Apply the bits to turn on to the result!
 	mask ^= 0xFFFFFFFF; //Flip the mask bits to get the bits to retrieve from the latch!
-	inputdata = getActiveVGA()->registers->ExternalRegisters.DATALATCH.latch; //Load the latch!
+	inputdata = LE32(getActiveVGA()->registers->ExternalRegisters.DATALATCH.latch); //Load the latch!
 	inputdata &= mask; //Apply the mask to get the bits to turn on!
 	result |= inputdata; //Apply the bits to turn on to the result!
 	return result; //Give the resulting value!
@@ -262,7 +268,7 @@ uint_32 VGA_WriteMode0(uint_32 data) //Read-Modify-Write operation!
 
 uint_32 VGA_WriteMode1(uint_32 data) //Video-to-video transfer
 {
-	return getActiveVGA()->registers->ExternalRegisters.DATALATCH.latch; //Use the latch!
+	return LE32(getActiveVGA()->registers->ExternalRegisters.DATALATCH.latch); //Use the latch!
 }
 
 uint_32 VGA_WriteMode2(uint_32 data) //Write color to all pixels in the source address byte of VRAM. Use Bit Mask Register.
@@ -316,7 +322,10 @@ OPTINLINE void VGA_WriteModeOperation(byte planes, uint_32 offset, byte val)
 
 OPTINLINE void loadlatch(uint_32 offset)
 {
-	getActiveVGA()->registers->ExternalRegisters.DATALATCH.latch = VGA_VRAMDIRECTPLANAR(getActiveVGA(),offset,readbank);
+	getActiveVGA()->registers->ExternalRegisters.DATALATCH.latchplane[3] = readVRAMplane(getActiveVGA(), 3, offset, readbank, 1); //Plane 3!
+	getActiveVGA()->registers->ExternalRegisters.DATALATCH.latchplane[2] = readVRAMplane(getActiveVGA(), 2, offset, readbank, 1); //Plane 2!
+	getActiveVGA()->registers->ExternalRegisters.DATALATCH.latchplane[1] = readVRAMplane(getActiveVGA(), 1, offset, readbank, 1); //Plane 1!
+	getActiveVGA()->registers->ExternalRegisters.DATALATCH.latchplane[0] = readVRAMplane(getActiveVGA(), 0, offset, readbank, 1); //Plane 0!
 	VGA_updateLatches(); //Update the latch data mirroring!
 }
 
@@ -342,7 +351,7 @@ byte VGA_ReadMode1(byte planes, uint_32 offset) //Read mode 1: Compare display m
 	byte dontcare;
 	uint_32 result;
 	dontcare = GETBITS(getActiveVGA()->registers->GraphicsRegisters.REGISTERS.COLORDONTCAREREGISTER,0,0xF); //Don't care bits!
-	result = (getActiveVGA()->registers->ExternalRegisters.DATALATCH.latch&getActiveVGA()->FillTable[dontcare])^(getActiveVGA()->FillTable[GETBITS(getActiveVGA()->registers->GraphicsRegisters.REGISTERS.COLORCOMPAREREGISTER,0,0xF)^dontcare]);
+	result = (LE32(getActiveVGA()->registers->ExternalRegisters.DATALATCH.latch)&getActiveVGA()->FillTable[dontcare])^(getActiveVGA()->FillTable[GETBITS(getActiveVGA()->registers->GraphicsRegisters.REGISTERS.COLORCOMPAREREGISTER,0,0xF)^dontcare]);
 	return (byte)(~(result|(result>>8)|(result>>16)|(result>>24))); //Give the value!
 }
 

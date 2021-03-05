@@ -266,7 +266,7 @@ typedef struct
 
 	union
 	{
-		uint_32 latch; //The full data latch!
+		uint_32 latch; //The full data latch! This is always stored as little endian!
 		byte latchplane[4]; //All 4 plane latches!
 	} DATALATCH;
 } EXTERNALREGS;
