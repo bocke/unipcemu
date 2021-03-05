@@ -192,7 +192,7 @@ byte loadVGADump(byte mode)
 	{
 		for (planaroffset=0;(int_64)planaroffset<(int_64)buffersizes[plane+6];++planaroffset) //All planar data!
 		{
-			writeVRAMplane(getActiveVGA(),plane,planaroffset,0,buffers[plane+6][planaroffset]); //Write the data to VRAM directly!
+			writeVRAMplane(getActiveVGA(),plane,planaroffset,0,buffers[plane+6][planaroffset],1); //Write the data to VRAM directly!
 		}
 	}
 

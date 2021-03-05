@@ -24,8 +24,8 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 #include "headers/types.h" //Basic types!
 #include "headers/hardware/vga/vga.h" //VGA basics!
 
-byte readVRAMplane(VGA_Type *VGA, byte plane, uint_32 offset, uint_32 bank); //Read from a VRAM plane!
-void writeVRAMplane(VGA_Type *VGA, byte plane, uint_32 offset, uint_32 bank, byte value); //Write to a VRAM plane!
+byte readVRAMplane(VGA_Type *VGA, byte plane, uint_32 offset, uint_32 bank, byte is_CPU); //Read from a VRAM plane!
+void writeVRAMplane(VGA_Type *VGA, byte plane, uint_32 offset, uint_32 bank, byte value, byte is_CPU); //Write to a VRAM plane!
 
 //Direct access to 32-bit VRAM planes!
 #define VGA_VRAMDIRECTPLANAR(VGA,vramlocation,bank) *((uint_32 *)((byte *)&VGA->VRAM[((vramlocation<<2)+bank)&VGA->precalcs.VMemMask]))

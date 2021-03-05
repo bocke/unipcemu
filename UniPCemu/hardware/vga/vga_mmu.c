@@ -307,7 +307,7 @@ OPTINLINE void VGA_WriteModeOperation(byte planes, uint_32 offset, byte val)
 	{
 		if (planeenable&curplanemask) //Modification of the plane?
 		{
-			writeVRAMplane(getActiveVGA(),curplane,offset,writebank,data&0xFF); //Write the plane from the data!
+			writeVRAMplane(getActiveVGA(),curplane,offset,writebank,data&0xFF,1); //Write the plane from the data!
 		}
 		data >>= 8; //Shift to the next plane!
 		curplanemask <<= 1; //Next plane!
@@ -330,7 +330,7 @@ byte VGA_ReadMode0(byte planes, uint_32 offset) //Read mode 0: Just read the nor
 	{
 		if (planes&1) //Read from this plane?
 		{
-			return readVRAMplane(getActiveVGA(), curplane, offset,readbank); //Read directly from vram using the selected plane!
+			return readVRAMplane(getActiveVGA(), curplane, offset,readbank,1); //Read directly from vram using the selected plane!
 		}
 		planes >>= 1; //Next plane!
 	} while (++curplane!=4);
