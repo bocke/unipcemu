@@ -225,12 +225,14 @@ VGA_Type *VGAalloc(uint_32 custom_vram_size, int update_bios, byte extension) //
 
 	switch (extension)
 	{
-		case 3: //EGA? We're starting in color mode!
+		case 1: //ET4000 compatible?
+		case 2: //ET3000?
+			//SVGA chips?
+			VGA->registers->SequencerRegisters.REGISTERS.SEQUENCERMEMORYMODEREGISTER |= 0x02; //Set by default: extended memory!
+		case 3: //EGA or SVGA? We're starting in color mode!
 			VGA->registers->ExternalRegisters.MISCOUTPUTREGISTER |= 0x22; //Default misc output set bits!
-			VGA->registers->SequencerRegisters.DATA[4] |= 2; //Set by default: dxtended memory!
 		case 0: //VGA?
-		case 1: //SVGA?
-		case 2: //SVGA?
+			VGA->registers->ExternalRegisters.MISCOUTPUTREGISTER |= 0x02; //Default misc output set bits: VRAM enabled!
 			VGA->registers->ExternalRegisters.MISCOUTPUTREGISTER |= 1; //We're starting in color mode always!
 			VGA->registers->VGA_enabled = 1; //Always enabled!
 			break;
