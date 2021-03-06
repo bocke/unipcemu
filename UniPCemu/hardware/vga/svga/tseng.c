@@ -1534,8 +1534,10 @@ void Tseng4k_decodeAcceleratorRegisters()
 	et34k(getActiveVGA())->W32_ACLregs.XYdirection = (et34k(getActiveVGA())->W32_MMUregisters[1][0x8F] & 3); //0=+1,+1; 1=-1,+1; 2=+1,-1; 3=-1,-1. Essentially bit 0=X direction, bit 1=Y direction. Set=Decreasing, Cleared=Increasing
 	et34k(getActiveVGA())->W32_ACLregs.Xpatternwrap = (et34k(getActiveVGA())->W32_MMUregisters[1][0x90] & 7); //Power of 2. more than 64 or less than 4 is none.
 	et34k(getActiveVGA())->W32_ACLregs.Ypatternwrap = ((et34k(getActiveVGA())->W32_MMUregisters[1][0x90] >> 4) & 7); //Power of 2. more than 8 is none.
+	et34k(getActiveVGA())->W32_ACLregs.patternwrap_bit6 = ((et34k(getActiveVGA())->W32_MMUregisters[1][0x90] >> 6) & 1); //Bit 6 only
 	et34k(getActiveVGA())->W32_ACLregs.Xsourcewrap = (et34k(getActiveVGA())->W32_MMUregisters[1][0x92] & 7); //See pattern wrap
 	et34k(getActiveVGA())->W32_ACLregs.Ysourcewrap = ((et34k(getActiveVGA())->W32_MMUregisters[1][0x92] >> 4) & 7); //See pattern wrap
+	et34k(getActiveVGA())->W32_ACLregs.sourcewrap_bit6 = ((et34k(getActiveVGA())->W32_MMUregisters[1][0x92] >> 6) & 1); //See pattern wrap
 	et34k(getActiveVGA())->W32_ACLregs.Xposition = (getTsengLE16(&et34k(getActiveVGA())->W32_MMUregisters[1][0x94]) & 0xFFF); //X position
 	et34k(getActiveVGA())->W32_ACLregs.Yposition = (getTsengLE16(&et34k(getActiveVGA())->W32_MMUregisters[1][0x96]) & 0xFFF); //Y position
 	et34k(getActiveVGA())->W32_ACLregs.Xcount = (getTsengLE16(&et34k(getActiveVGA())->W32_MMUregisters[1][0x98]) & 0xFFF); //X count
@@ -1561,6 +1563,25 @@ void Tseng4k_encodeAcceleratorRegisters()
 uint_32 Tseng4k_wrap_x[8] = { 0,0,3,7,0xF,0x1F,0x3F,~0 }; //X wrapping masks
 uint_32 Tseng4k_wrap_y[8] = { 1,2,4,8,~0,~0,~0,~0 }; //Y wrapping masks
 
+void Tseng4k_calcPatternSourceXY(uint_32* patternsourcex, uint_32* patternsourcex_backup, uint_32* patternsourcey, uint_32 *patternsourceaddress, uint_32 *patternsourceaddress_backup, uint_32 patternsourcewrapx, uint_32 patternsourcewrapy,  byte patternsourcewrapbit6)
+{
+	*patternsourcex = *patternsourcey = 0; //Init!
+	//Handle horizontal first!
+	if (patternsourcewrapx) //Wrapping horizontally?
+	{
+		*patternsourcex = *patternsourceaddress & patternsourcewrapx;
+		*patternsourceaddress &= ~patternsourcewrapx; //Wrap!
+	}
+	*patternsourceaddress_backup = *patternsourceaddress;
+	//Now, handle vertical wrap!
+	if (!patternsourcewrapbit6) //Bit 6 not set?
+	{
+		*patternsourcey = (*patternsourceaddress / (patternsourcewrapx + 1)) & (patternsourcewrapy - 1);
+		*patternsourceaddress_backup &= ~(((patternsourcewrapx + 1) * patternsourcewrapy) - 1);
+	}
+	*patternsourcex_backup = *patternsourcex;
+}
+
 void Tseng4k_startAccelerator()
 {
 	int_64 horizontalwrappings,horizontalsize;
@@ -1583,53 +1604,26 @@ void Tseng4k_startAccelerator()
 	et34k(getActiveVGA())->W32_ACLregs.sourcewrap_y = Tseng4k_wrap_x[et34k(getActiveVGA())->W32_ACLregs.Ysourcewrap]; //What horizontal wrapping to use!
 	//Perform wrapping of the inputs!
 	//First, wrap pattern!
-	et34k(getActiveVGA())->W32_ACLregs.patternmap_x = et34k(getActiveVGA())->W32_ACLregs.Xposition; //Don't wrap our idea of X!
-	et34k(getActiveVGA())->W32_ACLregs.patternmap_y = et34k(getActiveVGA())->W32_ACLregs.Yposition; //Don't wrap our idea of Y!
-	horizontalwrappings = 0; //Default: nothing is horizontally wrapped!
-	horizontalsize = (et34k(getActiveVGA())->W32_ACLregs.patternYoffset + 1); //How large is the horizontal row?
-	if (et34k(getActiveVGA())->W32_ACLregs.patternwrap_x!=(uint_32)~0) //X wrapping?
-	{
-		horizontalwrappings = (int_64)(et34k(getActiveVGA())->W32_ACLregs.Xposition / (et34k(getActiveVGA())->W32_ACLregs.patternwrap_x + 1)); //How many times is X wrapped?
-		et34k(getActiveVGA())->W32_ACLregs.patternmap_x = et34k(getActiveVGA())->W32_ACLregs.Xposition & et34k(getActiveVGA())->W32_ACLregs.patternwrap_x; //Wrap our idea of X!
-	}
-	et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress -= horizontalwrappings * (et34k(getActiveVGA())->W32_ACLregs.patternYoffset + 1); //How many times is X wrapped, adding to Y at the address level?
-	if (et34k(getActiveVGA())->W32_ACLregs.patternwrap_y!=(uint_32)~0) //Y wrapping?
-	{
-		horizontalwrappings -= (int_64)((et34k(getActiveVGA())->W32_ACLregs.patternmap_y / (et34k(getActiveVGA())->W32_ACLregs.patternwrap_y + 1)) * (et34k(getActiveVGA())->W32_ACLregs.patternwrap_y + 1)); //How much is wrapped in the Y coordinate!
-		et34k(getActiveVGA())->W32_ACLregs.patternmap_y = et34k(getActiveVGA())->W32_ACLregs.patternmap_y & et34k(getActiveVGA())->W32_ACLregs.patternwrap_y; //Wrap to our idea of Y!
-	}
-	else
-	{
-		horizontalwrappings = 0; //Nothing to wrap!
-	}
-	et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress -= horizontalwrappings * (et34k(getActiveVGA())->W32_ACLregs.patternYoffset + 1); //How many times is X wrapped, adding to Y at the address level?
 	//Next, wrap source!
-	et34k(getActiveVGA())->W32_ACLregs.sourcemap_x = et34k(getActiveVGA())->W32_ACLregs.Xposition; //Don't wrap our idea of X!
-	et34k(getActiveVGA())->W32_ACLregs.sourcemap_y = et34k(getActiveVGA())->W32_ACLregs.Yposition; //Don't wrap our idea of Y!
-	horizontalwrappings = 0; //Default: nothing is horizontally wrapped!
-	horizontalsize = (et34k(getActiveVGA())->W32_ACLregs.sourceYoffset + 1); //How large is the horizontal row?
-	if (et34k(getActiveVGA())->W32_ACLregs.sourcewrap_x != (uint_32)~0) //X wrapping?
-	{
-		horizontalwrappings = (int_64)(et34k(getActiveVGA())->W32_ACLregs.Xposition / (et34k(getActiveVGA())->W32_ACLregs.sourcewrap_x + 1)); //How many times is X wrapped?
-		et34k(getActiveVGA())->W32_ACLregs.sourcemap_x = et34k(getActiveVGA())->W32_ACLregs.Xposition & et34k(getActiveVGA())->W32_ACLregs.sourcewrap_x; //Wrap our idea of X!
-	}
-	et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress -= horizontalwrappings * (et34k(getActiveVGA())->W32_ACLregs.sourceYoffset + 1); //How many times is X wrapped, adding to Y at the address level?
-	if (et34k(getActiveVGA())->W32_ACLregs.sourcewrap_y != (uint_32)~0) //Y wrapping?
-	{
-		horizontalwrappings -= (int_64)((et34k(getActiveVGA())->W32_ACLregs.sourcemap_y / (et34k(getActiveVGA())->W32_ACLregs.sourcewrap_y + 1)) * (et34k(getActiveVGA())->W32_ACLregs.sourcewrap_y + 1)); //How much is wrapped in the Y coordinate!
-		et34k(getActiveVGA())->W32_ACLregs.sourcemap_y = et34k(getActiveVGA())->W32_ACLregs.sourcemap_y & et34k(getActiveVGA())->W32_ACLregs.sourcewrap_y; //Wrap to our idea of Y!
-	}
-	else
-	{
-		horizontalwrappings = 0; //Nothing to wrap!
-	}
-	et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress -= horizontalwrappings * (et34k(getActiveVGA())->W32_ACLregs.sourceYoffset + 1); //How many times is X wrapped, adding to Y at the address level?
-
+	Tseng4k_calcPatternSourceXY(&et34k(getActiveVGA())->W32_ACLregs.patternmap_x,
+		&et34k(getActiveVGA())->W32_ACLregs.patternmap_x_backup,
+		&et34k(getActiveVGA())->W32_ACLregs.patternmap_y,
+		&et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress,
+		&et34k(getActiveVGA())->W32_ACLregs.patternmapaddress_backup,
+		et34k(getActiveVGA())->W32_ACLregs.patternwrap_x,
+		et34k(getActiveVGA())->W32_ACLregs.patternwrap_y,
+		et34k(getActiveVGA())->W32_ACLregs.patternwrap_bit6 //Unsupported paramter on the ET4000/W32?
+		);
+	Tseng4k_calcPatternSourceXY(&et34k(getActiveVGA())->W32_ACLregs.sourcemap_x,
+		&et34k(getActiveVGA())->W32_ACLregs.sourcemap_x_backup,
+		&et34k(getActiveVGA())->W32_ACLregs.sourcemap_y,
+		&et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress,
+		&et34k(getActiveVGA())->W32_ACLregs.sourcemapaddress_backup,
+		et34k(getActiveVGA())->W32_ACLregs.sourcewrap_x,
+		et34k(getActiveVGA())->W32_ACLregs.sourcewrap_y,
+		et34k(getActiveVGA())->W32_ACLregs.sourcewrap_bit6 //Unsupported paramter on the ET4000/W32?
+	);
 	//Backup the original values before starting!
-	et34k(getActiveVGA())->W32_ACLregs.patternmap_x_backup = et34k(getActiveVGA())->W32_ACLregs.patternmap_x; //Backup!
-	et34k(getActiveVGA())->W32_ACLregs.sourcemap_x_backup = et34k(getActiveVGA())->W32_ACLregs.sourcemap_x; //Backup!
-	et34k(getActiveVGA())->W32_ACLregs.patternmapaddress_backup = et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress; //Backup!
-	et34k(getActiveVGA())->W32_ACLregs.sourcemapaddress_backup = et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress; //Backup!
 	et34k(getActiveVGA())->W32_ACLregs.destinationaddress_backup = et34k(getActiveVGA())->W32_ACLregs.destinationaddress; //Backup!
 	if ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 0) //No CPU version?
 	{
@@ -1851,6 +1845,26 @@ void et4k_writelinearVRAM(uint_32 addr, byte value)
 	writeVRAMplane(getActiveVGA(),(addr&3),(addr>>2),0,value,0); //Write VRAM!
 }
 
+void et4k_dowrappatternsourceyinc(uint_32 *patternsourcey, uint_32 *patternsourceaddress, byte patternsourcewrapbit6, uint_32 patternsourceaddress_backup, uint_32 patternsourcewrapy, uint_32 patternsourcewrapx)
+{
+	++*patternsourcey;
+	if (*patternsourcey == patternsourcewrapy)
+	{
+		*patternsourcey = 0;
+		*patternsourceaddress = patternsourceaddress_backup;
+	}
+}
+
+void et4k_dowrappatternsourceydec(uint_32* patternsourcey, uint_32* patternsourceaddress, byte patternsourcewrapbit6, uint_32 patternsourceaddress_backup, uint_32 patternsourcewrapy, uint_32 patternsourcewrapx)
+{
+	--*patternsourcey;
+	if ((*patternsourcey == (uint_32)(~0)) && !patternsourcewrapbit6)
+	{
+		*patternsourcey = patternsourcewrapy - 1;
+		*patternsourceaddress = patternsourceaddress_backup + (patternsourcewrapx * (patternsourcewrapy - 1));
+	}
+}
+
 byte et4k_stepy()
 {
 	++et34k(getActiveVGA())->W32_ACLregs.Yposition;
@@ -1860,42 +1874,44 @@ byte et4k_stepy()
 		et34k(getActiveVGA())->W32_ACLregs.destinationaddress -= et34k(getActiveVGA())->W32_ACLregs.destinationYoffset + 1; //Next address!
 		et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress -= et34k(getActiveVGA())->W32_ACLregs.patternYoffset + 1; //Next address!
 		et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress -= et34k(getActiveVGA())->W32_ACLregs.sourceYoffset + 1; //Next address!
-		--et34k(getActiveVGA())->W32_ACLregs.patternmap_y;
-		if (et34k(getActiveVGA())->W32_ACLregs.patternmap_y == ((uint_32)~0)) //Overflow?
-		{
-			if (et34k(getActiveVGA())->W32_ACLregs.patternwrap_y != (uint_32)~0) //Wrapping Y?
-			{
-				et34k(getActiveVGA())->W32_ACLregs.patternmap_y = et34k(getActiveVGA())->W32_ACLregs.patternwrap_y; //Returning to the bottom!
-				et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress += ((et34k(getActiveVGA())->W32_ACLregs.patternYoffset + 1) * (((uint_64)et34k(getActiveVGA())->W32_ACLregs.patternwrap_y) + 1)); //Apply Y address wrap!
-			}
-		}
-		--et34k(getActiveVGA())->W32_ACLregs.sourcemap_y;
-		if (et34k(getActiveVGA())->W32_ACLregs.sourcemap_y == ((uint_32)~0)) //Overflow?
-		{
-			if (et34k(getActiveVGA())->W32_ACLregs.sourcewrap_y != (uint_32)~0) //Wrapping Y?
-			{
-				et34k(getActiveVGA())->W32_ACLregs.sourcemap_y = et34k(getActiveVGA())->W32_ACLregs.sourcewrap_y; //Returning to the bottom!
-				et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress += ((et34k(getActiveVGA())->W32_ACLregs.sourceYoffset + 1) * (((uint_64)et34k(getActiveVGA())->W32_ACLregs.sourcewrap_y) + 1)); //Apply Y address wrap!
-			}
-		}
+		et4k_dowrappatternsourceydec(
+			&et34k(getActiveVGA())->W32_ACLregs.patternmap_y,
+			&et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress,
+			et34k(getActiveVGA())->W32_ACLregs.patternwrap_bit6,
+			et34k(getActiveVGA())->W32_ACLregs.patternmapaddress_backup,
+			et34k(getActiveVGA())->W32_ACLregs.patternwrap_y,
+			et34k(getActiveVGA())->W32_ACLregs.patternwrap_x
+		);
+		et4k_dowrappatternsourceydec(
+			&et34k(getActiveVGA())->W32_ACLregs.sourcemap_y,
+			&et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress,
+			et34k(getActiveVGA())->W32_ACLregs.sourcewrap_bit6,
+			et34k(getActiveVGA())->W32_ACLregs.sourcemapaddress_backup,
+			et34k(getActiveVGA())->W32_ACLregs.sourcewrap_y,
+			et34k(getActiveVGA())->W32_ACLregs.sourcewrap_x
+		);
 	}
 	else //Positive Y?
 	{
 		et34k(getActiveVGA())->W32_ACLregs.destinationaddress += et34k(getActiveVGA())->W32_ACLregs.destinationYoffset + 1; //Next address!
 		et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress += et34k(getActiveVGA())->W32_ACLregs.patternYoffset + 1; //Next address!
 		et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress += et34k(getActiveVGA())->W32_ACLregs.sourceYoffset + 1; //Next address!
-		++et34k(getActiveVGA())->W32_ACLregs.patternmap_y;
-		if ((uint_64)et34k(getActiveVGA())->W32_ACLregs.patternmap_y > (uint_64)et34k(getActiveVGA())->W32_ACLregs.patternwrap_y) //Wrapping point reached?
-		{
-			et34k(getActiveVGA())->W32_ACLregs.patternmap_y = 0; //Reset!
-			et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress -= (et34k(getActiveVGA())->W32_ACLregs.patternYoffset + 1) * (et34k(getActiveVGA())->W32_ACLregs.patternwrap_y + 1); //Go back to the backup address!
-		}
-		++et34k(getActiveVGA())->W32_ACLregs.sourcemap_y;
-		if ((uint_64)et34k(getActiveVGA())->W32_ACLregs.sourcemap_y > (uint_64)et34k(getActiveVGA())->W32_ACLregs.sourcewrap_y) //Wrapping point reached?
-		{
-			et34k(getActiveVGA())->W32_ACLregs.sourcemap_y = 0; //Reset!
-			et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress -= (et34k(getActiveVGA())->W32_ACLregs.sourceYoffset + 1) * (et34k(getActiveVGA())->W32_ACLregs.sourcewrap_y + 1); //Go back to the backup address!
-		}
+		et4k_dowrappatternsourceyinc(
+			&et34k(getActiveVGA())->W32_ACLregs.patternmap_y,
+			&et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress,
+			et34k(getActiveVGA())->W32_ACLregs.patternwrap_bit6,
+			et34k(getActiveVGA())->W32_ACLregs.patternmapaddress_backup,
+			et34k(getActiveVGA())->W32_ACLregs.patternwrap_y,
+			et34k(getActiveVGA())->W32_ACLregs.patternwrap_x
+		);
+		et4k_dowrappatternsourceyinc(
+			&et34k(getActiveVGA())->W32_ACLregs.sourcemap_y,
+			&et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress,
+			et34k(getActiveVGA())->W32_ACLregs.sourcewrap_bit6,
+			et34k(getActiveVGA())->W32_ACLregs.sourcemapaddress_backup,
+			et34k(getActiveVGA())->W32_ACLregs.sourcewrap_y,
+			et34k(getActiveVGA())->W32_ACLregs.sourcewrap_x
+		);
 	}
 	et34k(getActiveVGA())->W32_ACLregs.destinationaddress_backup = et34k(getActiveVGA())->W32_ACLregs.destinationaddress; //Save the new line on the destination address to jump back to!
 	if (et34k(getActiveVGA())->W32_ACLregs.Yposition>et34k(getActiveVGA())->W32_ACLregs.Ycount)

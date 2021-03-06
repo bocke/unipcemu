@@ -35,8 +35,10 @@ typedef struct
 	byte XYdirection; //0=+1,+1; 1=-1,+1; 2=+1,-1; 3=-1,-1. Essentially bit 0=X direction, bit 1=Y direction. Set=Decreasing, Cleared=Increasing
 	byte Xpatternwrap; //Power of 2. more than 64 or less than 4 is none.
 	byte Ypatternwrap; //Power of 2. more than 8 is none.
+	byte patternwrap_bit6; //Bit 6 as used?
 	byte Xsourcewrap; //See pattern wrap
 	byte Ysourcewrap; //See pattern wrap
+	byte sourcewrap_bit6; //Bit 6 as used?
 	uint_32 Xposition;
 	uint_32 Yposition;
 	uint_32 Xcount;
