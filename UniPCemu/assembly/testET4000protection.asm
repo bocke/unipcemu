@@ -41,13 +41,13 @@ call near ET4000_clearKEY ; Clear the KEY!
 
 ; Display results
 and dx,0xff ; Only the lower 8 bits are used!
-mov dl,originalvaluereadwithoutkey ; What to display!
+mov dl,[originalvaluereadwithoutkey] ; What to display!
 call near printhex08
-mov dl,originalvaluereadwithkey ; What to display!
+mov dl,[originalvaluereadwithkey] ; What to display!
 call near printhex08
-mov dl,valuewrittenwithkeyenabled ; What to display!
+mov dl,[valuewrittenwithkeyenabled] ; What to display!
 call near printhex08
-mov dl,valuereadwithkeydisabledandbitsflipped ; What to display!
+mov dl,[valuereadwithkeydisabledandbitsflipped] ; What to display!
 call near printhex08
 
 ; Finish up the ET4000!
@@ -170,7 +170,7 @@ pop ax
 ret
 
 ; uninitialized data
-originalvaluereadwithoutkey db (0)
-originalvaluereadwithkey db (0)
-valuewrittenwithkeyenabled db (0)
-valuereadwithkeydisabledandbitsflipped db (0)
+originalvaluereadwithoutkey db 0
+originalvaluereadwithkey db 0
+valuewrittenwithkeyenabled db 0
+valuereadwithkeydisabledandbitsflipped db 0
