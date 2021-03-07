@@ -455,7 +455,7 @@ byte Tseng34K_writeIO(word port, byte val)
 			*/ //Disable probing like this!
 				
 			et34kdata->store_et4k_3d4_37 = val;
-			et34k(getActiveVGA())->memwrap = memsize; //What to wrap against!
+			//et34k(getActiveVGA())->memwrap = memsize; //What to wrap against!
 			VGA_calcprecalcs(getActiveVGA(),WHEREUPDATED_CRTCONTROLLER|0x37); //Update all precalcs!
 			return 1;
 			break;
@@ -1256,7 +1256,8 @@ void Tseng34k_init()
 				}
 			}
 			et4k_reg(et34k(getActiveVGA()),3d4,37) = et34k(getActiveVGA())->et4k_reg37_init = regval; //Apply the best register value describing our memory!
-			et34k(getActiveVGA())->memwrap = et34k(getActiveVGA())->memwrap_init = (lastmemsize-1); //The memory size used!
+			//et34k(getActiveVGA())->memwrap = et34k(getActiveVGA())->memwrap_init = (lastmemsize-1); //The memory size used!
+			et34k(getActiveVGA())->memwrap = et34k(getActiveVGA())->memwrap_init = ~0; //Don't wrap any further!
 
 			// Tseng ROM signature
 			EMU_VGAROM[0x0075] = ' ';
