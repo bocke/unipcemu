@@ -1552,8 +1552,8 @@ void Tseng4k_decodeAcceleratorRegisters()
 void Tseng4k_encodeAcceleratorRegisters()
 {
 	//TODO: Save and encode all changable accelerator registers that can be modified into the accelerator registers for the CPU to read.
-	setTsengLE24(&et34k(getActiveVGA())->W32_MMUregisters[1][0x80], (et34k(getActiveVGA())->W32_ACLregs.patternmapaddress & 0x3FFFFF)); //Internal Pattern address
-	setTsengLE24(&et34k(getActiveVGA())->W32_MMUregisters[1][0x84], (et34k(getActiveVGA())->W32_ACLregs.sourcemapaddress & 0x3FFFFF)); //Internal Source address
+	//setTsengLE24(&et34k(getActiveVGA())->W32_MMUregisters[1][0x80], (et34k(getActiveVGA())->W32_ACLregs.patternmapaddress & 0x3FFFFF)); //Internal Pattern address
+	//setTsengLE24(&et34k(getActiveVGA())->W32_MMUregisters[1][0x84], (et34k(getActiveVGA())->W32_ACLregs.sourcemapaddress & 0x3FFFFF)); //Internal Source address
 	setTsengLE24(&et34k(getActiveVGA())->W32_MMUregisters[1][0xA4], (et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress & 0x3FFFFF)); //Internal Pattern address
 	setTsengLE24(&et34k(getActiveVGA())->W32_MMUregisters[1][0xA8], (et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress & 0x3FFFFF)); //Internal Source address
 	setTsengLE16(&et34k(getActiveVGA())->W32_MMUregisters[1][0x94], (et34k(getActiveVGA())->W32_ACLregs.Xposition) & 0xFFF); //X position
