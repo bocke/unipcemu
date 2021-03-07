@@ -1861,7 +1861,7 @@ void et4k_dowrappatternsourceydec(uint_32* patternsourcey, uint_32* patternsourc
 	if ((*patternsourcey == (uint_32)(~0)) && (!patternsourcewrapbit6))
 	{
 		*patternsourcey = patternsourcewrapy - 1;
-		*patternsourceaddress = patternsourceaddress_backup + (patternsourcewrapx * (patternsourcewrapy - 1));
+		*patternsourceaddress = patternsourceaddress_backup + ((patternsourcewrapx+1) * (patternsourcewrapy - 1));
 	}
 }
 
