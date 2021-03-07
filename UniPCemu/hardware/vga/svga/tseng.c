@@ -1599,9 +1599,9 @@ void Tseng4k_startAccelerator()
 	}
 	//Perform what wrapping?
 	et34k(getActiveVGA())->W32_ACLregs.patternwrap_x = Tseng4k_wrap_x[et34k(getActiveVGA())->W32_ACLregs.Xpatternwrap]; //What horizontal wrapping to use!
-	et34k(getActiveVGA())->W32_ACLregs.patternwrap_y = Tseng4k_wrap_x[et34k(getActiveVGA())->W32_ACLregs.Ypatternwrap]; //What horizontal wrapping to use!
+	et34k(getActiveVGA())->W32_ACLregs.patternwrap_y = Tseng4k_wrap_y[et34k(getActiveVGA())->W32_ACLregs.Ypatternwrap]; //What horizontal wrapping to use!
 	et34k(getActiveVGA())->W32_ACLregs.sourcewrap_x = Tseng4k_wrap_x[et34k(getActiveVGA())->W32_ACLregs.Xsourcewrap]; //What horizontal wrapping to use!
-	et34k(getActiveVGA())->W32_ACLregs.sourcewrap_y = Tseng4k_wrap_x[et34k(getActiveVGA())->W32_ACLregs.Ysourcewrap]; //What horizontal wrapping to use!
+	et34k(getActiveVGA())->W32_ACLregs.sourcewrap_y = Tseng4k_wrap_y[et34k(getActiveVGA())->W32_ACLregs.Ysourcewrap]; //What horizontal wrapping to use!
 	//Perform wrapping of the inputs!
 	//First, wrap pattern!
 	//Next, wrap source!
