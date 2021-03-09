@@ -1585,7 +1585,6 @@ void Tseng4k_calcPatternSourceXY(uint_32* patternsourcex, uint_32* patternsource
 
 void Tseng4k_startAccelerator()
 {
-	int_64 horizontalwrappings,horizontalsize;
 	//Start the accelerator's function.
 	//Load all internal precalcs required and initialize all local required CPU-readonly variables.
 	Tseng4k_decodeAcceleratorRegisters(); //Load all registers into the accelerator's precalcs!
