@@ -3196,6 +3196,27 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 		VGA->precalcs.imageport_interlace = ((et34k(getActiveVGA())->W32_21xA_shadowRegisters[0xF7 - 0xE0]&2)>>1); //Transfer length for a scanline, in bytes!
 	}
 
+	//TODO: CRTCB/Sprite modes!
+	if ((whereupdated == WHEREUPDATED_ALL)
+		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xEF)) //CRTC/Sprite select updated?
+		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xE0)) //Horizontal pixel position low?
+		|| (whereupdated == (WGHERUPDATED_CRTCSPRITE | 0xE1)) //Horizontal pixel position high?
+		)
+	{
+		if (et34kdata->W32_21xA_CRTCBSpriteControl & 1) //CRTCB function?
+		{
+		}
+		else //Sprite function?
+		{
+		}
+	}
+
+	if ((whereupdated == WHEREUPDATED_ALL)
+		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xEF)) //CRTC/Sprite select updated?
+	{
+		//Sprite function enable/disable?
+	}
+
 	if (updateCRTC) //Update CRTC?
 	{
 		VGA_calcprecalcs_CRTC(VGA); //Update the CRTC timing data!
