@@ -202,6 +202,15 @@ typedef struct //Contains the precalculated values!
 	byte imageport_interlace; //Enable interlacing of data in the image port!
 	byte disableVGAlegacymemoryaperture; //Disable the VGA legacy memory aperture?
 	uint_32 VRAM_limit; //Limited if non-zero!
+	//CRTC/Sprite precalcs
+	byte SpriteCRTCEnabled; //Is the sprite/crtc window enabled? 0=Disabled, 1=Sprite, 2=CRTC
+	word SpriteCRTChorizontaldisplaydelay; //Horizontal delay in clocks until the horizontal window starts!
+	word SpriteCRTChorizontaldisplaypreset; //How many pixels to skip once display starts
+	word SpriteCRTChorizontalwindowwidth; //The size of the horizontal window
+	word SpriteCRTCverticaldisplaydelay; //Horizontal delay in clocks until the horizontal window starts!
+	word SpriteCRTCverticaldisplaypreset; //How many pixels to skip once display starts
+	word SpriteCRTCverticalwindowwidth; //The size of the horizontal window
+	byte SpriteCRTCpixeldepth; //The pixel depth for CRTC mode
 } VGA_PRECALCS; //VGA pre-calculations!
 
 typedef void (*VGA_calcprecalcsextensionhandler)(void *VGA, uint_32 whereupdated); //Calculate them!

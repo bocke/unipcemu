@@ -372,6 +372,7 @@ OPTINLINE uint_32 addresswrap(VGA_Type *VGA, uint_32 memoryaddress) //Wraps memo
 }
 
 VGA_AttributeInfo currentattributeinfo; //Our current collected attribute info!
+VGA_AttributeInfo overrideattributeinfo; //Our current collected attribute info!
 uint_32 currentvramlocation;
 
 OPTINLINE void VGA_loadcharacterplanes(VGA_Type *VGA, SEQ_DATA *Sequencer) //Load the planes!
@@ -662,6 +663,9 @@ void VGA_VTotal(SEQ_DATA *Sequencer, VGA_Type *VGA)
 	Sequencer->frame_characterheight = VGA->precalcs.characterheight; //The character height to compare to when checking for validity of the preset row scan!
 	Sequencer->startmap = Sequencer->frame_startmap; //Restart the frame with the selected start map!
 	VGA_Sequencer_updateRow(VGA, Sequencer,1); //Scanline has been changed!
+
+	//Clear horizontal Sprite/CRTC status!
+	Sequencer->SpriteCRTCylatched = Sequencer->SpriteCRTCxlatched = 1; //Waiting for X&Y to latch!
 }
 
 void VGA_HTotal(SEQ_DATA *Sequencer, VGA_Type *VGA)
@@ -676,6 +680,9 @@ void VGA_HTotal(SEQ_DATA *Sequencer, VGA_Type *VGA)
 	Sequencer->currentpixelclock = 0; //Reset the pixel clock we're dividing!
 	++Sequencer->Scanline; //Next scanline to process!
 	VGA_Sequencer_updateRow(VGA, Sequencer,0); //Scanline has been changed!
+
+	//Clear horizontal Sprite/CRTC status!
+	Sequencer->SpriteCRTCxlatched = 1; //Waiting for X to latch!
 }
 
 //Retrace handlers!
@@ -759,9 +766,21 @@ OPTINLINE void video_updateLightPen(VGA_Type *VGA, byte drawnto)
 	lightpenhandler(lightpen_currentvramlocation,lightpen_triggered,lightpen_pressed); //Check for anything requiring the lightpen on the device!
 }
 
+byte VGA_handleSpriteCRTCwindow(VGA_Type* VGA, SEQ_DATA* Sequencer, VGA_AttributeInfo* attributeinfo)
+{
+	return 0; //Not the CRTC window!
+}
+
+byte VGA_overrideoutputs; //Ignoring the inputs from the VGA?
+
 //Blank handler!
 void VGA_Blank_Activedisplay_VGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_AttributeInfo *attributeinfo)
 {
+	VGA_overrideoutputs = 0; //Default: overriding nothing!
+	if (VGA_handleSpriteCRTCwindow(VGA, Sequencer, attributeinfo)) //Handle the Sprite/CRTC window overlay!
+	{
+		VGA_overrideoutputs = 1; //Handle it!
+	}
 	if (hretrace) return; //Don't handle during horizontal retraces or top screen rendering!
 
 	if ((VGA->precalcs.effectiveDACmode & 4) == 4) //Not latching in 1 raising&lowering(by the attribute controller) clock(Not mode 2, but mode 1)?
@@ -1120,6 +1139,11 @@ VGA_Sequencer_Mode overscan_blank_handler = NULL;
 //Active display handler!
 void VGA_ActiveDisplay_Text(SEQ_DATA *Sequencer, VGA_Type *VGA)
 {
+	VGA_overrideoutputs = 0; //Ignoring any inputs?
+	if (VGA_handleSpriteCRTCwindow(VGA, Sequencer, &currentattributeinfo)) //Handle the Sprite/CRTC window overlay!
+	{
+		VGA_overrideoutputs = 1; //Handle it as an override!
+	}
 	//Render our active display here!
 	retryTimingText: //For linear mode!
 	if (VGA_ActiveDisplay_timing(Sequencer, VGA)) //Execute our timings!
@@ -1131,16 +1155,24 @@ void VGA_ActiveDisplay_Text(SEQ_DATA *Sequencer, VGA_Type *VGA)
 			{
 				goto retryTimingText; //Retry text timing!
 			}
-			return; //Nibbled!
+			if (VGA_overrideoutputs == 0) //Ignoring any inputs?
+			{
+				return; //Nibbled!
+			}
 		}
 	}
 	else if (!CGAMDARenderer) return; //Don't render when not ticking!
 
-	activedisplay_noblanking_handler(VGA, Sequencer, &currentattributeinfo); //Blank or active display!
+	activedisplay_noblanking_handler(VGA, Sequencer, VGA_overrideoutputs ? &overrideattributeinfo : &currentattributeinfo); //Blank or active display!
 }
 
 void VGA_ActiveDisplay_Text_blanking(SEQ_DATA *Sequencer, VGA_Type *VGA)
 {
+	VGA_overrideoutputs = 0; //Ignoring any inputs?
+	if (VGA_handleSpriteCRTCwindow(VGA, Sequencer, &currentattributeinfo)) //Handle the Sprite/CRTC window overlay!
+	{
+		VGA_overrideoutputs = 1; //Handle it as an override!
+	}
 	Sequencer->DACcounter = 0; //Reset the DAC counter: the DAC starts scanning again after blanking ends!
 	//Render our active display here!
 	retryTimingTextBlanking: //For linear mode!
@@ -1154,19 +1186,27 @@ void VGA_ActiveDisplay_Text_blanking(SEQ_DATA *Sequencer, VGA_Type *VGA)
 			{
 				goto retryTimingTextBlanking; //Retry text timing!
 			}
-			return; //Nibbled!
+			if (VGA_overrideoutputs == 0) //Ignoring any inputs?
+			{
+				return; //Nibbled!
+			}
 		}
 		Sequencer->DACcounter = 0; //Reset the DAC counter: the DAC starts scanning again after blanking ends!
 	}
 	else if (!CGAMDARenderer) return; //Don't render when not ticking!
 
 	Sequencer->DACcounter = 0; //Reset the DAC counter: the DAC starts scanning again after blanking ends!
-	activedisplay_blank_handler(VGA, Sequencer, &currentattributeinfo); //Blank or active display!
+	activedisplay_blank_handler(VGA, Sequencer, VGA_overrideoutputs ? &overrideattributeinfo : &currentattributeinfo); //Blank or active display!
 	Sequencer->DACcounter = 0; //Reset the DAC counter: the DAC starts scanning again after blanking ends!
 }
 
 void VGA_ActiveDisplay_Graphics(SEQ_DATA *Sequencer, VGA_Type *VGA)
 {
+	VGA_overrideoutputs = 0; //Ignoring any inputs?
+	if (VGA_handleSpriteCRTCwindow(VGA, Sequencer, &currentattributeinfo)) //Handle the Sprite/CRTC window overlay!
+	{
+		VGA_overrideoutputs = 1; //Handle it as an override!
+	}
 	//Render our active display here!
 	retryTimingGraphics: //For linear mode!
 	if (VGA_ActiveDisplay_timing(Sequencer, VGA)) //Execute our timings!
@@ -1178,16 +1218,24 @@ void VGA_ActiveDisplay_Graphics(SEQ_DATA *Sequencer, VGA_Type *VGA)
 			{
 				goto retryTimingGraphics; //Retry text timing!
 			}
-			return; //Nibbled!
+			if (VGA_overrideoutputs == 0) //Ignoring any inputs?
+			{
+				return; //Nibbled!
+			}
 		}
 	}
 	else if (!CGAMDARenderer) return; //Don't render when not ticking!
 
-	activedisplay_noblanking_handler(VGA, Sequencer, &currentattributeinfo); //Blank or active display!
+	activedisplay_noblanking_handler(VGA, Sequencer, VGA_overrideoutputs ? &overrideattributeinfo : &currentattributeinfo); //Blank or active display!
 }
 
 void VGA_ActiveDisplay_Graphics_blanking(SEQ_DATA *Sequencer, VGA_Type *VGA)
 {
+	VGA_overrideoutputs = 0; //Ignoring any inputs?
+	if (VGA_handleSpriteCRTCwindow(VGA, Sequencer, &currentattributeinfo)) //Handle the Sprite/CRTC window overlay!
+	{
+		VGA_overrideoutputs = 1; //Handle it as an override!
+	}
 	//Render our active display here! Start with text mode!		
 	retryTimingGraphicsBlanking: //For linear mode!
 	if (VGA_ActiveDisplay_timing(Sequencer,VGA)) //Execute our timings!
@@ -1200,13 +1248,16 @@ void VGA_ActiveDisplay_Graphics_blanking(SEQ_DATA *Sequencer, VGA_Type *VGA)
 			{
 				goto retryTimingGraphicsBlanking; //Retry text timing!
 			}
-			return; //Nibbled!
+			if (VGA_overrideoutputs == 0) //Ignoring any inputs?
+			{
+				return; //Nibbled!
+			}
 		}
 	}
 	else if (!CGAMDARenderer) return; //Don't render when not ticking!
 
 	Sequencer->DACcounter = 0; //Reset the DAC counter: the DAC starts scanning again after blanking ends!
-	activedisplay_blank_handler(VGA, Sequencer, &currentattributeinfo); //Blank or active display!
+	activedisplay_blank_handler(VGA, Sequencer, VGA_overrideoutputs ? &overrideattributeinfo : &currentattributeinfo); //Blank or active display!
 	Sequencer->DACcounter = 0; //Reset the DAC counter: the DAC starts scanning again after blanking ends!
 }
 
