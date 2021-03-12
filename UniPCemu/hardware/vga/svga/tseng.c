@@ -3200,7 +3200,7 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 	if ((whereupdated == WHEREUPDATED_ALL)
 		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xEF)) //CRTC/Sprite select updated?
 		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xE0)) //Horizontal pixel position low?
-		|| (whereupdated == (WGHERUPDATED_CRTCSPRITE | 0xE1)) //Horizontal pixel position high?
+		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xE1)) //Horizontal pixel position high?
 		)
 	{
 		if (et34kdata->W32_21xA_CRTCBSpriteControl & 1) //CRTCB function?
@@ -3213,6 +3213,7 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 
 	if ((whereupdated == WHEREUPDATED_ALL)
 		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xEF)) //CRTC/Sprite select updated?
+		)
 	{
 		//Sprite function enable/disable?
 	}
