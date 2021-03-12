@@ -607,10 +607,10 @@ byte Tseng34K_writeIO(word port, byte val)
 				case 0xEA:
 				case 0xEB: //CRTCB Row Offset (word)
 				case 0xEC:
-					et34kdata->W32_21xA_shadowRegisters[(et34kdata->W32_21xA_index - 0xE0)&0x1F][0] = val; //Set the value in the CRTCB registers!
+					et34kdata->W32_21xA_shadowRegisters[(et34kdata->W32_21xA_index - 0xE0)&0x1F] = val; //Set the value in the CRTCB registers!
 					if (et34kdata->W32_21xA_index == 0xEC)
 					{
-						SETBITS(et34kdata->W32_21xA_shadowRegisters[(et34kdata->W32_21xA_index - 0xE0) & 0x1F][0], 4, 0xF, et34kdata->W32_version); //Set the high 4 bits to indicate ET4000/W32!
+						SETBITS(et34kdata->W32_21xA_shadowRegisters[(et34kdata->W32_21xA_index - 0xE0) & 0x1F], 4, 0xF, et34kdata->W32_version); //Set the high 4 bits to indicate ET4000/W32!
 					}
 					break;
 				case 0xED: //CRTCB Pixel Panning
@@ -623,7 +623,7 @@ byte Tseng34K_writeIO(word port, byte val)
 				case 0xF5: //Image Row Offset
 				case 0xF6:
 					//All shared among both CRTCB and Sprite registers!
-					et34kdata->W32_21xA_shadowRegisters[(et34kdata->W32_21xA_index - 0xE0)&0x1F][0] = val; //Set the value in the CRTCB registers!
+					et34kdata->W32_21xA_shadowRegisters[(et34kdata->W32_21xA_index - 0xE0)&0x1F] = val; //Set the value in the CRTCB registers!
 					break;
 				}
 			}
@@ -644,10 +644,10 @@ byte Tseng34K_writeIO(word port, byte val)
 				case 0xEA:
 				case 0xEB: //Sprite Row OFfset (word)
 				case 0xEC:
-					et34kdata->W32_21xA_shadowRegisters[(et34kdata->W32_21xA_index - 0xE0)&0x1F][1] = val; //Set the value in the CRTCB registers!
+					et34kdata->W32_21xA_shadowRegisters[(et34kdata->W32_21xA_index - 0xE0)&0x1F] = val; //Set the value in the CRTCB registers!
 					if (et34kdata->W32_21xA_index == 0xEC)
 					{
-						SETBITS(et34kdata->W32_21xA_shadowRegisters[(et34kdata->W32_21xA_index - 0xE0) & 0x1F][1], 4, 0xF, et34kdata->W32_version); //Set the high 4 bits to indicate ET4000/W32!
+						SETBITS(et34kdata->W32_21xA_shadowRegisters[(et34kdata->W32_21xA_index - 0xE0) & 0x1F], 4, 0xF, et34kdata->W32_version); //Set the high 4 bits to indicate ET4000/W32!
 					}
 					break;
 				case 0xED: //CRTCB Pixel Panning
@@ -660,7 +660,7 @@ byte Tseng34K_writeIO(word port, byte val)
 				case 0xF5: //Image Row Offset
 				case 0xF6:
 					//All shared among both CRTCB and Sprite registers!
-					et34kdata->W32_21xA_shadowRegisters[(et34kdata->W32_21xA_index - 0xE0)&0x1F][0] = val; //Set the value in the CRTCB registers!
+					et34kdata->W32_21xA_shadowRegisters[(et34kdata->W32_21xA_index - 0xE0)&0x1F] = val; //Set the value in the CRTCB registers!
 					break;
 				}
 			}
@@ -996,7 +996,7 @@ byte Tseng34K_readIO(word port, byte *result)
 				case 0xEA:
 				case 0xEB: //CRTCB Row Offset (word)
 				case 0xEC:
-					*result = (et34kdata->W32_21xA_shadowRegisters[(et34kdata->W32_21xA_index)&0x1F][0]); //Give the register!
+					*result = (et34kdata->W32_21xA_shadowRegisters[(et34kdata->W32_21xA_index)&0x1F]); //Give the register!
 					break;
 				case 0xED: //CRTCB Pixel Panning
 				case 0xEE: //CRTCB Color Depth
@@ -1008,7 +1008,7 @@ byte Tseng34K_readIO(word port, byte *result)
 				case 0xF5: //Image Row Offset
 				case 0xF6:
 					//All shared among both CRTCB and Sprite registers!
-					*result = (et34kdata->W32_21xA_shadowRegisters[(et34kdata->W32_21xA_index)&0x1F][0]); //Give the register!
+					*result = (et34kdata->W32_21xA_shadowRegisters[(et34kdata->W32_21xA_index)&0x1F]); //Give the register!
 					break;
 				default: //Nothing connected?
 					*result = 0xFF; //Float the bus!
@@ -1032,7 +1032,7 @@ byte Tseng34K_readIO(word port, byte *result)
 				case 0xEA:
 				case 0xEB: //Sprite Row OFfset (word)
 				case 0xEC:
-					*result = (et34kdata->W32_21xA_shadowRegisters[(et34kdata->W32_21xA_index)&0x1F][1]); //Give the register!
+					*result = (et34kdata->W32_21xA_shadowRegisters[(et34kdata->W32_21xA_index)&0x1F]); //Give the register!
 					break;
 				case 0xED: //CRTCB Pixel Panning
 				case 0xEE: //CRTCB Color Depth
@@ -1044,7 +1044,7 @@ byte Tseng34K_readIO(word port, byte *result)
 				case 0xF5: //Image Row Offset
 				case 0xF6:
 					//All shared among both CRTCB and Sprite registers!
-					*result = (et34kdata->W32_21xA_shadowRegisters[(et34kdata->W32_21xA_index)&0x1F][0]); //Give the register!
+					*result = (et34kdata->W32_21xA_shadowRegisters[(et34kdata->W32_21xA_index)&0x1F]); //Give the register!
 					break;
 				default: //Nothing connected?
 					*result = 0xFF; //Float the bus!
@@ -1287,8 +1287,7 @@ void Tseng34k_init()
 
 			VGA_calcprecalcs(getActiveVGA(),WHEREUPDATED_ALL); //Update all precalcs!
 			et34k(getActiveVGA())->W32_version = 0; //What version is reported to the user!
-			SETBITS(et34k(getActiveVGA())->W32_21xA_shadowRegisters[(0xEC - 0xE0) & 0x1F][0], 4, 0xF, et34k(getActiveVGA())->W32_version); //Set the high 4 bits to indicate ET4000/W32!
-			SETBITS(et34k(getActiveVGA())->W32_21xA_shadowRegisters[(0xEC - 0xE0) & 0x1F][1], 4, 0xF, et34k(getActiveVGA())->W32_version); //Set the high 4 bits to indicate ET4000/W32!
+			SETBITS(et34k(getActiveVGA())->W32_21xA_shadowRegisters[(0xEC - 0xE0) & 0x1F], 4, 0xF, et34k(getActiveVGA())->W32_version); //Set the high 4 bits to indicate ET4000/W32!
 		}
 	}
 }
@@ -3171,7 +3170,7 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xF2)) //Image Starting Address (24-bit) updated?
 		) //Image port
 	{
-		VGA->precalcs.imageport_startingaddress = (getTsengLE24(&et34k(getActiveVGA())->W32_21xA_shadowRegisters[0xF0-0xE0][0])<<2); //Starting address!
+		VGA->precalcs.imageport_startingaddress = (getTsengLE24(&et34k(getActiveVGA())->W32_21xA_shadowRegisters[0xF0-0xE0])<<2); //Starting address!
 	}
 
 	if ((whereupdated == WHEREUPDATED_ALL)
@@ -3179,7 +3178,7 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xF4)) //Image Transfer Length (word) updated?
 		) //Image port
 	{
-		VGA->precalcs.imageport_transferlength = (getTsengLE16(&et34k(getActiveVGA())->W32_21xA_shadowRegisters[0xF3 - 0xE0][0])<<2); //Transfer length for a scanline, in bytes!
+		VGA->precalcs.imageport_transferlength = (getTsengLE16(&et34k(getActiveVGA())->W32_21xA_shadowRegisters[0xF3 - 0xE0])<<2); //Transfer length for a scanline, in bytes!
 	}
 
 	if ((whereupdated == WHEREUPDATED_ALL)
@@ -3187,14 +3186,14 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xF6))  //Length of a transferred scanline in VRAM, in bytes!
 		) //Image port
 	{
-		VGA->precalcs.imageport_rowoffset = (getTsengLE16(&et34k(getActiveVGA())->W32_21xA_shadowRegisters[0xF5 - 0xE0][0])<<2); //Transfer length for a scanline, in bytes!
+		VGA->precalcs.imageport_rowoffset = (getTsengLE16(&et34k(getActiveVGA())->W32_21xA_shadowRegisters[0xF5 - 0xE0])<<2); //Transfer length for a scanline, in bytes!
 	}
 
 	if ((whereupdated == WHEREUPDATED_ALL)
 		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xF7))  //Enable interlacing of data in the image port!
 		) //Image port
 	{
-		VGA->precalcs.imageport_interlace = ((et34k(getActiveVGA())->W32_21xA_shadowRegisters[0xF7 - 0xE0][0]&2)>>1); //Transfer length for a scanline, in bytes!
+		VGA->precalcs.imageport_interlace = ((et34k(getActiveVGA())->W32_21xA_shadowRegisters[0xF7 - 0xE0]&2)>>1); //Transfer length for a scanline, in bytes!
 	}
 
 	if (updateCRTC) //Update CRTC?
