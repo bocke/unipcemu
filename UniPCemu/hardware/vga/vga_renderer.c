@@ -780,7 +780,7 @@ byte VGA_SpriteCRTCGetPixel(VGA_Type* VGA, SEQ_DATA* Sequencer, VGA_AttributeInf
 		return 0; //Nothing to render left on this scanline!
 	}
 	--Sequencer->SpriteCRTChorizontalpixelsleft; //One pixel is rendering now!
-	memcpy(overrideattributeinfo, attributeinfo, sizeof(attributeinfo)); //Make the output setting the same as the original input settings!
+	memcpy(overrideattributeinfo, attributeinfo, sizeof(*attributeinfo)); //Make the output setting the same as the original input settings!
 	if (VGA->precalcs.SpriteCRTCEnabled == 1) //Sprite mode?
 	{
 		//Retrieve the pixel from VRAM!
