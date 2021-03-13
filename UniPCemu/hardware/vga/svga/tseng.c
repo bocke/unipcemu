@@ -3343,11 +3343,11 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 			{
 				et34k_tempreg &= ~0xF; //Default to 0!
 			}
-			VGA->precalcs.SpriteCRTCpixeldepth = (1 << (et34k_tempreg & 0xF)); //Bit depth in power of 2!
+			VGA->precalcs.SpriteCRTCpixeldepth = (et34k_tempreg & 0xF); //Bit depth in power of 2!
 		}
 		else //Sprite function?
 		{
-			VGA->precalcs.SpriteCRTCpixeldepth = 2; //Bit depth in power of 2! Always 2BPP!
+			VGA->precalcs.SpriteCRTCpixeldepth = 1; //Bit depth in power of 2! Always 2BPP!
 		}
 
 		VGA->precalcs.SpriteCRTCrowheight = ((et34k_tempreg >> 6)+1); //The height of each row!
