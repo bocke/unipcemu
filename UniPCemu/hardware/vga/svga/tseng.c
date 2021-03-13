@@ -3327,7 +3327,7 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xEC)) //CRTC/Sprite start address mid?
 		)
 	{
-		VGA->precalcs.SpriteCRTCstartaddress = ((((et34kdata->W32_21xA_shadowRegisters[0xEC - 0xE0] & 1) << 8) | et34kdata->W32_21xA_shadowRegisters[0xEB - 0xE0]) << 3); //Number of quadwords between rows in VRAM!
+		VGA->precalcs.SpriteCRTCrowoffset = ((((et34kdata->W32_21xA_shadowRegisters[0xEC - 0xE0] & 1) << 8) | et34kdata->W32_21xA_shadowRegisters[0xEB - 0xE0]) << 3); //Number of quadwords between rows in VRAM!
 	}
 
 	if ((whereupdated == WHEREUPDATED_ALL)
