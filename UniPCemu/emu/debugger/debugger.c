@@ -1192,6 +1192,13 @@ OPTINLINE void debugger_autolog()
 extern GPU_TEXTSURFACE *frameratesurface; //The framerate surface!
 
 word debuggerrow; //Debugger row after the final row!
+struct
+{
+	byte enabled; //Is the memory viewer visible?
+	uint_64 address; //Address to start viewing!
+	byte x; //X coordinate to select!
+	byte y; //Y coordinate to select!
+} debugger_memoryviewer; //Memory viewer enabled on the debugger screen?
 
 void debugger_screen() //Show debugger info on-screen!
 {
@@ -1200,6 +1207,17 @@ void debugger_screen() //Show debugger info on-screen!
 		GPU_text_locksurface(frameratesurface); //Lock!
 		uint_32 fontcolor = RGB(0xFF, 0xFF, 0xFF); //Font color!
 		uint_32 backcolor = RGB(0x00, 0x00, 0x00); //Back color!
+		if (debugger_memoryviewer.enabled) //Memory viewer instead>
+		{
+ 			GPU_textclearscreen(frameratesurface); //Clear the screen!
+			GPU_textgotoxy(frameratesurface, 0, 0); //Goto start of the screen!
+			GPU_textprintf(frameratesurface, fontcolor, backcolor, "Memory viewer");
+			GPU_textgotoxy(frameratesurface, 0, 2);
+			GPU_textprintf(frameratesurface, fontcolor, backcolor, "Not implemented yet. Press X to return."); //Message placeholder!
+			//Finished drawing. Finish up and don't draw the debugger!
+			GPU_text_releasesurface(frameratesurface); //Unlock!
+			return; //Don't show the normal debugger over it!
+		}
 		char str[256];
 		cleardata(&str[0], sizeof(str)); //For clearing!
 		int i;
@@ -1382,8 +1400,78 @@ void debugger_screen() //Show debugger info on-screen!
 	}
 }
 
+byte debugger_updatememoryviewer()
+{
+	if (psp_keypressed(BUTTON_CROSS)) //Cross pressed?
+	{
+		while (psp_keypressed(BUTTON_CROSS)) //Wait for release!
+		{
+			unlock(LOCK_INPUT);
+			delay(0);
+			lock(LOCK_INPUT);
+		}
+		debugger_memoryviewer.enabled = 0; //Disable the memory viewer and return to the normal interface for the debugger!
+		//Special drawing: remove our text from the debugger!
+		GPU_text_locksurface(frameratesurface); //Lock!
+		GPU_textclearscreen(frameratesurface); //Clear the screen!
+		//Finished drawing. Finish up and don't draw the debugger!
+		GPU_text_releasesurface(frameratesurface); //Unlock!
+		return 1; //Terminated!
+	}
+	return 0; //Not done yet!
+}
+
 extern byte Settings_request; //Settings requested to be executed?
 extern byte reset; //To reset the emulator?
+
+void debugger_startmemoryviewer(char* breakpointstr, byte enabled)
+{
+	uint_32 offset;
+	offset = converthex2int(&breakpointstr[0]); //Convert the number to our usable format!
+
+	//Apply the new viewer!
+	debugger_memoryviewer.enabled = enabled; //Enabled?
+	debugger_memoryviewer.address = (uint_64)(offset & 0xFFFFFFFFULL); //Set the new breakpoint!
+	debugger_memoryviewer.x = 0; //Init!
+	debugger_memoryviewer.y = 0; //Init!
+}
+
+byte debugger_memoryvieweraddress()
+{
+	byte result;
+	char breakpointstr[256]; //32-bits offset, colon, 16-bits segment, mode if required(Protected/Virtual 8086), Ignore EIP/CS/Whole address(mode only) and final character(always zero)!
+	cleardata(&breakpointstr[0], sizeof(breakpointstr));
+	//First, convert the current breakpoint to a string format!
+	BIOSClearScreen(); //Clear the screen!
+	BIOS_Title("Memory Breakpoint"); //Full clear!
+	EMU_locktext();
+	EMU_gotoxy(0, 4); //Goto position for info!
+	GPU_EMU_printscreen(0, 4, "Address: "); //Show the filename!
+	EMU_unlocktext();
+	//char *temp;
+#ifndef IS_PSP
+	word maxoffsetsize = 8;
+#endif
+	result = 0; //Default: not handled!
+	unlock(LOCK_INPUT); //Make sure the input isn't locked!
+	if (BIOS_InputAddressWithMode(9, 4, &breakpointstr[0], sizeof(breakpointstr) - 1, 0, 0, 0)) //Input text confirmed?
+	{
+		if (strcmp(breakpointstr, "") != 0) //Got valid input?
+		{
+			//Convert the string back into our valid numbers for storage!
+			//temp = &breakpointstr[0]; //First character!
+			//This won't compile on the PSP for some unknown reason, crashing the compiler!
+			if (((safe_strlen(&breakpointstr[0], sizeof(breakpointstr))) - 1) <= maxoffsetsize) //Offset OK?
+			{
+				debugger_startmemoryviewer(&breakpointstr[0], 1); //Start the memory viewer interface!
+				result = 1; //Started!
+			}
+		}
+	}
+	lock(LOCK_INPUT); //Relock!
+	BIOSDoneScreen(); //Clear the screen after we're done with it!
+	return result; //Give the result!
+}
 
 void debuggerThread()
 {
@@ -1392,11 +1480,12 @@ void debuggerThread()
 	int done = 0;
 	byte displayed = 0; //Are we displayed?
 	pauseEMU(); //Pause it!
+	debugger_memoryviewer.enabled = 0; //Default: not using the memory viewer interface when starting up the debugger!
 
 	restartdebugger: //Restart the debugger during debugging!
 	done = 0; //Init: not done yet!
 
-	if (!(done || skipopcodes || (skipstep&&CPU[activeCPU].repeating)) || (BPsinglestep==1)) //Are we to show the (new) debugger screen?
+	if ((!(done || skipopcodes || (skipstep&&CPU[activeCPU].repeating)) || (BPsinglestep==1)) || (displayed==0)) //Are we to show the (new) debugger screen?
 	{
 		displayed = 1; //We're displayed!
 		lock(LOCK_MAINTHREAD); //Lock the main thread!
@@ -1405,129 +1494,160 @@ void debuggerThread()
 	}
 
 	lock(LOCK_INPUT);
-	for (;!(done || skipopcodes || (skipstep&&CPU[activeCPU].repeating));) //Still not done or skipping?
+	for (; !(done || skipopcodes || (skipstep && CPU[activeCPU].repeating));) //Still not done or skipping?
 	{
-		if (DEBUGGER_ALWAYS_STEP || ((singlestep==1) || (BPsinglestep==1))) //Always step?
+		if (debugger_memoryviewer.enabled == 0) //Normal debugger?
 		{
-			//We're going though like a normal STEP. Ignore RTRIGGER.
-		}
-		else if (DEBUGGER_KEEP_RUNNING) //Always keep running?
-		{
-			done = 1; //Keep running!
-		}
-		else
-		{
-			done = (!psp_keypressed(BUTTON_RTRIGGER)); //Continue when release hold (except when forcing stepping), singlestep prevents this!
-		}
+			if (DEBUGGER_ALWAYS_STEP || ((singlestep == 1) || (BPsinglestep == 1))) //Always step?
+			{
+				//We're going though like a normal STEP. Ignore RTRIGGER.
+			}
+			else if (DEBUGGER_KEEP_RUNNING) //Always keep running?
+			{
+				done = 1; //Keep running!
+			}
+			else
+			{
+				done = (!psp_keypressed(BUTTON_RTRIGGER)); //Continue when release hold (except when forcing stepping), singlestep prevents this!
+			}
 
-		if (psp_keypressed(BUTTON_CROSS)) //Step (wait for release and break)?
-		{
-			while (psp_keypressed(BUTTON_CROSS)) //Wait for release!
+			if (psp_keypressed(BUTTON_CROSS)) //Step (wait for release and break)?
 			{
-				unlock(LOCK_INPUT);
-				delay(0);
-				lock(LOCK_INPUT);
-			}
-			singlestep = BPsinglestep = 0; //If single stepping, stop doing so!
-			break;
-		}
-		if (psp_keypressed(BUTTON_SQUARE)) //Skip until finished command?
-		{
-			while (psp_keypressed(BUTTON_SQUARE)) //Wait for release!
-			{
-				unlock(LOCK_INPUT);
-				delay(0);
-				lock(LOCK_INPUT);
-			}
-			skipopcodes_destEIP = CPU[activeCPU].nextEIP; //Destination instruction position!
-			skipopcodes_destCS = CPU[activeCPU].nextCS; //Destination instruction position!
-			if (getcpumode() != CPU_MODE_PROTECTED) //Not protected mode?
-			{
-				skipopcodes_destEIP &= 0xFFFF; //Wrap around, like we need to!
-			}
-			if (psp_keypressed(BUTTON_CIRCLE) && (CPU[activeCPU].repeating==0)) //Wait for the jump to be taken from the current address?
-			{
-				skipopcodes_destEIP = REGD_EIP(debuggerregisters); //We're jumping from this address!
-				skipopcodes_destCS = REGD_CS(debuggerregisters); //We're jumping from this address!
-				skipstep = 4;
-			}
-			else //Normal behaviour?
-			{
-				if (CPU[activeCPU].repeating) //Are we repeating?
+				while (psp_keypressed(BUTTON_CROSS)) //Wait for release!
 				{
-					skipstep = 1; //Skip all REP additional opcodes!
+					unlock(LOCK_INPUT);
+					delay(0);
+					lock(LOCK_INPUT);
 				}
-				else //Use the supplied EIP!
-				{
-					skipstep = 2; //Simply skip until the next instruction is reached after this address!
-				}
-			}
-			BPsinglestep = 0; //Stop breakpoint single step when this is used!
-			break;
-		}
-		if (psp_keypressed(BUTTON_TRIANGLE)) //Might Dump memory?
-		{
-			while (psp_keypressed(BUTTON_TRIANGLE)) //Wait for release!
-			{
-				unlock(LOCK_INPUT);
-				delay(0);
-				lock(LOCK_INPUT);
-			}
-			if (psp_keypressed(BUTTON_CIRCLE)) //Memory dump?
-			{
-				MMU_dumpmemory("memory.dat"); //Dump the MMU memory!
-			}
-			else //Skip 10 commands?
-			{
-				skipopcodes = 9; //Skip 9 additional opcodes!
-				singlestep = 0; //If single stepping, stop doing so!
-				BPsinglestep = 0; //If single stepping, stop doing so!
+				singlestep = BPsinglestep = 0; //If single stepping, stop doing so!
 				break;
 			}
-		}
-		unlock(LOCK_INPUT);
-		openBIOS = 0; //Init!
-		lock(LOCK_MAINTHREAD); //We're checking some input!
-		openBIOS = Settings_request;
-		Settings_request = 0; //We're handling it if needed!
-		unlock(LOCK_MAINTHREAD); //We've finished checking for input!
-		lock(LOCK_INPUT);
-		openBIOS |= psp_keypressed(BUTTON_SELECT); //Are we to open the BIOS menu?
-		if (openBIOS && !is_gamingmode()) //Goto BIOS?
-		{
-			while (psp_keypressed(BUTTON_SELECT)) //Wait for release when pressed!
+			else if (psp_keypressed(BUTTON_TRIANGLE)) //Might Dump memory?
 			{
-				unlock(LOCK_INPUT);
-				delay(0);
-				lock(LOCK_INPUT);
+				while (psp_keypressed(BUTTON_TRIANGLE)) //Wait for release!
+				{
+					unlock(LOCK_INPUT);
+					delay(0);
+					lock(LOCK_INPUT);
+				}
+				if (psp_keypressed(BUTTON_CIRCLE)) //Memory dump?
+				{
+					MMU_dumpmemory("memory.dat"); //Dump the MMU memory!
+				}
+				else if (psp_keypressed(BUTTON_SQUARE)) //Memory viewer
+				{
+					while (psp_keypressed(BUTTON_SQUARE)) //Wait for release!
+					{
+						unlock(LOCK_INPUT);
+						delay(0);
+						lock(LOCK_INPUT);
+					}
+					if (debugger_memoryvieweraddress()) //Input the address for use with the memory viewer!
+					{
+						//Viewer has been started!
+						unlock(LOCK_INPUT);
+						displayed = 0; //Not displayed yet!
+						goto restartdebugger; //Update us!
+					}
+					unlock(LOCK_INPUT);
+					displayed = 0; //Not displayed yet!
+					goto restartdebugger; //Update us!
+				}
+				else //Skip 10 commands?
+				{
+					skipopcodes = 9; //Skip 9 additional opcodes!
+					singlestep = 0; //If single stepping, stop doing so!
+					BPsinglestep = 0; //If single stepping, stop doing so!
+					break;
+				}
+			}
+			else if (psp_keypressed(BUTTON_SQUARE)) //Skip until finished command?
+			{
+				while (psp_keypressed(BUTTON_SQUARE)) //Wait for release!
+				{
+					unlock(LOCK_INPUT);
+					delay(0);
+					lock(LOCK_INPUT);
+				}
+				skipopcodes_destEIP = CPU[activeCPU].nextEIP; //Destination instruction position!
+				skipopcodes_destCS = CPU[activeCPU].nextCS; //Destination instruction position!
+				if (getcpumode() != CPU_MODE_PROTECTED) //Not protected mode?
+				{
+					skipopcodes_destEIP &= 0xFFFF; //Wrap around, like we need to!
+				}
+				if (psp_keypressed(BUTTON_CIRCLE) && (CPU[activeCPU].repeating == 0)) //Wait for the jump to be taken from the current address?
+				{
+					skipopcodes_destEIP = REGD_EIP(debuggerregisters); //We're jumping from this address!
+					skipopcodes_destCS = REGD_CS(debuggerregisters); //We're jumping from this address!
+					skipstep = 4;
+				}
+				else //Normal behaviour?
+				{
+					if (CPU[activeCPU].repeating) //Are we repeating?
+					{
+						skipstep = 1; //Skip all REP additional opcodes!
+					}
+					else //Use the supplied EIP!
+					{
+						skipstep = 2; //Simply skip until the next instruction is reached after this address!
+					}
+				}
+				BPsinglestep = 0; //Stop breakpoint single step when this is used!
+				break;
 			}
 			unlock(LOCK_INPUT);
-			//Start the BIOS
-			if (runBIOS(0)) //Run the BIOS, reboot needed?
+			openBIOS = 0; //Init!
+			lock(LOCK_MAINTHREAD); //We're checking some input!
+			openBIOS = Settings_request;
+			Settings_request = 0; //We're handling it if needed!
+			unlock(LOCK_MAINTHREAD); //We've finished checking for input!
+			lock(LOCK_INPUT);
+			openBIOS |= psp_keypressed(BUTTON_SELECT); //Are we to open the BIOS menu?
+			if (openBIOS && !is_gamingmode()) //Goto BIOS?
 			{
-				skipopcodes = 0; //Nothing to be skipped!
-				BPsinglestep = 0; //Nothing to break on!
-				lock(LOCK_MAINTHREAD);
-				reset = 1; //We're resetting!
-				allow_debuggerstep = 0;
-				unlock(LOCK_MAINTHREAD);
-				goto singlestepenabled; //We're rebooting, abort!
+				while (psp_keypressed(BUTTON_SELECT)) //Wait for release when pressed!
+				{
+					unlock(LOCK_INPUT);
+					delay(0);
+					lock(LOCK_INPUT);
+				}
+				unlock(LOCK_INPUT);
+				//Start the BIOS
+				if (runBIOS(0)) //Run the BIOS, reboot needed?
+				{
+					skipopcodes = 0; //Nothing to be skipped!
+					BPsinglestep = 0; //Nothing to break on!
+					lock(LOCK_MAINTHREAD);
+					reset = 1; //We're resetting!
+					allow_debuggerstep = 0;
+					unlock(LOCK_MAINTHREAD);
+					goto singlestepenabled; //We're rebooting, abort!
+				}
+				//Check the current state to continue at!
+				if (debugging()) //Recheck the debugger!
+				{
+					goto restartdebugger; //Restart the debugger!
+				}
+				else //Not debugging anymore?
+				{
+					goto singlestepenabled; //Stop debugging!
+				}
 			}
-			//Check the current state to continue at!
-			if (debugging()) //Recheck the debugger!
+		} //While not done
+		else //Memory viewer interface?
+		{
+			if (debugger_updatememoryviewer()) //Update the screen?
 			{
-				goto restartdebugger; //Restart the debugger!
-			}
-			else //Not debugging anymore?
-			{
-				goto singlestepenabled; //Stop debugging!
+				unlock(LOCK_INPUT);
+				goto restartdebugger; //Update us!
 			}
 		}
+		//Make sure we give the main thread time to run as well as support terminating the app!
 		unlock(LOCK_INPUT);
 		if (shuttingdown()) break; //Stop debugging when shutting down!
 		delay(0); //Wait a bit!
 		lock(LOCK_INPUT);
-	} //While not done
+	}
 	unlock(LOCK_INPUT);
 	singlestepenabled: //Single step has been enabled just now?
 	if (displayed) //Are we to clean up?
@@ -1543,6 +1663,18 @@ void debuggerThread()
 
 ThreadParams_p debugger_thread = NULL; //The debugger thread, if any!
 extern ThreadParams_p BIOSMenuThread; //BIOS pause menu thread!
+
+byte debugger_isrunning()
+{
+	if (unlikely(debugger_thread)) //Debugger not running yet?
+	{
+		if (threadRunning(debugger_thread)) //Still running?
+		{
+			return 1; //We're still running, so start nothing!
+		}
+	}
+	return 0; //Not running!
+}
 
 void debugger_step() //Processes the debugging step!
 {

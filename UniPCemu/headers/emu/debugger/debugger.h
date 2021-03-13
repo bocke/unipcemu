@@ -78,6 +78,8 @@ void debugger_logmemoryaccess(byte iswrite, uint_64 address, byte value, byte ty
 
 byte debugger_forceEIP(); //Force EIP to be used for debugging?
 
+byte debugger_isrunning(); //Is the debugger running?
+
 //Segmented memory address
 #define LOGMEMORYACCESS_NORMAL 0
 //Logical memory address
