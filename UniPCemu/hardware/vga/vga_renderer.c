@@ -927,6 +927,7 @@ byte VGA_handleSpriteCRTCwindow(VGA_Type* VGA, SEQ_DATA* Sequencer, VGA_Attribut
 							Sequencer->SpriteCRTCrowstep = 0; //Initialize the row step!
 							Sequencer->SpriteCRTCstep = 0; //Initialize the horizontal step!
 							VGA_handleSpriteCRTCnewScanline(VGA, Sequencer, attributeinfo); //New scanline handling!
+							Sequencer->SpriteCRTCylatched = 0; //We're latched now!
 						}
 					}
 					else //New scanline or double scanning?
@@ -947,6 +948,7 @@ byte VGA_handleSpriteCRTCwindow(VGA_Type* VGA, SEQ_DATA* Sequencer, VGA_Attribut
 							//Common new scanline handling!
 							Sequencer->SpriteCRTCstep = 0; //Initialize the horizontal step!
 							VGA_handleSpriteCRTCnewScanline(VGA, Sequencer, attributeinfo); //New scanline handling!
+							Sequencer->SpriteCRTCxlatched = 0; //We're latched now!
 						}
 						if (Sequencer->SpriteCRTC_virtualscanline >= VGA->precalcs.SpriteCRTCverticalwindowheight) //Already finished?
 						{
