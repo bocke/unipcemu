@@ -775,6 +775,11 @@ byte VGA_renderer_readlinearVRAM(uint_32 addr)
 byte VGA_SpriteCRTCGetPixel(VGA_Type* VGA, SEQ_DATA* Sequencer, VGA_AttributeInfo* attributeinfo)
 {
 	word pixel; //The pixel that's retrieved!
+	if (!Sequencer->SpriteCRTChorizontalpixelsleft) //No pixels left to render horizontally?
+	{
+		return 0; //Nothing to render left on this scanline!
+	}
+	--Sequencer->SpriteCRTChorizontalpixelsleft; //One pixel is rendering now!
 	if (VGA->precalcs.SpriteCRTCEnabled == 1) //Sprite mode?
 	{
 		//Retrieve the pixel from VRAM!
@@ -896,6 +901,7 @@ void VGA_handleSpriteCRTCnewScanline(VGA_Type* VGA, SEQ_DATA* Sequencer, VGA_Att
 	word n;
 	int_32 resultgotten;
 	Sequencer->SpriteCRTC_pixel_address = Sequencer->SpriteCRTC_row_address; //Pixel address starts at the row address!
+	Sequencer->SpriteCRTChorizontalpixelsleft = VGA->precalcs.SpriteCRTChorizontalwindowwidth; //How many pixels are left to render?
 	//Handle the horizontal preset now!
 	if (VGA->precalcs.SpriteCRTChorizontaldisplaypreset) //Horizontal preset?
 	{
@@ -917,7 +923,7 @@ byte VGA_handleSpriteCRTCwindow(VGA_Type* VGA, SEQ_DATA* Sequencer, VGA_Attribut
 			if (Sequencer->x >= VGA->precalcs.SpriteCRTChorizontaldisplaydelay) //Horizontally within range?
 			{
 				//We're perhaps a part of the sprite or CRTC display.
-				if (Sequencer->x == VGA->precalcs.SpriteCRTChorizontaldisplaydelay) //Starting horizontal display?
+				if (Sequencer->SpriteCRTCxlatched) //Starting horizontal display?
 				{
 					if (Sequencer->Scanline == VGA->precalcs.SpriteCRTCverticaldisplaydelay) //Starting vertical display?
 					{
@@ -934,6 +940,10 @@ byte VGA_handleSpriteCRTCwindow(VGA_Type* VGA, SEQ_DATA* Sequencer, VGA_Attribut
 					}
 					else //New scanline or double scanning?
 					{
+						if (Sequencer->SpriteCRTCylatched) //Y not latched yet?
+						{
+							return 0; //Not ready to render yet!
+						}
 						if (Sequencer->SpriteCRTC_virtualscanline >= VGA->precalcs.SpriteCRTCverticalwindowheight) //Already finished?
 						{
 							return 0; //Don't handle any new scanlines anymore: we're finished!
@@ -957,6 +967,10 @@ byte VGA_handleSpriteCRTCwindow(VGA_Type* VGA, SEQ_DATA* Sequencer, VGA_Attribut
 							return 0; //Don't handle any new scanlines anymore: we're finished!
 						}
 					}
+				}
+				if ((Sequencer->SpriteCRTCylatched | Sequencer->SpriteCRTCxlatched) != 0) //Not latched the start yet?
+				{
+					return 0; //Not ready to handle yet this frame!
 				}
 				if (Sequencer->x >= (VGA->precalcs.SpriteCRTChorizontaldisplaydelay + VGA->precalcs.SpriteCRTChorizontalwindowwidth)) //Out of horizontal range?
 				{
@@ -1341,7 +1355,7 @@ VGA_Sequencer_Mode overscan_blank_handler = NULL;
 //Active display handler!
 void VGA_ActiveDisplay_Text(SEQ_DATA *Sequencer, VGA_Type *VGA)
 {
-	VGA_overrideoutputs = VGA_handleSpriteCRTCwindow(VGA, Sequencer, &currentattributeinfo); //Handle the Sprite/CRTC window overlay!
+	VGA_overrideoutputs = 0; //Default: not overriding anything!
 	//Render our active display here!
 	retryTimingText: //For linear mode!
 	if (VGA_ActiveDisplay_timing(Sequencer, VGA)) //Execute our timings!
@@ -1358,6 +1372,7 @@ void VGA_ActiveDisplay_Text(SEQ_DATA *Sequencer, VGA_Type *VGA)
 				return; //Nibbled!
 			}
 		}
+		VGA_overrideoutputs = VGA_handleSpriteCRTCwindow(VGA, Sequencer, &currentattributeinfo); //Handle the Sprite/CRTC window overlay!
 	}
 	else if (!CGAMDARenderer) return; //Don't render when not ticking!
 
@@ -1371,7 +1386,7 @@ void VGA_ActiveDisplay_Text(SEQ_DATA *Sequencer, VGA_Type *VGA)
 
 void VGA_ActiveDisplay_Text_blanking(SEQ_DATA *Sequencer, VGA_Type *VGA)
 {
-	VGA_overrideoutputs = VGA_handleSpriteCRTCwindow(VGA, Sequencer, &currentattributeinfo); //Handle the Sprite/CRTC window overlay!
+	VGA_overrideoutputs = 0; //Default: not overriding anything!
 	Sequencer->DACcounter = 0; //Reset the DAC counter: the DAC starts scanning again after blanking ends!
 	//Render our active display here!
 	retryTimingTextBlanking: //For linear mode!
@@ -1390,6 +1405,7 @@ void VGA_ActiveDisplay_Text_blanking(SEQ_DATA *Sequencer, VGA_Type *VGA)
 				return; //Nibbled!
 			}
 		}
+		VGA_overrideoutputs = VGA_handleSpriteCRTCwindow(VGA, Sequencer, &currentattributeinfo); //Handle the Sprite/CRTC window overlay!
 		Sequencer->DACcounter = 0; //Reset the DAC counter: the DAC starts scanning again after blanking ends!
 	}
 	else if (!CGAMDARenderer) return; //Don't render when not ticking!
@@ -1405,7 +1421,7 @@ void VGA_ActiveDisplay_Text_blanking(SEQ_DATA *Sequencer, VGA_Type *VGA)
 
 void VGA_ActiveDisplay_Graphics(SEQ_DATA *Sequencer, VGA_Type *VGA)
 {
-	VGA_overrideoutputs = VGA_handleSpriteCRTCwindow(VGA, Sequencer, &currentattributeinfo); //Handle the Sprite/CRTC window overlay!
+	VGA_overrideoutputs = 0; //Default: not overriding anything!
 	//Render our active display here!
 	retryTimingGraphics: //For linear mode!
 	if (VGA_ActiveDisplay_timing(Sequencer, VGA)) //Execute our timings!
@@ -1422,6 +1438,7 @@ void VGA_ActiveDisplay_Graphics(SEQ_DATA *Sequencer, VGA_Type *VGA)
 				return; //Nibbled!
 			}
 		}
+		VGA_overrideoutputs = VGA_handleSpriteCRTCwindow(VGA, Sequencer, &currentattributeinfo); //Handle the Sprite/CRTC window overlay!
 	}
 	else if (!CGAMDARenderer) return; //Don't render when not ticking!
 
@@ -1434,7 +1451,7 @@ void VGA_ActiveDisplay_Graphics(SEQ_DATA *Sequencer, VGA_Type *VGA)
 
 void VGA_ActiveDisplay_Graphics_blanking(SEQ_DATA *Sequencer, VGA_Type *VGA)
 {
-	VGA_overrideoutputs = VGA_handleSpriteCRTCwindow(VGA, Sequencer, &currentattributeinfo); //Handle the Sprite/CRTC window overlay!
+	VGA_overrideoutputs = 0; //Default: not overriding anything!
 	//Render our active display here! Start with text mode!		
 	retryTimingGraphicsBlanking: //For linear mode!
 	if (VGA_ActiveDisplay_timing(Sequencer,VGA)) //Execute our timings!
@@ -1452,6 +1469,7 @@ void VGA_ActiveDisplay_Graphics_blanking(SEQ_DATA *Sequencer, VGA_Type *VGA)
 				return; //Nibbled!
 			}
 		}
+		VGA_overrideoutputs = VGA_handleSpriteCRTCwindow(VGA, Sequencer, &currentattributeinfo); //Handle the Sprite/CRTC window overlay!
 	}
 	else if (!CGAMDARenderer) return; //Don't render when not ticking!
 

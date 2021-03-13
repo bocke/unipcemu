@@ -101,6 +101,7 @@ typedef struct
 	uint_32 SpriteCRTC_pixel_address; //Current address processing in the Sprite/CRTC window
 	byte SpriteCRTCstep; //Current pixel processing in the Sprite/CRTC window
 	byte SpriteCRTCrowstep; //Current row processing in the Sprite/CRTC window
+	word SpriteCRTChorizontalpixelsleft; //Horizontal pixels left to render.
 } SEQ_DATA; //Sequencer used data!
 
 #include "headers/packed.h"
