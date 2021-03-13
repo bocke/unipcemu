@@ -40,6 +40,7 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 #include "headers/mmu/mmuhandler.h" //MMU_invaddr and MMU_dumpmemory support!
 #include "headers/cpu/biu.h" //BIU support!
 #include "headers/cpu/easyregs.h" //Easy register support!
+#include "headers/mmu/mmuhandler.h" //Memory direct read support!
 
 //Log flags only?
 //#define LOGFLAGSONLY
@@ -1202,18 +1203,86 @@ struct
 
 void debugger_screen() //Show debugger info on-screen!
 {
+	int memoryx, memoryy;
+	int tablebasex, tablebasey;
+	uint_32 effectiveaddress;
+	uint_32 effectivememorydata;
 	if (frameratesurface) //We can show?
 	{
 		GPU_text_locksurface(frameratesurface); //Lock!
 		uint_32 fontcolor = RGB(0xFF, 0xFF, 0xFF); //Font color!
 		uint_32 backcolor = RGB(0x00, 0x00, 0x00); //Back color!
+		uint_32 fontcoloractive = RGB(0x00, 0xFF, 0x00); //Font color!
+		uint_32 backcoloractive = RGB(0x00, 0x00, 0x00); //Back color!
 		if (debugger_memoryviewer.enabled) //Memory viewer instead>
 		{
  			GPU_textclearscreen(frameratesurface); //Clear the screen!
 			GPU_textgotoxy(frameratesurface, 0, 0); //Goto start of the screen!
 			GPU_textprintf(frameratesurface, fontcolor, backcolor, "Memory viewer");
-			GPU_textgotoxy(frameratesurface, 0, 2);
-			GPU_textprintf(frameratesurface, fontcolor, backcolor, "Not implemented yet. Press X to return."); //Message placeholder!
+
+			effectiveaddress = debugger_memoryviewer.address + (debugger_memoryviewer.y * 0x10) + debugger_memoryviewer.x; //What address!
+
+			GPU_textgotoxy(frameratesurface, 0, 2); //Second row!
+			GPU_textprintf(frameratesurface, fontcolor, backcolor, "Address: %08X", effectiveaddress); //What address!
+
+			tablebasex = 0; //Start column of the table!
+			tablebasey = 4; //Start row of the table!
+
+			//Draw the table and headers!
+			for (memoryx = 0; memoryx < 0x11; ++memoryx) //All horizontal coordinates!
+			{
+				for (memoryy = 0; memoryy < 0x11; ++memoryy) //All vertical coordinates!
+				{
+					GPU_textgotoxy(frameratesurface, tablebasex + (memoryx * 3), tablebasey + (memoryy)); //Go to the location of the display!
+					if ((memoryx == 0) && (memoryy == 0)) //Top-left corner? Don't display anything!
+					{
+						//Nothing in the top left corner!
+					}
+					else if (memoryx == 0) //Vertical header?
+					{
+						effectiveaddress = debugger_memoryviewer.address + ((memoryy - 1) * 0x10); //What address!
+						if ((memoryy - 1) == debugger_memoryviewer.y) //Selected row?
+						{
+							GPU_textprintf(frameratesurface, fontcoloractive, backcoloractive, "%02X", ((effectiveaddress>>4) & 0xF));
+						}
+						else //Inactive?
+						{
+							GPU_textprintf(frameratesurface, fontcolor, backcolor, "%02X", ((effectiveaddress>>4) & 0xF));
+						}
+					}
+					else if (memoryy == 0) //Horizontal header?
+					{
+						effectiveaddress = debugger_memoryviewer.address + (memoryx - 1); //What address!
+						if ((memoryx - 1) == debugger_memoryviewer.x) //Selected row?
+						{
+							GPU_textprintf(frameratesurface, fontcoloractive, backcoloractive, "%02X", (effectiveaddress & 0xF));
+						}
+						else //Inactive?
+						{
+							GPU_textprintf(frameratesurface, fontcolor, backcolor, "%02X", (effectiveaddress & 0xF));
+						}
+					}
+					else //Memory data?
+					{
+						effectiveaddress = debugger_memoryviewer.address + ((memoryy - 1) * 0x10) + (memoryx - 1); //What address!
+						if (MMU_directrb_hwdebugger(effectiveaddress, 3, &effectivememorydata)) //Floating bus at this address?
+						{
+							effectivememorydata = 0xFF; //Floating bus!
+						}
+						if (
+							((memoryx - 1) == debugger_memoryviewer.x) && //Selected column?
+							((memoryy - 1) == debugger_memoryviewer.y) //Selected row?
+							)
+						{
+							GPU_textprintf(frameratesurface, fontcoloractive, backcoloractive, "%02X", (effectivememorydata&0xFF));
+						}
+						else
+						{
+							GPU_textprintf(frameratesurface, fontcolor, backcolor, "%02X", (effectivememorydata&0xFF));
+						}
+					}
+				}
+			}
 			//Finished drawing. Finish up and don't draw the debugger!
 			GPU_text_releasesurface(frameratesurface); //Unlock!
 			return; //Don't show the normal debugger over it!
@@ -1402,6 +1471,7 @@ void debugger_screen() //Show debugger info on-screen!
 
 byte debugger_updatememoryviewer()
 {
+	int xdirection, ydirection; //Direction to move in!
 	if (psp_keypressed(BUTTON_CROSS)) //Cross pressed?
 	{
 		while (psp_keypressed(BUTTON_CROSS)) //Wait for release!
@@ -1417,6 +1487,85 @@ byte debugger_updatememoryviewer()
 		//Finished drawing. Finish up and don't draw the debugger!
 		GPU_text_releasesurface(frameratesurface); //Unlock!
 		return 1; //Terminated!
+	}
+	xdirection = ydirection = 0; //Default: no movement!
+	if (psp_keypressed(BUTTON_LEFT)) //Left?
+	{
+		while (psp_keypressed(BUTTON_LEFT)) //Wait for release?
+		{
+			unlock(LOCK_INPUT);
+			delay(0);
+			lock(LOCK_INPUT);
+		}
+		unlock(LOCK_INPUT);
+		delay(0);
+		lock(LOCK_INPUT);
+		xdirection = -1; //-1 x direction!
+	}
+	if (psp_keypressed(BUTTON_RIGHT)) //Left?
+	{
+		while (psp_keypressed(BUTTON_RIGHT)) //Wait for release?
+		{
+			unlock(LOCK_INPUT);
+			delay(0);
+			lock(LOCK_INPUT);
+		}
+		unlock(LOCK_INPUT);
+		delay(0);
+		lock(LOCK_INPUT);
+		xdirection = 1; //+1 x direction!
+	}
+	if (psp_keypressed(BUTTON_UP)) //Left?
+	{
+		while (psp_keypressed(BUTTON_UP)) //Wait for release?
+		{
+			unlock(LOCK_INPUT);
+			delay(0);
+			lock(LOCK_INPUT);
+		}
+		unlock(LOCK_INPUT);
+		delay(0);
+		lock(LOCK_INPUT);
+		ydirection = -1; //-1 y direction!
+	}
+	if (psp_keypressed(BUTTON_DOWN)) //Left?
+	{
+		while (psp_keypressed(BUTTON_DOWN)) //Wait for release?
+		{
+			unlock(LOCK_INPUT);
+			delay(0);
+			lock(LOCK_INPUT);
+		}
+		unlock(LOCK_INPUT);
+		delay(0);
+		lock(LOCK_INPUT);
+		ydirection = 1; //+1 y direction!
+	}
+	if (xdirection || ydirection) //Movement requested?
+	{
+		if (xdirection < 0) //Negative X?
+		{
+			if ((((int)debugger_memoryviewer.x) + xdirection) >= 0) //Valid to apply?
+			{
+				debugger_memoryviewer.x = xdirection+(int)debugger_memoryviewer.x; //Apply!
+			}
+		}
+		else if (xdirection > 0) //Positive X?
+		{
+			debugger_memoryviewer.x = LIMITRANGE(xdirection + (int)debugger_memoryviewer.x, 0, 0xF); //Limit the range to the display!
+		}
+		if (ydirection < 0) //Negative Y?
+		{
+			if ((((int)debugger_memoryviewer.y) + ydirection) >= 0) //Valid to apply?
+			{
+				debugger_memoryviewer.y = ydirection + (int)debugger_memoryviewer.y; //Apply!
+			}
+		}
+		else if (ydirection > 0) //Positive X?
+		{
+			debugger_memoryviewer.y = LIMITRANGE(ydirection + (int)debugger_memoryviewer.y, 0, 0xF); //Limit the range to the display!
+		}
+		return 1; //Update the memory viewer!
 	}
 	return 0; //Not done yet!
 }

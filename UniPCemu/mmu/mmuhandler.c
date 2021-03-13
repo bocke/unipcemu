@@ -931,6 +931,29 @@ specialreadcycledebugger:
 	return 0; //Give existant memory!
 }
 
+byte MMU_directrb_hwdebugger(uint_64 realaddress, word index, uint_32* result) //Direct read from real memory (with real data direct)!
+{
+	uint_64 originaladdress = realaddress; //Original address!
+	byte precalcval;
+	byte nonexistant = 0;
+	if (unlikely(emulateCompaqMMURegisters && (realaddress == 0x80C00000))) //Compaq special register?
+	{
+		*result = readCompaqMMURegister(); //Read the Compaq MMU register!
+		goto specialreadcycledebuggerd; //Apply the special read cycle!
+	}
+	precalcval = index_readprecalcs[index]; //Lookup the precalc val!
+	if (unlikely(applyMemoryHoles(realaddress, precalcval))) //Overflow/invalid location?
+	{
+		MMU_INTERNAL_INVMEM(originaladdress, realaddress, 0, 0, (byte)index, nonexistant); //Invalid memory accessed!
+		*result = 0xFF; //Float!
+		return 1; //Invalid memory, no response!
+	}
+
+	*result = memorymapinfo[precalcval].cache[realaddress & MMU_BLOCKALIGNMENT]; //Get data from memory!
+specialreadcycledebuggerd:
+	return 0; //Give existant memory!
+}
+
 byte MMU_INTERNAL_directrb_nodebugger(uint_64 realaddress, word index, uint_32 *result) //Direct read from real memory (with real data direct)!
 {
 	uint_64 originaladdress = realaddress,temp; //Original address!

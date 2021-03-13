@@ -76,6 +76,9 @@ byte MMU_registerReadHandler(MMU_RHANDLER handler, char *module); //Register a r
 byte memory_directrb(uint_64 realadress); //Direct read from memory (with real data direct)!
 void memory_directwb(uint_64 realadress, byte value); //Direct write to memory (with real data direct)!
 
+//Emulator debugger support!
+byte MMU_directrb_hwdebugger(uint_64 realaddress, word index, uint_32* result); //Direct read from real memory (with real data direct)!
+
 //For DMA controller/paging/system: direct word access!
 word memory_directrw(uint_64 realadress); //Direct read from real memory (with real data direct)!
 void memory_directww(uint_64 realadress, word value); //Direct write to real memory (with real data direct)!
