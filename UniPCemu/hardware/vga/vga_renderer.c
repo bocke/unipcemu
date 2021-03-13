@@ -805,11 +805,13 @@ byte VGA_SpriteCRTCGetPixel(VGA_Type* VGA, SEQ_DATA* Sequencer, VGA_AttributeInf
 		{
 			attributeinfo->attributesize = 1; //256 colors!
 			attributeinfo->attribute = 0xFF; //FFh attribute!
+			return 1; //Overridden!
 		}
 		else //Sprite color 00h?
 		{
 			attributeinfo->attributesize = 1; //256 colors!
 			attributeinfo->attribute = 0x00; //00h attribute!
+			return 1; //Overridden!
 		}
 	}
 	else //CRTC mode?
