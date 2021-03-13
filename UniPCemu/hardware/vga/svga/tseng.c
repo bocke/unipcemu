@@ -2212,6 +2212,8 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 	byte DACmode; //Current/new DAC mode!
 	byte newcharwidth, newtextwidth; //Change detection!
 	byte newfontwidth; //Change detection!
+	byte pixelboost; //Actual pixel boost!
+	byte possibleboost; //Possible value!
 	uint_32 tempdata; //Saved data!
 	byte tempval;
 	int colorval;
@@ -2323,8 +2325,7 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 		handled = 1;
 		#endif
 		//Precalculate horizontal pixel panning:
-		byte pixelboost = 0; //Actual pixel boost!
-		byte possibleboost; //Possible value!
+		pixelboost = 0; //Actual pixel boost!
 		possibleboost = GETBITS(VGA->registers->AttributeControllerRegisters.REGISTERS.HORIZONTALPIXELPANNINGREGISTER,0,0xF); //Possible value, to be determined!
 		if ((GETBITS(VGA->registers->SequencerRegisters.REGISTERS.CLOCKINGMODEREGISTER, 0, 1) == 0) && (VGA->precalcs.graphicsmode)) //Different behaviour with 9 pixel modes?
 		{
@@ -3164,6 +3165,7 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 		VGA->precalcs.textcharacterwidth = newtextwidth; //Text character width!
 	}
 
+	//Image port
 	if ((whereupdated == WHEREUPDATED_ALL)
 		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xF0)) //Image Starting Address (24-bit) updated?
 		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xF1)) //Image Starting Address (24-bit) updated?
@@ -3196,26 +3198,189 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 		VGA->precalcs.imageport_interlace = ((et34k(getActiveVGA())->W32_21xA_shadowRegisters[0xF7 - 0xE0]&2)>>1); //Transfer length for a scanline, in bytes!
 	}
 
-	//TODO: CRTCB/Sprite modes!
+	//CRTCB/Sprite registers!
+	if ((whereupdated == WHEREUPDATED_ALL)
+		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xEF)) //CRTC/Sprite select updated?
+		)
+	{
+		//Sprite function enable/disable?
+		if (et34kdata->W32_21xA_CRTCBSpriteControl & 2) //Overlay the CRTC?
+		{
+			if (et34kdata->W32_21xA_CRTCBSpriteControl & 1) //CRTCB function?
+			{
+				VGA->precalcs.SpriteCRTCEnabled = 2; //CRTCB function!
+			}
+			else //Sprite function?
+			{
+				VGA->precalcs.SpriteCRTCEnabled = 1; //Sprite function!
+			}
+			if (et34kdata->W32_21xA_CRTCBSpriteControl & 4) //128 pixels instead of 64?
+			{
+				VGA->precalcs.SpriteSize = 128; //128 pixels wide/height!
+			}
+			else
+			{
+				VGA->precalcs.SpriteSize = 64; //64 pixels wide/height!
+			}
+		}
+		else //Output to SP 0:1?
+		{
+			VGA->precalcs.SpriteCRTCEnabled = 0; //Disabled!
+		}
+	}
+
 	if ((whereupdated == WHEREUPDATED_ALL)
 		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xEF)) //CRTC/Sprite select updated?
 		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xE0)) //Horizontal pixel position low?
 		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xE1)) //Horizontal pixel position high?
 		)
 	{
-		if (et34kdata->W32_21xA_CRTCBSpriteControl & 1) //CRTCB function?
+		if (VGA->precalcs.SpriteCRTCEnabled) //CRTCB/Sprite function?
 		{
+			VGA->precalcs.SpriteCRTChorizontaldisplaydelay = (((et34kdata->W32_21xA_shadowRegisters[0xE1 - 0xE0] & 7) << 8) | et34kdata->W32_21xA_shadowRegisters[0xE0 - 0xE0]); //Horizontal pixel delay until we start the window!
 		}
-		else //Sprite function?
+		else //No function?
 		{
+			VGA->precalcs.SpriteCRTChorizontaldisplaydelay = ~0; //Don't display!
 		}
 	}
 
 	if ((whereupdated == WHEREUPDATED_ALL)
 		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xEF)) //CRTC/Sprite select updated?
+		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xE4)) //Vertical pixel position low?
+		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xE5)) //Vertical pixel position high?
 		)
 	{
-		//Sprite function enable/disable?
+		if (VGA->precalcs.SpriteCRTCEnabled) //CRTCB/Sprite function?
+		{
+			VGA->precalcs.SpriteCRTCverticaldisplaydelay = (((et34kdata->W32_21xA_shadowRegisters[0xE5 - 0xE0] & 7) << 8) | et34kdata->W32_21xA_shadowRegisters[0xE4 - 0xE0]); //Horizontal pixel delay until we start the window!
+		}
+		else //No function?
+		{
+			VGA->precalcs.SpriteCRTChorizontaldisplaydelay = ~0; //Don't display!
+		}
+	}
+
+	if ((whereupdated == WHEREUPDATED_ALL)
+		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xEF)) //CRTC/Sprite select updated?
+		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xE2)) //CRTC Horizontal width low or Sprite horizontal preset?
+		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xE3)) //CRTC Horizontal width high?
+		)
+	{
+		if (VGA->precalcs.SpriteCRTCEnabled) //CRTCB/Sprite function?
+		{
+			if (VGA->precalcs.SpriteCRTCEnabled == 2) //CRTC?
+			{
+				VGA->precalcs.SpriteCRTChorizontalwindowwidth = (((et34kdata->W32_21xA_shadowRegisters[0xE3 - 0xE0] & 7) << 8) | et34kdata->W32_21xA_shadowRegisters[0xE2 - 0xE0]); //Horizontal width of the end of the window!
+				VGA->precalcs.SpriteCRTChorizontaldisplaypreset = 0; //No preset is used!
+			}
+			else //Sprite?
+			{
+				VGA->precalcs.SpriteCRTChorizontalwindowwidth = VGA->precalcs.SpriteSize; //The width is the sprite size!
+				VGA->precalcs.SpriteCRTChorizontaldisplaypreset = et34kdata->W32_21xA_shadowRegisters[0xE2 - 0xE0]; //Horizontal preset of the sprite!
+			}
+		}
+		else //No function?
+		{
+			VGA->precalcs.SpriteCRTChorizontaldisplaydelay = 0; //Don't display!
+		}
+	}
+
+	if ((whereupdated == WHEREUPDATED_ALL)
+		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xEF)) //CRTC/Sprite select updated?
+		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xE6)) //CRTC Vertical height low or Sprite vertical preset?
+		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xE7)) //CRTC Vertical height high?
+		)
+	{
+		if (VGA->precalcs.SpriteCRTCEnabled) //CRTCB/Sprite function?
+		{
+			if (VGA->precalcs.SpriteCRTCEnabled == 2) //CRTC?
+			{
+				VGA->precalcs.SpriteCRTCverticalwindowheight = (((et34kdata->W32_21xA_shadowRegisters[0xE7 - 0xE0] & 7) << 8) | et34kdata->W32_21xA_shadowRegisters[0xE6 - 0xE0]); //Horizontal width of the end of the window!
+				VGA->precalcs.SpriteCRTCverticaldisplaypreset = 0; //No preset is used!
+			}
+			else //Sprite?
+			{
+				VGA->precalcs.SpriteCRTCverticalwindowheight = VGA->precalcs.SpriteSize; //The width is the sprite size!
+				VGA->precalcs.SpriteCRTCverticaldisplaypreset = et34kdata->W32_21xA_shadowRegisters[0xE6 - 0xE0]; //Horizontal preset of the sprite!
+			}
+		}
+		else //No function?
+		{
+			VGA->precalcs.SpriteCRTChorizontaldisplaydelay = 0; //Don't display!
+		}
+	}
+
+	if ((whereupdated == WHEREUPDATED_ALL)
+		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xEF)) //CRTC/Sprite select updated?
+		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xE8)) //CRTC/Sprite start address low?
+		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xE9)) //CRTC/Sprite start address mid?
+		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xEA)) //CRTC/Sprite start address high?
+		)
+	{
+		VGA->precalcs.SpriteCRTCstartaddress = ((((((et34kdata->W32_21xA_shadowRegisters[0xEA - 0xE0] & 7) << 8) | et34kdata->W32_21xA_shadowRegisters[0xE9 - 0xE0]) << 8) | et34kdata->W32_21xA_shadowRegisters[0xE8 - 0xE0]) << 2); //Start offset in doublewords!
+	}
+
+	if ((whereupdated == WHEREUPDATED_ALL)
+		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xEF)) //CRTC/Sprite select updated?
+		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xEB)) //CRTC/Sprite row offset low?
+		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xEC)) //CRTC/Sprite start address mid?
+		)
+	{
+		VGA->precalcs.SpriteCRTCstartaddress = ((((et34kdata->W32_21xA_shadowRegisters[0xEC - 0xE0] & 1) << 8) | et34kdata->W32_21xA_shadowRegisters[0xEB - 0xE0]) << 3); //Number of quadwords between rows in VRAM!
+	}
+
+	if ((whereupdated == WHEREUPDATED_ALL)
+		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xEF)) //CRTC/Sprite select updated?
+		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xEE)) //CRTC color depth?
+		|| (charwidthupdated) //Character width updated for different pixel panning?
+		)
+	{
+		et34k_tempreg = et34kdata->W32_21xA_shadowRegisters[0xEE - 0xE0]; //The register!
+		if (VGA->precalcs.SpriteCRTCEnabled == 2) //CRTCB function?
+		{
+			if ((et34k_tempreg & 0xF) > 4) //More than 16BPP?
+			{
+				et34k_tempreg &= ~0xF; //Default to 0!
+			}
+			VGA->precalcs.SpriteCRTCpixeldepth = (1 << (et34k_tempreg & 0xF)); //Bit depth in power of 2!
+		}
+		else //Sprite function?
+		{
+			VGA->precalcs.SpriteCRTCpixeldepth = 2; //Bit depth in power of 2! Always 2BPP!
+		}
+
+		VGA->precalcs.SpriteCRTCrowheight = ((et34k_tempreg >> 6)+1); //The height of each row!
+
+		if (VGA->precalcs.SpriteCRTCEnabled == 2) //CRTCB enabled?
+		{
+			pixelboost = 0; //Actual pixel boost!
+			possibleboost = GETBITS(et34k_tempreg, 0, 0xF); //Possible value, to be determined!
+			/*
+			if ((GETBITS(VGA->registers->SequencerRegisters.REGISTERS.CLOCKINGMODEREGISTER, 0, 1) == 0) && (VGA->precalcs.graphicsmode)) //Different behaviour with 9 pixel modes?
+			{
+				if (possibleboost >= 8) //No shift?
+				{
+					possibleboost = 0; //No shift!
+				}
+				else //Less than 8?
+				{
+					++possibleboost; //1 more!
+				}
+			}
+			else //Only 3 bits?
+			{
+			*/
+			//Only 8 pixel width? Only 3 bits are available for storage anyways!
+				possibleboost &= 0x7; //Repeat the low values!
+			//}
+			pixelboost = possibleboost; //Enable normally!
+			VGA->precalcs.SpriteCRTCpixelpannning = pixelboost; //No pixel panning possible!
+		}
+		else //Sprite enabled?
+		{
+			VGA->precalcs.SpriteCRTCpixelpannning = 0; //No pixel panning possible!
+		}
 	}
 
 	if (updateCRTC) //Update CRTC?

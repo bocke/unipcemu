@@ -209,8 +209,13 @@ typedef struct //Contains the precalculated values!
 	word SpriteCRTChorizontalwindowwidth; //The size of the horizontal window
 	word SpriteCRTCverticaldisplaydelay; //Horizontal delay in clocks until the horizontal window starts!
 	word SpriteCRTCverticaldisplaypreset; //How many pixels to skip once display starts
-	word SpriteCRTCverticalwindowwidth; //The size of the horizontal window
+	word SpriteCRTCverticalwindowheight; //The size of the horizontal window
+	uint_32 SpriteCRTCstartaddress; //Start address of the image in video memory!
+	uint_32 SpriteCRTCrowoffset; //Row offset for each row in the video memory!
+	byte SpriteCRTCrowheight; //Row height in scanlines for each row to display!
 	byte SpriteCRTCpixeldepth; //The pixel depth for CRTC mode
+	byte SpriteSize; //64 or 128 pixels!
+	byte SpriteCRTCpixelpannning; //Horizontal pixel panning for CRTCB/Sprite!
 } VGA_PRECALCS; //VGA pre-calculations!
 
 typedef void (*VGA_calcprecalcsextensionhandler)(void *VGA, uint_32 whereupdated); //Calculate them!
