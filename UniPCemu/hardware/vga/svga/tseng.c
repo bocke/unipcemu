@@ -3214,18 +3214,18 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 			{
 				VGA->precalcs.SpriteCRTCEnabled = 1; //Sprite function!
 			}
-			if (et34kdata->W32_21xA_CRTCBSpriteControl & 4) //128 pixels instead of 64?
-			{
-				VGA->precalcs.SpriteSize = 128; //128 pixels wide/height!
-			}
-			else
-			{
-				VGA->precalcs.SpriteSize = 64; //64 pixels wide/height!
-			}
 		}
 		else //Output to SP 0:1?
 		{
 			VGA->precalcs.SpriteCRTCEnabled = 0; //Disabled!
+		}
+		if (et34kdata->W32_21xA_CRTCBSpriteControl & 4) //128 pixels instead of 64?
+		{
+			VGA->precalcs.SpriteSize = 128; //128 pixels wide/height!
+		}
+		else
+		{
+			VGA->precalcs.SpriteSize = 64; //64 pixels wide/height!
 		}
 	}
 
