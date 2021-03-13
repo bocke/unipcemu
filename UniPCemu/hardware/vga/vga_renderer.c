@@ -766,8 +766,210 @@ OPTINLINE void video_updateLightPen(VGA_Type *VGA, byte drawnto)
 	lightpenhandler(lightpen_currentvramlocation,lightpen_triggered,lightpen_pressed); //Check for anything requiring the lightpen on the device!
 }
 
+//Used for Sprite/CRTC fetching from VRAM!
+byte VGA_renderer_readlinearVRAM(uint_32 addr)
+{
+	return readVRAMplane(getActiveVGA(), (addr & 3), (addr >> 2), 0, 0); //Read VRAM!
+}
+
+byte VGA_SpriteCRTCGetPixel(VGA_Type* VGA, SEQ_DATA* Sequencer, VGA_AttributeInfo* attributeinfo)
+{
+	word pixel; //The pixel that's retrieved!
+	if (VGA->precalcs.SpriteCRTCEnabled == 1) //Sprite mode?
+	{
+		//Retrieve the pixel from VRAM!
+		pixel = VGA_renderer_readlinearVRAM(Sequencer->SpriteCRTC_pixel_address); //The pixels in the map!
+		pixel >>= (Sequencer->SpriteCRTCstep << 1); //2 bits for each pixel!
+		pixel &= 3; //Only bits used!
+
+		//Prepare to handle the next pixel!
+		++Sequencer->SpriteCRTCstep; //Next action?
+		if (Sequencer->SpriteCRTCstep == 4) //1 byte processed?
+		{
+			++Sequencer->SpriteCRTC_pixel_address; //Next pixel address!
+			Sequencer->SpriteCRTCstep = 0; //Reset for the next pixels to be retrieved!
+		}
+
+		if (pixel & 2) //Inverted or transparent?
+		{
+			if (pixel & 1) //Inverted?
+			{
+				return 2; //Inverted specially!
+			}
+			else //Transparent?
+			{
+				return 0; //Transparent!
+			}
+		}
+		else if (pixel & 1) //Sprite color FFh?
+		{
+			attributeinfo->attributesize = 1; //256 colors!
+			attributeinfo->attribute = 0xFF; //FFh attribute!
+		}
+		else //Sprite color 00h?
+		{
+			attributeinfo->attributesize = 1; //256 colors!
+			attributeinfo->attribute = 0x00; //00h attribute!
+		}
+	}
+	else //CRTC mode?
+	{
+		//Retrieve the pixel from VRAM!
+		pixel = VGA_renderer_readlinearVRAM(Sequencer->SpriteCRTC_pixel_address); //The pixels in the map!
+
+		switch (VGA->precalcs.SpriteCRTCpixeldepth) //What pixel depth?
+		{
+		default:
+		case 0: //1BPP?
+			pixel >>= 7-Sequencer->SpriteCRTCstep; //1 bit for each pixel!
+			pixel &= 1; //Only bits used!
+
+			attributeinfo->attributesize = 1; //256 colors!
+			attributeinfo->attribute = pixel; //pixel attribute!
+
+			//Prepare to handle the next pixel!
+			++Sequencer->SpriteCRTCstep; //Next action?
+			if (Sequencer->SpriteCRTCstep == 8) //1 byte processed?
+			{
+				++Sequencer->SpriteCRTC_pixel_address; //Next pixel address!
+				Sequencer->SpriteCRTCstep = 0; //Reset for the next pixels to be retrieved!
+			}
+			break;
+		case 1: //2BPP?
+			pixel >>= 6-(Sequencer->SpriteCRTCstep << 1); //2 bits for each pixel!
+			pixel &= 3; //Only bits used!
+
+			attributeinfo->attributesize = 1; //256 colors!
+			attributeinfo->attribute = pixel; //pixel attribute!
+
+			//Prepare to handle the next pixel!
+			++Sequencer->SpriteCRTCstep; //Next action?
+			if (Sequencer->SpriteCRTCstep == 4) //1 byte processed?
+			{
+				++Sequencer->SpriteCRTC_pixel_address; //Next pixel address!
+				Sequencer->SpriteCRTCstep = 0; //Reset for the next pixels to be retrieved!
+			}
+			break;
+		case 2: //4BPP?
+			pixel >>= 4-(Sequencer->SpriteCRTCstep << 2); //4 bits for each pixel!
+			pixel &= 0xF; //Only bits used!
+
+			attributeinfo->attributesize = 1; //256 colors!
+			attributeinfo->attribute = pixel; //pixel attribute!
+
+			//Prepare to handle the next pixel!
+			++Sequencer->SpriteCRTCstep; //Next action?
+			if (Sequencer->SpriteCRTCstep == 2) //1 byte processed?
+			{
+				++Sequencer->SpriteCRTC_pixel_address; //Next pixel address!
+				Sequencer->SpriteCRTCstep = 0; //Reset for the next pixels to be retrieved!
+			}
+			break;
+		case 3: //8BPP?
+			//8 bits for each pixel!
+			//Prepare to handle the next pixel!
+			++Sequencer->SpriteCRTC_pixel_address; //Next pixel address!
+			Sequencer->SpriteCRTCstep = 0; //Reset for the next pixels to be retrieved!
+			attributeinfo->attributesize = 1; //256 colors!
+			attributeinfo->attribute = pixel; //pixel attribute!
+			break;
+		case 4: //16BPP?
+			++Sequencer->SpriteCRTC_pixel_address; //Next pixel address!
+			pixel |= (VGA_renderer_readlinearVRAM(Sequencer->SpriteCRTC_pixel_address)<<8); //The high pixels in the map!
+			++Sequencer->SpriteCRTC_pixel_address; //Next pixel address!
+			Sequencer->SpriteCRTCstep = 0; //Reset for the next pixels to be retrieved!
+			attributeinfo->attributesize = 2; //64K colors!
+			attributeinfo->attribute = pixel; //pixel attribute!
+			break;
+		}
+		return 1; //CRTC fully rendered!
+	}
+	return 0; //Don't render any pixel yet!
+}
+
+//Handle a new scanline for the Sprite/CRTC unit!
+void VGA_handleSpriteCRTCnewScanline(VGA_Type* VGA, SEQ_DATA* Sequencer, VGA_AttributeInfo* attributeinfo)
+{
+	VGA_AttributeInfo dummyattribute; //Dummy attribute!
+	word n;
+	int_32 resultgotten;
+	Sequencer->SpriteCRTC_pixel_address = Sequencer->SpriteCRTC_row_address; //Pixel address starts at the row address!
+	//Handle the horizontal preset now!
+	if (VGA->precalcs.SpriteCRTChorizontaldisplaypreset) //Horizontal preset?
+	{
+		for (n = 0; n < VGA->precalcs.SpriteCRTChorizontaldisplaypreset; ++n) //Handle horizontal preset!
+		{
+			resultgotten = VGA_SpriteCRTCGetPixel(VGA, Sequencer, &dummyattribute); //Dummy renderings!
+		}
+	}
+}
+
 byte VGA_handleSpriteCRTCwindow(VGA_Type* VGA, SEQ_DATA* Sequencer, VGA_AttributeInfo* attributeinfo)
 {
+	word n;
+	int_32 resultgotten;
+	if (VGA->precalcs.SpriteCRTCEnabled) //Sprite/CRTC window enabled?
+	{
+		if (Sequencer->Scanline >= VGA->precalcs.SpriteCRTCverticaldisplaydelay) //Vertically within range?
+		{
+			if (Sequencer->x >= VGA->precalcs.SpriteCRTChorizontaldisplaydelay) //Horizontally within range?
+			{
+				//We're perhaps a part of the sprite or CRTC display.
+				if (Sequencer->x == VGA->precalcs.SpriteCRTChorizontaldisplaydelay) //Starting horizontal display?
+				{
+					if (Sequencer->Scanline == VGA->precalcs.SpriteCRTCverticaldisplaydelay) //Starting vertical display?
+					{
+						if (Sequencer->SpriteCRTCylatched) //To latch first row?
+						{
+							Sequencer->SpriteCRTC_row_address = VGA->precalcs.SpriteCRTCstartaddress; //Load the start address!
+							Sequencer->SpriteCRTC_row_address += VGA->precalcs.SpriteCRTCrowoffset * VGA->precalcs.SpriteCRTCverticaldisplaypreset; //Vertical preset to apply!
+							Sequencer->SpriteCRTC_virtualscanline = VGA->precalcs.SpriteCRTCverticaldisplaypreset; //What is our idea of the current scanline?
+							Sequencer->SpriteCRTCrowstep = 0; //Initialize the row step!
+							Sequencer->SpriteCRTCstep = 0; //Initialize the horizontal step!
+							VGA_handleSpriteCRTCnewScanline(VGA, Sequencer, attributeinfo); //New scanline handling!
+						}
+					}
+					else //New scanline or double scanning?
+					{
+						if (Sequencer->SpriteCRTC_virtualscanline >= VGA->precalcs.SpriteCRTCverticalwindowheight) //Already finished?
+						{
+							return 0; //Don't handle any new scanlines anymore: we're finished!
+						}
+						if (Sequencer->SpriteCRTCxlatched) //To latch first column?
+						{
+							++Sequencer->SpriteCRTCrowstep; //Next step stepping the row!
+							if (Sequencer->SpriteCRTCrowstep >= VGA->precalcs.SpriteCRTCrowheight) //To reload a new row?
+							{
+								Sequencer->SpriteCRTC_row_address += VGA->precalcs.SpriteCRTCrowoffset; //One row ahead!
+								Sequencer->SpriteCRTCrowstep = 0; //Restart the scanline counter!
+								++Sequencer->SpriteCRTC_virtualscanline; //Next virtual scanline!
+							}
+							//Common new scanline handling!
+							Sequencer->SpriteCRTCstep = 0; //Initialize the horizontal step!
+							VGA_handleSpriteCRTCnewScanline(VGA, Sequencer, attributeinfo); //New scanline handling!
+						}
+						if (Sequencer->SpriteCRTC_virtualscanline >= VGA->precalcs.SpriteCRTCverticalwindowheight) //Already finished?
+						{
+							return 0; //Don't handle any new scanlines anymore: we're finished!
+						}
+					}
+				}
+				if (Sequencer->x >= (VGA->precalcs.SpriteCRTChorizontaldisplaydelay + VGA->precalcs.SpriteCRTChorizontalwindowwidth)) //Out of horizontal range?
+				{
+					return 0; //Not handled!
+				}
+				if (Sequencer->SpriteCRTC_virtualscanline >= VGA->precalcs.SpriteCRTCverticalwindowheight) //Already finished?
+				{
+					return 0; //Don't handle any new scanlines anymore: we're finished!
+				}
+				resultgotten = VGA_SpriteCRTCGetPixel(VGA, Sequencer, attributeinfo); //Try and retrieve an attribute!!
+				if (resultgotten) //Have we got an overriding result?
+				{
+					return resultgotten; //The CRTC window!
+				}
+			}
+		}
+	}
 	return 0; //Not the CRTC window!
 }
 

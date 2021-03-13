@@ -97,8 +97,10 @@ typedef struct
 	byte SpriteCRTCxlatched; //Is X window to be latched?
 	byte SpriteCRTCylatched; //Is Y window to be latched? This is only the start of the window
 	uint_32 SpriteCRTC_row_address; //Current address processing row in the Sprite/CRTC window
+	uint_32 SpriteCRTC_virtualscanline; //What virtual scanline is displayed right now?
 	uint_32 SpriteCRTC_pixel_address; //Current address processing in the Sprite/CRTC window
 	byte SpriteCRTCstep; //Current pixel processing in the Sprite/CRTC window
+	byte SpriteCRTCrowstep; //Current row processing in the Sprite/CRTC window
 } SEQ_DATA; //Sequencer used data!
 
 #include "headers/packed.h"
