@@ -2063,6 +2063,7 @@ OPTINLINE void VGA_Renderer(SEQ_DATA *Sequencer)
 	displayrenderhandler[totalretracing][displaystate](Sequencer, getActiveVGA()); //Execute our signal!
 	if (((getActiveVGA()->CRTC.CRTCBwindowmaxstatus ^ getActiveVGA()->CRTC.CRTCBwindowEnabled) & getActiveVGA()->CRTC.CRTCBwindowmaxstatus) & 2) //CRTCB window is finished rendering (the scanline active marker has been lowered)?
 	{
+		getActiveVGA()->CRTC.CRTCBwindowmaxstatus = 0; //Clear the max status to prevent retriggering!
 		VGA_triggerVerticalRetraceInterrupt(getActiveVGA(), 1); //CRTCB interrupt triggered!
 	}
 	Tseng4k_tickAccelerator(); //Tick the accelerator one clock, if it's present and operating!
