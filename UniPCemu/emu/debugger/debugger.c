@@ -41,6 +41,8 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 #include "headers/cpu/biu.h" //BIU support!
 #include "headers/cpu/easyregs.h" //Easy register support!
 #include "headers/mmu/mmuhandler.h" //Memory direct read support!
+#include "headers/emu/gpu/gpu_emu.h" //GPU printing support for the BIOS screen printing functions.
+#include "headers/emu/emu_misc.h" //converthex2int support!
 
 //Log flags only?
 //#define LOGFLAGSONLY

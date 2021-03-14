@@ -39,5 +39,8 @@ byte runBIOS(byte showloadingtext); //Run the BIOS!
 typedef void(*list_information)(char *filename); //Displays information about a harddisk to mount!
 int ExecuteList(int x, int y, char *defaultentry, int maxlen, list_information information_handler, int blockActions); //Runs the file list!
 
+byte BIOS_InputAddressWithMode(byte x, byte y, char* filename, uint_32 maxlength, byte allowModeAndAddressIgnore, byte allowsegment, byte allowSingleStep); //Inputs an address with mode support.
+void BIOS_Title(char* text); //Prints the BIOS title on the screen
+void BIOSClearScreen(); //Resets the BIOS's screen!
 void BIOSDoneScreen(); //Cleans up the BIOS's screen!
 #endif
