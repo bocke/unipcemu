@@ -2226,7 +2226,7 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 	byte AttrUpdated = UPDATE_SECTIONFULL(whereupdated,WHEREUPDATED_ATTRIBUTECONTROLLER,FullUpdate); //Fully updated?
 	byte SequencerUpdated = UPDATE_SECTIONFULL(whereupdated, WHEREUPDATED_SEQUENCER, FullUpdate); //Fully updated?
 	byte linearmodeupdated = 0; //Linear mode has been updated?
-
+	byte SpriteCRTCBenabledupdated = 0; //Sprite/CRTCB enable updated?
 
 	#ifdef LOG_UNHANDLED_SVGA_ACCESSES
 	byte handled = 0;
@@ -3195,16 +3195,18 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xF7))  //Enable interlacing of data in the image port!
 		) //Image port
 	{
-		VGA->precalcs.imageport_interlace = ((et34k(getActiveVGA())->W32_21xA_shadowRegisters[0xF7 - 0xE0]&2)>>1); //Transfer length for a scanline, in bytes!
+		VGA->precalcs.imageport_interlace = ((et34k(getActiveVGA())->W32_21xA_ImagePortControl&2)>>1); //Transfer length for a scanline, in bytes!
 	}
 
 	//CRTCB/Sprite registers!
 	if ((whereupdated == WHEREUPDATED_ALL)
 		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xEF)) //CRTC/Sprite select updated?
+		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xF7))  //Enable CRTCB/Sprite!
 		)
 	{
 		//Sprite function enable/disable?
-		if (et34kdata->W32_21xA_CRTCBSpriteControl & 2) //Overlay the CRTC?
+		SpriteCRTCBenabledupdated = 1; //We're updating the enable flag!
+		if (et34kdata->W32_21xA_ImagePortControl & 0x80) //CRTCB/Sprite enable?
 		{
 			if (et34kdata->W32_21xA_CRTCBSpriteControl & 1) //CRTCB function?
 			{
@@ -3214,8 +3216,16 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 			{
 				VGA->precalcs.SpriteCRTCEnabled = 1; //Sprite function!
 			}
+			if (et34kdata->W32_21xA_CRTCBSpriteControl & 2) //Overlay the CRTC?
+			{
+				//Nothing special: normally display over the CRTC data!
+			}
+			else //Output to SP 0:1?
+			{
+				VGA->precalcs.SpriteCRTCEnabled |= 4; //Output to SP1 instead?
+			}
 		}
-		else //Output to SP 0:1?
+		else //Disabled?
 		{
 			VGA->precalcs.SpriteCRTCEnabled = 0; //Disabled!
 		}
@@ -3230,7 +3240,7 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 	}
 
 	if ((whereupdated == WHEREUPDATED_ALL)
-		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xEF)) //CRTC/Sprite select updated?
+		|| SpriteCRTCBenabledupdated //CRTC/Sprite select updated?
 		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xE0)) //Horizontal pixel position low?
 		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xE1)) //Horizontal pixel position high?
 		)
@@ -3246,7 +3256,7 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 	}
 
 	if ((whereupdated == WHEREUPDATED_ALL)
-		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xEF)) //CRTC/Sprite select updated?
+		|| SpriteCRTCBenabledupdated //CRTC/Sprite select updated?
 		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xE4)) //Vertical pixel position low?
 		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xE5)) //Vertical pixel position high?
 		)
@@ -3262,7 +3272,7 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 	}
 
 	if ((whereupdated == WHEREUPDATED_ALL)
-		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xEF)) //CRTC/Sprite select updated?
+		|| SpriteCRTCBenabledupdated //CRTC/Sprite select updated?
 		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xE2)) //CRTC Horizontal width low or Sprite horizontal preset?
 		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xE3)) //CRTC Horizontal width high?
 		)
@@ -3287,7 +3297,7 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 	}
 
 	if ((whereupdated == WHEREUPDATED_ALL)
-		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xEF)) //CRTC/Sprite select updated?
+		|| SpriteCRTCBenabledupdated //CRTC/Sprite select updated?
 		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xE6)) //CRTC Vertical height low or Sprite vertical preset?
 		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xE7)) //CRTC Vertical height high?
 		)
@@ -3312,7 +3322,7 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 	}
 
 	if ((whereupdated == WHEREUPDATED_ALL)
-		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xEF)) //CRTC/Sprite select updated?
+		|| SpriteCRTCBenabledupdated //CRTC/Sprite select updated?
 		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xE8)) //CRTC/Sprite start address low?
 		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xE9)) //CRTC/Sprite start address mid?
 		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xEA)) //CRTC/Sprite start address high?
@@ -3322,7 +3332,7 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 	}
 
 	if ((whereupdated == WHEREUPDATED_ALL)
-		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xEF)) //CRTC/Sprite select updated?
+		|| SpriteCRTCBenabledupdated //CRTC/Sprite select updated?
 		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xEB)) //CRTC/Sprite row offset low?
 		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xEC)) //CRTC/Sprite start address mid?
 		)
@@ -3331,7 +3341,7 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 	}
 
 	if ((whereupdated == WHEREUPDATED_ALL)
-		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xEF)) //CRTC/Sprite select updated?
+		|| SpriteCRTCBenabledupdated //CRTC/Sprite select updated?
 		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xEE)) //CRTC color depth?
 		|| (charwidthupdated) //Character width updated for different pixel panning?
 		)
