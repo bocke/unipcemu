@@ -61,6 +61,7 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 #include "headers/hardware/vga/vga_precalcs.h" //Precalcs support!
 #include "headers/cpu/easyregs.h" //Easy register support!
 #include "headers/hardware/modem.h" //Connection support!
+#include "headers/emu/emu_misc.h" //converthex2int support!
 
 extern byte diagnosticsportoutput; //Diagnostics port output!
 
@@ -8260,40 +8261,6 @@ void BIOS_useDirectMIDIPassthrough()
 	BIOS_Changed = 1; //We've changed!
 	reboot_needed |= 1; //A reboot is needed!
 	BIOS_Menu = 31; //Goto Sound menu!
-}
-
-uint_32 converthex2int(char *s)
-{
-	uint_32 result=0; //The result!
-	char *temp;
-	byte tempnr;
-	for (temp=s;*temp;++temp)
-	{
-		switch (*temp) //What character?
-		{
-			case '0': tempnr = 0x0; break;
-			case '1': tempnr = 0x1; break;
-			case '2': tempnr = 0x2; break;
-			case '3': tempnr = 0x3; break;
-			case '4': tempnr = 0x4; break;
-			case '5': tempnr = 0x5; break;
-			case '6': tempnr = 0x6; break;
-			case '7': tempnr = 0x7; break;
-			case '8': tempnr = 0x8; break;
-			case '9': tempnr = 0x9; break;
-			case 'A': tempnr = 0xA; break;
-			case 'B': tempnr = 0xB; break;
-			case 'C': tempnr = 0xC; break;
-			case 'D': tempnr = 0xD; break;
-			case 'E': tempnr = 0xE; break;
-			case 'F': tempnr = 0xF; break;
-			default: //Unknown character?
-				return 0; //Abort without result! Can't decode!
-		}
-		result <<= 4; //Shift our number high!
-		result |= tempnr; //Add in our number to the resulting numbers!
-	}
-	return result; //Give the result we calculated!
 }
 
 void BIOS_setBreakpoint(byte index, char *breakpointstr, word semicolonpos, byte mode, byte ignoreEIP, byte ignoreAddress, byte ignoreSegment, byte singleStep);
