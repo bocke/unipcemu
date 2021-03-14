@@ -959,8 +959,6 @@ void VGA_handleSpriteCRTCnewScanline(VGA_Type* VGA, SEQ_DATA* Sequencer, VGA_Att
 
 void VGA_handleSpriteCRTCwindowNonActiveDisplay(VGA_Type* VGA, SEQ_DATA* Sequencer, VGA_AttributeInfo* attributeinfo, VGA_AttributeInfo* overrideattributeinfo)
 {
-	word n;
-	int_32 resultgotten;
 	VGA->CRTC.CRTCBwindowEnabled &= ~1; //The window is not yet active this scanline!
 	if (VGA->precalcs.SpriteCRTCEnabled) //Sprite/CRTC window enabled?
 	{
@@ -1047,8 +1045,6 @@ void VGA_handleSpriteCRTCwindowNonActiveDisplay(VGA_Type* VGA, SEQ_DATA* Sequenc
 
 byte VGA_handleSpriteCRTCwindow(VGA_Type* VGA, SEQ_DATA* Sequencer, VGA_AttributeInfo* attributeinfo, VGA_AttributeInfo *overrideattributeinfo)
 {
-	word n;
-	int_32 resultgotten;
 	if (VGA->precalcs.SpriteCRTCEnabled) //Sprite/CRTC window enabled?
 	{
 		if (Sequencer->Scanline >= VGA->precalcs.SpriteCRTCverticaldisplaydelay) //Vertically within range?
@@ -1122,11 +1118,7 @@ byte VGA_handleSpriteCRTCwindow(VGA_Type* VGA, SEQ_DATA* Sequencer, VGA_Attribut
 					return 0; //Don't handle any new scanlines anymore: we're finished!
 				}
 				VGA->CRTC.CRTCBwindowEnabled |= 1; //The window is now active!
-				resultgotten = VGA_SpriteCRTCGetPixel(VGA, Sequencer, attributeinfo, overrideattributeinfo); //Try and retrieve an attribute!!
-				if (resultgotten) //Have we got an overriding result?
-				{
-					return resultgotten; //The CRTC window!
-				}
+				return VGA_SpriteCRTCGetPixel(VGA, Sequencer, attributeinfo, overrideattributeinfo); //Try and retrieve an attribute!!
 			}
 			else //Might be on the current scanline needing handling?
 			{
