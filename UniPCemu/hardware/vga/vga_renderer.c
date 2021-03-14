@@ -628,8 +628,11 @@ byte VGA_LOGPRECALCS = 0; //Log precalcs?
 //displayrenderhandler[total_retrace][signal]
 DisplayRenderHandler displayrenderhandler[4][VGA_DISPLAYRENDERSIZE]; //Our handlers for all pixels!
 
+void VGA_handleSpriteCRTCwindowNonActiveDisplay(VGA_Type* VGA, SEQ_DATA* Sequencer, VGA_AttributeInfo* attributeinfo, VGA_AttributeInfo* overrideattributeinfo); //Prototype!
+
 void VGA_NOP(SEQ_DATA *Sequencer, VGA_Type *VGA) //NOP for pixels!
 {
+	VGA_handleSpriteCRTCwindowNonActiveDisplay(VGA, Sequencer, &currentattributeinfo, &overrideattributeinfo); //Handle without display!
 	VGA->CRTC.CRTCBwindowmaxstatus = MAX(VGA->CRTC.CRTCBwindowmaxstatus, VGA->CRTC.CRTCBwindowEnabled); //Maximum status detected!
 }
 
@@ -954,6 +957,94 @@ void VGA_handleSpriteCRTCnewScanline(VGA_Type* VGA, SEQ_DATA* Sequencer, VGA_Att
 	}
 }
 
+void VGA_handleSpriteCRTCwindowNonActiveDisplay(VGA_Type* VGA, SEQ_DATA* Sequencer, VGA_AttributeInfo* attributeinfo, VGA_AttributeInfo* overrideattributeinfo)
+{
+	word n;
+	int_32 resultgotten;
+	VGA->CRTC.CRTCBwindowEnabled &= ~1; //The window is not yet active this scanline!
+	if (VGA->precalcs.SpriteCRTCEnabled) //Sprite/CRTC window enabled?
+	{
+		if (Sequencer->Scanline >= VGA->precalcs.SpriteCRTCverticaldisplaydelay) //Vertically within range?
+		{
+			if (Sequencer->x >= VGA->precalcs.SpriteCRTChorizontaldisplaydelay) //Horizontally within range?
+			{
+				//We're perhaps a part of the sprite or CRTC display.
+				VGA->CRTC.CRTCBwindowEnabled |= 2; //The window is active this scanline!
+				if (Sequencer->SpriteCRTCxlatched) //Starting horizontal display?
+				{
+					if (Sequencer->Scanline == VGA->precalcs.SpriteCRTCverticaldisplaydelay) //Starting vertical display?
+					{
+						//Latching the first scanline, so within range!
+					}
+					else //New scanline or double scanning?
+					{
+						if (Sequencer->SpriteCRTCylatched) //Y not latched yet?
+						{
+							return; //Not ready to render yet!
+						}
+						if (Sequencer->SpriteCRTC_virtualscanline >= VGA->precalcs.SpriteCRTCverticalwindowheight) //Already finished?
+						{
+							return; //Don't handle any new scanlines anymore: we're finished!
+						}
+					}
+				}
+				if ((Sequencer->SpriteCRTCylatched | Sequencer->SpriteCRTCxlatched) != 0) //Not latched the start yet?
+				{
+					return; //Not ready to handle yet this frame!
+				}
+				if (Sequencer->SpriteCRTC_virtualscanline >= VGA->precalcs.SpriteCRTCverticalwindowheight) //Already finished?
+				{
+					return; //Don't handle any new scanlines anymore: we're finished!
+				}
+				VGA->CRTC.CRTCBwindowEnabled |= 2; //The window is now active this scanline!
+			}
+			else //Might be on the current scanline needing handling?
+			{
+				if (Sequencer->SpriteCRTCxlatched) //Starting horizontal display this scanline perhaps?
+				{
+					if (Sequencer->Scanline == VGA->precalcs.SpriteCRTCverticaldisplaydelay) //Starting vertical display?
+					{
+						VGA->CRTC.CRTCBwindowEnabled |= 2; //The window is active this scanline!
+					}
+					else //New scanline or double scanning?
+					{
+						VGA->CRTC.CRTCBwindowEnabled |= 2; //The window is active this scanline!
+						if (Sequencer->SpriteCRTCylatched) //Y not latched yet?
+						{
+							VGA->CRTC.CRTCBwindowEnabled &= ~2; //The window is inactive this scanline!
+							return; //Not ready to render yet!
+						}
+						if (Sequencer->SpriteCRTC_virtualscanline >= VGA->precalcs.SpriteCRTCverticalwindowheight) //Already finished?
+						{
+							VGA->CRTC.CRTCBwindowEnabled &= ~2; //The window is inactive this scanline!
+							return; //Don't handle any new scanlines anymore: we're finished!
+						}
+					}
+				}
+				if ((Sequencer->SpriteCRTCylatched) != 0) //Not latched the start yet?
+				{
+					VGA->CRTC.CRTCBwindowEnabled &= ~2; //The window is inactive this scanline!
+					return; //Not ready to handle yet this frame!
+				}
+				if (Sequencer->SpriteCRTC_virtualscanline >= VGA->precalcs.SpriteCRTCverticalwindowheight) //Already finished?
+				{
+					VGA->CRTC.CRTCBwindowEnabled &= ~2; //The window is inactive this scanline!
+					return; //Don't handle any new scanlines anymore: we're finished!
+				}
+				VGA->CRTC.CRTCBwindowEnabled |= 2; //The window is now active this scanline!
+			}
+		}
+		else //Vertically out of range?
+		{
+			VGA->CRTC.CRTCBwindowEnabled &= ~3; //The window is now inactive and not on the current scanline!
+		}
+	}
+	else //Fully disabled?
+	{
+		VGA->CRTC.CRTCBwindowEnabled &= ~3; //The window is now inactive and not on the current scanline!
+	}
+}
+
 byte VGA_handleSpriteCRTCwindow(VGA_Type* VGA, SEQ_DATA* Sequencer, VGA_AttributeInfo* attributeinfo, VGA_AttributeInfo *overrideattributeinfo)
 {
 	word n;
@@ -1115,9 +1206,11 @@ void VGA_Blank_Activedisplay_VGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_Attribu
 	}
 }
 
+void VGA_handleSpriteCRTCwindowNonActiveDisplay(VGA_Type* VGA, SEQ_DATA* Sequencer, VGA_AttributeInfo* attributeinfo, VGA_AttributeInfo* overrideattributeinfo); //Prototype!
+
 void VGA_Blank_Overscan_VGA(VGA_Type* VGA, SEQ_DATA* Sequencer, VGA_AttributeInfo* attributeinfo)
 {
-	VGA->CRTC.CRTCBwindowEnabled &= ~1; //Not active right now!
+	VGA_handleSpriteCRTCwindowNonActiveDisplay(VGA, Sequencer, attributeinfo, &overrideattributeinfo); //Handle without display!
 	VGA->CRTC.CRTCBwindowmaxstatus = MAX(VGA->CRTC.CRTCBwindowmaxstatus, VGA->CRTC.CRTCBwindowEnabled); //Maximum status detected!
 	if (hretrace) return; //Don't handle during horizontal retraces or top screen rendering!
 
@@ -1363,6 +1456,7 @@ void VGA_ActiveDisplay_noblanking_CGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_At
 void VGA_Overscan_noblanking_VGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_AttributeInfo *attributeinfo)
 {
 	VGA->CRTC.CRTCBwindowEnabled &= ~1; //Not active right now!
+	VGA_handleSpriteCRTCwindowNonActiveDisplay(VGA, Sequencer, attributeinfo, &overrideattributeinfo); //Handle without display!
 	VGA->CRTC.CRTCBwindowmaxstatus = MAX(VGA->CRTC.CRTCBwindowmaxstatus, VGA->CRTC.CRTCBwindowEnabled); //Maximum status detected!
 	if (hretrace) return; //Don't handle during horizontal retraces!
 
