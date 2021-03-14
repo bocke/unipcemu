@@ -2413,6 +2413,14 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 		et34kdata->useInterlacing = VGA->precalcs.enableInterlacing = (VGA->enable_SVGA==2)?((et34k_tempreg & 0x80) ? 1 : 0):0; //Enable/disable interlacing! Apply with ET3000 only!
 
 		//W32 chips: bit 6=Source of Vertical Retrace interrupt. 0=VGA-compatible, 1=CRTC/Sprite registers based.
+		if ((et34k_tempreg & 0x40) && (et34kdata->tsengExtensions)) //W32-chip and CRTCB/Sprite register interrupt enabled?
+		{
+			VGA->precalcs.VerticalRetraceInterruptSource = 1; //CRTCB/Sprite is the interrupt source!
+		}
+		else //Normal VGA-compatible interrupts!
+		{
+			VGA->precalcs.VerticalRetraceInterruptSource = 0; //Vertical retrace is the interrupt source!
+		}
 	}
 
 	if (CRTUpdated || verticaltimingsupdated || (whereupdated == WHEREUPDATED_ALL) || (whereupdated == (WHEREUPDATED_CRTCONTROLLER | 0x35)) || (whereupdated == (WHEREUPDATED_CRTCONTROLLER | 0x25)) //Extended bits of the overflow register!
