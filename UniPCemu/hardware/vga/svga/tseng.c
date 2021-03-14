@@ -3222,7 +3222,7 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 			}
 			else //Output to SP 0:1?
 			{
-				VGA->precalcs.SpriteCRTCEnabled |= 4; //Output to SP1 instead?
+				VGA->precalcs.SpriteCRTCEnabled |= 4; //Output to SP0:1 instead?
 			}
 		}
 		else //Disabled?

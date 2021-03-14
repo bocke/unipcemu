@@ -781,7 +781,7 @@ byte VGA_SpriteCRTCGetPixel(VGA_Type* VGA, SEQ_DATA* Sequencer, VGA_AttributeInf
 	}
 	--Sequencer->SpriteCRTChorizontalpixelsleft; //One pixel is rendering now!
 	memcpy(overrideattributeinfo, attributeinfo, sizeof(*attributeinfo)); //Make the output setting the same as the original input settings!
-	if (VGA->precalcs.SpriteCRTCEnabled == 1) //Sprite mode?
+	if ((VGA->precalcs.SpriteCRTCEnabled & 3) == 1) //Sprite mode?
 	{
 		//Retrieve the pixel from VRAM!
 		pixel = VGA_renderer_readlinearVRAM(Sequencer->SpriteCRTC_pixel_address); //The pixels in the map!
@@ -808,6 +808,10 @@ byte VGA_SpriteCRTCGetPixel(VGA_Type* VGA, SEQ_DATA* Sequencer, VGA_AttributeInf
 				{
 					overrideattributeinfo->attribute ^= 0xFF; //Inverted attribute from the input!
 				}
+				if (VGA->precalcs.SpriteCRTCEnabled & 4) //Output to SP 0:1?
+				{
+					return 0; //Unsupported!
+				}
 				return 2; //Inverted specially!
 			}
 			else //Transparent?
@@ -825,11 +829,20 @@ byte VGA_SpriteCRTCGetPixel(VGA_Type* VGA, SEQ_DATA* Sequencer, VGA_AttributeInf
 			{
 				overrideattributeinfo->attribute = 0xFF; //FFh attribute!
 			}
+
+			if (VGA->precalcs.SpriteCRTCEnabled & 4) //Output to SP 0:1?
+			{
+				return 0; //Unsupported!
+			}
 			return 1; //Overridden!
 		}
 		else //Sprite color 00h?
 		{
 			overrideattributeinfo->attribute = 0x00; //00h attribute!
+			if (VGA->precalcs.SpriteCRTCEnabled & 4) //Output to SP 0:1?
+			{
+				return 0; //Unsupported!
+			}
 			return 1; //Overridden!
 		}
 	}
@@ -905,6 +918,10 @@ byte VGA_SpriteCRTCGetPixel(VGA_Type* VGA, SEQ_DATA* Sequencer, VGA_AttributeInf
 			//attributeinfo->attributesize = 2; //64K colors!
 			overrideattributeinfo->attribute = pixel; //pixel attribute!
 			break;
+		}
+		if (VGA->precalcs.SpriteCRTCEnabled & 4) //Output to SP 0:1?
+		{
+			return 0; //Unsupported!
 		}
 		return 1; //CRTC fully rendered!
 	}
