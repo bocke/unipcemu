@@ -353,6 +353,8 @@ typedef struct
 	word y; //Y coordinate on the screen!
 	byte DisplayEnabled; //Is the display signal enabled?
 	byte DACOutput; //The current outputted DAC index!
+	byte CRTCBwindowEnabled; //bit 0: CRTCB active, bit 1: CRTCB active within the current scanline
+	byte CRTCBwindowmaxstatus; //Maximum status detected on the CRTCBwindowenabled flag!
 } VGA_CRTC; //CRTC information!
 
 typedef struct

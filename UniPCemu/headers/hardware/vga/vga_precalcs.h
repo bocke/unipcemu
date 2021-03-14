@@ -216,6 +216,7 @@ typedef struct //Contains the precalculated values!
 	byte SpriteCRTCpixeldepth; //The pixel depth for CRTC mode
 	byte SpriteSize; //64 or 128 pixels!
 	byte SpriteCRTCpixelpannning; //Horizontal pixel panning for CRTCB/Sprite!
+	byte VerticalRetraceInterruptSource; //0=Normal EGA/VGA-compatible, 1=CRTC window retrace point reached.
 } VGA_PRECALCS; //VGA pre-calculations!
 
 typedef void (*VGA_calcprecalcsextensionhandler)(void *VGA, uint_32 whereupdated); //Calculate them!

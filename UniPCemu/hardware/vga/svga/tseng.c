@@ -1103,6 +1103,33 @@ byte Tseng34K_readIO(word port, byte *result)
 		}
 		return 1;
 		break;
+	case 0x3BA:	//Read: Input Status #1 Register (mono)	DATA
+		if (GETBITS(getActiveVGA()->registers->ExternalRegisters.MISCOUTPUTREGISTER, 0, 1)) goto finishinput; //Block: we're a color mode addressing as mono!
+		goto readInputStatus1Tseng;
+	case 0x3DA: //Input Status #1 Register (color)	DATA
+		if (GETBITS(getActiveVGA()->registers->ExternalRegisters.MISCOUTPUTREGISTER, 0, 1)) //Block: we're a mono mode addressing as color!
+		{
+		readInputStatus1Tseng:
+			SETBITS(getActiveVGA()->registers->CRTControllerRegisters.REGISTERS.ATTRIBUTECONTROLLERTOGGLEREGISTER, 7, 1, 0); //Reset flipflop for 3C0!
+
+			*result = getActiveVGA()->registers->ExternalRegisters.INPUTSTATUS1REGISTER; //Give!
+			const static byte bittablelow[2][4] = { {0,4,1,6},{0,4,1,8} }; //Bit 6 is undefined on EGA!
+			const static byte bittablehigh[2][4] = { {2,5,3,7},{2,5,3,8} }; //Bit 7 is undefined on EGA!
+			byte DACOutput = getActiveVGA()->CRTC.DACOutput; //Current DAC output to give!
+			SETBITS(*result, 4, 1, GETBITS(DACOutput, bittablelow[(getActiveVGA()->enable_SVGA == 3) ? 1 : 0][GETBITS(getActiveVGA()->registers->AttributeControllerRegisters.REGISTERS.COLORPLANEENABLEREGISTER, 4, 3)], 1));
+			SETBITS(*result, 5, 1, GETBITS(DACOutput, bittablehigh[(getActiveVGA()->enable_SVGA == 3) ? 1 : 0][GETBITS(getActiveVGA()->registers->AttributeControllerRegisters.REGISTERS.COLORPLANEENABLEREGISTER, 4, 3)], 1));
+			if (getActiveVGA()->enable_SVGA == 3) //EGA has lightpen support here?
+			{
+				SETBITS(*result, 1, 1, GETBITS(getActiveVGA()->registers->EGA_lightpenstrobeswitch, 1, 1)); //Light pen has been triggered and stopped pending? Set light pen trigger!
+				SETBITS(*result, 2, 1, GETBITS(~getActiveVGA()->registers->EGA_lightpenstrobeswitch, 2, 1)); //Light pen switch is open(not pressed)?
+			}
+
+			//New bits: bit 2: CRTCB window is active, bit 6: CRTCB window is active within the current scanline!
+			SETBITS(*result, 2, 1, GETBITS(getActiveVGA()->CRTC.CRTCBwindowEnabled, 0, 1)); //CRTCB active?
+			SETBITS(*result, 6, 1, GETBITS(getActiveVGA()->CRTC.CRTCBwindowEnabled, 1, 1)); //CRTCB active within the current scanline?
+			return 1; //Overridden!
+		}
+		break;
 	default: //Unknown port?
 		break;
 	}
