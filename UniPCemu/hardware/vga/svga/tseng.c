@@ -2068,7 +2068,7 @@ byte Tseng4k_tickAccelerator_step(byte noqueue)
 		//Since we're starting a new block processing, check for address updates!
 		if (
 			((et34k(getActiveVGA())->W32_ACLregs.W32_newXYblock) && ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 0x30) == 0)) || //Load destination address during first write?
-			((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 0x30) == 1) //Always reload destination address?
+			((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 0x30) == 0x10) //Always reload destination address?
 			) //To load the destination address?
 		{
 			et34k(getActiveVGA())->W32_ACLregs.destinationaddress = queueaddress; //Load the destination address!
