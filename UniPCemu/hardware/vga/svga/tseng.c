@@ -2078,8 +2078,8 @@ byte Tseng4k_tickAccelerator_step(byte noqueue)
 
 	//We're ready to start handling a pixel. Now, handle the pixel!
 	destination = et4k_readlinearVRAM(et34k(getActiveVGA())->W32_ACLregs.destinationaddress); //Read destination!
-	source = et4k_readlinearVRAM(et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress + et34k(getActiveVGA())->W32_ACLregs.patternmap_x);
-	pattern = et4k_readlinearVRAM(et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress + et34k(getActiveVGA())->W32_ACLregs.sourcemap_x);
+	source = et4k_readlinearVRAM(et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress + et34k(getActiveVGA())->W32_ACLregs.sourcemap_x);
+	pattern = et4k_readlinearVRAM(et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress + et34k(getActiveVGA())->W32_ACLregs.patternmap_x);
 	mixmap = 0xFF; //Assumed 1 if not provided by CPU!
 
 	//Apply CPU custom inputs!
