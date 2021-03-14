@@ -940,11 +940,11 @@ byte VGA_SpriteCRTCGetPixel(VGA_Type* VGA, SEQ_DATA* Sequencer, VGA_AttributeInf
 }
 
 //Handle a new scanline for the Sprite/CRTC unit!
+byte resultgottendummy;
 void VGA_handleSpriteCRTCnewScanline(VGA_Type* VGA, SEQ_DATA* Sequencer, VGA_AttributeInfo* attributeinfo)
 {
 	VGA_AttributeInfo dummyattribute; //Dummy attribute!
 	word n;
-	int_32 resultgotten;
 	Sequencer->SpriteCRTC_pixel_address = Sequencer->SpriteCRTC_row_address; //Pixel address starts at the row address!
 	Sequencer->SpriteCRTChorizontalpixelsleft = VGA->precalcs.SpriteCRTChorizontalwindowwidth; //How many pixels are left to render?
 	//Handle the horizontal preset now!
@@ -952,7 +952,7 @@ void VGA_handleSpriteCRTCnewScanline(VGA_Type* VGA, SEQ_DATA* Sequencer, VGA_Att
 	{
 		for (n = 0; n < VGA->precalcs.SpriteCRTChorizontaldisplaypreset; ++n) //Handle horizontal preset!
 		{
-			resultgotten = VGA_SpriteCRTCGetPixel(VGA, Sequencer, &dummyattribute, &dummyattribute); //Dummy renderings!
+			resultgottendummy = VGA_SpriteCRTCGetPixel(VGA, Sequencer, &dummyattribute, &dummyattribute); //Dummy renderings!
 		}
 	}
 }
