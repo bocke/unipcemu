@@ -2297,6 +2297,10 @@ void Tseng4k_tickAccelerator()
 			}
 		}
 	}
+	else //Idle and queue is empty?
+	{
+		Tseng4k_doBecomeIdle(); //The accelerator becomes idle now! We're waiting for input!
+	}
 	if (et34k(getActiveVGA())->W32_acceleratorbusy) //Accelerator was busy?
 	{
 		if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x30] & 0x11)) //Suspend or Terminate requested?
