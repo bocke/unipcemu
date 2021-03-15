@@ -1623,7 +1623,7 @@ void Tseng4k_calcPatternSourceXY(uint_32* patternsourcex, uint_32* patternsource
 	*patternsourcex_backup = *patternsourcex;
 }
 
-void Tseng4k_startAccelerator()
+void Tseng4k_startAccelerator(byte triggerfromMMU)
 {
 	//Start the accelerator's function.
 	//Load all internal precalcs required and initialize all local required CPU-readonly variables.
@@ -1669,6 +1669,7 @@ void Tseng4k_startAccelerator()
 	{
 		et34k(getActiveVGA())->W32_acceleratorleft = 1; //Always more left until finishing! This keeps us running!
 	}
+	et34k(getActiveVGA())->W32_performMMUoperationstart = triggerfromMMU; //Trigger start from MMU type write?
 }
 
 byte et4k_emptyqueuedummy = 0;
@@ -1716,7 +1717,7 @@ byte Tseng4k_writeMMUregister(byte address, byte value)
 		{
 			et4k_emptyqueuedummy = Tseng4k_doEmptyQueue(); //Empty the queue if possible for the new operation to start!
 			Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO()); //Starting a transfer!
-			Tseng4k_startAccelerator(); //Starting the accelerator!
+			Tseng4k_startAccelerator(0); //Starting the accelerator!
 		}
 		if ((address == 0x30) && (value & 1)) //Suspend operation requested?
 		{
@@ -1763,7 +1764,7 @@ byte Tseng4k_writeMMUregister(byte address, byte value)
 		if ((value & 4) && ((et34k(getActiveVGA())->W32_MMUregisters[0][0x36] & 4) == 0)) //Raised XYST?
 		{
 			Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO()); //Starting a transfer!
-			Tseng4k_startAccelerator(); //Starting the accelerator!
+			Tseng4k_startAccelerator(0); //Starting the accelerator!
 		}
 		else if (((value & 4) == 0) && (et34k(getActiveVGA())->W32_MMUregisters[0][0x36] & 4)) //Lowered XYST?
 		{
@@ -1811,7 +1812,7 @@ byte Tseng4k_writeMMUregister(byte address, byte value)
 			//Start a new operation!
 			et4k_emptyqueuedummy = Tseng4k_doEmptyQueue(); //Empty the queue if possible for the new operation to start!
 			Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO()); //Starting a transfer!
-			Tseng4k_startAccelerator(); //Starting the accelerator!
+			Tseng4k_startAccelerator(0); //Starting the accelerator!
 			et34k(getActiveVGA())->W32_ACLregs.Xposition = et34k(getActiveVGA())->W32_ACLregs.Yposition = 0; //Initialize the position!
 		}
 		break;
@@ -1879,7 +1880,7 @@ byte Tseng4k_writeMMUaccelerator(byte area, uint_32 address, byte value)
 			queuefilledboost = 2; //Extra flag: we're started by a queue write which isn't used!
 		}
 		Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO()); //Starting a transfer!
-		Tseng4k_startAccelerator(); //Starting the accelerator!
+		Tseng4k_startAccelerator(1); //Starting the accelerator by MMU trigger!
 	}
 
 	address += getActiveVGA()->precalcs.MMU012_aperture[area & 3]; //Apply the area we're selecting to get the actual VRAM address!
@@ -2107,8 +2108,9 @@ byte Tseng4k_tickAccelerator_step(byte noqueue)
 
 	et34k(getActiveVGA())->W32_acceleratorbusy |= 2; //Busy accelerator!
 
-	if (et34k(getActiveVGA())->W32_acceleratorleft == 0) //Need to start a new block?
+	if ((et34k(getActiveVGA())->W32_acceleratorleft == 0) || (et34k(getActiveVGA())->W32_performMMUoperationstart)) //Need to start a new block? Also when triggered by the MMU to start!
 	{
+		et34k(getActiveVGA())->W32_performMMUoperationstart = 0; //We're finished triggering now!
 		if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x30] & 0x11)) //Suspend or Terminate requested?
 		{
 			et34k(getActiveVGA())->W32_acceleratorbusy &= ~3; //Finish operation!

@@ -159,6 +159,7 @@ typedef struct {
 	byte W32_21xA_CRTCBSpriteControl; //Index EF in both sprite and CRTCB modes. Bit 0=1: Sprite window, 0=CRTC window
 	byte W32_21xA_ImagePortControl; //Index F7 in both sprite and CRTCB modes. Bit 0=Enable the Image Port. Bit 1=Odd/even interlace transfers, Bit 7=Enable CRTCB window or hardware cursor(Sprite).
 	byte W32_MMUregisters[2][0x100]; //All W32 memory mapped registers! First is the queued registers(or non-queued). Second is the processing registers.
+	byte W32_performMMUoperationstart; //Perform a MMU-type operation start?
 	byte W32_MMUsuspendterminatefilled; //Is the suspend/terminate flag filled (alternative to the queue)?
 	byte W32_MMUqueuefilled; //Is the queue filled?
 	byte W32_MMUqueueval; //What value is stored inside the queue?
