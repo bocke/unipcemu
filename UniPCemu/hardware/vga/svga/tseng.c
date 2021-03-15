@@ -1833,6 +1833,8 @@ extern byte MMU_waitstateactive; //Waitstate active?
 
 byte Tseng4k_readMMUaccelerator(byte area, uint_32 address, byte* result)
 {
+	//Apply area first, if used!
+	//Not implemented on the emulated chip?
 	MMU_waitstateactive = 0; //No wait state!
 	*result = 0xFF; //Not implemented yet!
 	return 1; //Handled!
@@ -1879,6 +1881,8 @@ byte Tseng4k_writeMMUaccelerator(byte area, uint_32 address, byte value)
 		Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO()); //Starting a transfer!
 		Tseng4k_startAccelerator(); //Starting the accelerator!
 	}
+
+	address += getActiveVGA()->precalcs.MMU012_aperture[area & 3]; //Apply the area we're selecting to get the actual VRAM address!
 
 	et34k(getActiveVGA())->W32_MMUqueuefilled = (1|queuefilledboost); //The queue is now filled!
 	et34k(getActiveVGA())->W32_MMUqueueval_address = address; //What offset is filled!
