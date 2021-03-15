@@ -1806,6 +1806,7 @@ byte Tseng4k_readMMUaccelerator(byte area, uint_32 address, byte* result)
 
 byte Tseng4k_writeMMUaccelerator(byte area, uint_32 address, byte value)
 {
+	byte queuefilledboost;
 	MMU_waitstateactive = 0; //No wait state!
 	//Index 32 bit 0 being set causes this to set MMU_waitstateactive to 1 when not ready yet and abort (waitstate).
 	//Otherwise, when not ready yet, ignore!
@@ -1832,15 +1833,20 @@ byte Tseng4k_writeMMUaccelerator(byte area, uint_32 address, byte value)
 			goto handleQueueWaiting; //The write is ignored as if the queue was full until it's done!
 		}
 	}
-		
+	
+	queuefilledboost = 0; //Default: no extra flags!
 	if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x36] & 0x04) == 0) //Transfer isn't active yet?
 	{
 		et4k_transferQueuedMMURegisters(); //Load the queued MMU registers!
+		if ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 0) //CPU data isn't used?
+		{
+			queuefilledboost = 2; //Extra flag: we're started by a queue write which isn't used!
+		}
 		Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO()); //Starting a transfer!
 		Tseng4k_startAccelerator(); //Starting the accelerator!
 	}
 
-	et34k(getActiveVGA())->W32_MMUqueuefilled = 1; //The queue is now filled!
+	et34k(getActiveVGA())->W32_MMUqueuefilled = (1|queuefilledboost); //The queue is now filled!
 	et34k(getActiveVGA())->W32_MMUqueueval_address = address; //What offset is filled!
 	et34k(getActiveVGA())->W32_MMUqueueval = value; //Fill the specific offset that's filled!
 	Tseng4k_status_queueFilled(); //The queue has been filled!
@@ -2218,6 +2224,13 @@ void Tseng4k_tickAccelerator()
 		//Abort if still processing! Otherwise, finish up below:
 		if ((et34k(getActiveVGA())->W32_acceleratorbusy & 2) == 0) //Terminated?
 		{
+			if ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 0) //Were we an automatically running command?
+			{
+				if (et34k(getActiveVGA())->W32_MMUqueuefilled & 2) //We were started by a queue fill?
+				{
+					et4k_emptyqueuedummy = Tseng4k_doEmptyQueue(); //Empty the queue that was filled to start the operation!
+				}
+			}
 			Tseng4k_status_XYblockTerminalCount(); //Terminal count reached during the tranfer!
 			Tseng4k_doBecomeIdle(); //Accelerator becomes idle now!
 			Tseng4k_processRegisters_finished();
