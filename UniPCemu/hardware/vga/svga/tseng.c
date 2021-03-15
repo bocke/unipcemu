@@ -2033,12 +2033,17 @@ byte Tseng4k_tickAccelerator_step(byte noqueue)
 
 	if (et34k(getActiveVGA())->W32_acceleratorleft == 0) //Need to start a new block?
 	{
+		if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x30] & 0x11)) //Suspend or Terminate requested?
+		{
+			et34k(getActiveVGA())->W32_acceleratorbusy &= ~3; //Finish operation!
+			return 2; //Finish up: we're suspending/terminating right now!
+		}
 		queueaddress = et34k(getActiveVGA())->W32_MMUqueueval_address; //What address was written to?
 		switch (et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) //What kind of operation is used?
 		{
 		case 0: //CPU data isn't used!
 			//Handling without CPU data now!
-			et34k(getActiveVGA())->W32_acceleratorleft = 1; //Default: only processing 1!
+			et34k(getActiveVGA())->W32_acceleratorleft = 8; //Default: only processing 8!
 			break;
 		case 1: //CPU data is source data!
 			//Only 1 pixel is processed!
@@ -2052,7 +2057,7 @@ byte Tseng4k_tickAccelerator_step(byte noqueue)
 		case 4: //CPU data is X count
 		case 5: //CPU data is Y count
 			//Only 1 pixel is processed!
-			et34k(getActiveVGA())->W32_acceleratorleft = 1; //Default: only processing 1!
+			et34k(getActiveVGA())->W32_acceleratorleft = 8; //Default: only processing 8!
 			//CPU data is used only once to start an operation?
 			//Manually update the X and Y count precalcs to have their proper values!
 			if ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 4) //X count?
@@ -2131,7 +2136,7 @@ byte Tseng4k_tickAccelerator_step(byte noqueue)
 	//Clear et34k(getActiveVGA())->W32_acceleratorbusy on terminal count reached!
 	if (et4k_stepx()==3) //X and Y overflow?
 	{
-		et34k(getActiveVGA())->W32_acceleratorbusy &= ~2; //Finish operation!
+		et34k(getActiveVGA())->W32_acceleratorbusy &= ~3; //Finish operation!
 		et34k(getActiveVGA())->W32_acceleratorleft = 0; //Nothing left!
 		return 1|2; //Terminated immediately on the same clock!
 	}
@@ -2141,15 +2146,22 @@ byte Tseng4k_tickAccelerator_step(byte noqueue)
 	{
 		--et34k(getActiveVGA())->W32_acceleratorleft; //Ticked one pixel of the current block!
 	}
-	if (
+	if ((
 		((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 0) || //No CPU version?
 		((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 4) || //Once CPU version?
 		((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 5) //Once CPU version?
 		)
+		&& (et34k(getActiveVGA())->W32_acceleratorleft==0) //Finished current batch?
+		)
 	{
-		et34k(getActiveVGA())->W32_acceleratorleft = 1; //Always more left until finishing! This keeps us running until terminal count!
+		if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x30] & 0x11)) //Suspend or Terminate requested?
+		{
+			et34k(getActiveVGA())->W32_acceleratorbusy &= ~3; //Finish operation!
+			return 2; //Finish up: we're suspending/terminating right now!
+		}
+		et34k(getActiveVGA())->W32_acceleratorleft = 8; //Always more left until finishing! This keeps us running until terminal count!
 	}
-	return 1|2; //Handled! Terminated immediately on the same clock!
+	return 1|2; //Ticking a transfer! Terminated immediately on the same clock!
 }
 
 void Tseng4k_processRegisters_finished()
@@ -2176,7 +2188,7 @@ void Tseng4k_tickAccelerator()
 	if ((result = Tseng4k_tickAccelerator_step(1))!=0) //No queue version of ticking the accelerator?
 	{
 		Tseng4k_encodeAcceleratorRegisters(); //Encode the registers, updating them for the CPU!
-		et34k(getActiveVGA())->W32_acceleratorbusy |= 1; //Become a busy accelerator!
+		et34k(getActiveVGA())->W32_acceleratorbusy |= (result&1); //Become a busy accelerator!
 		if ((result & 2) == 0) //Keep ticking?
 		{
 			return; //Abort!
@@ -2194,7 +2206,7 @@ void Tseng4k_tickAccelerator()
 			if ((result = Tseng4k_tickAccelerator_step(0))!=0) //Queue version of ticking the accelerator?
 			{
 				Tseng4k_encodeAcceleratorRegisters(); //Encode the registers, updating them for the CPU!
-				et34k(getActiveVGA())->W32_acceleratorbusy |= 1; //Become a busy accelerator!
+				et34k(getActiveVGA())->W32_acceleratorbusy |= (result&1); //Become a busy accelerator!
 				//TODO: Tick some accelerator status to process given data to process inputted by the CPU (or not when using no CPU inputs)!
 				//Tick the accelerator with the specified address and value loaded!
 				//Latch the value written if a valid address that's requested!
@@ -2209,14 +2221,17 @@ void Tseng4k_tickAccelerator()
 	{
 		if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x30] & 0x11)) //Suspend or Terminate requested?
 		{
-			if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x30] & 0x10) == 0x00) //Suspend requested?
+			if ((et34k(getActiveVGA())->W32_acceleratorbusy & 2) == 0) //Terminated?
 			{
-				et34k(getActiveVGA())->W32_acceleratorbusy = 0; //Not busy anymore!
-				et34k(getActiveVGA())->W32_ACLregs.patternmapaddress = (et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress & 0x3FFFFF); //Internal Pattern address
-				et34k(getActiveVGA())->W32_ACLregs.sourcemapaddress = (et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress & 0x3FFFFF); //Internal Pattern address
-				Tseng4k_processRegisters_finished(); //What to do when a blit has finished?
-				Tseng4k_encodeAcceleratorRegisters(); //Encode the registers, updating them for the CPU!
-				Tseng4k_status_acceleratorsuspended(); //Accelerator has been suspended!
+				if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x30] & 0x10) == 0x00) //Suspend requested?
+				{
+					et34k(getActiveVGA())->W32_acceleratorbusy = 0; //Not busy anymore!
+					et34k(getActiveVGA())->W32_ACLregs.patternmapaddress = (et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress & 0x3FFFFF); //Internal Pattern address
+					et34k(getActiveVGA())->W32_ACLregs.sourcemapaddress = (et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress & 0x3FFFFF); //Internal Pattern address
+					Tseng4k_processRegisters_finished(); //What to do when a blit has finished?
+					Tseng4k_encodeAcceleratorRegisters(); //Encode the registers, updating them for the CPU!
+					Tseng4k_status_acceleratorsuspended(); //Accelerator has been suspended!
+				}
 			}
 		}
 		//TODO: Tick some accelerator status to process given data to process inputted by the CPU (or not when using no CPU inputs)!
