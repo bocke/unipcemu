@@ -188,9 +188,7 @@ typedef struct //Contains the precalculated values!
 	uint_32 linearmemorysize; //W32 Linear memory size!
 	byte MMUregs_enabled; //MMU registers enabled?
 	byte MMU012_enabled; //MMU0-2 enabled?
-	uint_32 MMU0_aperture; //MMU 0 aperture base address
-	uint_32 MMU1_aperture; //MMU 1 aperture base address
-	uint_32 MMU2_aperture; //MMU 2 aperture base address
+	uint_32 MMU012_aperture[4]; //MMU 0-2 aperture base addresses
 	byte MMU0_aperture_linear; //MMU 0 aperture is in linear mode
 	byte MMU1_aperture_linear; //MMU 1 aperture is in linear mode
 	byte MMU2_aperture_linear; //MMU 2 aperture is in linear mode

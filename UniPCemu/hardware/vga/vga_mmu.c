@@ -653,12 +653,12 @@ byte VGAmemIO_rb(uint_32 offset)
 					}
 					if (getActiveVGA()->precalcs.MMU2_aperture_linear) //Linear mode?
 					{
-						lineardecodeCPUaddressBanked(0, offset, &planes, &realoffset, getActiveVGA()->precalcs.MMU2_aperture); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
+						lineardecodeCPUaddressBanked(0, offset, &planes, &realoffset, getActiveVGA()->precalcs.MMU012_aperture[2]); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
 						goto readdatacurrentmode; //Apply the operation on read mode!
 					}
 					else //According to current display mode?
 					{
-						directdecodeCPUaddressBanked(0, offset, &planes, &realoffset, getActiveVGA()->precalcs.MMU2_aperture); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
+						directdecodeCPUaddressBanked(0, offset, &planes, &realoffset, getActiveVGA()->precalcs.MMU012_aperture[2]); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
 						goto readdatacurrentmode; //Apply the operation on read mode!
 					}
 				}
@@ -682,18 +682,17 @@ byte VGAmemIO_rb(uint_32 offset)
 					}
 					if (getActiveVGA()->precalcs.MMU1_aperture_linear) //Linear mode?
 					{
-						lineardecodeCPUaddressBanked(0, offset, &planes, &realoffset, getActiveVGA()->precalcs.MMU1_aperture); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
+						lineardecodeCPUaddressBanked(0, offset, &planes, &realoffset, getActiveVGA()->precalcs.MMU012_aperture[1]); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
 						goto readdatacurrentmode; //Apply the operation on read mode!
 					}
 					else //According to current display mode?
 					{
-						directdecodeCPUaddressBanked(0, offset, &planes, &realoffset, getActiveVGA()->precalcs.MMU1_aperture); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
+						directdecodeCPUaddressBanked(0, offset, &planes, &realoffset, getActiveVGA()->precalcs.MMU012_aperture[1]); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
 						goto readdatacurrentmode; //Apply the operation on read mode!
 					}
 				}
 				else //MMU 0?
 				{
-					offset += getActiveVGA()->precalcs.MMU2_aperture; //Set the aperture in VRAM!
 					if (getActiveVGA()->precalcs.MMU0_aperture_linear & 2) //Accelerator mode?
 					{
 						if (Tseng4k_readMMUaccelerator(0, offset, &bit8read)) //Read?
@@ -711,12 +710,12 @@ byte VGAmemIO_rb(uint_32 offset)
 					}
 					if (getActiveVGA()->precalcs.MMU0_aperture_linear) //Linear mode?
 					{
-						lineardecodeCPUaddressBanked(0, offset, &planes, &realoffset, getActiveVGA()->precalcs.MMU0_aperture); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
+						lineardecodeCPUaddressBanked(0, offset, &planes, &realoffset, getActiveVGA()->precalcs.MMU012_aperture[0]); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
 						goto readdatacurrentmode; //Apply the operation on read mode!
 					}
 					else //According to current display mode?
 					{
-						directdecodeCPUaddressBanked(0, offset, &planes, &realoffset, getActiveVGA()->precalcs.MMU0_aperture); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
+						directdecodeCPUaddressBanked(0, offset, &planes, &realoffset, getActiveVGA()->precalcs.MMU012_aperture[0]); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
 						goto readdatacurrentmode; //Apply the operation on read mode!
 					}
 				}
@@ -791,12 +790,12 @@ byte VGAmemIO_wb(uint_32 offset, byte value)
 					}
 					if (getActiveVGA()->precalcs.MMU2_aperture_linear) //Linear mode?
 					{
-						lineardecodeCPUaddressBanked(1, offset, &planes, &realoffset, getActiveVGA()->precalcs.MMU2_aperture); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
+						lineardecodeCPUaddressBanked(1, offset, &planes, &realoffset, getActiveVGA()->precalcs.MMU012_aperture[2]); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
 						goto writedatacurrentmode; //Apply the operation on read mode!
 					}
 					else //According to current display mode?
 					{
-						directdecodeCPUaddressBanked(1, offset, &planes, &realoffset, getActiveVGA()->precalcs.MMU2_aperture); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
+						directdecodeCPUaddressBanked(1, offset, &planes, &realoffset, getActiveVGA()->precalcs.MMU012_aperture[2]); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
 						goto writedatacurrentmode; //Apply the operation on read mode!
 					}
 				}
@@ -814,18 +813,17 @@ byte VGAmemIO_wb(uint_32 offset, byte value)
 					}
 					if (getActiveVGA()->precalcs.MMU1_aperture_linear) //Linear mode?
 					{
-						lineardecodeCPUaddressBanked(1, offset, &planes, &realoffset, getActiveVGA()->precalcs.MMU1_aperture); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
+						lineardecodeCPUaddressBanked(1, offset, &planes, &realoffset, getActiveVGA()->precalcs.MMU012_aperture[1]); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
 						goto writedatacurrentmode; //Apply the operation on read mode!
 					}
 					else //According to current display mode?
 					{
-						directdecodeCPUaddressBanked(1, offset, &planes, &realoffset, getActiveVGA()->precalcs.MMU1_aperture); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
+						directdecodeCPUaddressBanked(1, offset, &planes, &realoffset, getActiveVGA()->precalcs.MMU012_aperture[1]); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
 						goto writedatacurrentmode; //Apply the operation on read mode!
 					}
 				}
 				else //MMU 0?
 				{
-					offset += getActiveVGA()->precalcs.MMU2_aperture; //Set the aperture in VRAM!
 					if (getActiveVGA()->precalcs.MMU0_aperture_linear & 2) //Accelerator mode?
 					{
 						if (Tseng4k_writeMMUaccelerator(0, offset, value)) //Read?
@@ -837,12 +835,12 @@ byte VGAmemIO_wb(uint_32 offset, byte value)
 					}
 					if (getActiveVGA()->precalcs.MMU0_aperture_linear) //Linear mode?
 					{
-						lineardecodeCPUaddressBanked(1, offset, &planes, &realoffset, getActiveVGA()->precalcs.MMU0_aperture); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
+						lineardecodeCPUaddressBanked(1, offset, &planes, &realoffset, getActiveVGA()->precalcs.MMU012_aperture[0]); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
 						goto writedatacurrentmode; //Apply the operation on read mode!
 					}
 					else //According to current display mode?
 					{
-						directdecodeCPUaddressBanked(1, offset, &planes, &realoffset, getActiveVGA()->precalcs.MMU0_aperture); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
+						directdecodeCPUaddressBanked(1, offset, &planes, &realoffset, getActiveVGA()->precalcs.MMU012_aperture[0]); //Our VRAM offset starting from the 32-bit offset (A0000 etc.)!
 						goto writedatacurrentmode; //Apply the operation on read mode!
 					}
 				}
