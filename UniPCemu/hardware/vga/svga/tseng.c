@@ -1474,7 +1474,7 @@ void Tseng4k_raiseMMUinterrupt(byte cause) //Cause is 0-2!
 //Set when not using the CPU each clock
 byte Tseng4k_accelerator_calcSSO()
 {
-	return (((et34k(getActiveVGA())->W32_MMUregisters[0][0x9C]&0x07)==0) || ((et34k(getActiveVGA())->W32_MMUregisters[0][0x9C]&0x07)==0x04) || ((et34k(getActiveVGA())->W32_MMUregisters[0][0x9C]&0x07)==5))?1:0;
+	return (((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C]&0x07)==0) || ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C]&0x07)==0x04) || ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C]&0x07)==5))?1:0;
 }
 
 //Basic X/Y block start/termination conditions
