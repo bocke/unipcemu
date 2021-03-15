@@ -2013,18 +2013,55 @@ byte Tseng4k_tickAccelerator_step(byte noqueue)
 		if ((!noqueue) || (et34k(getActiveVGA())->W32_acceleratorleft == 0)) return 0; //NOP when a queue version or not processing!		
 		break;
 	case 1: //CPU data is source data!
-		if (noqueue && (et34k(getActiveVGA())->W32_acceleratorleft==0)) return 0; //NOP when not a queue version and not processing!		
+		if (noqueue && (et34k(getActiveVGA())->W32_acceleratorleft == 0)) //Waiting for input?
+		{
+			if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x30] & 0x11)) //Suspend or Terminate requested?
+			{
+				et34k(getActiveVGA())->W32_acceleratorbusy &= ~3; //Finish operation!
+				return 2; //Finish up: we're suspending/terminating right now!
+			}
+			return 0; //NOP when not a queue version and not processing!
+		}
 		break;
 	case 2: //CPU data is mix data!
-		if (noqueue && (et34k(getActiveVGA())->W32_acceleratorleft==0)) return 0; //NOP when not a queue version and not processing!		
+		if (noqueue && (et34k(getActiveVGA())->W32_acceleratorleft == 0)) //Waiting for input?
+		{
+			if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x30] & 0x11)) //Suspend or Terminate requested?
+			{
+				et34k(getActiveVGA())->W32_acceleratorbusy &= ~3; //Finish operation!
+				return 2; //Finish up: we're suspending/terminating right now!
+			}
+			return 0; //NOP when not a queue version and not processing!
+		}
 		break;
 	case 4: //CPU data is X count
-		if (noqueue && (et34k(getActiveVGA())->W32_acceleratorleft==0)) return 0; //NOP when not a queue version and not processing!		
+		if (noqueue && (et34k(getActiveVGA())->W32_acceleratorleft == 0)) //Waiting for input?
+		{
+			if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x30] & 0x11)) //Suspend or Terminate requested?
+			{
+				et34k(getActiveVGA())->W32_acceleratorbusy &= ~3; //Finish operation!
+				return 2; //Finish up: we're suspending/terminating right now!
+			}
+			return 0; //NOP when not a queue version and not processing!
+		}
 		break;
 	case 5: //CPU data is Y count
-		if (noqueue && (et34k(getActiveVGA())->W32_acceleratorleft==0)) return 0; //NOP when not a queue version and not processing!		
+		if (noqueue && (et34k(getActiveVGA())->W32_acceleratorleft == 0)) //Waiting for input?
+		{
+			if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x30] & 0x11)) //Suspend or Terminate requested?
+			{
+				et34k(getActiveVGA())->W32_acceleratorbusy &= ~3; //Finish operation!
+				return 2; //Finish up: we're suspending/terminating right now!
+			}
+			return 0; //NOP when not a queue version and not processing!
+		}
 		break;
 	default: //Reserved
+		if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x30] & 0x11)) //Suspend or Terminate requested?
+		{
+			et34k(getActiveVGA())->W32_acceleratorbusy &= ~3; //Finish operation!
+			return 2; //Finish up: we're suspending/terminating right now!
+		}
 		return 1|2; //Not handled yet! Terminate immediately on the same clock!
 		break;
 	}
