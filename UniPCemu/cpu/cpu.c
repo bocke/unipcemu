@@ -559,6 +559,10 @@ void CPU_CIMUL(uint_32 base, byte basesize, uint_32 multiplicant, byte multiplic
 	FLAGW_PF(parity[temp3.val16&0xFF]); //Parity flag!
 	FLAGW_ZF((temp3.val64==0)?1:0); //Set the zero flag!	
 	*/
+	if ((EMULATED_CPU == CPU_8086) && CPU_getprefix(0xF3)) //REP used on 8086/8088?
+	{
+		CPU[activeCPU].temp2l.val64s = -CPU[activeCPU].temp2l.val64s; //Flip like acting as a fused NEG to the result!
+	}
 	*result = (uint_32)CPU[activeCPU].temp2l.val64; //Save the result, truncated to used size as 64-bit sign extension!
 }
 

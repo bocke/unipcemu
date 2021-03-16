@@ -2444,6 +2444,10 @@ void CPU8086_internal_IDIV(uint_32 val, word divisor, word *quotient, word *rema
 	if (*error==0) //No error has occurred? Do post-processing of the results!
 	{
 		if (*applycycles) CPU[activeCPU].cycles_OP += 7; //Takes 7 cycles!
+		if ((EMULATED_CPU == CPU_8086) && CPU_getprefix(0xF3)) //REP used on 8086/8088?
+		{
+			quotientnegative ^= 1; //Flip like acting as a fused NEG to the result!
+		}
 		if (quotientnegative) //The result is negative?
 		{
 			*quotient = (~*quotient)+1; //Apply the new sign to the result!
