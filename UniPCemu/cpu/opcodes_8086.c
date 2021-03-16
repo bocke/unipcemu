@@ -2444,7 +2444,8 @@ void CPU8086_internal_IDIV(uint_32 val, word divisor, word *quotient, word *rema
 	if (*error==0) //No error has occurred? Do post-processing of the results!
 	{
 		if (*applycycles) CPU[activeCPU].cycles_OP += 7; //Takes 7 cycles!
-		if ((EMULATED_CPU == CPU_8086) && CPU_getprefix(0xF3)) //REP used on 8086/8088?
+		//Undocumented IDIV behaviour on 808X! Documented by Reenigne!
+		if ((EMULATED_CPU == CPU_8086) && (CPU_getprefix(0xF3)||CPU_getprefix(0xF2))) //REP/REPNZ used on 8086/8088?
 		{
 			quotientnegative ^= 1; //Flip like acting as a fused NEG to the result!
 		}
@@ -2512,6 +2513,15 @@ void CPU8086_internal_MUL(word val, word multiplier, word *low, word *high, byte
 		r = (a >> 1) | (carry << (resultbits - 1)); //ROR...
 		carry = (a & 1); //...carry ...
 		a = r; //... Store result!
+	}
+
+	//Undocumented MUL/IMUL behaviour on 808X! Documented by Reenigne!
+	if ((EMULATED_CPU == CPU_8086) && (CPU_getprefix(0xF2) || CPU_getprefix(0xF3)) && (isAdjust == 0)) //REP/REPNZ used on MUL/IMUL?
+	{
+		if (*applycycles) CPU[activeCPU].cycles_OP += 9; //Post-negate takes 9 cycles!
+		c = ~c; //Negate high and low...!
+		a = (~a) + 1; //... and apply the new sign to the result!
+		if (a == 0) ++c; //Overflow to high byte/word?
 	}
 
 	//Store the result!
