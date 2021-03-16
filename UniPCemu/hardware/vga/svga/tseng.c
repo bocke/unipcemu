@@ -3431,7 +3431,7 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 		{
 			if (VGA->precalcs.SpriteCRTCEnabled == 2) //CRTC?
 			{
-				VGA->precalcs.SpriteCRTChorizontalwindowwidth = (((et34kdata->W32_21xA_shadowRegisters[0xE3 - 0xE0] & 7) << 8) | et34kdata->W32_21xA_shadowRegisters[0xE2 - 0xE0]); //Horizontal width of the end of the window!
+				VGA->precalcs.SpriteCRTChorizontalwindowwidth = (((et34kdata->W32_21xA_shadowRegisters[0xE3 - 0xE0] & 7) << 8) | et34kdata->W32_21xA_shadowRegisters[0xE2 - 0xE0]) + 1; //Horizontal width of the end of the window!
 				VGA->precalcs.SpriteCRTChorizontaldisplaypreset = 0; //No preset is used!
 			}
 			else //Sprite?
@@ -3456,7 +3456,7 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 		{
 			if (VGA->precalcs.SpriteCRTCEnabled == 2) //CRTC?
 			{
-				VGA->precalcs.SpriteCRTCverticalwindowheight = (((et34kdata->W32_21xA_shadowRegisters[0xE7 - 0xE0] & 7) << 8) | et34kdata->W32_21xA_shadowRegisters[0xE6 - 0xE0]); //Horizontal width of the end of the window!
+				VGA->precalcs.SpriteCRTCverticalwindowheight = (((et34kdata->W32_21xA_shadowRegisters[0xE7 - 0xE0] & 7) << 8) | et34kdata->W32_21xA_shadowRegisters[0xE6 - 0xE0]) + 1; //Horizontal width of the end of the window!
 				VGA->precalcs.SpriteCRTCverticaldisplaypreset = 0; //No preset is used!
 			}
 			else //Sprite?
