@@ -785,12 +785,23 @@ byte VGA_renderer_readlinearVRAM(uint_32 addr)
 
 byte VGA_SpriteCRTCGetPixel(VGA_Type* VGA, SEQ_DATA* Sequencer, VGA_AttributeInfo* attributeinfo, VGA_AttributeInfo *overrideattributeinfo)
 {
+	byte tickingpixel; //Ticking a pixel to provide pixel duplication?
 	word pixel; //The pixel that's retrieved!
 	if (!Sequencer->SpriteCRTChorizontalpixelsleft) //No pixels left to render horizontally?
 	{
 		return 0; //Nothing to render left on this scanline!
 	}
-	--Sequencer->SpriteCRTChorizontalpixelsleft; //One pixel is rendering now!
+	++Sequencer->SpriteCRTCwidthstep; //Tick one pixel in the width!
+	if (Sequencer->SpriteCRTCwidthstep >= VGA->precalcs.SpriteCRTCpixelwidth) //Pixel width reached?
+	{
+		Sequencer->SpriteCRTCwidthstep = 0; //Reset step to count again!
+		--Sequencer->SpriteCRTChorizontalpixelsleft; //One pixel is rendering now!
+		tickingpixel = 1; //We're ticking the pixel!
+	}
+	else
+	{
+		tickingpixel = 0; //Not ticking the pixel!
+	}
 	memcpy(overrideattributeinfo, attributeinfo, sizeof(*attributeinfo)); //Make the output setting the same as the original input settings!
 	if ((VGA->precalcs.SpriteCRTCEnabled & 3) == 1) //Sprite mode?
 	{
@@ -800,11 +811,14 @@ byte VGA_SpriteCRTCGetPixel(VGA_Type* VGA, SEQ_DATA* Sequencer, VGA_AttributeInf
 		pixel &= 3; //Only bits used!
 
 		//Prepare to handle the next pixel!
-		++Sequencer->SpriteCRTCstep; //Next action?
-		if (Sequencer->SpriteCRTCstep == 4) //1 byte processed?
+		if (tickingpixel) //Ticking the pixel?
 		{
-			++Sequencer->SpriteCRTC_pixel_address; //Next pixel address!
-			Sequencer->SpriteCRTCstep = 0; //Reset for the next pixels to be retrieved!
+			++Sequencer->SpriteCRTCstep; //Next action?
+			if (Sequencer->SpriteCRTCstep == 4) //1 byte processed?
+			{
+				++Sequencer->SpriteCRTC_pixel_address; //Next pixel address!
+				Sequencer->SpriteCRTCstep = 0; //Reset for the next pixels to be retrieved!
+			}
 		}
 
 		if (pixel & 2) //Inverted or transparent?
@@ -873,11 +887,14 @@ byte VGA_SpriteCRTCGetPixel(VGA_Type* VGA, SEQ_DATA* Sequencer, VGA_AttributeInf
 			overrideattributeinfo->attribute = pixel; //pixel attribute!
 
 			//Prepare to handle the next pixel!
-			++Sequencer->SpriteCRTCstep; //Next action?
-			if (Sequencer->SpriteCRTCstep == 8) //1 byte processed?
+			if (tickingpixel) //Ticking the pixel?
 			{
-				++Sequencer->SpriteCRTC_pixel_address; //Next pixel address!
-				Sequencer->SpriteCRTCstep = 0; //Reset for the next pixels to be retrieved!
+				++Sequencer->SpriteCRTCstep; //Next action?
+				if (Sequencer->SpriteCRTCstep == 8) //1 byte processed?
+				{
+					++Sequencer->SpriteCRTC_pixel_address; //Next pixel address!
+					Sequencer->SpriteCRTCstep = 0; //Reset for the next pixels to be retrieved!
+				}
 			}
 			break;
 		case 1: //2BPP?
@@ -888,11 +905,14 @@ byte VGA_SpriteCRTCGetPixel(VGA_Type* VGA, SEQ_DATA* Sequencer, VGA_AttributeInf
 			overrideattributeinfo->attribute = pixel; //pixel attribute!
 
 			//Prepare to handle the next pixel!
-			++Sequencer->SpriteCRTCstep; //Next action?
-			if (Sequencer->SpriteCRTCstep == 4) //1 byte processed?
+			if (tickingpixel) //Ticking the pixel?
 			{
-				++Sequencer->SpriteCRTC_pixel_address; //Next pixel address!
-				Sequencer->SpriteCRTCstep = 0; //Reset for the next pixels to be retrieved!
+				++Sequencer->SpriteCRTCstep; //Next action?
+				if (Sequencer->SpriteCRTCstep == 4) //1 byte processed?
+				{
+					++Sequencer->SpriteCRTC_pixel_address; //Next pixel address!
+					Sequencer->SpriteCRTCstep = 0; //Reset for the next pixels to be retrieved!
+				}
 			}
 			break;
 		case 2: //4BPP?
@@ -903,30 +923,36 @@ byte VGA_SpriteCRTCGetPixel(VGA_Type* VGA, SEQ_DATA* Sequencer, VGA_AttributeInf
 			overrideattributeinfo->attribute = pixel; //pixel attribute!
 
 			//Prepare to handle the next pixel!
-			++Sequencer->SpriteCRTCstep; //Next action?
-			if (Sequencer->SpriteCRTCstep == 2) //1 byte processed?
+			if (tickingpixel) //Ticking the pixel?
 			{
-				++Sequencer->SpriteCRTC_pixel_address; //Next pixel address!
-				Sequencer->SpriteCRTCstep = 0; //Reset for the next pixels to be retrieved!
+				++Sequencer->SpriteCRTCstep; //Next action?
+				if (Sequencer->SpriteCRTCstep == 2) //1 byte processed?
+				{
+					++Sequencer->SpriteCRTC_pixel_address; //Next pixel address!
+					Sequencer->SpriteCRTCstep = 0; //Reset for the next pixels to be retrieved!
+				}
 			}
 			break;
 		case 3: //8BPP?
 			//8 bits for each pixel!
 			//Prepare to handle the next pixel!
-			++Sequencer->SpriteCRTC_pixel_address; //Next pixel address!
-			Sequencer->SpriteCRTCstep = 0; //Reset for the next pixels to be retrieved!
-			overrideattributeinfo->attributesize = MIN(attributeinfo->attributesize, 1); //256 colors!
-			overrideattributeinfo->attribute = pixel; //pixel attribute!
+			if (tickingpixel) //Ticking the pixel?
+			{
+				++Sequencer->SpriteCRTC_pixel_address; //Next pixel address!
+				Sequencer->SpriteCRTCstep = 0; //Reset for the next pixels to be retrieved!
+				overrideattributeinfo->attributesize = MIN(attributeinfo->attributesize, 1); //256 colors!
+				overrideattributeinfo->attribute = pixel; //pixel attribute!
+			}
 			break;
 		case 4: //16BPP?
-			++Sequencer->SpriteCRTC_pixel_address; //Next pixel address!
-			if (attributeinfo->attributesize == 2) //2-byte size inputted?
+			if (tickingpixel) //Ticking the pixel?
 			{
+				++Sequencer->SpriteCRTC_pixel_address; //Next pixel address!
 				pixel |= (VGA_renderer_readlinearVRAM(Sequencer->SpriteCRTC_pixel_address) << 8); //The high pixels in the map!
 				++Sequencer->SpriteCRTC_pixel_address; //Next pixel address!
+				Sequencer->SpriteCRTCstep = 0; //Reset for the next pixels to be retrieved!
+				attributeinfo->attributesize = 2; //Force 64K colors!
 			}
-			Sequencer->SpriteCRTCstep = 0; //Reset for the next pixels to be retrieved!
-			//attributeinfo->attributesize = 2; //64K colors!
 			overrideattributeinfo->attribute = pixel; //pixel attribute!
 			break;
 		}
@@ -945,12 +971,15 @@ void VGA_handleSpriteCRTCnewScanline(VGA_Type* VGA, SEQ_DATA* Sequencer, VGA_Att
 {
 	VGA_AttributeInfo dummyattribute; //Dummy attribute!
 	word n;
+	uint_32 pixelstoskip; //How many pixels to skip?
 	Sequencer->SpriteCRTC_pixel_address = Sequencer->SpriteCRTC_row_address; //Pixel address starts at the row address!
 	Sequencer->SpriteCRTChorizontalpixelsleft = VGA->precalcs.SpriteCRTChorizontalwindowwidth; //How many pixels are left to render?
+	Sequencer->SpriteCRTCwidthstep = 0; //Reset the width step to use!
 	//Handle the horizontal preset now!
 	if (VGA->precalcs.SpriteCRTChorizontaldisplaypreset) //Horizontal preset?
 	{
-		for (n = 0; n < VGA->precalcs.SpriteCRTChorizontaldisplaypreset; ++n) //Handle horizontal preset!
+		pixelstoskip = (VGA->precalcs.SpriteCRTChorizontaldisplaypreset * VGA->precalcs.SpriteCRTCpixelwidth); //How many pixels to skip?
+		for (n = 0; n < pixelstoskip; ++n) //Handle horizontal preset!
 		{
 			resultgottendummy = VGA_SpriteCRTCGetPixel(VGA, Sequencer, &dummyattribute, &dummyattribute); //Dummy renderings!
 		}
@@ -1538,27 +1567,31 @@ VGA_Sequencer_Mode activedisplay_blank_handler = NULL;
 VGA_Sequencer_Mode overscan_noblanking_handler = NULL;
 VGA_Sequencer_Mode overscan_blank_handler = NULL;
 
+byte is_retryinghighresmode; //Are we retrying hi-res mode style?
+
 //Active display handler!
 void VGA_ActiveDisplay_Text(SEQ_DATA *Sequencer, VGA_Type *VGA)
 {
 	VGA_overrideoutputs = 0; //Default: not overriding anything!
+	is_retryinghighresmode = 0; //Not retrying high-res mode!
 	//Render our active display here!
 	retryTimingText: //For linear mode!
 	if (VGA_ActiveDisplay_timing(Sequencer, VGA)) //Execute our timings!
 	{
 		VGA_Sequencer_TextMode(VGA,Sequencer,&currentattributeinfo); //Get the color to render!
+		if (is_retryinghighresmode == 0) //Not retrying in high resolution mode?
+		{
+			VGA_overrideoutputs = VGA_handleSpriteCRTCwindow(VGA, Sequencer, &currentattributeinfo, &overrideattributeinfo); //Handle the Sprite/CRTC window overlay!
+		}
 		if (VGA_AttributeController(&currentattributeinfo,VGA))
 		{
 			if ((VGA->precalcs.AttributeModeControlRegister_ColorEnable8Bit & 2) && (VGA->precalcs.ClockingModeRegister_DCR & 2) == 2) //Special mode active?
 			{
+				is_retryinghighresmode = 1; //Retrying high-res mode!
 				goto retryTimingText; //Retry text timing!
 			}
-			if (VGA_overrideoutputs == 0) //Ignoring any inputs?
-			{
-				return; //Nibbled!
-			}
+			return; //Nibbled!
 		}
-		VGA_overrideoutputs = VGA_handleSpriteCRTCwindow(VGA, Sequencer, &currentattributeinfo, &overrideattributeinfo); //Handle the Sprite/CRTC window overlay!
 		VGA->CRTC.CRTCBwindowmaxstatus = MAX(VGA->CRTC.CRTCBwindowmaxstatus, VGA->CRTC.CRTCBwindowEnabled); //Maximum status detected!
 	}
 	else if (!CGAMDARenderer) return; //Don't render when not ticking!
@@ -1569,25 +1602,27 @@ void VGA_ActiveDisplay_Text(SEQ_DATA *Sequencer, VGA_Type *VGA)
 void VGA_ActiveDisplay_Text_blanking(SEQ_DATA *Sequencer, VGA_Type *VGA)
 {
 	VGA_overrideoutputs = 0; //Default: not overriding anything!
+	is_retryinghighresmode = 0; //Not retrying high-res mode!
 	Sequencer->DACcounter = 0; //Reset the DAC counter: the DAC starts scanning again after blanking ends!
 	//Render our active display here!
 	retryTimingTextBlanking: //For linear mode!
 	if (VGA_ActiveDisplay_timing(Sequencer, VGA)) //Execute our timings!
 	{
 		VGA_Sequencer_TextMode(VGA, Sequencer, &currentattributeinfo); //Get the color to render!
+		if (is_retryinghighresmode == 0) //Not retrying in high resolution mode?
+		{
+			VGA_overrideoutputs = VGA_handleSpriteCRTCwindow(VGA, Sequencer, &currentattributeinfo, &overrideattributeinfo); //Handle the Sprite/CRTC window overlay!
+		}
 		if (VGA_AttributeController(&currentattributeinfo, VGA))
 		{
 			Sequencer->DACcounter = 0; //Reset the DAC counter: the DAC starts scanning again after blanking ends!
 			if ((VGA->precalcs.AttributeModeControlRegister_ColorEnable8Bit & 2) && (VGA->precalcs.ClockingModeRegister_DCR & 2) == 2) //Special mode active?
 			{
+				is_retryinghighresmode = 1; //Retrying high-res mode!
 				goto retryTimingTextBlanking; //Retry text timing!
 			}
-			if (VGA_overrideoutputs == 0) //Ignoring any inputs?
-			{
-				return; //Nibbled!
-			}
+			return; //Nibbled!
 		}
-		VGA_overrideoutputs = VGA_handleSpriteCRTCwindow(VGA, Sequencer, &currentattributeinfo, &overrideattributeinfo); //Handle the Sprite/CRTC window overlay!
 		VGA->CRTC.CRTCBwindowmaxstatus = MAX(VGA->CRTC.CRTCBwindowmaxstatus, VGA->CRTC.CRTCBwindowEnabled); //Maximum status detected!
 		Sequencer->DACcounter = 0; //Reset the DAC counter: the DAC starts scanning again after blanking ends!
 	}
@@ -1601,23 +1636,25 @@ void VGA_ActiveDisplay_Text_blanking(SEQ_DATA *Sequencer, VGA_Type *VGA)
 void VGA_ActiveDisplay_Graphics(SEQ_DATA *Sequencer, VGA_Type *VGA)
 {
 	VGA_overrideoutputs = 0; //Default: not overriding anything!
+	is_retryinghighresmode = 0; //Not retrying high-res mode!
 	//Render our active display here!
 	retryTimingGraphics: //For linear mode!
 	if (VGA_ActiveDisplay_timing(Sequencer, VGA)) //Execute our timings!
 	{
 		VGA_Sequencer_GraphicsMode(VGA, Sequencer, &currentattributeinfo); //Get the color to render!
+		if (is_retryinghighresmode == 0) //Not retrying in high resolution mode?
+		{
+			VGA_overrideoutputs = VGA_handleSpriteCRTCwindow(VGA, Sequencer, &currentattributeinfo, &overrideattributeinfo); //Handle the Sprite/CRTC window overlay!
+		}
 		if (VGA_AttributeController(&currentattributeinfo, VGA))
 		{
 			if ((VGA->precalcs.AttributeModeControlRegister_ColorEnable8Bit & 2) && (VGA->precalcs.ClockingModeRegister_DCR & 2) == 2) //Special mode active?
 			{
+				is_retryinghighresmode = 1; //Retrying high-res mode!
 				goto retryTimingGraphics; //Retry text timing!
 			}
-			if (VGA_overrideoutputs == 0) //Ignoring any inputs?
-			{
-				return; //Nibbled!
-			}
+			return; //Nibbled!
 		}
-		VGA_overrideoutputs = VGA_handleSpriteCRTCwindow(VGA, Sequencer, &currentattributeinfo, &overrideattributeinfo); //Handle the Sprite/CRTC window overlay!
 		VGA->CRTC.CRTCBwindowmaxstatus = MAX(VGA->CRTC.CRTCBwindowmaxstatus, VGA->CRTC.CRTCBwindowEnabled); //Maximum status detected!
 	}
 	else if (!CGAMDARenderer) return; //Don't render when not ticking!
@@ -1628,24 +1665,26 @@ void VGA_ActiveDisplay_Graphics(SEQ_DATA *Sequencer, VGA_Type *VGA)
 void VGA_ActiveDisplay_Graphics_blanking(SEQ_DATA *Sequencer, VGA_Type *VGA)
 {
 	VGA_overrideoutputs = 0; //Default: not overriding anything!
+	is_retryinghighresmode = 0; //Not retrying high-res mode!
 	//Render our active display here! Start with text mode!		
 	retryTimingGraphicsBlanking: //For linear mode!
 	if (VGA_ActiveDisplay_timing(Sequencer,VGA)) //Execute our timings!
 	{
 		VGA_Sequencer_GraphicsMode(VGA, Sequencer, &currentattributeinfo); //Get the color to render!
+		if (is_retryinghighresmode == 0) //Not retrying in high resolution mode?
+		{
+			VGA_overrideoutputs = VGA_handleSpriteCRTCwindow(VGA, Sequencer, &currentattributeinfo, &overrideattributeinfo); //Handle the Sprite/CRTC window overlay!
+		}
 		if (VGA_AttributeController(&currentattributeinfo, VGA))
 		{
 			Sequencer->DACcounter = 0; //Reset the DAC counter: the DAC starts scanning again after blanking ends!
 			if ((VGA->precalcs.AttributeModeControlRegister_ColorEnable8Bit & 2) && (VGA->precalcs.ClockingModeRegister_DCR & 2) == 2) //Special mode active?
 			{
+				is_retryinghighresmode = 1; //Retrying high-res mode!
 				goto retryTimingGraphicsBlanking; //Retry text timing!
 			}
-			if (VGA_overrideoutputs == 0) //Ignoring any inputs?
-			{
-				return; //Nibbled!
-			}
+			return; //Nibbled!
 		}
-		VGA_overrideoutputs = VGA_handleSpriteCRTCwindow(VGA, Sequencer, &currentattributeinfo, &overrideattributeinfo); //Handle the Sprite/CRTC window overlay!
 		VGA->CRTC.CRTCBwindowmaxstatus = MAX(VGA->CRTC.CRTCBwindowmaxstatus, VGA->CRTC.CRTCBwindowEnabled); //Maximum status detected!
 	}
 	else if (!CGAMDARenderer) return; //Don't render when not ticking!

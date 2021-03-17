@@ -211,6 +211,7 @@ typedef struct //Contains the precalculated values!
 	uint_32 SpriteCRTCstartaddress; //Start address of the image in video memory!
 	uint_32 SpriteCRTCrowoffset; //Row offset for each row in the video memory!
 	byte SpriteCRTCrowheight; //Row height in scanlines for each row to display!
+	byte SpriteCRTCpixelwidth; //Pixel width in pixels for each pixel to display!
 	byte SpriteCRTCpixeldepth; //The pixel depth for CRTC mode
 	byte SpriteSize; //64 or 128 pixels!
 	byte SpriteCRTCpixelpannning; //Horizontal pixel panning for CRTCB/Sprite!
