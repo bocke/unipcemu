@@ -3511,7 +3511,7 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 		}
 
 		VGA->precalcs.SpriteCRTCrowheight = ((et34k_tempreg >> 6)+1); //The height of each row!
-		VGA->precalcs.SpriteCRTCpixelwidth = ((et34k_tempreg >> 4) + 1); //The width of each pixel!
+		VGA->precalcs.SpriteCRTCpixelwidth = (((et34k_tempreg >> 4)&3) + 1); //The width of each pixel!
 
 		if (VGA->precalcs.SpriteCRTCEnabled == 2) //CRTCB enabled?
 		{
