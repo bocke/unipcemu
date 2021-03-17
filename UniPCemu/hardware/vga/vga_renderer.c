@@ -825,14 +825,6 @@ byte VGA_SpriteCRTCGetPixel(VGA_Type* VGA, SEQ_DATA* Sequencer, VGA_AttributeInf
 		{
 			if (pixel & 1) //Inverted?
 			{
-				if (overrideattributeinfo->attributesize == 2) //2 bytes?
-				{
-					overrideattributeinfo->attribute ^= 0xFFFF; //Inverted attribute from the input!
-				}
-				else
-				{
-					overrideattributeinfo->attribute ^= 0xFF; //Inverted attribute from the input!
-				}
 				if (VGA->precalcs.SpriteCRTCEnabled & 4) //Output to SP 0:1?
 				{
 					return 0; //Unsupported!
@@ -936,24 +928,25 @@ byte VGA_SpriteCRTCGetPixel(VGA_Type* VGA, SEQ_DATA* Sequencer, VGA_AttributeInf
 		case 3: //8BPP?
 			//8 bits for each pixel!
 			//Prepare to handle the next pixel!
+			overrideattributeinfo->attributesize = MIN(attributeinfo->attributesize, 1); //256 colors!
+			overrideattributeinfo->attribute = pixel; //pixel attribute!
+
 			if (tickingpixel) //Ticking the pixel?
 			{
 				++Sequencer->SpriteCRTC_pixel_address; //Next pixel address!
 				Sequencer->SpriteCRTCstep = 0; //Reset for the next pixels to be retrieved!
-				overrideattributeinfo->attributesize = MIN(attributeinfo->attributesize, 1); //256 colors!
-				overrideattributeinfo->attribute = pixel; //pixel attribute!
 			}
 			break;
 		case 4: //16BPP?
+			pixel |= (VGA_renderer_readlinearVRAM(Sequencer->SpriteCRTC_pixel_address+1) << 8); //The high pixels in the map!
+			overrideattributeinfo->attribute = pixel; //pixel attribute!
+			attributeinfo->attributesize = 2; //Force 64K colors!
 			if (tickingpixel) //Ticking the pixel?
 			{
 				++Sequencer->SpriteCRTC_pixel_address; //Next pixel address!
-				pixel |= (VGA_renderer_readlinearVRAM(Sequencer->SpriteCRTC_pixel_address) << 8); //The high pixels in the map!
 				++Sequencer->SpriteCRTC_pixel_address; //Next pixel address!
 				Sequencer->SpriteCRTCstep = 0; //Reset for the next pixels to be retrieved!
-				attributeinfo->attributesize = 2; //Force 64K colors!
 			}
-			overrideattributeinfo->attribute = pixel; //pixel attribute!
 			break;
 		}
 		if (VGA->precalcs.SpriteCRTCEnabled & 4) //Output to SP 0:1?
@@ -1595,7 +1588,18 @@ void VGA_ActiveDisplay_Text(SEQ_DATA *Sequencer, VGA_Type *VGA)
 		VGA->CRTC.CRTCBwindowmaxstatus = MAX(VGA->CRTC.CRTCBwindowmaxstatus, VGA->CRTC.CRTCBwindowEnabled); //Maximum status detected!
 	}
 	else if (!CGAMDARenderer) return; //Don't render when not ticking!
-
+	if (VGA_overrideoutputs == 2) //Inverted instead?
+	{
+		memcpy(&overrideattributeinfo, &currentattributeinfo, sizeof(overrideattributeinfo)); //Copy to use!
+		if (overrideattributeinfo.attributesize == 2) //2-byte?
+		{
+			overrideattributeinfo.attribute ^= 0xFFFF; //Flip 16-bit!
+		}
+		else //1-byte?
+		{
+			overrideattributeinfo.attribute ^= 0xFF; //Flip 8-bit!
+		}
+	}
 	activedisplay_noblanking_handler(VGA, Sequencer, VGA_overrideoutputs ? &overrideattributeinfo : &currentattributeinfo); //Blank or active display!
 }
 
@@ -1629,6 +1633,18 @@ void VGA_ActiveDisplay_Text_blanking(SEQ_DATA *Sequencer, VGA_Type *VGA)
 	else if (!CGAMDARenderer) return; //Don't render when not ticking!
 
 	Sequencer->DACcounter = 0; //Reset the DAC counter: the DAC starts scanning again after blanking ends!
+	if (VGA_overrideoutputs == 2) //Inverted instead?
+	{
+		memcpy(&overrideattributeinfo, &currentattributeinfo, sizeof(overrideattributeinfo)); //Copy to use!
+		if (overrideattributeinfo.attributesize == 2) //2-byte?
+		{
+			overrideattributeinfo.attribute ^= 0xFFFF; //Flip 16-bit!
+		}
+		else //1-byte?
+		{
+			overrideattributeinfo.attribute ^= 0xFF; //Flip 8-bit!
+		}
+	}
 	activedisplay_blank_handler(VGA, Sequencer, VGA_overrideoutputs ? &overrideattributeinfo : &currentattributeinfo); //Blank or active display!
 	Sequencer->DACcounter = 0; //Reset the DAC counter: the DAC starts scanning again after blanking ends!
 }
@@ -1659,6 +1675,18 @@ void VGA_ActiveDisplay_Graphics(SEQ_DATA *Sequencer, VGA_Type *VGA)
 	}
 	else if (!CGAMDARenderer) return; //Don't render when not ticking!
 
+	if (VGA_overrideoutputs == 2) //Inverted instead?
+	{
+		memcpy(&overrideattributeinfo, &currentattributeinfo, sizeof(overrideattributeinfo)); //Copy to use!
+		if (overrideattributeinfo.attributesize == 2) //2-byte?
+		{
+			overrideattributeinfo.attribute ^= 0xFFFF; //Flip 16-bit!
+		}
+		else //1-byte?
+		{
+			overrideattributeinfo.attribute ^= 0xFF; //Flip 8-bit!
+		}
+	}
 	activedisplay_noblanking_handler(VGA, Sequencer, VGA_overrideoutputs ? &overrideattributeinfo : &currentattributeinfo); //Blank or active display!
 }
 
@@ -1689,6 +1717,18 @@ void VGA_ActiveDisplay_Graphics_blanking(SEQ_DATA *Sequencer, VGA_Type *VGA)
 	}
 	else if (!CGAMDARenderer) return; //Don't render when not ticking!
 
+	if (VGA_overrideoutputs == 2) //Inverted instead?
+	{
+		memcpy(&overrideattributeinfo, &currentattributeinfo, sizeof(overrideattributeinfo)); //Copy to use!
+		if (overrideattributeinfo.attributesize == 2) //2-byte?
+		{
+			overrideattributeinfo.attribute ^= 0xFFFF; //Flip 16-bit!
+		}
+		else //1-byte?
+		{
+			overrideattributeinfo.attribute ^= 0xFF; //Flip 8-bit!
+		}
+	}
 	Sequencer->DACcounter = 0; //Reset the DAC counter: the DAC starts scanning again after blanking ends!
 	activedisplay_blank_handler(VGA, Sequencer, VGA_overrideoutputs ? &overrideattributeinfo : &currentattributeinfo); //Blank or active display!
 	Sequencer->DACcounter = 0; //Reset the DAC counter: the DAC starts scanning again after blanking ends!
