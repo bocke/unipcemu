@@ -1677,7 +1677,7 @@ byte Tseng4k_writeMMUregister(byte address, byte value)
 			{
 				if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x30] & 0x11)) //Suspend or Terminate requested?
 				{
-					if (!et34k(getActiveVGA())->W32_MMUqueuefilled); //The queue is not filled?
+					if (!et34k(getActiveVGA())->W32_MMUqueuefilled) //The queue is not filled?
 					{
 						Tseng4k_status_queueFilled(1); //The queue has been filled for suspend/termination!
 					}
@@ -1691,7 +1691,7 @@ byte Tseng4k_writeMMUregister(byte address, byte value)
 			{
 				if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x30] & 0x11)) //Suspend or Terminate requested?
 				{
-					if (!et34k(getActiveVGA())->W32_MMUqueuefilled); //The queue is not filled?
+					if (!et34k(getActiveVGA())->W32_MMUqueuefilled) //The queue is not filled?
 					{
 						Tseng4k_status_queueFilled(1); //The queue has been filled for suspend/termination!
 					}
