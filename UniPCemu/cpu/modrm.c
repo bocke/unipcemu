@@ -2389,8 +2389,6 @@ word *modrm_addr_reg16(MODRM_PARAMS *params, int whichregister) //For LEA relate
 
 32-bit functionality
 
-32-bit addresses are unpatched&unused yet.
-
 */
 
 uint_32 *modrm_addr32(MODRM_PARAMS *params, int whichregister, int forreading)

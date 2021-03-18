@@ -179,12 +179,6 @@ int emu_started = 0; //Emulator started (initEMU called)?
 //Report a memory leak has occurred?
 //#define REPORT_MEMORYLEAK
 
-/*
-
-debugging for us!
-
-*/
-
 extern GPU_TEXTSURFACE *frameratesurface;
 
 byte currentbusy[6] = {0,0,0,0,0,0}; //Current busy status; default none!

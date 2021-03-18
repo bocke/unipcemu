@@ -254,7 +254,7 @@ byte Tseng34K_writeIO(word port, byte val)
 		}
 		//16-bit DAC operations!
 		et34k_updateDAC(et34kdata,val); //Update the DAC values to be compatible!
-		if (et34kdata->emulatedDAC == 2 /*|| (et34kdata->emulatedDAC == 3)*/) //AT&T 20C490 or Sierra SC15025? This reset of the IPF flag on the SC15025 happens on any write to any address or a read not from the DAC mask address.
+		if (et34kdata->emulatedDAC == 2) //AT&T 20C490 or Sierra SC15025? This reset of the IPF flag on the SC15025 happens on any write to any address or a read not from the DAC mask address.
 		{
 			//WhatVGA says this about the UMC70C178 as well, but the identification routine of the AT&T 20C490 would identify it as a AT&T 20C491/20C492 instead, so it should actually be like a Sierra SC11487 instead.
 			et34kdata->hicolorDACcmdmode = 0; //Disable command mode!

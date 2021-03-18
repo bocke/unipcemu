@@ -239,7 +239,7 @@ OPTINLINE byte getRIFFData(RIFF_ENTRY RIFFHeader, uint_32 index, uint_32 size, v
 
 /*
 
-Next, Basic FLAG_SF open/close support!
+Next, Basic SF open/close support!
 
 */
 

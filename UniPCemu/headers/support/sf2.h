@@ -333,31 +333,6 @@ Different sample modes:
 #define GEN_SAMPLEMODES_NOLOOP2 2
 #define GEN_SAMPLEMODES_LOOPUNTILDEPRESSDONE 3
 
-/*
-//Panning
-#define GEN_PAN 17
-//Pan are 0.1% units where the sound is send to (left or right speaker). Left=(50-percentage number)%, Right=(50+percentage number)%
-
-//Sample address generators (all signed values)
-#define GEN_STARTADDRESSOFFSET 0
-#define GEN_ENDADDRESSOFFSET 1
-#define GEN_STARTLOOPADDRESSOFFSET 2
-#define GEN_ENDLOOPADDRESSOFFSET 3
-#define GEN_STARTADDRESSCOARSEOFFSET 4
-#define GEN_ENDADDRESSCOARSEOFFSET 12
-#define GEN_STARTLOOPADDRESSCOARSEOFFSET 45
-#define GEN_ENDLOOPADDRESSCOARSEOFFSET 50
-
-//Key/velocity for note lookup
-#define GEN_KEYNUM 46
-#define GEN_OVERRIDINGROOTKEY 58
-#define GEN_VELOCITY 47
-
-//Special also for checks!
-#define GEN_KEYRANGE 43
-#define GEN_VELOCITYRANGE 44
-*/
-
 //Don't pack this structure: we will need to speed up this part as much as possible for rendering speedup!
 typedef struct
 {

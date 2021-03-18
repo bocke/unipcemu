@@ -365,9 +365,6 @@ S determines AVL type!
 
 AVL: available to the programmer:
 	see below for values.
-
-
-
 */
 
 //AVL Also contains the type of segment (CODE DATA or SYSTEM)

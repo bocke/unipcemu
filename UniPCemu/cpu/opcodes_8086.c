@@ -7005,12 +7005,6 @@ void CPU8086_OPF7() //GRP3b Ev
 }
 //All OK up till here.
 
-/*
-
-DEBUG: REALLY SUPPOSED TO HANDLE HERE?
-
-*/
-
 void CPU8086_OPFE() //GRP4 Eb
 {
 	modrm_debugger8(&CPU[activeCPU].params,CPU[activeCPU].MODRM_src0,CPU[activeCPU].MODRM_src1);

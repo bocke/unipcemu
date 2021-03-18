@@ -139,7 +139,7 @@ void VGA_TextDecoder(VGA_Type *VGA, word loadedlocation)
 			characterpixels[5] = getcharxy_MDA((byte)character, 5, ((SEQ_DATA *)VGA->Sequencer)->charinner_y); //Read all coordinates!
 			characterpixels[6] = getcharxy_MDA((byte)character, 6, ((SEQ_DATA *)VGA->Sequencer)->charinner_y); //Read all coordinates!
 			characterpixels[7] = getcharxy_MDA((byte)character, 7, ((SEQ_DATA *)VGA->Sequencer)->charinner_y); //Read all coordinates!
-			if (unlikely(/*(GETBITS(VGA->registers->AttributeControllerRegisters.REGISTERS.ATTRIBUTEMODECONTROLREGISTER, 2, 1) == 0) ||*/ ((character & 0xE0) != 0xC0))) //Not a line drawing character? Line drawing characters are always enabled on MDA!
+			if (unlikely(((character & 0xE0) != 0xC0))) //Not a line drawing character? Line drawing characters are always enabled on MDA!
 			{
 				characterpixels[8] = 0; //9th bit is always background?
 			}

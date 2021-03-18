@@ -902,13 +902,7 @@ byte CPU_switchtask(int whatsegment, SEGMENT_DESCRIPTOR *LOADEDDESCRIPTOR, word 
 		if (segmentWritten(CPU_SEGMENT_CS, CPU[activeCPU].taskswitchdata.TSS16.CS, 0x200 | (isJMPorCALL & 0x400))) return 0; //Load CS!
 	}
 	CPU_commitState(); //Set the new fault as a return point when faulting!
-	/*
-	if ((getRPL(REG_CS) != GENERALSEGMENT_DPL(CPU[activeCPU].SEG_DESCRIPTOR[CPU_SEGMENT_CS])) && (getcpumode()==CPU_MODE_PROTECTED)) //Non-matching CS RPL vs CS CPL if not V86?
-	{
-		CPU_TSSFault(REG_TR, ((isJMPorCALL & 0x400) >> 10), (REG_TR & 4) ? EXCEPTION_TABLE_LDT : EXCEPTION_TABLE_GDT); //Throw error!
-		return 0; //Not present: limit exceeded!
-	}
-	*/ //Doesn't make sense with conforming segments, nor with V86 segments! Also, already handled by segmentWritten.
+	//RPL(CS)!=DPL(CS descriptor) Doesn't make sense with conforming segments, nor with V86 segments! Also, already handled by segmentWritten.
 	CPU[activeCPU].taskswitch_stepping |= 0x400; //Finished step 11!
 	}
 
