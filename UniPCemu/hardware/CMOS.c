@@ -411,7 +411,6 @@ OPTINLINE void CMOS_encodetime(accuratetime *curtime) //Encode time into the cur
 		}
 	}
 	if (CMOS.DATA.centuryisbinary==0) CMOS.DATA.DATA80.data[0x32] = encodeBCD8((curtime->year/100)%100,0); //Encode when possible!
-	//else CMOS.DATA.DATA80.data[0x32] = ((curtime->year/100)&0xFF); //The century with safety wrapping!
 	CMOS.DATA.DATA80.info.RTC_Year = encodeBCD8(curtime->year%100,0);
 	CMOS.DATA.DATA80.info.RTC_Month = encodeBCD8(curtime->month,0);
 	CMOS.DATA.DATA80.info.RTC_DateOfMonth = encodeBCD8(curtime->day,0);
@@ -989,7 +988,6 @@ byte PORT_writeCMOS(word port, byte value) //Write to a port/register!
 		//Write back the destination data!
 		CMOS.DATA.DATA80.data[CMOS.extADDR] = value; //Give the data from the CMOS!
 		CMOS_onWrite(CMOS.DATA.DATA80.info.STATUSREGISTERB,1); //On write (extended CMOS)!
-		//CMOS.extADDR = 0xD; //Reset address!		
 		return 1;
 		break;
 	//XT RTC support!

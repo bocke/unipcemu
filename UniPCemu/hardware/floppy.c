@@ -1055,7 +1055,6 @@ byte floppy_increasesector(byte floppy, byte EOTfield, byte isformatcommand) //I
 			{
 				result = 2; //Abort!
 				FLOPPY_ST0_INTERRUPTCODEW(1); //Couldn't finish correctly!
-				//FLOPPY_ST0_SEEKENDW(0); //Failed!
 				FLOPPY_ST1_ENDOFCYCLINDER(1); //Set EN! Only when EOT is reached but TC isn't set!
 			}
 		}
@@ -1167,7 +1166,6 @@ void floppy_common_sectoraccess_nomedia(byte drive)
 	FLOPPY.resultbuffer[5] = FLOPPY.currentsector[drive];
 	FLOPPY.resultbuffer[6] = (FLOPPY.commandbuffer[0]==FORMAT_TRACK)?FLOPPY.commandbuffer[2]:FLOPPY.commandbuffer[5]; //Sector size from the command buffer!
 	floppy_erroringout(); //Erroring out!
-	//FLOPPY_raiseIRQ(); //Raise an IRQ because of the error!
 }
 
 void floppy_readsector() //Request a read sector command!
@@ -1186,13 +1184,11 @@ void floppy_readsector() //Request a read sector command!
 		FLOPPY_LOGD("FLOPPY: Error: Invalid drive!")
 		floppy_common_sectoraccess_nomedia(FLOPPY_DOR_DRIVENUMBERR); //No media!
 		return;
-		//if (FLOPPY_DOR_DRIVENUMBERR > 1) //Invalid drive?
 		{
 			FLOPPY_ST0_UNITSELECTW(FLOPPY_DOR_DRIVENUMBERR); //Current unit!
 			FLOPPY_ST0_CURRENTHEADW(FLOPPY.currentphysicalhead[FLOPPY_DOR_DRIVENUMBERR] & 1); //Current head!
 			FLOPPY_ST0_NOTREADYW(1); //We're not ready yet!
 			FLOPPY_ST0_UNITCHECKW(0); //Clear unit check and Interrupt code: we're OK. Also clear SE flag: we're still busy!
-			//FLOPPY_ST0_SEEKENDW(0); //Clear unit check and Interrupt code: we're OK. Also clear SE flag: we're still busy!
 			FLOPPY_ST0_INTERRUPTCODEW(0); //Clear unit check and Interrupt code: we're OK. Also clear SE flag: we're still busy!
 			FLOPPY_ST0_SEEKENDW(0); //Clear seek end: we're reading a sector!
 			FLOPPY.ST1 = 0x01|0x04; //Couldn't find any sector!
@@ -1229,7 +1225,6 @@ void floppy_readsector() //Request a read sector command!
 		FLOPPY_ST0_CURRENTHEADW(FLOPPY.currentphysicalhead[FLOPPY_DOR_DRIVENUMBERR] & 1); //Current head!
 		FLOPPY_ST0_NOTREADYW(1); //We're not ready yet!
 		FLOPPY_ST0_UNITCHECKW(0); //Clear unit check and Interrupt code: we're OK. Also clear SE flag: we're still busy!
-		//FLOPPY_ST0_SEEKENDW(0); //Clear unit check and Interrupt code: we're OK. Also clear SE flag: we're still busy!
 		FLOPPY_ST0_INTERRUPTCODEW(0); //Clear unit check and Interrupt code: we're OK. Also clear SE flag: we're still busy!
 		FLOPPY_ST0_SEEKENDW(0); //Clear seek end: we're reading a sector!
 		FLOPPY.ST1 = 0x01|0x04; //Couldn't find any sector!
@@ -1242,9 +1237,7 @@ void floppy_readsector() //Request a read sector command!
 	FLOPPY_ST0_CURRENTHEADW(FLOPPY.currentphysicalhead[FLOPPY_DOR_DRIVENUMBERR] & 1); //Current head!
 	FLOPPY_ST0_NOTREADYW(0); //We're not ready yet!
 	FLOPPY_ST0_UNITCHECKW(0); //Clear unit check and Interrupt code: we're OK. Also clear SE flag: we're still busy!
-	//FLOPPY_ST0_SEEKENDW(0); //Clear unit check and Interrupt code: we're OK. Also clear SE flag: we're still busy!
 	FLOPPY_ST0_INTERRUPTCODEW(0); //Clear unit check and Interrupt code: we're OK. Also clear SE flag: we're still busy!
-	//FLOPPY_ST0_SEEKENDW(0); //Clear seek end: we're reading a sector!
 
 	if (!FLOPPY_supportsrate(FLOPPY_DOR_DRIVENUMBERR)) //We don't support the rate?
 	{
@@ -1309,7 +1302,6 @@ void floppy_readsector() //Request a read sector command!
 		FLOPPY.ST1 &= ~4; //Found!
 		FLOPPY.ST2 &= ~1; //Found!
 		FLOPPY.readID_lastsectornumber = FLOPPY.currentsector[FLOPPY_DOR_DRIVENUMBERR]; //Last sector accessed!
-		//FLOPPY_ST0_SEEKENDW(1); //Successfull read with implicit seek!
 		FLOPPY_startData(FLOPPY_DOR_DRIVENUMBERR);
 	}
 	else //DSK or error?
@@ -1524,7 +1516,6 @@ void floppy_readsector() //Request a read sector command!
 		}
 
 	floppy_errorread: //Error reading data?
-		//FLOPPY.ST0 |= 0x18; //Error out, became not ready with unit check!
 		FLOPPY.floppy_scanningforSectorID = 0; //Not scanning anymore!
 		//Plain error reading the sector!
 		//ENTER RESULT PHASE
@@ -1583,23 +1574,17 @@ void FLOPPY_formatsector(byte nodata) //Request a read sector command!
 
 	if (!FLOPPY_supportsrate(FLOPPY_DOR_DRIVENUMBERR)) //We don't support the rate or geometry?
 	{
-		//floppy_common_sectoraccess_nomedia(FLOPPY_DOR_DRIVENUMBERR); //No media!
-		//return;
 		goto format_nomedia;
 	}
 
 	if ((FLOPPY.geometries[FLOPPY_DOR_DRIVENUMBERR]->DoubleDensity!=(FLOPPY.MFM&~DENSITY_IGNORE)) && (!(FLOPPY.geometries[FLOPPY_DOR_DRIVENUMBERR]->DoubleDensity&DENSITY_IGNORE) || density_forced) && EMULATE_DENSITY) //Wrong density?
 	{
 		FLOPPY_LOGD("FLOPPY: Error: Invalid density!")
-		//floppy_common_sectoraccess_nomedia(FLOPPY_DOR_DRIVENUMBERR); //No media!
-		//return;
 		goto format_nomedia;
 	}
 
 	if ((FLOPPY.commandbuffer[5]!=FLOPPY.geometries[FLOPPY_DOR_DRIVENUMBERR]->GAPLength) && (FLOPPY.geometries[FLOPPY_DOR_DRIVENUMBERR]->GAPLength!=GAPLENGTH_IGNORE) && EMULATE_GAPLENGTH) //Wrong GAP length?
 	{
-		//floppy_common_sectoraccess_nomedia(FLOPPY_DOR_DRIVENUMBERR); //No media!
-		//return;
 		goto format_nomedia;
 	}
 
@@ -1714,8 +1699,6 @@ void FLOPPY_formatsector(byte nodata) //Request a read sector command!
 			FLOPPY.readID_lastsectornumber = FLOPPY.currentsector[FLOPPY_DOR_DRIVENUMBERR]; //This was the last sector we've accessed!
 			if (FLOPPY.databuffer[0] != FLOPPY.physicalcylinder[FLOPPY_DOR_DRIVENUMBERR]) //Not current track?
 			{
-				//floppy_common_sectoraccess_nomedia(FLOPPY_DOR_DRIVENUMBERR); //No media!
-				//return; //Error!
 				goto format_nomedia;
 			floppy_errorformat:
 				FLOPPY_LOGD("FLOPPY: Finished transfer of data (%u sector(s)).", FLOPPY.sectorstransferred) //Log the completion of the sectors written!
@@ -1805,7 +1788,6 @@ void FLOPPY_formatsector(byte nodata) //Request a read sector command!
 		FLOPPY.ST1 = 0; //No errors!
 		FLOPPY.ST2 = 0; //No errors!
 	default: //Unknown?
-		//FLOPPY_ST0_SEEKENDW(1); //Successfull write with implicit seek!
 		FLOPPY.ST1 = 0; //OK!
 		FLOPPY.ST2 = 0; //OK!
 		FLOPPY_ST0_INTERRUPTCODEW(0); //Normal termination!
@@ -1851,7 +1833,6 @@ void floppy_writesector() //Request a write sector command!
 		FLOPPY_ST0_CURRENTHEADW(FLOPPY.currentphysicalhead[FLOPPY_DOR_DRIVENUMBERR] & 1); //Current head!
 		FLOPPY_ST0_NOTREADYW(1); //We're not ready yet!
 		FLOPPY_ST0_UNITCHECKW(0); //Clear unit check and Interrupt code: we're OK. Also clear SE flag: we're still busy!
-		//FLOPPY_ST0_SEEKENDW(0); //Clear unit check and Interrupt code: we're OK. Also clear SE flag: we're still busy!
 		FLOPPY_ST0_SEEKENDW(0); //Clear seek end: we're reading a sector!
 		FLOPPY.ST1 = 0x01; //Couldn't find any sector!
 		FLOPPY.ST2 = 0x01; //Data address mark not found!
@@ -1892,7 +1873,6 @@ void floppy_writesector() //Request a write sector command!
 		FLOPPY_ST0_CURRENTHEADW(FLOPPY.currentphysicalhead[FLOPPY_DOR_DRIVENUMBERR] & 1); //Current head!
 		FLOPPY_ST0_NOTREADYW(1); //We're not ready yet!
 		FLOPPY_ST0_UNITCHECKW(0); //Clear unit check and Interrupt code: we're OK. Also clear SE flag: we're still busy!
-		//FLOPPY_ST0_SEEKENDW(0); //Clear unit check and Interrupt code: we're OK. Also clear SE flag: we're still busy!
 		FLOPPY_ST0_INTERRUPTCODEW(0); //Clear unit check and Interrupt code: we're OK. Also clear SE flag: we're still busy!
 		FLOPPY_ST0_SEEKENDW(0); //Clear seek end: we're reading a sector!
 		FLOPPY.ST1 = 0x01 | 0x04; //Couldn't find any sector!
@@ -1912,7 +1892,6 @@ void floppy_writesector() //Request a write sector command!
 	FLOPPY_ST0_CURRENTHEADW(FLOPPY.currentphysicalhead[FLOPPY_DOR_DRIVENUMBERR] & 1); //Current head!
 	FLOPPY_ST0_NOTREADYW(0); //We're not ready yet!
 	FLOPPY_ST0_UNITCHECKW(0); //Clear unit check and Interrupt code: we're OK. Also clear SE flag: we're still busy!
-	//FLOPPY_ST0_SEEKENDW(0); //Clear unit check and Interrupt code: we're OK. Also clear SE flag: we're still busy!
 	FLOPPY_ST0_INTERRUPTCODEW(0); //Clear unit check and Interrupt code: we're OK. Also clear SE flag: we're still busy!
 
 	if (!(FLOPPY_DOR_MOTORCONTROLR&(1 << FLOPPY_DOR_DRIVENUMBERR))) //Not motor ON?
@@ -1945,7 +1924,6 @@ void floppy_executeWriteData()
 		FLOPPY_ST0_CURRENTHEADW(FLOPPY.currentphysicalhead[FLOPPY_DOR_DRIVENUMBERR] & 1); //Current head!
 		FLOPPY_ST0_NOTREADYW(1); //We're not ready yet!
 		FLOPPY_ST0_UNITCHECKW(0); //Clear unit check and Interrupt code: we're OK. Also clear SE flag: we're still busy!
-		//FLOPPY_ST0_SEEKENDW(0); //Clear unit check and Interrupt code: we're OK. Also clear SE flag: we're still busy!
 		FLOPPY_ST0_INTERRUPTCODEW(0); //Clear unit check and Interrupt code: we're OK. Also clear SE flag: we're still busy!
 		FLOPPY_ST0_SEEKENDW(0); //Clear seek end: we're reading a sector!
 		FLOPPY.ST1 = 0x01 | 0x04; //Couldn't find any sector!
@@ -2028,7 +2006,6 @@ void floppy_executeWriteData()
 			break;
 		case 0: //OK?
 		default: //Unknown?
-			//FLOPPY_ST0_SEEKENDW(1); //Successfull write with implicit seek!
 			FLOPPY.ST1 = 0; //OK!
 			FLOPPY.ST2 = 0; //OK!
 			FLOPPY_ST0_INTERRUPTCODEW(0); //Normal termination!
@@ -2059,7 +2036,6 @@ void floppy_executeWriteData()
 			}
 			FLOPPY_LOGD("FLOPPY: Finished transfer of data (readonly).") //Log the completion of the sectors written!
 			FLOPPY.resultposition = 0;
-			//FLOPPY.ST0 |= 0x18; //Error out, became not ready and unit check!
 			FLOPPY.resultbuffer[0] = FLOPPY.ST0 = 0x40|((FLOPPY.ST0 & 0x3B) | FLOPPY_DOR_DRIVENUMBERR) | ((FLOPPY.currentphysicalhead[FLOPPY_DOR_DRIVENUMBERR] & 1) << 2); //Abnormal termination! ST0!
 			FLOPPY.resultbuffer[1] = FLOPPY.ST1 = 0x27; //Drive write-protected! ST1!
 			FLOPPY.resultbuffer[2] = FLOPPY.ST2 = 0x31; //ST2!
@@ -2175,7 +2151,6 @@ void floppy_executeWriteData()
 						break;
 					case 0: //OK?
 					default: //Unknown?
-						//FLOPPY_ST0_SEEKENDW(1); //Successfull write with implicit seek!
 						FLOPPY.ST1 = 0x00;
 						FLOPPY.ST2 = 0x00;
 						FLOPPY_ST0_INTERRUPTCODEW(0); //Normal termination!
@@ -2183,7 +2158,6 @@ void floppy_executeWriteData()
 						break;
 					}
 					FLOPPY_LOGD("FLOPPY: Finished transfer of data (%u sector(s)).", FLOPPY.sectorstransferred) //Log the completion of the sectors written!
-					//FLOPPY_ST0_SEEKENDW(1); //Successfull write with implicit seek!
 					enterFloppyWriteResultPhase:
 					FLOPPY.resultposition = 0;
 					FLOPPY.resultbuffer[0] = FLOPPY.ST0 = ((FLOPPY.ST0 & 0x3B) | FLOPPY_DOR_DRIVENUMBERR) | ((FLOPPY.currentphysicalhead[FLOPPY_DOR_DRIVENUMBERR] & 1) << 2); //Abnormal termination! ST0!
@@ -2222,7 +2196,6 @@ void floppy_executeWriteData()
 			}
 		floppy_errorwrite:
 		didntfindsectoridwrite: //Couldn't find the sector ID!
-			//FLOPPY.ST0 |= 0x18; //Error out, became not ready and unit check!
 			//Plain error!
 			FLOPPY.ST0 |= 0x40; //Error out!
 			goto enterFloppyWriteResultPhase; //Result phase starts!
@@ -2246,7 +2219,6 @@ void floppy_executeReadData()
 		break;
 	case 0: //OK?
 	default: //Unknown?
-		//FLOPPY_ST0_SEEKENDW(1); //Successfull write with implicit seek!
 		FLOPPY_ST0_INTERRUPTCODEW(0); //Normal termination!
 		FLOPPY_ST0_NOTREADYW(0); //We're ready!
 		break;
@@ -2299,7 +2271,6 @@ void floppy_executeData() //Execute a floppy command. Data is fully filled!
 		case SCAN_HIGH_OR_EQUAL:
 		case VERIFY: //Verify doesn't transfer data directly!
 			//We've finished reading the read data!
-			//updateFloppyWriteProtected(0); //Try to read with(out) protection!
 			if (FLOPPY.databufferposition == FLOPPY.databuffersize) //Fully processed?
 			{
 				floppy_executeReadData(); //Execute us for now!
@@ -2530,7 +2501,6 @@ void floppy_executeCommand() //Execute a floppy command. Buffers are fully fille
 				FLOPPY_ST0_CURRENTHEADW(FLOPPY.currentphysicalhead[drive] & 1); //Current head!
 				FLOPPY_ST0_NOTREADYW(1); //We're not ready yet!
 				FLOPPY_ST0_UNITCHECKW(0); //Clear unit check and Interrupt code: we're OK. Also clear SE flag: we're still busy!
-				//FLOPPY_ST0_SEEKENDW(0); //Clear unit check and Interrupt code: we're OK. Also clear SE flag: we're still busy!
 				FLOPPY_ST0_INTERRUPTCODEW(0); //Clear unit check and Interrupt code: we're OK. Also clear SE flag: we're still busy!
 				FLOPPY_ST0_SEEKENDW(0); //Clear seek end: we're reading a sector!
 				FLOPPY.ST1 = 0x01|0x04; //Couldn't find any sector!
@@ -2554,7 +2524,6 @@ void floppy_executeCommand() //Execute a floppy command. Buffers are fully fille
 				goto floppy_errorReadID; //Error out!
 			}
 
-			//FLOPPY.ST0 &= 0x20; //Clear ST0 by default! Keep the Seek End flag intact!
 			FLOPPY.ST0 = 0; //According to Bochs, ST0 gets fully cleared, including the Seek End bit!
 			updateFloppyGeometries(drive, FLOPPY.currentphysicalhead[drive], FLOPPY.physicalcylinder[drive]); //Update our geometry to use!
 
@@ -2768,7 +2737,6 @@ void floppy_executeCommand() //Execute a floppy command. Buffers are fully fille
 			FLOPPY_startData(drive); //Start the data phase!
 			return; //Correct read!
 		floppy_errorReadID:
-			//FLOPPY.ST0 |= 0x18; //Error out, became not ready and unit check!
 			FLOPPY.databuffersize = 0x200; //Sector size into data buffer!
 			FLOPPY.readIDdrive = drive; //Setup ST0!
 			FLOPPY.readIDerror = 1; //Error!
@@ -2791,7 +2759,6 @@ void floppy_executeCommand() //Execute a floppy command. Buffers are fully fille
 				FLOPPY_ST0_CURRENTHEADW(FLOPPY.currentphysicalhead[drive] & 1); //Current head!
 				FLOPPY_ST0_NOTREADYW(1); //We're not ready yet!
 				FLOPPY_ST0_UNITCHECKW(0); //Clear unit check and Interrupt code: we're OK. Also clear SE flag: we're still busy!
-				//FLOPPY_ST0_SEEKENDW(0); //Clear unit check and Interrupt code: we're OK. Also clear SE flag: we're still busy!
 				FLOPPY_ST0_INTERRUPTCODEW(0); //Clear unit check and Interrupt code: we're OK. Also clear SE flag: we're still busy!
 				FLOPPY_ST0_SEEKENDW(0); //Clear seek end: we're reading a sector!
 				FLOPPY.ST1 = 0x01; //Couldn't find any sector!

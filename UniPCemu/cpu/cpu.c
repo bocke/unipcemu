@@ -468,13 +468,10 @@ void CPU_CPUID()
 		{
 		case CPU_PENTIUM2: //Pentium 2?
 			REG_EDX |= 0x0800; //Just SYSENTER/SYSEXIT have been added!
-			//REG_ECX |= 0x00000000; //No features have been added!
 		case CPU_PENTIUMPRO: //Pentium Pro?
 			REG_EDX |= 0xA240; //Just CMOV(but not FCMOV, since the NPU feature bit(bit 0) isn't set), PAE and Page Global Enable and APIC have been implemented!
-			//REG_ECX |= 0x00000000; //No features have been added!
 		case CPU_PENTIUM: //Pentium?
 			REG_EDX |= 0x13E; //Just VME, Debugging Extensions, Page Size Extensions, TSC, MSR, CMPXCHG8 have been implemented!
-			//REG_ECX |= 0x00000000; //No features have been added!
 		default: //Lowest decominator!
 		case CPU_80486: //80486?
 			//Information based on http://www.hugi.scene.org/online/coding/hugi%2016%20-%20corawhd4.htm

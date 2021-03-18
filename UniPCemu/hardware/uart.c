@@ -394,9 +394,7 @@ byte PORT_readUART(word port, byte *result) //Read from the uart!
 			UART_port[COMport].oldModemStatusRegister = UART_port[COMport].ModemStatusRegister; //Update the old modem status register!
 			break;
 		case 7: //Scratch register?
-			//*result = UART_port[COMport].ScratchRegister; //Give the register!
 			//Scratch register doesn't exist on a 8250!
-			//break; //We do nothing yet!
 		default:
 			return 0; //Unknown port!
 	}
@@ -534,9 +532,7 @@ byte PORT_writeUART(word port, byte value)
 			UART_port[COMport].oldModemControlRegister = UART_port[COMport].ModemControlRegister; //Save the old value for reference!
 			break;
 		case 7: //Scratch register?
-			//UART_port[COMport].ScratchRegister = value; //Set the register!
 			//Scratch register doesn't exist on a 8250!
-			//break; //We do nothing yet!
 		default: //Unknown write register?
 			return 0;
 			break;

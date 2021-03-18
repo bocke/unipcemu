@@ -277,7 +277,6 @@ void CPU286_OP0F00() //Various extended 286+ instructions GRP opcode.
 			}
 			else
 			{
-				//failedverr286:
 				if (loadresult == 0)
 				{
 					invalidresultVERR286:
@@ -330,7 +329,6 @@ void CPU286_OP0F00() //Various extended 286+ instructions GRP opcode.
 			}
 			else
 			{
-				//failedverw286:
 				if (loadresult == 0)
 				{
 				invalidresultVERW286:
@@ -644,7 +642,6 @@ void CPU286_OP0F02() //LAR /r
 		}
 		else //Couldn't be loaded?
 		{
-			//failedlar286:
 			if (loadresult == 0)
 			{
 				invalidresultLAR286:
@@ -739,7 +736,6 @@ void CPU286_OP0F03() //LSL /r
 		}
 		else //Couldn't be loaded?
 		{
-			//failedlsl286:
 			if (loadresult == 0)
 			{
 				invalidresultLSL286:

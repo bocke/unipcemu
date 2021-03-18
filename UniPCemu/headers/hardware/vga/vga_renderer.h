@@ -30,9 +30,6 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 typedef struct
 {
 	//Global info
-	//SEQ_PRECALCS precalcs[1024]; //Precalcs for all scanlines!
-	//SEQ_PRECALCS *currentPrecalcs; //Current precalcs!
-	
 	word xres;
 	word yres; //The full resolution currently counted!
 	

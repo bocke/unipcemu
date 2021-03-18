@@ -495,7 +495,6 @@ byte APIC_errorTriggerDummy;
 void LAPIC_reportErrorStatus(byte whichcpu, uint_32 errorstatus, byte ignoreTrigger)
 {
 	APIC_errorTriggerDummy = APIC_errorTrigger(whichcpu); //Trigger it when possible!
-	//if (APIC_errorTrigger(whichcpu) || ignoreTrigger) //Trigger ther error to start handling it! Only then record it in the ESR! NOt when set to ignore the trigger!
 	//Always set the error status register, even when the LVT is masked off!
 	{
 		LAPIC[whichcpu].errorstatusregisterpending |= errorstatus; //Reporting this delayed if needed, on the ESR!
@@ -524,7 +523,6 @@ void LAPIC_handletermination() //Handle termination on the APIC!
 		}
 		else if (((LAPIC[activeCPU].prevSpuriousInterruptVectorRegister & 0x100) == 0) && ((LAPIC[activeCPU].SpuriousInterruptVectorRegister & 0x100))) //Set?
 		{
-			//LAPIC[activeCPU].IOAPIC_IRRreq = 0; //Remove all pending!
 			LAPIC[activeCPU].enabled = 1; //Soft enabled!
 		}
 	}
@@ -890,7 +888,6 @@ byte receiveCommandRegister(byte whichCPU, uint_32 destinationCPU, uint_32 *comm
 		else
 		{
 			//According to Bochs: accept anyways?
-			//LAPIC[whichCPU].InterruptCommandRegisterLo |= DELIVERYPENDING; //Retry!
 		}
 		break;
 	case 2: //SMI raised?
@@ -1023,7 +1020,6 @@ byte receiveCommandRegister(byte whichCPU, uint_32 destinationCPU, uint_32 *comm
 		if (APICNMIQueued[destinationCPU]) //Already queued?
 		{
 			return 0; //Don't accept it yet!
-			//*commandregister |= DELIVERYPENDING; //Retry!
 		}
 		else //Accepted?
 		{
@@ -2324,7 +2320,6 @@ byte out8259(word portnum, byte value)
 		if ((value & 0x18) == 0) //it's an OCW2
 		{
 			//We're a OCW2!
-			//if (((value & 0xE0)==0x20) || ((value&0xE0)==0x60)) //EOI command
 			if ((value&0xE0)!=0x40) //Ignore type! Not a NOP?
 			{
 				if (value & 0x20) //It's an EOI-type command(non-specific, specific, rotate on non-specific, rotate on specific)?
@@ -3029,11 +3024,6 @@ void lowerirq(word irqnum)
 
 void acnowledgeIRQrequest(byte irqnum)
 {
-	//byte requestingindex = irqnum; //Save our index that's requesting!
-	//irqnum &= 0xF; //Only 16 IRQs!
-	//requestingindex >>= 4; //What index is requesting?
-	//byte PIC = (irqnum >> 3); //IRQ8+ is high PIC!
-	//i8259.irr[PIC] &= ~(1 << (irqnum & 7)); //Remove the IRQ from request! Don't affect the signal we receive, just acnowledge it so that no more interrupts are fired!
 	//We don't lower raised interrupts!
 }
 

@@ -87,7 +87,6 @@ int runromverify(char *filename, char *resultfile) //Run&verify ROM!
 	memloc = 0; //Init location!
 
 	word datastart = 0; //Start of data segment!
-	//resetCPU(1); //Make sure we're loading the ROM correctly (start at 0xF000:FFFF) Don't reset the CPU, as this is already done by initEMU!
 
 	if (!f)
 	{
@@ -251,7 +250,6 @@ doshutdown:
 		++memloc; //Increase the location!
 	}
 	emufclose64(f); //Close the file!
-	//dolog("ROM_log","Finishing emulator...");	
 	unlock(LOCK_CPU); //Finished with the CPU!
 	lock(LOCK_MAINTHREAD); //Lock the main thread(our other user)!
 	BIOS_free_custom(filename); //Free the custom BIOS ROM!

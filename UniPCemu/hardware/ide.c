@@ -2682,7 +2682,6 @@ OPTINLINE byte ATAPI_readsector(byte channel, byte drive) //Read the current sec
 	}
 	else //Error reading?
 	{
-		//ATA_ERRORREGISTER_IDMARKNOTFOUNDW(channel,drive,1); //Not found!
 		abortreason = SENSE_ILLEGAL_REQUEST; //Illegal request:
 		additionalsensecode = ASC_ILLEGAL_MODE_FOR_THIS_TRACK_OR_INCOMPATIBLE_MEDIUM; //Illegal mode or incompatible medium!
 		ascq = 0;
@@ -3562,7 +3561,6 @@ void ATAPI_executeCommand(byte channel, byte drive) //Prototype for ATAPI execut
 		}
 		break;
 	case 0x03: //REQUEST SENSE(Mandatory)?
-		//if (!is_mounted(ATA_Drives[channel][drive])) { abortreason = 2;additionalsensecode = 0x3A;ascq=(ATA[channel].Drive[drive].ATAPI_caddyejected?0x02:0x01);goto ATAPI_invalidcommand; } //Error out if not present!
 		//Byte 4 = allocation length
 		ATA[channel].Drive[drive].datapos = 0; //Start of data!
 		ATA[channel].Drive[drive].datablock = MIN(ATA[channel].Drive[drive].ATAPI_PACKET[4],sizeof(ATA[channel].Drive[drive].SensePacket)); //Size of a block to transfer!
@@ -3607,7 +3605,6 @@ void ATAPI_executeCommand(byte channel, byte drive) //Prototype for ATAPI execut
 		break;
 	case 0x12: //INQUIRY(Mandatory)?
 		//We do succeed without media?
-		//if (!is_mounted(ATA_Drives[channel][drive])) {abortreason=2;additionalsensecode=0x3A;goto ATAPI_invalidcommand;} //Error out if not present!
 		//Byte 4 = allocation length
 		ATA[channel].Drive[drive].datapos = 0; //Start of data!
 		ATA[channel].Drive[drive].datablock = ATA[channel].Drive[drive].ATAPI_PACKET[4]; //Size of a block to transfer!
@@ -3947,7 +3944,6 @@ void ATAPI_executeCommand(byte channel, byte drive) //Prototype for ATAPI execut
 			MSF = (ATA[channel].Drive[drive].ATAPI_PACKET[1]&2); //MSF bit!
 			sub_Q = (ATA[channel].Drive[drive].ATAPI_PACKET[2] & 0x40); //SubQ bit!
 			data_format = ATA[channel].Drive[drive].ATAPI_PACKET[3]; //Sub-channel Data Format
-			//track_number = ATA[channel].Drive[drive].ATAPI_PACKET[6]; //Track number
 			alloc_length = (ATA[channel].Drive[drive].ATAPI_PACKET[7]<<8)|ATA[channel].Drive[drive].ATAPI_PACKET[8]; //Allocation length!
 			ret_len = 4;
 			if (!(is_mounted(ATA_Drives[channel][drive]) && ATA[channel].Drive[drive].diskInserted)) { abortreason = SENSE_NOT_READY; additionalsensecode = ASC_MEDIUM_NOT_PRESENT; ascq = (ATA[channel].Drive[drive].ATAPI_caddyejected ? 0x02 : 0x01); goto ATAPI_invalidcommand; } //Error out if not present!
@@ -4290,7 +4286,6 @@ void ATAPI_executeCommand(byte channel, byte drive) //Prototype for ATAPI execut
 			}
 			else //Start time specified?
 			{
-				//LBA += 150; //Add 2 seconds pregap as is documented!
 				LBA2MSFbin(LBA, &startM, &startS, &startF); //Convert to MSF for playback!
 			}
 			//Generate the ending MSF!
@@ -4357,13 +4352,11 @@ void ATAPI_executeCommand(byte channel, byte drive) //Prototype for ATAPI execut
 			else //Start time specified?
 			{
 				LBA = MSF2LBAbin(startM, startS, startF);
-				//LBA += 150; //Add 2 seconds!
 				LBA2MSFbin(LBA, &startM, &startS, &startF); //New time!
 			}
 			//Otherwise, start MM:SS:FF is already loaded!
 
 			LBA = MSF2LBAbin(endM, endS, endF);
-			//LBA += 150; //Add 2 seconds!
 			LBA2MSFbin(LBA, &endM, &endS, &endF); //New time!
 
 			if (MSF2LBAbin(startM, startS, startF) > MSF2LBAbin(endM, endS, endF)) //Check condition status of SENSE_ILLEGAL_REQUEST!
@@ -5282,7 +5275,6 @@ OPTINLINE void ATA_updateStatus(byte channel)
 		{
 			ATA[channel].Drive[ATA_activeDrive(channel)].PARAMETERS.reportReady = 1; //Now we're ready!
 		}
-		//ATA_STATUSREGISTER_INDEXW(channel, ATA_activeDrive(channel), (ATA[channel].Drive[ATA_activeDrive(channel)].IRQraised && (ATA_Drives[channel][ATA_activeDrive(channel)]>=CDROM0))?1:0); //Are we an IRQ cause!
 		ATA_STATUSREGISTER_BUSYW(channel,ATA_activeDrive(channel),(((((ATA[channel].Drive[ATA_activeDrive(channel)].ATAPI_PendingExecuteTransfer && (ATA[channel].Drive[ATA_activeDrive(channel)].ATAPI_processingPACKET<3 /* 3(result)/4(pending result status) clear busy */)))||DRIVECONTROLREGISTER_SRSTR(channel)||(ATA[channel].Drive[ATA_activeDrive(channel)].resetTiming))?1:0) | (((ATA[channel].Drive[ATA_activeDrive(channel)].IRQTimeout && ATA[channel].Drive[ATA_activeDrive(channel)].IRQTimeout_busy) || ATA[channel].Drive[ATA_activeDrive(channel)].BusyTiming) ? 1 : 0))); //Not busy! You can write to the CBRs! We're busy during the ATAPI transfer still pending the result phase! Result phase pending doesn't set it!
 		ATA_STATUSREGISTER_DRIVEREADYW(channel,ATA_activeDrive(channel),(((((ATA[channel].driveselectTiming||ATA[channel].Drive[ATA_activeDrive(channel)].ReadyTiming) && (ATA[channel].Drive[ATA_activeDrive(channel)].ATAPI_processingPACKET<4 /* 4(pending result status) sets ready */)))||DRIVECONTROLREGISTER_SRSTR(channel))?0:1)); //We're ready to process a command!
 		ATA_STATUSREGISTER_DRIVEWRITEFAULTW(channel,ATA_activeDrive(channel),0); //No write fault!
@@ -5298,19 +5290,16 @@ OPTINLINE void ATA_updateStatus(byte channel)
 		}
 		break;
 	case 1: //Transferring data IN?
-		//ATA_STATUSREGISTER_INDEXW(channel, ATA_activeDrive(channel), (ATA[channel].Drive[ATA_activeDrive(channel)].IRQraised && (ATA_Drives[channel][ATA_activeDrive(channel)]>=CDROM0))?1:0); //Are we an IRQ cause!
 		ATA_STATUSREGISTER_BUSYW(channel,ATA_activeDrive(channel),((ATA[channel].Drive[ATA_activeDrive(channel)].ATAPI_PendingExecuteTransfer?1:0)) | (((ATA[channel].Drive[ATA_activeDrive(channel)].IRQTimeout && ATA[channel].Drive[ATA_activeDrive(channel)].IRQTimeout_busy) || ATA[channel].Drive[ATA_activeDrive(channel)].BusyTiming || (ATA[channel].Drive[ATA_activeDrive(channel)].resetTiming))?1:0)); //Not busy! You can write to the CBRs! We're busy when waiting.
 		ATA_STATUSREGISTER_DRIVEREADYW(channel,ATA_activeDrive(channel),(((ATA[channel].driveselectTiming)||ATA_STATUSREGISTER_BUSYR(channel,ATA_activeDrive(channel)))?0:1)); //We're ready to process a command!
 		ATA_STATUSREGISTER_DATAREQUESTREADYW(channel,ATA_activeDrive(channel),((ATA[channel].Drive[ATA_activeDrive(channel)].ATAPI_PendingExecuteTransfer||ATA_STATUSREGISTER_BUSYR(channel, ATA_activeDrive(channel)))?0:1)); //We're requesting data to transfer! Not transferring when waiting.
 		break;
 	case 2: //Transferring data OUT?
-		//ATA_STATUSREGISTER_INDEXW(channel, ATA_activeDrive(channel), (ATA[channel].Drive[ATA_activeDrive(channel)].IRQraised && (ATA_Drives[channel][ATA_activeDrive(channel)]>=CDROM0))?1:0); //Are we an IRQ cause!
 		ATA_STATUSREGISTER_BUSYW(channel,ATA_activeDrive(channel),(ATA[channel].Drive[ATA_activeDrive(channel)].ATAPI_PendingExecuteTransfer?1:0) | (((ATA[channel].Drive[ATA_activeDrive(channel)].IRQTimeout && ATA[channel].Drive[ATA_activeDrive(channel)].IRQTimeout_busy) || ATA[channel].Drive[ATA_activeDrive(channel)].BusyTiming || (ATA[channel].Drive[ATA_activeDrive(channel)].resetTiming)) ? 1 : 0)); //Not busy! You can write to the CBRs! We're busy when waiting.
 		ATA_STATUSREGISTER_DRIVEREADYW(channel,ATA_activeDrive(channel),(((ATA[channel].driveselectTiming||ATA_STATUSREGISTER_BUSYR(channel,ATA_activeDrive(channel))))?0:1)); //We're ready to process a command!
 		ATA_STATUSREGISTER_DATAREQUESTREADYW(channel,ATA_activeDrive(channel),((ATA[channel].Drive[ATA_activeDrive(channel)].ATAPI_PendingExecuteTransfer||ATA_STATUSREGISTER_BUSYR(channel, ATA_activeDrive(channel)))?0:1)); //We're requesting data to transfer! Not transferring when waiting.
 		break;
 	case 3: //Busy waiting?
-		//ATA_STATUSREGISTER_INDEXW(channel, ATA_activeDrive(channel), (ATA[channel].Drive[ATA_activeDrive(channel)].IRQraised && (ATA_Drives[channel][ATA_activeDrive(channel)]>=CDROM0))?1:0); //Are we an IRQ cause!
 		ATA_STATUSREGISTER_BUSYW(channel,ATA_activeDrive(channel),1); //Busy! You can write to the CBRs!
 		ATA_STATUSREGISTER_DRIVEREADYW(channel,ATA_activeDrive(channel),0); //We're not ready to process a command!
 		ATA_STATUSREGISTER_DATAREQUESTREADYW(channel,ATA_activeDrive(channel),0); //We're requesting data to transfer!
@@ -5322,7 +5311,6 @@ OPTINLINE void ATA_updateStatus(byte channel)
 		{
 			ATA[channel].Drive[ATA_activeDrive(channel)].PARAMETERS.reportReady = 1; //Now we're ready!
 		}
-		//ATA_STATUSREGISTER_INDEXW(channel, ATA_activeDrive(channel), (ATA[channel].Drive[ATA_activeDrive(channel)].IRQraised && (ATA_Drives[channel][ATA_activeDrive(channel)]>=CDROM0))?1:0); //Are we an IRQ cause!
 		ATA_STATUSREGISTER_BUSYW(channel,ATA_activeDrive(channel),0); //Error occurred: wee're executing an invalid command!
 		ATA[channel].Drive[ATA_activeDrive(channel)].commandstatus = 0; //Reset command status: we've reset!
 		break;
@@ -5431,9 +5419,7 @@ byte outATA8(word port, byte value)
 #endif
 		//if (!(ATA_Drives[ATA_channel][ATA_activeDrive(ATA_channel)] >= CDROM0)) //ATAPI device? Unsupported! Otherwise, supported and process!
 		{
-			//if (ATA[ATA_channel].Drive[0].PARAMETERS.reportReady) //Ready!
 				ATA[ATA_channel].Drive[0].PARAMETERS.sectorcount = value; //Set sector count!
-			//if (ATA[ATA_channel].Drive[1].PARAMETERS.reportReady) //Ready!
 				ATA[ATA_channel].Drive[1].PARAMETERS.sectorcount = value; //Set sector count!
 		}
 		return 1; //OK!
@@ -5442,9 +5428,7 @@ byte outATA8(word port, byte value)
 #ifdef ATA_LOG
 		dolog("ATA", "Sector number write: %02X %u.%u", value, ATA_channel, ATA_activeDrive(ATA_channel));
 #endif
-		//if (ATA[ATA_channel].Drive[0].PARAMETERS.reportReady) //Ready!
 			ATA[ATA_channel].Drive[0].PARAMETERS.sectornumber = value; //Set sector number!
-		//if (ATA[ATA_channel].Drive[1].PARAMETERS.reportReady) //Ready!
 			ATA[ATA_channel].Drive[1].PARAMETERS.sectornumber = value; //Set sector number!
 		return 1; //OK!
 		break;
@@ -5452,9 +5436,7 @@ byte outATA8(word port, byte value)
 #ifdef ATA_LOG
 		dolog("ATA", "Cylinder low write: %02X %u.%u", value, ATA_channel, ATA_activeDrive(ATA_channel));
 #endif
-		//if (ATA[ATA_channel].Drive[0].PARAMETERS.reportReady) //Ready!
 			ATA[ATA_channel].Drive[0].PARAMETERS.cylinderlow = value; //Set cylinder low!
-		//if (ATA[ATA_channel].Drive[1].PARAMETERS.reportReady) //Ready!
 			ATA[ATA_channel].Drive[1].PARAMETERS.cylinderlow = value; //Set cylinder low!
 		return 1; //OK!
 		break;
@@ -5462,9 +5444,7 @@ byte outATA8(word port, byte value)
 #ifdef ATA_LOG
 		dolog("ATA", "Cylinder high write: %02X %u.%u", value, ATA_channel, ATA_activeDrive(ATA_channel));
 #endif
-		//if (ATA[ATA_channel].Drive[0].PARAMETERS.reportReady) //Ready!
 			ATA[ATA_channel].Drive[0].PARAMETERS.cylinderhigh = value; //Set cylinder high!
-		//if (ATA[ATA_channel].Drive[1].PARAMETERS.reportReady) //Ready!
 			ATA[ATA_channel].Drive[1].PARAMETERS.cylinderhigh = value; //Set cylinder high!
 		return 1; //OK!
 		break;
@@ -5810,10 +5790,6 @@ void ATA_ConfigurationSpaceChanged(uint_32 address, byte device, byte function, 
 		activePCI_IDE->BAR[3] = ((activePCI_IDE->BAR[3]&((~3)&0xFFFFFFFFU))|1); //IO BAR! 4 bytes of IO space!
 		activePCI_IDE->BAR[4] = ((activePCI_IDE->BAR[4]&((~0xF)&0xFFFFFFFFU))|1); //IO BAR! 8 bytes of IO space!
 		activePCI_IDE->BAR[5] = ((activePCI_IDE->BAR[5]&((~3)&0xFFFFFFFFU))|1); //IO BAR! Unused!
-		//PCI_unusedBAR(activePCI_IDE, 0); //Unused!
-		//PCI_unusedBAR(activePCI_IDE, 1); //Unused!
-		//PCI_unusedBAR(activePCI_IDE, 2); //Unused!
-		//PCI_unusedBAR(activePCI_IDE, 3); //Unused!
 		PCI_unusedBAR(activePCI_IDE, 4); //Unused!
 		PCI_unusedBAR(activePCI_IDE, 5); //Unused!
 		PCI_unusedBAR(activePCI_IDE, 6); //Unused!
@@ -5852,7 +5828,6 @@ void ATAPI_insertCD(int disk, byte disk_channel, byte disk_drive)
 	{
 		//Normal handling of automatic insertion after some time!
 		byte abortreason, additionalsensecode, ascq = 0;
-		//ATA_ERRORREGISTER_MEDIACHANGEDW(disk_channel,disk_drive,1); //We've changed media!
 		//Disable the IRQ for now to let the software know we've changed!
 		if (ATA[disk_channel].Drive[disk_drive].ATAPI_caddyejected == 2)
 		{
@@ -6030,16 +6005,13 @@ byte ATAPI_insertcaddy(int disk)
 			}
 			else if (ATA[disk_channel].Drive[disk_drive].ATAPI_caddyejected!=3) //Already ejected and not already inserting?
 			{
-				//ATA[disk_channel].Drive[disk_drive].MediumChangeRequested = 1; //We're requesting the medium to change!
 				//if (ATA_allowDiskChange(disk, 1)) //Request to be ejected immediately? We're not handled by software?
 				{
-					//ATA[disk_channel].Drive[disk_drive].MediumChangeRequested = 0; //We're not requesting the medium to change!
 					ATA[disk_channel].Drive[disk_drive].ATAPI_caddyejected = 2; //Request to insert the caddy when running again!
 					ATA[disk_channel].Drive[disk_drive].ATAPI_caddyinsertion_fast = 1; //Fast insertion!
 					//Don't update any LEDs: the disk stays ejected until handled by the OS or hardware!
 					return 1; //OK!
 				}
-				//return 0; //Couldn't insert caddy!
 			}
 			else if (ATA[disk_channel].Drive[disk_drive].ATAPI_caddyejected == 3) //Already ejected and not already inserting?
 			{

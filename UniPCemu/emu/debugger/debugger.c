@@ -1593,7 +1593,6 @@ byte debugger_memoryvieweraddress()
 	EMU_gotoxy(0, 4); //Goto position for info!
 	GPU_EMU_printscreen(0, 4, "Address: "); //Show the filename!
 	EMU_unlocktext();
-	//char *temp;
 #ifndef IS_PSP
 	word maxoffsetsize = 8;
 #endif
@@ -1604,7 +1603,6 @@ byte debugger_memoryvieweraddress()
 		if (strcmp(breakpointstr, "") != 0) //Got valid input?
 		{
 			//Convert the string back into our valid numbers for storage!
-			//temp = &breakpointstr[0]; //First character!
 			//This won't compile on the PSP for some unknown reason, crashing the compiler!
 			if (((safe_strlen(&breakpointstr[0], sizeof(breakpointstr))) - 1) <= maxoffsetsize) //Offset OK?
 			{

@@ -773,7 +773,6 @@ sbyte touchSegment(int segment, word segmentval, SEGMENT_DESCRIPTOR *container, 
 
 SEGMENT_DESCRIPTOR *getsegment_seg(int segment, SEGMENT_DESCRIPTOR *dest, word *segmentval, word isJMPorCALL, byte *isdifferentCPL, byte *errorret) //Get this corresponding segment descriptor (or LDT. For LDT, specify LDT register as segment) for loading into the segment descriptor cache!
 {
-	//byte newCPL = getCPL(); //New CPL after switching! Default: no change!
 	SEGMENT_DESCRIPTOR LOADEDDESCRIPTOR, GATEDESCRIPTOR; //The descriptor holder/converter!
 	memset(&LOADEDDESCRIPTOR, 0, sizeof(LOADEDDESCRIPTOR)); //Init!
 	memset(&GATEDESCRIPTOR, 0, sizeof(GATEDESCRIPTOR)); //Init!
@@ -788,7 +787,6 @@ SEGMENT_DESCRIPTOR *getsegment_seg(int segment, SEGMENT_DESCRIPTOR *dest, word *
 
 	if ((*segmentval&4) && (((GENERALSEGMENT_P(CPU[activeCPU].SEG_DESCRIPTOR[CPU_SEGMENT_LDTR])==0) && (segment!=CPU_SEGMENT_LDTR)) || (segment==CPU_SEGMENT_LDTR) || (segment==CPU_SEGMENT_TR))) //Invalid LDT segment and LDT is addressed or LDTR/TR in LDT?
 	{
-		//if ((segment == CPU_SEGMENT_SS) && (isJMPorCALL&0x200) && ((isJMPorCALL&0x8000)==0)) goto throwSSsegmentval;
 	throwdescsegmentval:
 		if (isJMPorCALL&0x200) //TSS is the cause?
 		{
@@ -808,7 +806,6 @@ SEGMENT_DESCRIPTOR *getsegment_seg(int segment, SEGMENT_DESCRIPTOR *dest, word *
 	{
 		if (loadresult == 0) //Not already faulted?
 		{
-			//if ((segment == CPU_SEGMENT_SS) && (isJMPorCALL & 0x200) && ((isJMPorCALL & 0x8000) == 0)) goto throwSSsegmentval;
 			goto throwdescsegmentval;
 		}
 		if (loadresult==-2) *errorret = 2; //Page fault?
@@ -826,7 +823,6 @@ SEGMENT_DESCRIPTOR *getsegment_seg(int segment, SEGMENT_DESCRIPTOR *dest, word *
 		{
 			if ((segment==CPU_SEGMENT_CS) || (segment==CPU_SEGMENT_TR) || (segment==CPU_SEGMENT_SS)) //Not allowed?
 			{
-				//if ((segment == CPU_SEGMENT_SS) && (isJMPorCALL & 0x200) && ((isJMPorCALL & 0x8000) == 0)) goto throwSSsegmentval;
 				goto throwdescsegmentval; //Throw #GP error!
 				return NULL; //Error, by specified reason!
 			}
@@ -956,8 +952,6 @@ SEGMENT_DESCRIPTOR *getsegment_seg(int segment, SEGMENT_DESCRIPTOR *dest, word *
 		&& (!((isJMPorCALL&0x80)==0x80)) //Don't ignore privilege?
 		)
 	{
-		//if ((segment == CPU_SEGMENT_SS) && (isJMPorCALL & 0x200) && ((isJMPorCALL & 0x8000) == 0)) goto throwSSoriginalval;
-		//if ((segment == CPU_SEGMENT_SS) && (isJMPorCALL & 0x200) && ((isJMPorCALL & 0x8000) == 0)) goto throwSSoriginalval;
 	throwdescoriginalval:
 		if (isJMPorCALL & 0x200) //TSS is the cause?
 		{
@@ -1220,12 +1214,10 @@ byte CPU_segmentWritten_protectedmode_JMPCALL(word *value, word isJMPorCALL, SEG
 	word stackval16; //16-bit stack value truncated!
 	if ((isDifferentCPL == 1) && ((isJMPorCALL & 0x1FF) == 2)) //Stack switch is required with CALL only?
 	{
-		//TSSSize = 0; //Default to 16-bit TSS!
 		switch (GENERALSEGMENT_TYPE(CPU[activeCPU].SEG_DESCRIPTOR[CPU_SEGMENT_TR])) //What kind of TSS?
 		{
 		case AVL_SYSTEM_BUSY_TSS32BIT:
 		case AVL_SYSTEM_TSS32BIT:
-			//TSSSize = 1; //32-bit TSS!
 		case AVL_SYSTEM_BUSY_TSS16BIT:
 		case AVL_SYSTEM_TSS16BIT:
 			if ((stackresult = switchStacks(GENERALSEGMENTPTR_DPL(descriptor) | ((isJMPorCALL & 0x400) >> 8)))!=0) return (stackresult==2)?2:1; //Abort failing switching stacks!
@@ -1327,7 +1319,6 @@ byte CPU_segmentWritten_protectedmode_RETF(byte oldCPL, word value, word isJMPor
 		{
 			if (CPU80386_internal_POPdw(6, &CPU[activeCPU].segmentWritten_tempESP))
 			{
-				//CPU[activeCPU].CPL = oldCPL; //Restore CPL for continuing!
 				CPU[activeCPU].is_stackswitching = 1; //We're stack switching!
 				return 1; //POP ESP!
 			}
@@ -1336,14 +1327,12 @@ byte CPU_segmentWritten_protectedmode_RETF(byte oldCPL, word value, word isJMPor
 		{
 			if (CPU8086_internal_POPw(6, &CPU[activeCPU].segmentWritten_tempSP, 0))
 			{
-				//CPU[activeCPU].CPL = oldCPL; //Restore CPL for continuing!
 				CPU[activeCPU].is_stackswitching = 1; //We're stack switching!
 				return 1; //POP SP!
 			}
 		}
 		if (CPU8086_internal_POPw(8, &CPU[activeCPU].segmentWritten_tempSS, CPU[activeCPU].CPU_Operand_size))
 		{
-			//CPU[activeCPU].CPL = oldCPL; //Restore CPL for continuing!
 			CPU[activeCPU].is_stackswitching = 1; //We're stack switching!
 			return 1; //POPped?
 		}
@@ -1595,10 +1584,7 @@ byte segmentWritten(int segment, word value, word isJMPorCALL) //A segment regis
 				CPU[activeCPU].have_oldSegReg |= (1 << segment); //Loaded!
 			}
 			memcpy(&CPU[activeCPU].SEG_DESCRIPTOR[segment],descriptor,sizeof(CPU[activeCPU].SEG_DESCRIPTOR[segment])); //Load the segment descriptor into the cache!
-			//if (memprotect(CPU[activeCPU].SEGMENT_REGISTERS[segment],2,"CPU_REGISTERS")) //Valid segment register?
-			{
-				*CPU[activeCPU].SEGMENT_REGISTERS[segment] = value; //Set the segment register to the allowed value!
-			}
+			*CPU[activeCPU].SEGMENT_REGISTERS[segment] = value; //Set the segment register to the allowed value!
 
 			if ((loadresult = touchSegment(segment,value,descriptor,isJMPorCALL))<=0) //Errored out during touching?
 			{
@@ -1684,7 +1670,6 @@ byte segmentWritten(int segment, word value, word isJMPorCALL) //A segment regis
 			CPU[activeCPU].have_oldSegReg |= (1 << segment); //Loaded!
 		}
 
-		//if (memprotect(CPU[activeCPU].SEGMENT_REGISTERS[segment],2,"CPU_REGISTERS")) //Valid segment register?
 		*CPU[activeCPU].SEGMENT_REGISTERS[segment] = value; //Just set the segment, don't load descriptor!
 		//Load the correct base data for our loading!
 		CPU[activeCPU].SEG_DESCRIPTOR[segment].desc.base_low = (word)(((uint_32)value<<4)&0xFFFF); //Low base!
@@ -2153,8 +2138,6 @@ byte CPU_handleInterruptGate(byte EXT, byte table,uint_32 descriptorbase, RAWSEG
 
 				//We're back in protected mode now!
 
-				//forcepush32 = 1; //We're enforcing 32-bit pushes regardless of the interrupt gate being 32-bit or not!
-
 				//Switch Stack segment first!
 				if ((stackresult = switchStacks(newCPL|(EXT<<2)))!=0) return (stackresult!=2)?1:0; //Abort failing switching stacks!
 				//Verify that the new stack is available!
@@ -2281,12 +2264,7 @@ byte CPU_handleInterruptGate(byte EXT, byte table,uint_32 descriptorbase, RAWSEG
 				CPU[activeCPU].have_oldSegReg |= (1 << CPU_SEGMENT_CS); //Loaded!
 			}
 			memcpy(&CPU[activeCPU].SEG_DESCRIPTOR[CPU_SEGMENT_CS], &newdescriptor, sizeof(CPU[activeCPU].SEG_DESCRIPTOR[CPU_SEGMENT_CS])); //Load the segment descriptor into the cache!
-			//if (memprotect(CPU[activeCPU].SEGMENT_REGISTERS[segment],2,"CPU_REGISTERS")) //Valid segment register?
-			{
-				*CPU[activeCPU].SEGMENT_REGISTERS[CPU_SEGMENT_CS] = idtentry.selector; //Set the segment register to the allowed value!
-			}
-
-			//if (INTTYPE==1) CPU[activeCPU].CPL = newCPL; //Privilege level changes!
+			*CPU[activeCPU].SEGMENT_REGISTERS[CPU_SEGMENT_CS] = idtentry.selector; //Set the segment register to the allowed value!
 
 			setRPL(*CPU[activeCPU].SEGMENT_REGISTERS[CPU_SEGMENT_CS],getCPL()); //CS.RPL=CPL!
 

@@ -202,7 +202,6 @@ OPTINLINE void MIDI_writeData(byte data) //Write a data byte to the MIDI device!
 					if (MIDIDEV.bufferpos==2) //Done when not giving input anymore!
 					{
 						//Process Song Position Pointer!
-						//Pitch = ((MIDIDEV.current.buffer[1]<<7)|MIDIDEV.current.buffer[0])
 						MIDIDEV.bufferpos = 0; //Reset buffer position for the next command!
 					}
 					break;

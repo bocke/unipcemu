@@ -232,7 +232,6 @@ void i430fx_hardreset(); //Prototype for register 93h on the i440fx.
 void i430fx_PCIConfigurationChangeHandler(uint_32 address, byte device, byte function, byte size)
 {
 	PCI_GENERALCONFIG* config = (PCI_GENERALCONFIG*)&i430fx_configuration; //Configuration generic handling!
-	//byte old_DRAMdetect;
 	i430fx_resetPCIConfiguration(); //Reset the ROM values!
 	switch (address) //What configuration is changed?
 	{
@@ -653,10 +652,6 @@ void i430fx_hardreset()
 	PCI_unusedBAR(config_piix, 4); //Unused!
 	PCI_unusedBAR(config_piix, 5); //Unused!
 	PCI_unusedBAR(config_piix, 6); //Unused!
-	//PCI_unusedBAR(config_ide, 0); //Unused!
-	//PCI_unusedBAR(config_ide, 1); //Unused!
-	//PCI_unusedBAR(config_ide, 2); //Unused!
-	//PCI_unusedBAR(config_ide, 3); //Unused!
 	PCI_unusedBAR(config_ide, 4); //Unused!
 	PCI_unusedBAR(config_ide, 5); //Unused!
 	PCI_unusedBAR(config_ide, 6); //Unused!

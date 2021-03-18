@@ -207,7 +207,6 @@ byte loadVGADump(byte mode)
 
 void debugTextModeScreenCapture()
 {
-	//VGA_DUMPDAC(); //Make sure the DAC is dumped!
 	SCREEN_CAPTURE = 1; //Screen capture next frame?
 	unlock(LOCK_MAINTHREAD);
 	VGA_waitforVBlank(); //Log one screen!
@@ -237,7 +236,6 @@ void DoDebugVGAGraphics(word mode, word xsize, word ysize, uint_32 maxcolor, int
 	REG_BL = 0x1; //Blue overscan!
 	BIOS_int10();
 	unlock(LOCK_MAINTHREAD);
-	//VGA_DUMPDAC(); //Dump the current DAC and rest info!
 
 	int x,y; //X&Y coordinate!
 	uint_32 color; //The color for the coordinate!
@@ -246,7 +244,6 @@ void DoDebugVGAGraphics(word mode, word xsize, word ysize, uint_32 maxcolor, int
 	GPU_textgotoxy(frameratesurface,0,2); //Goto third row!
 	GPU_textprintf(frameratesurface,RGB(0xFF,0xFF,0xFF),RGB(0x00,0x00,0x00),"Surface for mode %02X(Colors %03i): Rendering...",mode,maxcolor);
 	GPU_text_releasesurface(frameratesurface);
-	//VGA_waitforVBlank(); //Make sure we're ending drawing!
 
 	lock(LOCK_MAINTHREAD);
 	y = 0; //Init Y!
@@ -297,9 +294,6 @@ void DoDebugVGAGraphics(word mode, word xsize, word ysize, uint_32 maxcolor, int
 	GPU_textprintf(frameratesurface,RGB(0xFF,0xFF,0xFF),RGB(0x00,0x00,0x00),"Rendered.   ",mode);
 	GPU_text_releasesurface(frameratesurface);
 	
-	//dolog("VGA", "CRTC of mode %02X", mode); //Log what mode we're dumping!
-	//VGA_LOGCRTCSTATUS(); //Dump the current CRTC status!
-	//dump_CRTCTiming(); //Dump the current CRTC timing!
 	startTimers(0); //Start the timers!
 
 	if (screencapture) //To create a screen capture?
@@ -340,9 +334,7 @@ void DoDebugTextMode(byte waitforever) //Do the text-mode debugging!
 
 		VGA_LOGCRTCSTATUS(); //Log our full status!
 		VGA_LOGPRECALCS = 5; //Log after 5 scanlines!
-		//VGA_DUMPDAC(); //Dump the active DAC!
 		if (LOG_VGA_SCREEN_CAPTURE) debugTextModeScreenCapture(); //Make a screen capture!
-		//sleep(); //Wait forever to debug!
 
 		MMU_wb(-1,0xB800,0,'a',0);
 		MMU_wb(-1,0xB800,1,0x1,0);
@@ -374,13 +366,10 @@ void DoDebugTextMode(byte waitforever) //Do the text-mode debugging!
 		MMU_wb(-1,0xB800,27,0xE,0);
 		MMU_wb(-1,0xB800,28,'o',0);
 		MMU_wb(-1,0xB800,29,0xF,0);
-		//SCREEN_CAPTURE = 2; //Enable a screen capture please, on the second frame (first is incomplete, since we've changed VRAM)!
 		
 		GPU_text_locksurface(frameratesurface);
 		GPU_textgotoxy(frameratesurface,0,2); //Goto third debug row!
 		GPU_textprintf(frameratesurface,RGB(0xFF,0xFF,0xFF),RGB(0x00,0x00,0x00),"Direct VRAM access 40x25-0...");
-
-		//VGA_DUMPATTR(); //Dump attribute controller info!
 
 		GPU_textprintf(frameratesurface,RGB(0xFF,0xFF,0xFF),RGB(0x00,0x00,0x00),"Ready.");
 		GPU_text_releasesurface(frameratesurface);
@@ -414,7 +403,6 @@ void DoDebugTextMode(byte waitforever) //Do the text-mode debugging!
 			printmsg(0x2,"X");
 		}
 		printmsg(0xF,"E"); //End!
-		//printCRLF(); //Newline!
 		printmsg(0xF,"Third row!");
 		GPU_text_locksurface(frameratesurface);
 		GPU_textgotoxy(frameratesurface,0,2); //Goto third debug row!
@@ -508,9 +496,6 @@ void DoDebugTextMode(byte waitforever) //Do the text-mode debugging!
 	}
 
 	//Text modes work!
-	//DoDebugVGAGraphics(0x08,160,200,0x10,0,0xE,0,0); //Debug 160x200x16! NOT VGA COMPAT.
-	//DoDebugVGAGraphics(0x09,320,200,0x10,0,0xE,0,0); //Debug 320x200x16! Bijna OK NOT VGA COMPAT.
-	//DoDebugVGAGraphics(0x0A,640,200,0x04,0,0xE,0,0); //Debug 640x200x4! None! NOT VGA COMPAT.
 	//Graphics should be OK!
 	//4-color modes!
 	DoDebugVGAGraphics(0x04,320,200,0x04,0,0x3,1,0); //Debug 320x200x4!
@@ -538,7 +523,6 @@ void DoDebugTextMode(byte waitforever) //Do the text-mode debugging!
 	//16 color maxres mode!
 	DoDebugVGAGraphics(0x12,640,480,0x10,0,0xF,1,0); //Debug 640x480x16! VGA+!
 	if (shuttingdown()) goto doshutdown;
-	//VGA_DUMPDAC(); //Dump the DAC!
 	#ifdef DEBUG256
 	specialdebugging:
 	#endif
@@ -554,10 +538,6 @@ void DoDebugTextMode(byte waitforever) //Do the text-mode debugging!
 		if (shuttingdown()) goto doshutdown;
 	}
 
-	//debugTextModeScreenCapture(); //Log screen capture!
-	//dumpVGA(); //Dump VGA data&display!
-	//delay(10000000); //Wait 10 sec!
-	//quitemu(); //Stop!
 	unlock(LOCK_MAINTHREAD); //We're finished! Unlock!
 	if (waitforever) //Waiting forever?
 	{

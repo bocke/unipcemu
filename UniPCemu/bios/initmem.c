@@ -94,7 +94,6 @@ void initMEM() //Initialise memory for reset!
 
 	word eq=0;
 
-	//eq.ParallelPorts = 0; //Ammount!
 	eq |= (1<<8); //Ammount to 2 Serial ports!
 	eq |= (1<<6); //Ammount: 1(0b) or 2(1b) floppy drives installed!
 	eq |= (0<<8); //0: EGA+; 1=color 40x25; 2=color 80x25; 3=mono 80x25

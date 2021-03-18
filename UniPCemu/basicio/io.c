@@ -242,7 +242,6 @@ byte io_getgeometry(int device, word *cylinders, word *heads, word *SPT) //Get g
 
 	if (strcmp(dev,"")==0) //Failed to open or not assigned
 	{
-		//dolog("IO","io.c: Device couldnt be opened or isn't mounted: %i!",device);
 		return FALSE; //Error: device not found!
 	}
 
@@ -321,7 +320,6 @@ byte readdata(int device, void *buffer, uint_64 startpos, uint_32 bytestoread)
 
 	if (strcmp(dev,"")==0) //Failed to open or not assigned
 	{
-		//dolog("IO","io.c: Device couldnt be opened or isn't mounted: %i!",device);
 		return FALSE; //Error: device not found!
 	}
 

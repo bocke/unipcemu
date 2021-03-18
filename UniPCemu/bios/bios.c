@@ -1071,7 +1071,6 @@ void autoDetectMemorySize(int tosave) //Auto detect memory size (tosave=save BIO
 	{
 		if (*archmem >= 0x40000000) *archmem = 0x40000000; //1GB memory max!
 	}
-	//dolog("BIOS","Detected memory: %u bytes",*(getarchmem()));
 
 	if ((uint_64)*archmem>=((uint_64)4096<<20)) //Past 4G?
 	{
@@ -1595,28 +1594,16 @@ int BIOS_SaveData() //Save BIOS settings!
 
 	//Machine
 	memset(&machine_comment, 0, sizeof(machine_comment)); //Init!
-	//safestrcat(machine_comment, sizeof(machine_comment), "cpu: 0=8086/8088, 1=NEC V20/V30, 2=80286, 3=80386, 4=80486, 5=Intel Pentium(without FPU)\n");
-	//safestrcat(machine_comment, sizeof(machine_comment), "databussize: 0=Full sized data bus of 16/32-bits, 1=Reduced data bus size\n");
 	safestrcat(machine_comment, sizeof(machine_comment), "architecture: 0=XT, 1=AT, 2=Compaq Deskpro 386, 3=Compaq Deskpro 386 with PS/2 mouse, 4=i430fx, 5=i440fx\n");
 	safestrcat(machine_comment, sizeof(machine_comment), "executionmode: 0=Use emulator internal BIOS, 1=Run debug directory files, else TESTROM.DAT at 0000:0000, 2=Run TESTROM.DAT at 0000:0000, 3=Debug video card output, 4=Load BIOS from ROM directory as BIOSROM.u* and OPTROM.*, 5=Run sound test\n");
-	//safestrcat(machine_comment, sizeof(machine_comment), "cpuspeed: 0=default, otherwise, limited to n cycles(>=0)\n");
 	safestrcat(machine_comment, sizeof(machine_comment), "showcpuspeed: 0=Don't show, 1=Show\n");
-	//safestrcat(machine_comment, sizeof(machine_comment), "turbocpuspeed: 0=default, otherwise, limit to n cycles(>=0)\n");
-	//safestrcat(machine_comment, sizeof(machine_comment), "useturbocpuspeed: 0=Don't use, 1=Use\n");
-	//safestrcat(machine_comment, sizeof(machine_comment), "clockingmode: 0=Cycle-accurate clock, 1=IPS clock\n");
 	safestrcat(machine_comment, sizeof(machine_comment), "BIOSROMmode: 0=Normal BIOS ROM, 1=Diagnostic ROM, 2=Enforce normal U-ROMs\n");
 	safestrcat(machine_comment, sizeof(machine_comment), "inboardinitialwaitstates: 0=Default waitstates, 1=No waitstates");
 	char *machine_commentused = NULL;
 	if (machine_comment[0]) machine_commentused = &machine_comment[0];
-	//if (!write_private_profile_uint64("machine", machine_commentused, "cpu", BIOS_Settings.emulated_CPU, inifile)) ABORT_SAVEDATA
-	//if (!write_private_profile_uint64("machine", machine_commentused, "databussize", BIOS_Settings.DataBusSize, inifile)) ABORT_SAVEDATA //The size of the emulated BUS. 0=Normal bus, 1=8-bit bus when available for the CPU!
 	if (!write_private_profile_uint64("machine", machine_commentused, "architecture", BIOS_Settings.architecture, inifile)) ABORT_SAVEDATA //Are we using the XT/AT/PS/2 architecture?
 	if (!write_private_profile_uint64("machine", machine_commentused, "executionmode", BIOS_Settings.executionmode, inifile)) ABORT_SAVEDATA //What mode to execute in during runtime?
-	//if (!write_private_profile_uint64("machine", machine_commentused, "cpuspeed", BIOS_Settings.CPUSpeed, inifile)) ABORT_SAVEDATA
 	if (!write_private_profile_uint64("machine", machine_commentused, "showcpuspeed", BIOS_Settings.ShowCPUSpeed, inifile)) ABORT_SAVEDATA //Show the relative CPU speed together with the framerate?
-	//if (!write_private_profile_uint64("machine", machine_commentused, "turbocpuspeed", BIOS_Settings.TurboCPUSpeed, inifile)) ABORT_SAVEDATA
-	//if (!write_private_profile_uint64("machine", machine_commentused, "useturbocpuspeed", BIOS_Settings.useTurboSpeed, inifile)) ABORT_SAVEDATA //Are we to use Turbo CPU speed?
-	//if (!write_private_profile_uint64("machine", machine_commentused, "clockingmode", BIOS_Settings.clockingmode, inifile)) ABORT_SAVEDATA //Are we using the IPS clock?
 	if (!write_private_profile_uint64("machine", machine_commentused, "BIOSROMmode", BIOS_Settings.BIOSROMmode, inifile)) ABORT_SAVEDATA //BIOS ROM mode.
 	if (!write_private_profile_uint64("machine", machine_commentused, "inboardinitialwaitstates", BIOS_Settings.InboardInitialWaitstates, inifile)) ABORT_SAVEDATA //Inboard 386 initial delay used?
 
@@ -1963,71 +1950,59 @@ void BIOS_ValidateData() //Validates all data and unmounts/remounts if needed!
 	int bioschanged = 0; //BIOS changed?
 	bioschanged = 0; //Reset if the BIOS is changed!
 
-	//dolog("IO","Checking FLOPPY A (%s)...",BIOS_Settings.floppy0);
 	if ((!readdata(FLOPPY0,&buffer,0,sizeof(buffer))) && (strcmp(BIOS_Settings.floppy0,"")!=0)) //No disk mounted but listed?
 	{
 		if (!(getDSKimage(FLOPPY0) || getIMDimage(FLOPPY0))) //NOT a DSK/IMD image?
 		{
 			memset(&BIOS_Settings.floppy0[0],0,sizeof(BIOS_Settings.floppy0)); //Unmount!
 			BIOS_Settings.floppy0_readonly = 0; //Reset readonly flag!
-			//dolog("BIOS","Floppy A invalidated!");
 			bioschanged = 1; //BIOS changed!
 		}
 	}
-	//dolog("IO","Checking FLOPPY B (%s)...",BIOS_Settings.floppy1);
 	if ((!readdata(FLOPPY1,&buffer,0,sizeof(buffer))) && (strcmp(BIOS_Settings.floppy1,"")!=0)) //No disk mounted but listed?
 	{
 		if (!(getDSKimage(FLOPPY1) || getIMDimage(FLOPPY1))) //NOT a DSK/IMD image?
 		{
 			memset(&BIOS_Settings.floppy1[0],0,sizeof(BIOS_Settings.floppy1)); //Unmount!
 			BIOS_Settings.floppy1_readonly = 0; //Reset readonly flag!
-			//dolog("BIOS","Floppy B invalidated!");
 			bioschanged = 1; //BIOS changed!
 		}
 	}
 	
-	//dolog("IO","Checking First HDD (%s)...",BIOS_Settings.hdd0);
 	if ((!readdata(HDD0,&buffer,0,sizeof(buffer))) && (strcmp(BIOS_Settings.hdd0,"")!=0)) //No disk mounted but listed?
 	{
 		if (EMU_RUNNING == 0) //Not running?
 		{
 			memset(&BIOS_Settings.hdd0[0], 0, sizeof(BIOS_Settings.hdd0)); //Unmount!
 			BIOS_Settings.hdd0_readonly = 0; //Reset readonly flag!
-			//dolog("BIOS","First HDD invalidated!");
 			bioschanged = 1; //BIOS changed!
 		}
 	}
 	
-	//dolog("IO","Checking Second HDD (%s)...",BIOS_Settings.hdd1);
 	if ((!readdata(HDD1,&buffer,0,sizeof(buffer))) && (strcmp(BIOS_Settings.hdd1,"")!=0)) //No disk mounted but listed?
 	{
 		if (EMU_RUNNING == 0) //Not running?
 		{
 			memset(&BIOS_Settings.hdd1[0], 0, sizeof(BIOS_Settings.hdd1)); //Unmount!
 			BIOS_Settings.hdd1_readonly = 0; //Reset readonly flag!
-			//dolog("BIOS","Second HDD invalidated!");
 			bioschanged = 1; //BIOS changed!
 		}
 	}
-	//dolog("IO","Checking First CD-ROM (%s)...",BIOS_Settings.cdrom0);
 	if (!getCUEimage(CDROM0)) //Not a CUE image?
 	{
 		if ((!readdata(CDROM0, &buffer, 0, sizeof(buffer))) && (strcmp(BIOS_Settings.cdrom0, "") != 0)) //No disk mounted but listed?
 		{
 			memset(&BIOS_Settings.cdrom0[0], 0, sizeof(BIOS_Settings.cdrom0)); //Unmount!
 			bioschanged = 1; //BIOS changed!
-			//dolog("BIOS","First CD-ROM invalidated!");
 		}
 	}
 	
-	//dolog("IO","Checking Second CD-ROM (%s)...",BIOS_Settings.cdrom1);
 	if (!getCUEimage(CDROM1))
 	{
 		if ((!readdata(CDROM1, &buffer, 0, sizeof(buffer))) && (strcmp(BIOS_Settings.cdrom1, "") != 0)) //No disk mounted but listed?
 		{
 			memset(&BIOS_Settings.cdrom1[0], 0, sizeof(BIOS_Settings.cdrom1)); //Unmount!
 			bioschanged = 1; //BIOS changed!
-			//dolog("BIOS","Second CD-ROM invalidated!");
 		}
 	}
 

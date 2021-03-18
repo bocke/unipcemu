@@ -1078,7 +1078,6 @@ void initGameBlaster(word baseaddr)
 	{
 		dolog("GameBlaster","Error registering first double buffer for output!");
 	}
-	//dolog("adlib","sound channel added. registering ports...");
 	//Ignore unregistered channel, we need to be used by software!
 	register_PORTIN(&inGameBlaster); //Input ports!
 	//All output!

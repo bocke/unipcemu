@@ -199,7 +199,6 @@ void CPU_IRET()
 
 	if (getcpumode()==CPU_MODE_REAL) //Use IVT?
 	{
-		//uint_32 backupESP = REG_ESP;
 		if (CPU[activeCPU].stackchecked==0) { if (checkStackAccess(3,0, CPU[activeCPU].CPU_Operand_size)) { return; } ++CPU[activeCPU].stackchecked; } //3 Word POPs!
 		if (CPU8086_internal_POPw(0,&CPU[activeCPU].IRET_IP, CPU[activeCPU].CPU_Operand_size)) return; //POP IP!
 		if (CPU8086_internal_POPw(2,&CPU[activeCPU].IRET_CS, CPU[activeCPU].CPU_Operand_size)) return; //POP CS!

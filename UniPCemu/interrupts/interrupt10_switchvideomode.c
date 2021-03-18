@@ -136,7 +136,6 @@ Bitu VideoModeMemSize(Bitu mode) {
 
 bool AcceptsMode_ET4K(Bitu mode) {
 	return VideoModeMemSize(mode) < getActiveVGA()->VRAM_size;
-	//	return mode != 0x3d;
 }
 
 void FinishSetMode_ET4K(Bitu crtc_base, VGA_ModeExtraData* modeData) {
@@ -208,15 +207,8 @@ void FinishSetMode_ET4K(Bitu crtc_base, VGA_ModeExtraData* modeData) {
 		set_clock_index_et4k(getActiveVGA(),best);
 	}
 
-	//if(svga.determine_mode)
-	//	svga.determine_mode();
-
 	// Verified (on real hardware and in a few games): Tseng ET4000 used chain4 implementation
 	// different from standard VGA. It was also not limited to 64K in regular mode 13h.
-	//vga.config.compatible_chain4 = false;
-	//vga.vmemwrap = vga.vmemsize;
-
-	//VGA_SetupHandlers();
 }
 
 //ET3K support!
@@ -284,15 +276,8 @@ void FinishSetMode_ET3K(Bitu crtc_base, VGA_ModeExtraData* modeData) {
 		set_clock_index_et3k(getActiveVGA(),best);
 	}
 
-	//if (svga.determine_mode)
-	//	svga.determine_mode();
-
 	// Verified on functioning (at last!) hardware: Tseng ET3000 is the same as ET4000 when
 	// it comes to chain4 architecture
-	//vga.config.compatible_chain4 = false;
-	//vga.vmemwrap = vga.vmemsize;
-
-	//VGA_SetupHandlers();
 }
 
 
@@ -354,10 +339,9 @@ OPTINLINE void FinishSetMode(int clearmem)
 				memreal_writew( 0xb800,ct2<<1,0x0000);
 			}
 			break;
-		case M_TEXT: //{
+		case M_TEXT:
 			seg = (CurMode->mode==7)?0xb000:0xb800;
 			for (ct2=0;ct2<16*1024;ct2++) memreal_writew(seg,ct2<<1,0x0720);
-			//}
 			break;
 		case M_EGA:
 		case M_VGA:
@@ -469,13 +453,11 @@ int INT10_Internal_SetVideoMode(word mode)
 			if (!AcceptsMode_ET3K(mode)) return false; //Not accepted!
 			setTsengMode: //Added by superfury for easy support!
 			if (!SetCurMode(ModeList_VGA_Tseng,mode)){
-				//LOG(LOG_INT10,LOG_ERROR)("VGA:Trying to set illegal mode %X",mode);
 				return false;
 			}
 			break;
 		default:
 			if (!SetCurMode(ModeList_VGA,mode)){
-				//LOG(LOG_INT10,LOG_ERROR)("VGA:Trying to set illegal mode %X",mode);
 				return false;
 			}
 		}
@@ -1149,14 +1131,9 @@ dac_text16:
 
 	FinishSetMode(clearmem);
 
-	//raiseError("Debug_INT10_SetVideoMode","Checkpoint 6");
-
 	/* Set vga attrib register into defined state */
 	IO_Read(mono_mode ? 0x3ba : 0x3da);
 	IO_Write(0x3c0,0x20);
-
-	//raiseError("Debug_INT10_SetVideoMode","Checkpoint 7");
-
 
 	/* Load text mode font */
 	if (CurMode->type==M_TEXT)
@@ -1166,7 +1143,5 @@ dac_text16:
 
 	// Enable screen memory access
 	IO_Write(0x3c4, 1); IO_Write(0x3c5, seq_data[1] & ~0x20);
-	//raiseError("Debug_INT10_SetVideoMode","Checkpoint RET");
-
 	return true;
 }

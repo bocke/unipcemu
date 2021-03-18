@@ -2901,7 +2901,6 @@ byte CPU8086_internal_DAA()
 	REG_AL = (byte)(ALVAL&0xFF); //Write the value back to AL!
 	flag_szp8(REG_AL);
 	FLAGW_OF(((((oldAL&0x80)==0) && (REG_AL&0x80)))?1:0); //Overflow flag, according to IBMulator!
-	//if (ALVAL&0xFF00) FLAGW_OF(1); else FLAGW_OF(0); //Undocumented: Overflow flag!
 	CPUPROT2
 	if (CPU_apply286cycles()==0) //No 80286+ cycles instead?
 	{
@@ -2933,7 +2932,6 @@ byte CPU8086_internal_DAS()
 	}
 	flag_szp8(REG_AL);
 	FLAGW_OF(((old_AL&0x80)) && ((REG_AL&0x80)==0)); //According to IBMulator!
-	//if (bigAL&0xFF00) FLAGW_OF(1); else FLAGW_OF(0); //Undocumented: Overflow flag!
 	CPUPROT2
 	if (CPU_apply286cycles()==0) //No 80286+ cycles instead?
 	{
@@ -2980,9 +2978,7 @@ byte CPU8086_internal_AAA()
 		FLAGW_ZF((REG_AL==0)?1:0); //According to IBMulator!
 		CPU[activeCPU].cycles_OP += applycycles; //Timings!
 	}
-	//flag_szp8(REG_AL); //Basic flags!
 	flag_p8(REG_AL); //Parity is affected!
-	//FLAGW_ZF((REG_AL==0)?1:0); //Zero is affected!
 	//z=s=p=o=?
 	CPUPROT2
 	return 0;
@@ -3024,7 +3020,6 @@ byte CPU8086_internal_AAS()
 		FLAGW_OF(0); //According to IBMulator!
 		CPU[activeCPU].cycles_OP += applycycles; //Timings!
 	}
-	//flag_szp8(REG_AL); //Basic flags!
 	flag_p8(REG_AL); //Parity is affected!
 	FLAGW_ZF((REG_AL==0)?1:0); //Zero is affected!
 	REG_AL &= 0xF;
@@ -7191,11 +7186,8 @@ OPTINLINE void op_grp2_cycles(byte cnt, byte varshift)
 
 byte op_grp2_8(byte cnt, byte varshift)
 {
-	//word d,
 	INLINEREGISTER word s, shift, tempCF, msb;
 	INLINEREGISTER byte numcnt, maskcnt, overflow;
-	//word backup;
-	//if (cnt>0x8) return (oper1b); //NEC V20/V30+ limits shift count
 	numcnt = maskcnt = cnt; //Save count!
 	s = CPU[activeCPU].oper1b;
 	switch (CPU[activeCPU].thereg)
@@ -7273,12 +7265,10 @@ byte op_grp2_8(byte cnt, byte varshift)
 			}
 			else numcnt &= 7; //Limit count!
 		}
-		//FLAGW_AF(0);
 		overflow = numcnt?0:FLAG_OF;
 		for (shift = 1; shift <= numcnt; shift++)
 		{
 			FLAGW_CF(s>>7);
-			//if (s & 0x8) FLAGW_AF(1); //Auxiliary carry?
 			s = (s << 1) & 0xFFU;
 			overflow = (FLAG_CF^(s>>7));
 		}
@@ -7290,7 +7280,6 @@ byte op_grp2_8(byte cnt, byte varshift)
 	case 5: //SHR r/m8
 		if (EMULATED_CPU >= CPU_NECV30) maskcnt &= 0x1F; //Clear the upper 3 bits to become a NEC V20/V30+!
 		numcnt = maskcnt;
-		//FLAGW_AF(0);
 		overflow = numcnt?0:FLAG_OF;
 		if (maskcnt && ((maskcnt&7)==0))
 		{
@@ -7301,9 +7290,7 @@ byte op_grp2_8(byte cnt, byte varshift)
 		{
 			overflow = (s>>7);
 			if (numcnt&7) FLAGW_CF(s);
-			//backup = s; //Save backup!
 			s = s >> 1;
-			//if (((backup^s)&0x10)) FLAGW_AF(1); //Auxiliary carry?
 		}
 		if (maskcnt) flag_szp8((uint8_t)(s & 0xFFU));
 		if (maskcnt) FLAGW_OF(overflow);
@@ -7313,21 +7300,16 @@ byte op_grp2_8(byte cnt, byte varshift)
 	case 7: //SAR r/m8
 		if (EMULATED_CPU >= CPU_NECV30) maskcnt &= 0x1F; //Clear the upper 3 bits to become a NEC V20/V30+!
 		numcnt = maskcnt;
-		//if (EMULATED_CPU>=CPU_80386) numcnt &= 7; //Limit count! Not to be limited!
 		msb = s & 0x80U;
-		//FLAGW_AF(0);
 		for (shift = 1; shift <= numcnt; shift++)
 		{
 			FLAGW_CF(s);
-			//backup = s; //Save backup!
 			s = (s >> 1) | msb;
-			//if (((backup^s)&0x10)) FLAGW_AF(1); //Auxiliary carry?
 		}
 		if (maskcnt && (numcnt==0)) FLAGW_CF(s); //Always sets CF, according to various sources?
 		if (maskcnt) FLAGW_AF(1);
 		byte tempSF;
 		tempSF = FLAG_SF; //Save the SF!
-		/*flag_szp8((uint8_t)(s & 0xFF));*/
 		//http://www.electronics.dit.ie/staff/tscarff/8086_instruction_set/8086_instruction_set.html#SAR says only C and O flags!
 		if (!maskcnt) //Nothing done?
 		{
@@ -7353,11 +7335,8 @@ byte op_grp2_8(byte cnt, byte varshift)
 
 word op_grp2_16(byte cnt, byte varshift)
 {
-	//word d,
 	INLINEREGISTER uint_32 s, shift, tempCF, msb;
 	INLINEREGISTER byte numcnt, maskcnt, overflow;
-	//word backup;
-	//if (cnt>0x8) return (oper1b); //NEC V20/V30+ limits shift count
 	numcnt = maskcnt = cnt; //Save count!
 	s = CPU[activeCPU].oper1;
 	switch (CPU[activeCPU].thereg)
@@ -7427,12 +7406,10 @@ word op_grp2_16(byte cnt, byte varshift)
 	case 4: case 6: //SHL r/m16
 		if (EMULATED_CPU >= CPU_NECV30) maskcnt &= 0x1F; //Clear the upper 3 bits to become a NEC V20/V30+!
 		numcnt = maskcnt;
-		//FLAGW_AF(0);
 		overflow = numcnt?0:FLAG_OF; //Default: no overflow!
 		for (shift = 1; shift <= numcnt; shift++)
 		{
 			FLAGW_CF(s>>15);
-			//if (s & 0x8) FLAGW_AF(1); //Auxiliary carry?
 			s = (s << 1) & 0xFFFFU;
 			overflow = (FLAG_CF^(s>>15));
 		}
@@ -7445,15 +7422,12 @@ word op_grp2_16(byte cnt, byte varshift)
 	case 5: //SHR r/m16
 		if (EMULATED_CPU >= CPU_NECV30) maskcnt &= 0x1F; //Clear the upper 3 bits to become a NEC V20/V30+!
 		numcnt = maskcnt;
-		//FLAGW_AF(0);
 		overflow = numcnt?0:FLAG_OF; //Default: no overflow!
 		for (shift = 1; shift <= numcnt; shift++)
 		{
 			overflow = (s>>15);
 			FLAGW_CF(s);
-			//backup = s; //Save backup!
 			s = s >> 1;
-			//if (((backup^s)&0x10)) FLAGW_AF(1); //Auxiliary carry?
 		}
 		if (maskcnt && (numcnt==0)) FLAGW_CF(s); //Always sets CF, according to various sources?
 		if (maskcnt) flag_szp16((uint16_t)(s & 0xFFFFU));
@@ -7465,13 +7439,10 @@ word op_grp2_16(byte cnt, byte varshift)
 		if (EMULATED_CPU >= CPU_NECV30) maskcnt &= 0x1F; //Clear the upper 3 bits to become a NEC V20/V30+!
 		numcnt = maskcnt;
 		msb = s & 0x8000U;
-		//FLAGW_AF(0);
 		for (shift = 1; shift <= numcnt; shift++)
 		{
 			FLAGW_CF(s);
-			//backup = s; //Save backup!
 			s = (s >> 1) | msb;
-			//if (((backup^s)&0x10)) FLAGW_AF(1); //Auxiliary carry?
 		}
 		if (maskcnt && (numcnt==0)) FLAGW_CF(s); //Always sets CF, according to various sources?
 		if (maskcnt) FLAGW_AF(1);
@@ -7521,7 +7492,6 @@ OPTINLINE void op_div8(word valdiv, byte divisor)
 
 OPTINLINE void op_idiv8(word valdiv, byte divisor)
 {
-	//word v1, v2,
 	word quotient, remainder; //Result and modulo!
 	byte error, applycycles; //Error/apply cycles!
 	uint_32 valdivd;
@@ -7548,8 +7518,6 @@ extern byte CPU_databussize; //Current data bus size!
 void op_grp3_8()
 {
 	byte applycycles;
-	//uint32_t d1, d2, s1, s2, sign;
-	//word d, s;
 	CPU[activeCPU].oper1 = signext(CPU[activeCPU].oper1b); CPU[activeCPU].oper2 = signext(CPU[activeCPU].oper2b);
 	switch (CPU[activeCPU].thereg)
 	{
@@ -7575,8 +7543,6 @@ void op_grp3_8()
 	case 3: //NEG
 		CPU[activeCPU].res8 = (~CPU[activeCPU].oper1b) + 1;
 		flag_sub8(0, CPU[activeCPU].oper1b);
-		//if (res8 == 0) FLAGW_CF(0); else FLAGW_CF(1);
-		//FLAGW_AF((res8&0xF)?1:0); //Auxiliary flag!
 		if (CPU_apply286cycles()==0) /* No 80286+ cycles instead? */
 		{
 			if (MODRM_EA(CPU[activeCPU].params)) //Memory?
@@ -7646,7 +7612,6 @@ void op_grp3_8()
 
 OPTINLINE void op_div16(uint32_t valdiv, word divisor)
 {
-	//word v1, v2;
 	word quotient, remainder; //Result and modulo!
 	byte error, applycycles; //Error/apply cycles!
 	applycycles = 1; //Default: apply cycles!
@@ -7665,7 +7630,6 @@ OPTINLINE void op_div16(uint32_t valdiv, word divisor)
 
 OPTINLINE void op_idiv16(uint32_t valdiv, word divisor)
 {
-	//uint32_t v1, v2,
 	word quotient, remainder; //Result and modulo!
 	byte error, applycycles; //Error/apply cycles!
 	CPU8086_internal_IDIV(valdiv,divisor,&quotient,&remainder,&error,16,&applycycles,0,(MODRM_EA(CPU[activeCPU].params)==0)); //Execute the unsigned division! 8-bits result and modulo!
@@ -7684,10 +7648,6 @@ OPTINLINE void op_idiv16(uint32_t valdiv, word divisor)
 void op_grp3_16()
 {
 	byte applycycles;
-	//uint32_t d1, d2, s1, s2, sign;
-	//word d, s;
-	//oper1 = signext(oper1b); oper2 = signext(oper2b);
-	//snprintf(msg,sizeof(msg), "  Oper1: %04X    Oper2: %04X\n", oper1, oper2); print(msg);
 	switch (CPU[activeCPU].thereg)
 	{
 	case 0: case 1: //TEST
@@ -7710,8 +7670,6 @@ void op_grp3_16()
 	case 3: //NEG
 		CPU[activeCPU].res16 = (~CPU[activeCPU].oper1) + 1;
 		flag_sub16(0, CPU[activeCPU].oper1);
-		//if (res16) FLAGW_CF(1); else FLAGW_CF(0);
-		//FLAGW_AF((res16&0xF)?1:0); //Auxiliary flag!
 		if (CPU_apply286cycles()==0) /* No 80286+ cycles instead? */
 		{
 			if (MODRM_EA(CPU[activeCPU].params)) //Memory?

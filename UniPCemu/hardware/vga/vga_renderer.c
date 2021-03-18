@@ -584,7 +584,6 @@ OPTINLINE void VGA_Sequencer_updateRow(VGA_Type *VGA, SEQ_DATA *Sequencer, byte 
 			if (VGA_ActiveDisplay_timing(Sequencer, VGA)) //Render the next pixel?
 			{
 				VGA_Sequencer_TextMode(VGA, Sequencer, &currentattributeinfo); //Get the color to render!
-				//VGA_AttributeController(&currentattributeinfo, VGA); //Ignore the nibbled/not nibbled result!
 			}
 		}
 	}
@@ -595,7 +594,6 @@ OPTINLINE void VGA_Sequencer_updateRow(VGA_Type *VGA, SEQ_DATA *Sequencer, byte 
 			if (VGA_ActiveDisplay_timing(Sequencer, VGA)) //Render the next pixel?
 			{
 				VGA_Sequencer_GraphicsMode(VGA, Sequencer, &currentattributeinfo); //Get the color to render!
-				//VGA_AttributeController(&currentattributeinfo, VGA); //Ignore the nibbled/not nibbled result!
 			}
 		}
 	}
@@ -630,9 +628,7 @@ OPTINLINE void VGA_RenderOutput(SEQ_DATA *Sequencer, VGA_Type *VGA) //Render the
 	GPU.xres = Sequencer->xres; //Apply x resolution!
 	GPU.yres = Sequencer->yres; //Apply y resolution!
 	//Just render the bottom and top windows normally!
-	//unlockGPU(); //Unlock the GPU!
 	VGA_VBlankHandler(VGA); //Handle all VBlank stuff!
-	//lockGPU(); //Lock the GPU again! We're using it again!
 	Sequencer->yres = 0; //Reset Y resolution next frame if not specified (like a real screen)!
 	Sequencer->xres = 0; //Reset X resolution next frame if not specified (like a real screen)!
 }
@@ -1194,7 +1190,6 @@ void VGA_Blank_Activedisplay_VGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_Attribu
 	}
 
 	drawPixel(VGA, RGB(0x00, 0x00, 0x00)); //Draw blank!
-	//drawPixel(VGA, RGB(0x00, 0xFF, 0x00)); //Draw blank green for debugging!
 	video_updateLightPen(VGA,0); //Update the light pen!
 	if (++Sequencer->currentpixelclock >= Sequencer->pixelclockdivider) //Are we to tick the CRTC pixel clock?
 	{
@@ -1224,7 +1219,6 @@ void VGA_Blank_Overscan_VGA(VGA_Type* VGA, SEQ_DATA* Sequencer, VGA_AttributeInf
 	}
 
 	drawPixel(VGA, RGB(0x00, 0x00, 0x00)); //Draw blank!
-	//drawPixel(VGA, RGB(0x00, 0xFF, 0x00)); //Draw blank green for debugging!
 	video_updateLightPen(VGA, 0); //Update the light pen!
 	if (++Sequencer->currentpixelclock >= Sequencer->pixelclockdivider) //Are we to tick the CRTC pixel clock?
 	{
@@ -1312,8 +1306,6 @@ void VGA_ActiveDisplay_noblanking_VGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_At
 			{
 				doublepixels <<= VGA->precalcs.MemoryClockDivide; //Double the pixels being plotted during active display!
 			}
-			//doublepixels <<= (2>>attributeinfo->attributesize); //On top of the attribute doubling the clocks used, we (qua)druple it again for nibbles, double it for bytes and do nothing for words! 
-			//doublepixels <<= 1; //Double the pixels being plotted during active display!
 		}
 	}
 	if (VGA->precalcs.effectiveDACmode & 0x10) //Actually 4 times bigger?
@@ -2122,13 +2114,10 @@ recalcsignal: //Recalculate the signal to process!
 	retracing = (isretrace |= vretrace); //We're retracing?
 
 	//Process HTotal/VTotal
-	//INLINEREGISTER byte currenttotalling; //Current totalling state!
-	//currenttotalling = 0; //Default: Not totalling!
 	tempsignal = tempsignalbackup; //Restore the original backup signal!
 	if (unlikely(tempsignal&VGA_SIGNAL_HTOTAL)) //HTotal?
 	{
 		VGA_HTotal(Sequencer,VGA); //Process HTotal!
-		//currenttotalling = 1; //Total reached!
 		displaystate = get_display(getActiveVGA(), Sequencer->Scanline, Sequencer->x++); //Current display state!
 		tempsignal = tempsignalbackup = displaystate; //The back-up of the signal!
 		htotal = 1; //Triggered horizontal total!
@@ -2140,7 +2129,6 @@ recalcsignal: //Recalculate the signal to process!
 	if (unlikely(tempsignal&VGA_SIGNAL_VTOTAL)) //VTotal?
 	{
 		VGA_VTotal(Sequencer,VGA); //Process VTotal!
-		//currenttotalling = 1; //Total reached!
 		displaystate = get_display(getActiveVGA(), Sequencer->Scanline, Sequencer->x++); //Current display state, keep x coordinate(retain x coordinate on the next frame)!
 		tempsignal = tempsignalbackup = displaystate; //The back-up of the signal!
 		vtotal = 1;
@@ -2164,11 +2152,6 @@ recalcsignal: //Recalculate the signal to process!
 	tempsignal &= VGA_DISPLAYMASK; //Check the display now!
 
 	INLINEREGISTER byte currenttotalretracing;
-	//isretrace |= (currenttotalretracing = currenttotalling); //Apply totalling to retrace checks, also load totalling for totalretracing information!
-	//currenttotalretracing <<= 1; //1 bit needed more!
-	//currenttotalretracing = isretrace; //Are we retracing?
-	//*totalretracing = currenttotalretracing; //Save retrace info!
-
 	currenttotalretracing = (tempsignal==VGA_DISPLAYACTIVE); //We're active display when not retracing/totalling and active display area!
 	currenttotalretracing &= retracemasks[isretrace]; //Apply the retrace mask: we're not using the displayenabled when retracing!
 	VGA->CRTC.DisplayEnabled = currenttotalretracing; //The Display Enable signal, which depends on the active video adapter how to use it!

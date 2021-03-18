@@ -115,7 +115,6 @@ void checkProtectedModeDebuggerAfter() //Check after instruction for the protect
 				{
 					SETBITS(CPU[activeCPU].registers->DR6, DR, 1, (GETBITS(CPU[activeCPU].debuggerFaultRaised, DR, 1) | GETBITS(CPU[activeCPU].registers->DR6, DR, 1))); //We're trapping this/these data breakpoint(s), set if so, otherwise, leave alone!
 				}
-				//if (EMULATED_CPU >= CPU_80386) FLAGW_RF(1); //Automatically set the resume flag on a debugger fault!
 				CPU_executionphase_startinterrupt(EXCEPTION_DEBUG, 0, -1); //Call the interrupt, no error code!
 			}
 		}

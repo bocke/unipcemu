@@ -108,12 +108,10 @@ HMIDIOUT device;    // MIDI device interface for sending MIDI output
 
 OPTINLINE void lockMPURenderer()
 {
-	//lockaudio(); //Lock the audio!
 }
 
 OPTINLINE void unlockMPURenderer()
 {
-	//unlockaudio(); //Unlock the audio!
 }
 
 /* Reset support */
@@ -2151,7 +2149,6 @@ void MIDIDEVICE_setupchannelfilters()
 {
 	sbyte channel, subloop , endrange;
 	//MIDI_channels[channel].monophonicchannelcount To take into account?
-	//MIDI_channels[channel].mode 
 	for (channel = 0; channel < 0x10; ++channel) //Initialize all channels to not respond to anything!
 	{
 		MIDI_channels[channel].respondstart = -1; //Respond to nothing!

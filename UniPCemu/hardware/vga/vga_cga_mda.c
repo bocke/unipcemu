@@ -764,7 +764,7 @@ byte getcharxy_CGA(byte character, byte x, byte y) //Retrieve a characters x,y p
 	static byte lastrow = 0; //The last loaded row!
 	INLINEREGISTER word location;
 
-	//x &= 7; //Don't limit horizontally: this isn't needed for the CGA, but become background anyways!
+	//Don't limit horizontally: this isn't needed for the CGA, but become background anyways!
 	y &= 0x7; //Up to 8 rows. Rows 8+, 16+ and 24+ wrap back to row 0+(MOD 8)
 
 	//Don't do range checks, we're always within range (because of GPU_textcalcpixel)!
@@ -805,8 +805,7 @@ byte getcharxy_MDA(byte character, byte x, byte y) //Retrieve a characters x,y p
 	INLINEREGISTER word location;
 
 	//Don't do range checks, we're always within range (because of GPU_textcalcpixel)!
-	//if (y>=14) y %= 14; //Only 14 rows, duplicate what's below!
-	//x &= 7; //Don't limit: x being 8 or up becomes a result of 0!
+	//Don't limit: x being 8 or up becomes a result of 0!
 	y &= 0xF; //Rows 16+ wraps back to row 0(MOD 16).
 	location = 0x8000 | (character << 4) | y; //The location to look up!
 
@@ -937,7 +936,6 @@ word get_display_CGAMDA_y(VGA_Type *VGA, word y)
 			result |= VGA_SIGNAL_VTOTAL; //End of display: start the next frame!
 			result |= VGA_SIGNAL_VSYNCRESET; //Reset VSync!
 		}
-		//result |= VGA_SIGNAL_VBLANKSTART; //We're blanking always after end of display!
 	}
 
 	if (row<VGA->registers->CGARegistersMasked[6]) //Active display?
@@ -1372,7 +1370,6 @@ void CGA_checklightpen(word currentlocation, byte is_lightpenlocation, byte is_l
 			getActiveVGA()->registers->specialCGAflags |= 4; //The light pen register is now set!
 			lightpenlocation = currentlocation; //Load the current location for converting to CGA location!
 			//Translate VGA location to CGA location!
-			//lightpenlocation >>= 1; //We're in word mode, so divide by 2 to translate to CGA coordinates(format is the same as the CGA cursor address, so it's doubled in the VGA(VGA=2x CGA value due to word addressing mode)!
 			//Now set our lightpen location!
 			getActiveVGA()->registers->CGARegisters[0x10] &= ~0x3F; //Clear our light pen location bits that need to be set!
 			getActiveVGA()->registers->CGARegisters[0x10] = ((lightpenlocation>>8)&0x3F); //Our high bits!

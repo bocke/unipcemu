@@ -153,7 +153,6 @@ OPTINLINE bool BIOS_AddKeyToBuffer(Bit16u code) {
 		ttail=start;
 	}
 	/* Check for buffer Full */
-	//TODO Maybe beeeeeeep or something although that should happend when internal buffer is full
 	if (ttail==head) return false;
 	real_writew(0x40,tail,code);
 	mem_writew(BIOS_KEYBOARD_BUFFER_TAIL,ttail);
@@ -241,8 +240,6 @@ void IRQ1_Handler() {
 #else
 	flags2&=~(0x40+0x20);//remove numlock/capslock pressed (hack for sdl only reporting states)
 #endif
-	//if (DOS_LayoutKey(scancode,flags1,flags2,flags3)) return CBRET_NONE;
-//LOG_MSG("key input %d %d %d %d",scancode,flags1,flags2,flags3);
 	switch (scancode) {
 	/* First the hard ones  */
 	case 0xfa:	/* ack. Do nothing for now */
@@ -567,10 +564,8 @@ void INT16_Handler() {
 		break;
 	case 0x55:
 		/* Weird call used by some dos apps */
-		//LOG(LOG_BIOS,LOG_NORMAL)("INT16:55:Word TSR compatible call");
 		break;
 	default:
-		//LOG(LOG_BIOS,LOG_ERROR)("INT16:Unhandled call %02X",reg_ah);
 		break;
 
 	};

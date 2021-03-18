@@ -260,7 +260,6 @@ byte Tseng34K_writeIO(word port, byte val)
 			et34kdata->hicolorDACcmdmode = 0; //Disable command mode!
 		}
 		VGA_calcprecalcs(getActiveVGA(),WHEREUPDATED_DACMASKREGISTER); //We've been updated!
-		//et34kdata->hicolorDACcmdmode = 0; //A write to any address will reset the flag that is set when the pixel read mask register is read four times.
 		return 1; //We're overridden!
 		break;
 	case 0x3C7: //Write: DAC Address Read Mode Register	ADDRESS? Pallette RAM read address register in the manual.
@@ -519,13 +518,11 @@ byte Tseng34K_writeIO(word port, byte val)
 			VGA_calcprecalcs(getActiveVGA(), WHEREUPDATED_CRTCONTROLLER | 0x25); //Update all precalcs!
 			break;
 		default:
-			//LOG(LOG_VGAMISC,LOG_NORMAL)("VGA:CRTC:ET4K:Write to illegal index %2X", reg);
 			return 0; //Unhandled!
 			break;
 		}
 		break;
 	case 0x3C5: //Sequencer data register?
-	//void write_p3c5_et4k(Bitu reg,Bitu val,Bitu iolen) {
 		switch(getActiveVGA()->registers->SequencerRegisters_Index) {
 		//ET4K
 		/*
@@ -551,7 +548,6 @@ byte Tseng34K_writeIO(word port, byte val)
 				VGA_calcprecalcs(getActiveVGA(), WHEREUPDATED_INDEX|INDEX_BANKREGISTERS); //Update from the CRTC controller registers!
 			}
 		default:
-			//LOG(LOG_VGAMISC,LOG_NORMAL)("VGA:SEQ:ET4K:Write to illegal index %2X", reg);
 			break;
 		}
 		break;
@@ -656,7 +652,6 @@ byte Tseng34K_writeIO(word port, byte val)
 	bit 0-3  64k Write bank number (0..15)
 	4-7  64k Read bank number (0..15)
 	*/
-	//void write_p3cd_et4k(Bitu port, Bitu val, Bitu iolen) {
 	case 0x3CD: //Segment select?
 		if ((getActiveVGA()->enable_SVGA == 1) && (!et34kdata->et4k_segmentselectregisterenabled)) return 0; //Not available on the ET4000 until having set the KEY at least once after a power-on reset or synchronous reset(TS indexed register 0h bit 1).
 		et34kdata->segmentselectregister = val; //Save the entire segment select register!
@@ -676,7 +671,6 @@ byte Tseng34K_writeIO(word port, byte val)
 		return 1;
 		break;
 	case 0x3C0: //Attribute controller?
-		//void write_p3c0_et4k(Bitu reg, Bitu val, Bitu iolen) {
 		if (!VGA_3C0_FLIPFLOPR) return 0; //Index gets ignored!
 		if (et34kdata->protect3C0_PaletteRAM && (VGA_3C0_INDEXR<0x10)) //Palette RAM? Handle protection!
 		{
@@ -727,7 +721,6 @@ byte Tseng34K_writeIO(word port, byte val)
 			return 0; //Handle normally!
 			break;
 		default:
-			//LOG(LOG_VGAMISC, LOG_NORMAL)("VGA:ATTR:ET4K:Write to illegal index %2X", reg);
 			break;
 		}
 		break;
@@ -889,7 +882,6 @@ byte Tseng34K_readIO(word port, byte *result)
 	case 0x3D5: //CRTC Controller Data Register		DATA
 		if (!GETBITS(getActiveVGA()->registers->ExternalRegisters.MISCOUTPUTREGISTER,0,1)) goto finishinput; //Block: we're a mono mode addressing as color!
 		readcrtvalue:
-	//Bitu read_p3d5_et4k(Bitu reg,Bitu iolen) {
 		//Don't block when the KEY isn't set?
 		switch(getActiveVGA()->registers->CRTControllerRegisters_Index)
 		{
@@ -915,17 +907,14 @@ byte Tseng34K_readIO(word port, byte *result)
 		RESTORE_ET3K(3d4, 24);
 		RESTORE_ET3K(3d4, 25);
 		default:
-			//LOG(LOG_VGAMISC,LOG_NORMAL)("VGA:CRTC:ET4K:Read from illegal index %2X", reg);
 			return 0;
 			break;
 		}
 	case 0x3C5: //Sequencer data register?
-	//Bitu read_p3c5_et4k(Bitu reg,Bitu iolen) {
 		switch(getActiveVGA()->registers->SequencerRegisters_Index) {
 		RESTORE_ET34K(3c4, 06);
 		RESTORE_ET34K(3c4, 07);
 		default:
-			//LOG(LOG_VGAMISC,LOG_NORMAL)("VGA:SEQ:ET4K:Read from illegal index %2X", reg);
 			break;
 		}
 		break;
@@ -1022,24 +1011,20 @@ byte Tseng34K_readIO(word port, byte *result)
 		return 1; //Handled!
 		break;
 	case 0x3CD: //Segment select?
-	//Bitu read_p3cd_et4k(Bitu port, Bitu iolen) {
 		if ((getActiveVGA()->enable_SVGA == 1) && (!et34kdata->et4k_segmentselectregisterenabled)) return 0; //Not available on the ET4000 until having set the KEY at least once after a power-on reset or synchronous reset(TS indexed register 0h bit 1).
 		*result = et34kdata->segmentselectregister; //Give the saved segment select register!
 		return 1; //Supported!
 		break;
 	case 0x3CB: //Extended bank register (W32)?
-	//Bitu read_p3cd_et4k(Bitu port, Bitu iolen) {
 		if (((getActiveVGA()->enable_SVGA == 1) && (!et34kdata->et4k_segmentselectregisterenabled)) || (et34kdata->tsengExtensions == 0)) return 0; //Not available on the ET4000 until having set the KEY at least once after a power-on reset or synchronous reset(TS indexed register 0h bit 1).
 		*result = et34kdata->extendedbankregister; //Give the saved segment select register!
 		return 1; //Supported!
 		break;
 	case 0x3C1: //Attribute controller read?
-	//Bitu read_p3c1_et4k(Bitu reg, Bitu iolen) {
 		switch (VGA_3C0_INDEXR) {
 			RESTORE_ET34K(3c0, 16);
 			RESTORE_ET34K(3c0, 17);
 		default:
-			//LOG(LOG_VGAMISC, LOG_NORMAL)("VGA:ATTR:ET4K:Read from illegal index %2X", reg);
 			break;
 		}
 		break;
@@ -2234,7 +2219,6 @@ void Tseng4k_tickAccelerator()
 			return; //Abort!
 		}
 	}
-	//TODO: Always process here when not requiring CPU input
 	else if (Tseng4k_blockQueueAccelerator()) //Not ready to process the queue yet?
 	{
 		return; //Not ready to process yet!
@@ -2247,7 +2231,6 @@ void Tseng4k_tickAccelerator()
 			{
 				Tseng4k_encodeAcceleratorRegisters(); //Encode the registers, updating them for the CPU!
 				et34k(getActiveVGA())->W32_acceleratorbusy |= (result&1); //Become a busy accelerator!
-				//TODO: Tick some accelerator status to process given data to process inputted by the CPU (or not when using no CPU inputs)!
 				//Tick the accelerator with the specified address and value loaded!
 				//Latch the value written if a valid address that's requested!
 				if ((result & 2) == 0) //Keep ticking?
@@ -2279,7 +2262,6 @@ void Tseng4k_tickAccelerator()
 				Tseng4k_status_suspendterminatefinished(); //Suspend/term8nate finished.
 			}
 		}
-		//TODO: Tick some accelerator status to process given data to process inputted by the CPU (or not when using no CPU inputs)!
 		//Tick the accelerator with the specified address and value loaded!
 		//Abort if still processing! Otherwise, finish up below:
 		if ((et34k(getActiveVGA())->W32_acceleratorbusy & 2) == 0) //Terminated?
@@ -2439,7 +2421,6 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 			possibleboost &= 0x7; //Repeat the low values!
 		}
 		pixelboost = possibleboost; //Enable normally!
-		//dolog("VGA","VTotal after pixelboost: %u",VGA->precalcs.verticaltotal); //Log it!
 		VGA->precalcs.recalcScanline |= (VGA->precalcs.pixelshiftcount!=pixelboost); //Recalc scanline data when needed!
 		VGA->precalcs.pixelshiftcount = pixelboost; //Save our precalculated value!
 	}
@@ -2632,8 +2613,6 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 		++tempdata; //Stop after this character!
 		tempdata *= VGA->precalcs.characterwidth; //Original!
 		tempdata <<= et34kdata->doublehorizontaltimings; //Double the horizontal timings if needed!
-		//dolog("VGA","HDispEnd updated: %u",hdispend);
-		//dolog("VGA","VTotal after: %u",VGA->precalcs.verticaltotal); //Log it!
 		if (VGA->precalcs.horizontaldisplayend != tempdata) adjustVGASpeed(); //Update our speed!
 		updateCRTC |= (VGA->precalcs.horizontaldisplayend != tempdata); //Update!
 		VGA->precalcs.horizontaldisplayend = tempdata; //Load!
@@ -2655,8 +2634,6 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 		++hblankstart; //Start after this character!
 		VGA->precalcs.horizontalblankingstartfinish = hblankstart;
 		hblankstart *= VGA->precalcs.characterwidth;
-		//dolog("VGA","HBlankStart updated: %u",hblankstart);
-		//dolog("VGA","VTotal after: %u",VGA->precalcs.verticaltotal); //Log it!
 		hblankstart <<= et34kdata->doublehorizontaltimings; //Double the horizontal timings if needed!
 		if (VGA->precalcs.horizontalblankingstart != hblankstart) adjustVGASpeed(); //Update our speed!
 		updateCRTC |= (VGA->precalcs.horizontalblankingstart != hblankstart); //Update!
@@ -2664,8 +2641,6 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 		hblankstart = VGA->precalcs.horizontalblankingstartfinish;
 		++hblankstart; //End after this character!
 		hblankstart *= VGA->precalcs.characterwidth;
-		//dolog("VGA","HBlankStart updated: %u",hblankstart);
-		//dolog("VGA","VTotal after: %u",VGA->precalcs.verticaltotal); //Log it!
 		hblankstart <<= et34kdata->doublehorizontaltimings; //Double the horizontal timings if needed!
 		VGA->precalcs.horizontalblankingstartfinish = hblankstart; //Load!
 	}
@@ -3210,8 +3185,6 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 
 		updateCRTC |= (VGA->precalcs.characterclockshift != characterclockshift); //Update the CRTC!
 		VGA->precalcs.characterclockshift = characterclockshift; //Apply character clock shift!
-
-		//dolog("VGA","VTotal after VRAMMemAddrSize: %u",VGA->precalcs.verticaltotal); //Log it!
 	}
 
 	if (((whereupdated==(WHEREUPDATED_SEQUENCER|0x01)) || FullUpdate || !VGA->precalcs.characterwidth) || (VGA->precalcs.charwidthupdated) //Sequencer register updated?
@@ -3535,13 +3508,11 @@ DOUBLE Tseng34k_getClockRate(VGA_Type *VGA)
 	if (VGA->enable_SVGA == 2) //ET3000?
 	{
 		clock_index = get_clock_index_et3k(VGA); //Retrieve the ET4K clock index!
-		//if (clock_index<2) return VGA_clocks[clock_index]*Tseng34k_clockMultiplier(VGA); //VGA-compatible clocks!
 		return ET3K_clockFreq[clock_index & 0xF]*Tseng34k_clockMultiplier(VGA); //Give the ET4K clock index rate!
 	}
 	else //ET4000?
 	{
 		clock_index = get_clock_index_et4k(VGA); //Retrieve the ET4K clock index!
-		//if (clock_index<2) return VGA_clocks[clock_index]*Tseng34k_clockMultiplier(VGA); //VGA-compatible clocks!
 		return ET4K_clockFreq[clock_index & 0xF]*Tseng34k_clockMultiplier(VGA); //Give the ET4K clock index rate!
 	}
 	return 0.0; //Not an ET3K/ET4K clock rate, default to VGA rate!

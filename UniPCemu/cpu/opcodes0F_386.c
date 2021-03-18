@@ -406,7 +406,6 @@ void CPU386_OP0F02() //LAR /r
 		}
 		else //Couldn't be loaded?
 		{
-			//failedlar386:
 			if (loadresult == 0)
 			{
 				invalidresultLAR386:
@@ -501,7 +500,6 @@ void CPU386_OP0F03() //LSL /r
 		}
 		else //Couldn't be loaded?
 		{
-			//failedlsl386:
 			if (loadresult == 0)
 			{
 				invalidresultLSL386:
@@ -2444,7 +2442,6 @@ void CPU80386_OP0FB3_32()
 
 void CPU80386_OP0FBA_16()
 {
-	//memcpy(&info,&params.info[MODRM_src0],sizeof(info)); //Store the address for debugging!
 	memcpy(&CPU[activeCPU].info,&CPU[activeCPU].params.info[CPU[activeCPU].MODRM_src0],sizeof(CPU[activeCPU].info)); //Store the address for debugging!
 	switch (CPU[activeCPU].thereg)
 	{
@@ -2555,7 +2552,6 @@ void CPU80386_OP0FBA_16()
 
 void CPU80386_OP0FBA_32()
 {
-	//memcpy(&info,&params.info[MODRM_src0],sizeof(info)); //Store the address for debugging!
 	memcpy(&CPU[activeCPU].info,&CPU[activeCPU].params.info[CPU[activeCPU].MODRM_src0],sizeof(CPU[activeCPU].info)); //Store the address for debugging!
 	switch (CPU[activeCPU].thereg)
 	{

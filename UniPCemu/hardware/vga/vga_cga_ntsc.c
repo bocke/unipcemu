@@ -111,7 +111,6 @@ BIGFILE *df;
 
 OPTINLINE void update_cga16_color() { //Superfury: Removed the parameter: we access the emulation directly!
 	int x;
-	//Bit32u x2;
 
         if (!new_cga) {
                 min_v = chroma_multiplexer[0] + intensity[0];
@@ -388,7 +387,6 @@ OPTINLINE void RENDER_convertRGBI(byte *pixels, uint_32 *renderdestination, uint
 //NTSC conversion
 OPTINLINE void RENDER_convertNTSC(byte *pixels, uint_32 *renderdestination, uint_32 size) //Convert a row of data to NTSC output!
 {
-	//RENDER_convertRGBI(pixels,renderdestination,size); return; //Test by converting to RGBI instead!
 	memcpy(renderdestination,pixels,size); //Copy the pixels to the display to convert!
 	Composite_Process(0,size>>2,(uint8_t *)renderdestination); //Convert to NTSC composite!
 }

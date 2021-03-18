@@ -167,9 +167,7 @@ byte add_mouse_packet(byte buttons, float* xmovemm, float* ymovemm, float* xmove
 {
 	MOUSE_PACKET *packet, *currentpacket;
 	int_32 xmove, ymove;
-	//byte movementpending;
 	if (__HW_DISABLED) return 1; //Abort!
-	//movementpending = 0; //Default: not pending!
 
 	//We're a valid packet to receive?
 	if (Mouse.packets) //A packet is already queued? We can't send another one!
@@ -417,7 +415,6 @@ OPTINLINE void commandwritten_mouse() //Command has been written to the mouse?
 			Mouse.last_was_error = 0; //Last is OK!
 			break; //Not used?
 		case 0xF6: //Set defaults!
-			//Set us to: 
 			Mouse.mode = 0; //Reset mode!
 			loadMouseDefaults(); //Load our defaults!
 			Mouse.has_command = 0; //We're not a command anymore!

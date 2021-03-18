@@ -153,7 +153,6 @@ void MMU_determineAddressWrapping()
 //segdesc: >=0=use it's descriptor for segment #x, -1=No descriptor, use paging, -2=Direct physical memory access, -3=Use special ES, calculated in a 8086 way
 uint_32 MMU_realaddr186(sword segdesc, word segment, uint_32 offset, byte wordop, byte is_offset16) //Real adress?
 {
-	//SEGMENT_DESCRIPTOR *descriptor; //For checking Expand-down data descriptors!
 	INLINEREGISTER uint_32 realaddress;
 
 	CPU[activeCPU].writeword = 0; //Reset word-write flag for checking next bytes!
@@ -174,7 +173,6 @@ uint_32 MMU_realaddr186(sword segdesc, word segment, uint_32 offset, byte wordop
 
 uint_32 MMU_realaddr186CS(sword segdesc, word segment, uint_32 offset, byte wordop, byte is_offset16) //Real adress?
 {
-	//SEGMENT_DESCRIPTOR *descriptor; //For checking Expand-down data descriptors!
 	INLINEREGISTER uint_32 realaddress;
 
 	CPU[activeCPU].writeword = 0; //Reset word-write flag for checking next bytes!
@@ -186,7 +184,6 @@ uint_32 MMU_realaddr186CS(sword segdesc, word segment, uint_32 offset, byte word
 
 uint_32 MMU_realaddrGeneric(sword segdesc, word segment, uint_32 offset, byte wordop, byte is_offset16) //Real adress?
 {
-	//SEGMENT_DESCRIPTOR *descriptor; //For checking Expand-down data descriptors!
 	INLINEREGISTER uint_32 realaddress;
 
 	CPU[activeCPU].writeword = 0; //Reset word-write flag for checking next bytes!
@@ -207,7 +204,6 @@ uint_32 MMU_realaddrGeneric(sword segdesc, word segment, uint_32 offset, byte wo
 
 uint_32 MMU_realaddrGenericCS(sword segdesc, word segment, uint_32 offset, byte wordop, byte is_offset16) //Real adress?
 {
-	//SEGMENT_DESCRIPTOR *descriptor; //For checking Expand-down data descriptors!
 	INLINEREGISTER uint_32 realaddress;
 
 	CPU[activeCPU].writeword = 0; //Reset word-write flag for checking next bytes!
@@ -229,11 +225,8 @@ uint_32 MMU_realaddrCS(sword segdesc, word segment, uint_32 offset, byte wordop,
 
 uint_32 MMU_realaddrPhys(SEGMENT_DESCRIPTOR *segdesc, word segment, uint_32 offset, byte wordop, byte is_offset16) //Real adress?
 {
-	//SEGMENT_DESCRIPTOR *descriptor; //For checking Expand-down data descriptors!
 	INLINEREGISTER uint_32 realaddress;
 
-	//word originalsegment = segment;
-	//uint_32 originaloffset = offset; //Save!
 	CPU[activeCPU].writeword = 0; //Reset word-write flag for checking next bytes!
 	realaddress = offset; //Load the address!
 	if (likely(applyspecialaddress))
@@ -248,7 +241,6 @@ uint_32 MMU_realaddrPhys(SEGMENT_DESCRIPTOR *segdesc, word segment, uint_32 offs
 	realaddress += (uint_32)CPU_MMU_startPhys(segdesc, segment);
 
 	//We work!
-	//dolog("MMU","\nAddress translation: %04X:%08X=%08X",originalsegment,originaloffset,realaddress); //Log the converted address!
 	return realaddress; //Give real adress!
 }
 
@@ -550,7 +542,6 @@ OPTINLINE byte MMU_INTERNAL_rb(sword segdesc, word segment, uint_32 offset, byte
 	byte writewordbackup = CPU[activeCPU].writeword; //Save the old value first!
 	if (MMU.memory==NULL) //No mem?
 	{
-		//dolog("MMU","R:No memory present!");
 		MMU.invaddr = 1; //Invalid adress!
 		return 0xFF; //Out of bounds!
 	}
@@ -574,7 +565,6 @@ OPTINLINE byte MMU_INTERNAL_rb0(sword segdesc, word segment, uint_32 offset, byt
 	byte writewordbackup = CPU[activeCPU].writeword; //Save the old value first!
 	if (MMU.memory==NULL) //No mem?
 	{
-		//dolog("MMU","R:No memory present!");
 		MMU.invaddr = 1; //Invalid adress!
 		return 0xFF; //Out of bounds!
 	}
@@ -631,7 +621,6 @@ OPTINLINE void MMU_INTERNAL_wb(sword segdesc, word segment, uint_32 offset, byte
 	byte writewordbackup = CPU[activeCPU].writeword; //Save the old value first!
 	if ((MMU.memory==NULL) || !MMU.size) //No mem?
 	{
-		//dolog("MMU","W:No memory present!");
 		MMU.invaddr = 1; //Invalid address signaling!
 		return; //Out of bounds!
 	}

@@ -1440,12 +1440,10 @@ void initAdlib()
 			dolog("adlib","Error registering double buffer for output!");
 		}
 	}
-	//dolog("adlib","sound channel added. registering ports...");
 	//Ignore unregistered channel, we need to be used by software!
 	register_PORTIN(&inadlib); //Status port (R)
 	//All output!
 	register_PORTOUT(&outadlib); //Address port (W)
-	//dolog("adlib","Registering timer...");
 
 	#ifdef WAV_ADLIB
 	adlibout = createWAV("captures/adlib.wav",1,usesamplerate); //Start logging!

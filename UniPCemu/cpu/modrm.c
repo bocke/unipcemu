@@ -175,7 +175,6 @@ byte modrm_check8(MODRM_PARAMS *params, int whichregister, byte isread)
 		offset += CPU[activeCPU].modrm_addoffset; //Add to get the destination offset!
 		return checkMMUaccess(params->info[whichregister].segmentregister_index, params->info[whichregister].mem_segment, offset&params->info[whichregister].memorymask,isread,getCPL(),(params->info[whichregister].is16bit),0); //Check the data to memory using byte depth!
 		break;
-		//return result; //Give memory!
 	default:
 		halt_modrm("MODRM: Unknown MODR/M8!");
 		break;
@@ -211,7 +210,6 @@ void modrm_write8(MODRM_PARAMS *params, int whichregister, byte value)
 		offset += CPU[activeCPU].modrm_addoffset; //Add to get the destination offset!
 		MMU_wb(params->info[whichregister].segmentregister_index, params->info[whichregister].mem_segment, offset&params->info[whichregister].memorymask,value,(params->info[whichregister].is16bit)); //Write the data to memory using byte depth!
 		break;
-		//return result; //Give memory!
 	default:
 		halt_modrm("MODRM: Unknown MODR/M8!");
 		break;
@@ -248,7 +246,6 @@ byte modrm_write8_BIU(MODRM_PARAMS *params, int whichregister, byte value)
 		offset += CPU[activeCPU].modrm_addoffset; //Add to get the destination offset!
 		return CPU_request_MMUwb(params->info[whichregister].segmentregister_index, offset&params->info[whichregister].memorymask,value,(params->info[whichregister].is16bit)); //Write the data to memory using byte depth!
 		break;
-		//return result; //Give memory!
 	default:
 		halt_modrm("MODRM: Unknown MODR/M8!");
 		break;

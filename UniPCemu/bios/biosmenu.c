@@ -501,7 +501,6 @@ byte runBIOS(byte showloadingtext) //Run the BIOS menu (whether in emulation or 
 	if (__HW_DISABLED) return 0; //Abort!
 	EMU_stopInput(); //Stop all emu input!
 	terminateVGA(); //Terminate currently running VGA for a speed up!
-	//dolog("BIOS","Running BIOS...");
 	exec_showchecksumerrors = 0; //Not showing any checksum errors!
 
 //Now reset/save all we need to run the BIOS!
@@ -698,7 +697,6 @@ void BIOSClearScreen() //Resets the BIOS's screen!
 	GPU_textclearscreen(frameratesurface); //Make sure the surface is empty for a neat BIOS!
 	GPU_text_releasesurface(frameratesurface);
 	char BIOSText[] = "UniPCemu Settings"; //The BIOS's text!
-	//cursorXY(0,0,0); //Goto top of the screen!
 	
 	EMU_textcolor(BIOSTOP_ATTR); //TOP FONT
 	clearrow(0); //Clear first row!
@@ -3305,7 +3303,6 @@ void BIOS_ConvertDynamicStaticHDD() //Generate Static HDD Image from a dynamic o
 					size = 0; //Abort!
 				}
 				safestrcat(filename, sizeof(filename), ".img"); //Generate destination filename!
-				//dolog("BIOS", "Dynamic disk size: %u bytes = %u sectors", size, (size >> 9));
 				if (size != 0) //Got size?
 				{
 					if (!strcmp(filename, BIOS_Settings.hdd0) || !strcmp(filename, BIOS_Settings.hdd1)) //Harddisk changed?
@@ -8434,7 +8431,6 @@ void BIOS_taskBreakpoint()
 	EMU_gotoxy(0, 4); //Goto position for info!
 	GPU_EMU_printscreen(0, 4, "Address: "); //Show the filename!
 	EMU_unlocktext();
-	//byte mode; //The mode to use!
 	word semicolonpos;
 	char *temp;
 	word maxsegmentsize = 4;
@@ -8448,7 +8444,6 @@ void BIOS_taskBreakpoint()
 		if (strcmp(breakpointstr, "") != 0) //Got valid input?
 		{
 			//Convert the string back into our valid numbers for storage!
-			//mode = 1; //Default to real mode!
 			ignoreSegment = (breakpointstr[safestrlen(breakpointstr,sizeof(breakpointstr))-1] == 'O'); //Ignore code segment?
 			if (ignoreSegment) breakpointstr[safestrlen(breakpointstr,sizeof(breakpointstr))-1] = '\0'; //Take off the mode identifier!
 			ignoreBase = (breakpointstr[safestrlen(breakpointstr,sizeof(breakpointstr))-1]=='I'); //Ignore EIP?
@@ -8534,7 +8529,6 @@ void BIOS_FSBreakpoint()
 		if (strcmp(breakpointstr, "") != 0) //Got valid input?
 		{
 			//Convert the string back into our valid numbers for storage!
-			//mode = 1; //Default to real mode!
 			ignoreSegment = (breakpointstr[safestrlen(breakpointstr, sizeof(breakpointstr)) - 1] == 'O'); //Ignore code segment?
 			if (ignoreSegment) breakpointstr[safestrlen(breakpointstr, sizeof(breakpointstr)) - 1] = '\0'; //Take off the mode identifier!
 			ignoreBase = (breakpointstr[safestrlen(breakpointstr, sizeof(breakpointstr)) - 1] == 'I'); //Ignore EIP?
@@ -8598,7 +8592,6 @@ void BIOS_CR3breakpoint()
 	EMU_gotoxy(0, 4); //Goto position for info!
 	GPU_EMU_printscreen(0, 4, "Address: "); //Show the filename!
 	EMU_unlocktext();
-	//char *temp;
 	#ifndef IS_PSP
 	word maxoffsetsize = 8;
 	#endif
@@ -8607,7 +8600,6 @@ void BIOS_CR3breakpoint()
 		if (strcmp(breakpointstr, "") != 0) //Got valid input?
 		{
 			//Convert the string back into our valid numbers for storage!
-				//temp = &breakpointstr[0]; //First character!
 				#ifndef IS_PSP
 				//This won't compile on the PSP for some unknown reason, crashing the compiler!
 				if (((safe_strlen(&breakpointstr[0],sizeof(breakpointstr)))-1)<=maxoffsetsize) //Offset OK?

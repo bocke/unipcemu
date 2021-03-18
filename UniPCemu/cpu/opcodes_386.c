@@ -4177,14 +4177,12 @@ void CPU80386_OPFF() //GRP5 Ev
 			break;
 		case 3: //CALL Mp (Read address word and jump there)
 			modrm_generateInstructionTEXT("CALLF",32,0,PARAM_MODRM_0); //Jump to the address pointed here!
-			//debugger_setcommand("CALL %04X:%04X",MMU_rw(CPU_SEGMENT_CS,REG_CS,ea,0),MMU_rw(CPU_SEGMENT_CS,REG_CS,ea+2,0)); //Based on CALL Ap
 			break;
 		case 4: //JMP
 			modrm_generateInstructionTEXT("JMP",32,0,PARAM_MODRM_0); //JMP to the register!
 			break;
 		case 5: //JMP Mp
 			modrm_generateInstructionTEXT("JMPF",32,0,PARAM_MODRM_0); //Jump to the address pointed here!
-			//debugger_setcommand("JMP %04X:%04X",MMU_rw(CPU_SEGMENT_CS,REG_CS,ea,0),MMU_rw(CPU_SEGMENT_CS,REG_CS,ea+2,0)); //JMP to destination!
 			break;
 		case 6: //PUSH
 			modrm_generateInstructionTEXT("PUSH",32,0,PARAM_MODRM_0); //PUSH!
@@ -4249,7 +4247,6 @@ Special stuff for NO COprocessor (8087) present/available (default)!
 
 void unkOP_80386() //Unknown opcode on 8086?
 {
-	//dolog("8086","Unknown opcode on 8086: %02X",CPU[activeCPU].currentopcode); //Last read opcode!
 	CPU_unkOP(); //Execute the unknown opcode exception handler, if any!
 }
 
@@ -4307,11 +4304,8 @@ OPTINLINE void op_grp2_cycles32(byte cnt, byte varshift)
 
 uint_32 op_grp2_32(byte cnt, byte varshift)
 {
-	//word d,
 	INLINEREGISTER uint_64 s, shift, tempCF, msb;
 	INLINEREGISTER byte numcnt,maskcnt,overflow;
-	//word backup;
-	//if (cnt>0x8) return (oper1b); //NEC V20/V30+ limits shift count
 	numcnt = maskcnt = cnt; //Save count!
 	s = CPU[activeCPU].oper1d;
 	switch (CPU[activeCPU].thereg)
@@ -4349,7 +4343,6 @@ uint_32 op_grp2_32(byte cnt, byte varshift)
 	case 2: //RCL r/m32
 		if (EMULATED_CPU >= CPU_80386) maskcnt &= 0x1F; //Clear the upper 3 bits to become a NEC V20/V30+!
 		numcnt = maskcnt;
-		//if (EMULATED_CPU >= CPU_NECV30) numcnt &= 0x1F; //Clear the upper 3 bits to become a NEC V20/V30+!
 		overflow = numcnt?0:FLAG_OF; //Default: no overflow!
 		for (shift = 1; shift <= numcnt; shift++)
 		{
@@ -4365,7 +4358,6 @@ uint_32 op_grp2_32(byte cnt, byte varshift)
 	case 3: //RCR r/m32
 		if (EMULATED_CPU >= CPU_80386) maskcnt &= 0x1F; //Clear the upper 3 bits to become a NEC V20/V30+!
 		numcnt = maskcnt;
-		//if (EMULATED_CPU >= CPU_NECV30) numcnt &= 0x1F; //Clear the upper 3 bits to become a NEC V20/V30+!
 		overflow = numcnt?0:FLAG_OF; //Default: no overflow!
 		for (shift = 1; shift <= numcnt; shift++)
 		{
@@ -4381,12 +4373,10 @@ uint_32 op_grp2_32(byte cnt, byte varshift)
 	case 4: case 6: //SHL r/m32
 		if (EMULATED_CPU >= CPU_NECV30) maskcnt &= 0x1F; //Clear the upper 3 bits to become a NEC V20/V30+!
 		numcnt = maskcnt;
-		//FLAGW_AF(0);
 		overflow = numcnt?0:FLAG_OF;
 		for (shift = 1; shift <= numcnt; shift++)
 		{
 			FLAGW_CF(s>>31);
-			//if (s & 0x8) FLAGW_AF(1); //Auxiliary carry?
 			s = (s << 1) & 0xFFFFFFFFU;
 			overflow = (byte)(FLAG_CF^(s>>31));
 		}
@@ -4399,15 +4389,12 @@ uint_32 op_grp2_32(byte cnt, byte varshift)
 	case 5: //SHR r/m32
 		if (EMULATED_CPU >= CPU_NECV30) maskcnt &= 0x1F; //Clear the upper 3 bits to become a NEC V20/V30+!
 		numcnt = maskcnt;
-		//FLAGW_AF(0);
 		overflow = numcnt?0:FLAG_OF;
 		for (shift = 1; shift <= numcnt; shift++)
 		{
 			overflow = (byte)(s>>31);
 			FLAGW_CF(s);
-			//backup = s; //Save backup!
 			s = s >> 1;
-			//if (((backup^s)&0x10)) FLAGW_AF(1); //Auxiliary carry?
 		}
 		if (maskcnt && (numcnt==0)) FLAGW_CF(s); //Always sets CF, according to various sources?
 		if (maskcnt) FLAGW_OF(overflow);
@@ -4419,19 +4406,15 @@ uint_32 op_grp2_32(byte cnt, byte varshift)
 		if (EMULATED_CPU >= CPU_NECV30) maskcnt &= 0x1F; //Clear the upper 3 bits to become a NEC V20/V30+!
 		numcnt = maskcnt;
 		msb = s & 0x80000000U;
-		//FLAGW_AF(0);
 		for (shift = 1; shift <= numcnt; shift++)
 		{
 			FLAGW_CF(s);
-			//backup = s; //Save backup!
 			s = (s >> 1) | msb;
-			//if (((backup^s)&0x10)) FLAGW_AF(1); //Auxiliary carry?
 		}
 		if (maskcnt && (numcnt==0)) FLAGW_CF(s); //Always sets CF, according to various sources?
 		if (maskcnt) FLAGW_AF(1);
 		byte tempSF;
 		tempSF = FLAG_SF; //Save the SF!
-		/*flag_szp8((uint8_t)(s & 0xFF));*/
 		//http://www.electronics.dit.ie/staff/tscarff/8086_instruction_set/8086_instruction_set.html#SAR says only C and O flags!
 		if (!maskcnt) //Nothing done?
 		{
@@ -4457,7 +4440,6 @@ uint_32 op_grp2_32(byte cnt, byte varshift)
 
 OPTINLINE void op_div32(uint_64 valdiv, uint_32 divisor)
 {
-	//word v1, v2;
 	if ((!divisor) && (CPU[activeCPU].internalinstructionstep==0)) //First step?
 	{
 		//Timings always!
@@ -4490,7 +4472,6 @@ OPTINLINE void op_div32(uint_64 valdiv, uint_32 divisor)
 
 OPTINLINE void op_idiv32(uint_64 valdiv, uint_32 divisor)
 {
-	//uint32_t v1, v2,
 	if ((!divisor) && (CPU[activeCPU].internalinstructionstep==0)) //First step?
 	{
 		//Timings always!
@@ -4524,10 +4505,6 @@ OPTINLINE void op_idiv32(uint_64 valdiv, uint_32 divisor)
 
 void op_grp3_32()
 {
-	//uint32_t d1, d2, s1, s2, sign;
-	//word d, s;
-	//oper1d = signext(oper1b); oper2d = signext(oper2b);
-	//snprintf(msg,sizeof(msg), "  oper1d: %04X    oper2d: %04X\n", oper1d, oper2d); print(msg);
 	switch (CPU[activeCPU].thereg)
 	{
 	case 0: case 1: //TEST
@@ -4550,8 +4527,6 @@ void op_grp3_32()
 	case 3: //NEG
 		CPU[activeCPU].res32 = (~CPU[activeCPU].oper1d) + 1;
 		flag_sub32(0, CPU[activeCPU].oper1d);
-		//if (res32) FLAGW_CF(1); else FLAGW_CF(0);
-		//FLAGW_AF((res16&0xF)?1:0); //Auxiliary flag!
 		if (CPU_apply286cycles()==0) /* No 80286+ cycles instead? */
 		{
 			if (MODRM_EA(CPU[activeCPU].params)) //Memory?

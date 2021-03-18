@@ -1804,7 +1804,6 @@ byte BIOS_readhandler(uint_32 offset, byte index) /* A pointer to a handler func
 	}
 
 	INLINEREGISTER uint_32 segment; //Current segment!
-	//dolog("CPU","BIOS Read handler: %08X+%08X",baseoffset,reloffset);
 	switch (BIOS_ROM_type) //What ROM type are we emulating?
 	{
 		case BIOSROMTYPE_U18_19: //U18&19 combo?

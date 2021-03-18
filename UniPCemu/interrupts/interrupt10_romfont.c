@@ -66,7 +66,6 @@ void phys_writed(PhysPt ptr, uint_32 val)
 byte phys_readb(PhysPt ptr)
 {
 	if (!ptr) return 0; //Invalid!
-	//return *ptr; //Read!
 	uint_32 RealPt = Phys2Real(ptr); //Convert to real pointer!
 	return mem_readb(RealPt); //Write to memory normally!
 }
@@ -74,7 +73,6 @@ byte phys_readb(PhysPt ptr)
 word phys_readw(PhysPt ptr)
 {
 	if (!ptr) return 0; //Invalid!
-	//return *ptr; //Read!
 	uint_32 RealPt = Phys2Real(ptr); //Convert to real pointer!
 	return mem_readw(RealPt); //Write to memory normally!
 }
@@ -82,7 +80,6 @@ word phys_readw(PhysPt ptr)
 uint_32 phys_readd(PhysPt ptr)
 {
 	if (!ptr) return 0; //Invalid!
-	//return *ptr; //Read!
 	uint_32 RealPt = Phys2Real(ptr); //Convert to real pointer!
 	return mem_readd(RealPt); //Write to memory normally!
 }
@@ -361,7 +358,6 @@ void INT10_SetupRomMemoryChecksum() {
 	if (IS_EGAVGA_ARCH) { //EGA/VGA. Just to be safe
 		/* Sum of all bytes in rom module 256 should be 0 */
 		Bit8u sum = 0;
-		//uint_32 rom_base = 0;
 		Bitu last_rombyte = 64*1024 - 1;		//64 KB romsize(32KB isn't enough!)
 		for (interrupt10_romfont_i = 0;interrupt10_romfont_i < last_rombyte;interrupt10_romfont_i++)
 			sum += (Bit8u)EMU_VGAROM[interrupt10_romfont_i];	//OVERFLOW IS OKAY

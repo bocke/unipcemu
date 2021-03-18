@@ -2026,7 +2026,6 @@ void modem_executeCommand() //Execute the currently loaded AT command, if it's v
 				doATH:
 				if (n0<2) //OK?
 				{
-					//if ((n0==0) && modem.offhook)
 					modem.offhook = n0?1:0; //Set the hook status or hang up!
 					if ((((modem.connected&1) || modem.ringing)&&(!modem.offhook)) || (modem.offhook && (!((modem.connected&1)||modem.ringing)))) //Disconnected or still ringing/connected?
 					{
@@ -3629,7 +3628,6 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 											}
 											if ((memcmp(&ethernetheader.dst, &packetserver_sourceMAC, sizeof(ethernetheader.dst)) != 0) && (memcmp(&ethernetheader.dst, &packetserver_broadcastMAC, sizeof(ethernetheader.dst)) != 0)) //Invalid destination(and not broadcasting)?
 											{
-												//dolog("ethernetcard","Discarding destination."); //Showing why we discard!
 												goto invalidpacket; //Invalid packet!
 											}
 											if (Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) //PPP protocol used?
@@ -3658,7 +3656,6 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 											if (Packetserver_clients[connectedclient].packetserver_stage != PACKETSTAGE_PACKETS) goto invalidpacket; //Don't handle SLIP/PPP/IPX yet!
 											if (ethernetheader.type != headertype) //Invalid type?
 											{
-												//dolog("ethernetcard","Discarding type: %04X",SDL_SwapBE16(ethernetheader.type)); //Showing why we discard!
 												goto invalidpacket; //Invalid packet!
 											}
 											//Valid packet! Receive it!
@@ -3710,15 +3707,12 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 												Packetserver_clients[connectedclient].packetserver_packetack = 1; //We're acnowledging the packet, so start transferring it!
 												Packetserver_clients[connectedclient].packetserver_bytesleft = Packetserver_clients[connectedclient].pktlen; //Use the entire packet, unpatched!
 											}
-											//dolog("ethernetcard","Skipping %u bytes of header data...",packetserver_packetpos); //Log it!
 										}
 										else //Invalid length?
 										{
-											//dolog("ethernetcard","Discarding invalid packet size: %u...",net.pktlen); //Log it!
 										invalidpacket:
 											//Discard the invalid packet!
 											freez((void **)&Packetserver_clients[connectedclient].packet, Packetserver_clients[connectedclient].pktlen, "SERVER_PACKET"); //Release the packet to receive new packets again!
-											//dolog("ethernetcard","Discarding invalid packet size or different cause: %u...",net.pktlen); //Log it!
 											Packetserver_clients[connectedclient].packet = NULL; //No packet!
 											Packetserver_clients[connectedclient].packetserver_packetpos = 0; //Reset packet position!
 											Packetserver_clients[connectedclient].packetserver_packetack = 0; //Not acnowledged yet!
@@ -3754,19 +3748,16 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 												#ifdef PPPOE_ENCODEDECODE
 												if (datatotransmit == PPP_END) //End byte?
 												{
-													//dolog("ethernetcard","transmitting escaped SLIP END to client");
 													writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, PPP_ESC); //Escaped ...
 													writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, PPP_ENCODEESC(PPP_ESC)); //END raw data!
 												}
 												else if (datatotransmit == PPP_ESC) //ESC byte?
 												{
-													//dolog("ethernetcard","transmitting escaped SLIP ESC to client");
 													writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, PPP_ESC); //Escaped ...
 													writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, PPP_ENCODEESC(PPP_ESC)); //ESC raw data!
 												}
 												else //Normal data?
 												{
-													//dolog("ethernetcard","transmitting raw to client: %02X",datatotransmit);
 													writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, datatotransmit); //Unescaped!
 												}
 												Packetserver_clients[connectedclient].pppoe_lastrecvbytewasEND = 0; //Last wasn't END!
@@ -3782,19 +3773,16 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 											{
 												if (datatotransmit == SLIP_END) //End byte?
 												{
-													//dolog("ethernetcard","transmitting escaped SLIP END to client");
 													writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, SLIP_ESC); //Escaped ...
 													writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, SLIP_ESC_END); //END raw data!
 												}
 												else if (datatotransmit == SLIP_ESC) //ESC byte?
 												{
-													//dolog("ethernetcard","transmitting escaped SLIP ESC to client");
 													writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, SLIP_ESC); //Escaped ...
 													writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, SLIP_ESC_ESC); //ESC raw data!
 												}
 												else //Normal data?
 												{
-													//dolog("ethernetcard","transmitting raw to client: %02X",datatotransmit);
 													writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, datatotransmit); //Unescaped!
 												}
 											}
@@ -3803,7 +3791,6 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 										{
 											if (Packetserver_clients[connectedclient].packetserver_slipprotocol==3) //PPP?
 											{
-												//dolog("ethernetcard","transmitting PPP END to client and finishing packet buffer(size: %u)",net.pktlen);
 												if (!(Packetserver_clients[connectedclient].pppoe_lastrecvbytewasEND)) //Not doubled END?
 												{
 													writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, PPP_END); //END of frame!
@@ -3812,10 +3799,8 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 											}
 											else //SLIP?
 											{
-												//dolog("ethernetcard","transmitting SLIP END to client and finishing packet buffer(size: %u)",net.pktlen);
 												writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, SLIP_END); //END of frame!
 											}
-											//logpacket(0,Packetserver_clients[connectedclient].packet,Packetserver_clients[connectedclient].pktlen); //Log it!
 											freez((void **)&Packetserver_clients[connectedclient].packet, Packetserver_clients[connectedclient].pktlen, "SERVER_PACKET"); //Release the packet to receive new packets again!
 											Packetserver_clients[connectedclient].packet = NULL; //Discard the packet anyway, no matter what!
 											Packetserver_clients[connectedclient].packetserver_packetpos = 0; //Reset packet position!
@@ -3832,7 +3817,6 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 								{
 									if (writefifobuffer(modem.outputbuffer[connectedclient], datatotransmit)) //Transmitted?
 									{
-										//dolog("ethernetcard","transmitted SLIP data to client: %02X",datatotransmit);
 										datatotransmit = readfifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, &datatotransmit); //Discard the data that's being transmitted!
 									}
 								}
@@ -3948,10 +3932,6 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 									}
 									Packetserver_clients[connectedclient].packetserver_transmitlength = 0; //Abort the packet generation!
 								}
-								else
-								{
-									//dolog("ethernetcard","Header for transmitting to the server has been setup!");
-								}
 							}
 							if (((datatotransmit == SLIP_END) && (Packetserver_clients[connectedclient].packetserver_slipprotocol!=3))
 									|| ((datatotransmit==PPP_END) && (Packetserver_clients[connectedclient].packetserver_slipprotocol==3))) //End-of-frame? Send the frame!
@@ -3978,8 +3958,6 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 										//Send the frame to the server, if we're able to!
 										if ((Packetserver_clients[connectedclient].packetserver_transmitlength <= 0xFFFF) || (Packetserver_clients[connectedclient].packetserver_slipprotocol == 3)) //Within length range?
 										{
-											//dolog("ethernetcard","Sending generated packet(size: %u)!",packetserver_transmitlength);
-											//logpacket(1,packetserver_transmitbuffer,packetserver_transmitlength); //Log it!
 											if (Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) //PPP?
 											{
 												if (!((Packetserver_clients[connectedclient].pppoe_lastsentbytewasEND))) //Not doubled END?
@@ -4274,7 +4252,6 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 								fifobuffer_clear(modem.inputdatabuffer[0]); //Clear the output buffer for the next client!
 								fifobuffer_clear(modem.outputbuffer[0]); //Clear the output buffer for the next client!
 							}
-							//goto skiptransfers;
 							break; //Abort!
 						case 1: //Sent?
 							readfifobuffer(modem.outputbuffer[0], &datatotransmit); //We're send!
@@ -4397,7 +4374,6 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 										modem.connected = 0; //Not connected anymore!
 									}
 								}
-								//goto skiptransfers;
 								break; //Abort!
 							case 1: //Sent?
 								readfifobuffer(modem.outputbuffer[connectedclient], &datatotransmit); //We're send!
@@ -4448,7 +4424,6 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 				}
 			} //Connected?
 
-			//skiptransfers: //For disconnects!
 			if (net.packet) //Packet received? Discard anything we receive now for other users!
 			{
 				freez((void **)&net.packet, net.pktlen, "MODEM_PACKET");

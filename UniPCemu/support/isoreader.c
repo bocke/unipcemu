@@ -176,7 +176,6 @@ int getBootImage(int device, char *imagefile) //Returns TRUE on bootable (image 
 	case 1: //PlatformID: PowerPC
 	case 2: //PlatformID: Mac
 	default:
-		//printf("GBI: Unknown platform! Platform: %i! Disk %i!\n",(int)buffer[1],device);
 		return FALSE; //PlatformID: Unknown
 	}
 
@@ -185,8 +184,6 @@ int getBootImage(int device, char *imagefile) //Returns TRUE on bootable (image 
 //Ignore the checksum!
 
 //Now read the initial/default entry!
-
-	//result = WriteData("DefaultEntry.DAT",buffer,sizeof(buffer)); //Write DefaultEntry dump!
 
 	if (buffer[CD_BOOT_DEFAULTENTRY]!=CD_IND_BOOTABLE) //Not bootable?
 	{
@@ -242,7 +239,6 @@ int getBootImage(int device, char *imagefile) //Returns TRUE on bootable (image 
 		//Don't change sector count!
 		break;
 	default:
-		//printf("GBI: Unknown drive type: %02x! Disk %i!\n",(buffer[1+CD_BOOT_DEFAULTENTRY]&0x0F),device);
 		return FALSE; //Unknown!
 	}
 
@@ -403,7 +399,6 @@ int getBootImageInfo(int device, BOOTIMGINFO *imagefile) //Returns TRUE on boota
 	case 1: //PlatformID: PowerPC
 	case 2: //PlatformID: Mac
 	default:
-		//printf("GBI: Unknown platform! Platform: %i! Disk %i!\n",(int)buffer[1],device);
 		return FALSE; //PlatformID: Unknown
 	}
 
@@ -469,7 +464,6 @@ int getBootImageInfo(int device, BOOTIMGINFO *imagefile) //Returns TRUE on boota
 		//Don't change sector count!
 		break;
 	default:
-		//printf("GBI: Unknown drive type: %02x! Disk %i!\n",(buffer[1+CD_BOOT_DEFAULTENTRY]&0x0F),device);
 		return FALSE; //Unknown!
 	}
 

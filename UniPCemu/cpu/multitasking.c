@@ -311,10 +311,8 @@ extern byte MMU_logging; //Are we logging from the MMU?
 
 byte CPU_switchtask(int whatsegment, SEGMENT_DESCRIPTOR *LOADEDDESCRIPTOR, word *segment, word destinationtask, byte isJMPorCALL, byte gated, int_64 errorcode) //Switching to a certain task?
 {
-	//byte isStackSwitch = 0; //Stack switch?
 	//Both structures to use for the TSS!
 	byte backlinking;
-	//byte busy=0;
 	sbyte affectedregisters[7] = { CPU_SEGMENT_CS,CPU_SEGMENT_SS,CPU_SEGMENT_DS,CPU_SEGMENT_ES,CPU_SEGMENT_FS,CPU_SEGMENT_GS,CPU_SEGMENT_LDTR }; //What registers are affected and to be cleared with a task switch?
 	sbyte affectedregisterindex;
 	byte affectedregister; //What affected register!
@@ -354,12 +352,10 @@ byte CPU_switchtask(int whatsegment, SEGMENT_DESCRIPTOR *LOADEDDESCRIPTOR, word 
 	switch (GENERALSEGMENTPTR_TYPE(LOADEDDESCRIPTOR)) //Check the type of descriptor we're switching to!
 	{
 	case AVL_SYSTEM_BUSY_TSS16BIT:
-		//busy = 1;
 	case AVL_SYSTEM_TSS16BIT:
 		CPU[activeCPU].taskswitchdata.TSSSize = 0; //16-bit TSS!
 		break;
 	case AVL_SYSTEM_BUSY_TSS32BIT:
-		//busy = 1;
 	case AVL_SYSTEM_TSS32BIT: //Valid descriptor?
 		CPU[activeCPU].taskswitchdata.TSSSize = 1; //32-bit TSS!
 		if (EMULATED_CPU < CPU_80386) //Continue normally: we're valid on a 80386 only?
@@ -411,12 +407,10 @@ byte CPU_switchtask(int whatsegment, SEGMENT_DESCRIPTOR *LOADEDDESCRIPTOR, word 
 	switch (GENERALSEGMENT_TYPE(CPU[activeCPU].SEG_DESCRIPTOR[CPU_SEGMENT_TR])) //Check the type of descriptor we're switching from!
 	{
 	case AVL_SYSTEM_BUSY_TSS16BIT:
-		//busy = 1;
 	case AVL_SYSTEM_TSS16BIT:
 		CPU[activeCPU].taskswitchdata.TSSSizeSrc = 0; //16-bit TSS!
 		break;
 	case AVL_SYSTEM_BUSY_TSS32BIT:
-		//busy = 1;
 	case AVL_SYSTEM_TSS32BIT: //Valid descriptor?
 		CPU[activeCPU].taskswitchdata.TSSSizeSrc = 1; //32-bit TSS!
 		if (EMULATED_CPU < CPU_80386) //Continue normally: we're valid on a 80386 only?
@@ -426,7 +420,6 @@ byte CPU_switchtask(int whatsegment, SEGMENT_DESCRIPTOR *LOADEDDESCRIPTOR, word 
 		break;
 	default: //Invalid descriptor!
 	invalidsrctask:
-		//if (isJMPorCALL == 3) //IRET?
 		{
 			CPU_TSSFault(REG_TR, ((isJMPorCALL & 0x400) >> 10), (REG_TR & 4) ? EXCEPTION_TABLE_LDT : EXCEPTION_TABLE_GDT); //Throw #TS!
 			return 0; //Error out!

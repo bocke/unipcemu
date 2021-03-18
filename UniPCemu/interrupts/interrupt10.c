@@ -738,7 +738,6 @@ OPTINLINE void INT10_SelectDACPage(Bit8u function,Bit8u mode) {
 	if (!function) {		//Select paging mode
 		if (mode) old10|=0x80;
 		else old10&=0x7f;
-		//IO_Write(VGAREG_ACTL_ADDRESS,0x10);
 		IO_Write(VGAREG_ACTL_WRITE_DATA,old10);
 	} else {				//Select page
 		IO_Write(VGAREG_ACTL_WRITE_DATA,old10);
@@ -1073,8 +1072,6 @@ void int10_internal_outputchar(byte videopage, byte character, byte attribute)
 	switch (character) //What character?
 	{
 		//Control character?
-	//case 0x00: //NULL?
-	//	break;
 	case 0x07: //Bell?
 		//TODO BEEP
 		break;
@@ -1318,7 +1315,6 @@ void int10_Pallette() //REG_AH=10h,REG_AL=subfunc
 				}
 			}
 		default:
-			//LOG(LOG_INT10,LOG_ERROR)("Function 10:Unhandled EGA/VGA Palette Function %2X",REG_AL);
 			break;
 	}
 }
@@ -1429,7 +1425,6 @@ graphics_chars:
 			REG_BP=RealOff(int10.rom.font_16_alternate);
 			break;
 		default:
-			//LOG(LOG_INT10,LOG_ERROR)("Function 11:30 Request for font %2X",REG_BH);	
 			break;
 		}
 		if ((REG_BH<=7) /*|| (svgaCard==SVGA_TsengET4K)*/) {
@@ -1443,7 +1438,6 @@ graphics_chars:
 		}
 		break;
 	default:
-		//LOG(LOG_INT10,LOG_ERROR)("Function 11:Unsupported character generator call %2X",REG_AL);
 		break;
 	}
 }
@@ -1462,7 +1456,6 @@ void int10_SpecialFunctions() //REG_AH=12h
 	case 0x30:							/* Select vertical resolution */
 		{   
 			if (!IS_VGA_ARCH) break;
-			//LOG(LOG_INT10,LOG_WARN)("Function 12:Call %2X (select vertical resolution)",reg_bl);
 			/*if (svgaCard != SVGA_None) {
 				if (REG_AL > 2) {
 					REG_AL=0;		// invalid subfunction
@@ -1512,7 +1505,6 @@ void int10_SpecialFunctions() //REG_AH=12h
 		}		
 	case 0x32:							/* Video adressing */
 		if (!IS_VGA_ARCH) break;
-		//LOG(LOG_INT10,LOG_ERROR)("Function 12:Call %2X not handled",reg_bl);
 		//if (svgaCard==SVGA_TsengET4K) REG_AL&=1;
 		if (REG_AL>1) REG_AL=0;		//invalid subfunction
 		else REG_AL=0x12;			//fake a success call
@@ -1547,7 +1539,6 @@ void int10_SpecialFunctions() //REG_AH=12h
 		}		
 	case 0x35:
 		if (!IS_VGA_ARCH) break;
-		//LOG(LOG_INT10,LOG_ERROR)("Function 12:Call %2X not handled",reg_bl);
 		REG_AL=0x12;
 		break;
 	case 0x36: {						/* VGA Refresh control */
@@ -1565,7 +1556,6 @@ void int10_SpecialFunctions() //REG_AH=12h
 		break;
 	}
 	default:
-		//LOG(LOG_INT10,LOG_ERROR)("Function 12:Call %2X not handled",reg_bl);
 		/*if (machine!=MCH_EGA)*/ REG_AL=0;
 		break;
 	}
@@ -1624,7 +1614,6 @@ OPTINLINE Bitu INT10_VideoState_GetSize(Bitu state) {
 	if (state&1) size+=0x46;
 	if (state&2) size+=0x3a;
 	if (state&4) size+=0x303;
-	//if ((svgaCard==SVGA_S3Trio) && (state&8)) size+=0x43;
 	if (size!=0) size=(size-1)/64+1;
 	return size;
 }
@@ -1937,7 +1926,6 @@ OPTINLINE void INT10_GetFuncStateInformation(PhysPt save) {
 		col_count=256;
 		break;
 	default:
-		//LOG(LOG_INT10,LOG_ERROR)("Get Func State illegal mode type %d",CurMode->type);
 		break;
 	}
 	/* Colour count */
@@ -1972,7 +1960,6 @@ void int10_FuncStatus() //REG_AH=1Bh
 		REG_AL=0x1B;
 		break;
 	default:
-		//LOG(LOG_INT10,LOG_ERROR)("1B:Unhandled call REG_BX %2X",reg_bx);
 		REG_AL=0;
 		break;
 	}

@@ -158,7 +158,6 @@ VGA_Type *VGAalloc(uint_32 custom_vram_size, int update_bios, byte extension) //
 	{
 		VGA->VRAM_size = VRAM_SIZE; //Try Default VRAM size!
 		update_bios |= (VGA->VRAM_size != size); //Size changed? Force BIOS update if so!
-		//dolog("zalloc","Allocating VGA VRAM default...");
 		VGA->VRAM = (byte *)zalloc(VGA->VRAM_size,"VGA_VRAM",getLock(LOCK_CPU)); //The VRAM allocated to 0!
 		if (!VGA->VRAM) //Still not OK?
 		{
@@ -170,7 +169,6 @@ VGA_Type *VGAalloc(uint_32 custom_vram_size, int update_bios, byte extension) //
 
 	if (update_bios) //Auto (for BIOS)
 	{
-		//dolog("BIOS","VGA requesting update VRAM size in BIOS...");
 		BIOS_Settings.VRAM_size = VGA->VRAM_size; //Update VRAM size in BIOS!
 	}
 
@@ -384,7 +382,6 @@ void setActiveVGA(VGA_Type *VGA) //Sets the active VGA chipset!
 	{
 		startVGA(); //Start the new VGA system!
 	}
-	//raiseError("VGA","SetActiveVGA: Started!");
 }
 
 void doneVGA(VGA_Type **VGA) //Cleans up after the VGA operations are done.

@@ -76,7 +76,6 @@ void dosoundtest()
 
 	#ifdef __DEBUG_SPEAKER
 	printmsg(0xF,"Debugging PC Speaker...\r\n");
-	//setSpeakerFrequency(0,261.626f);
 	setPITFrequency(2,(word)(1190000.0f/100.0f)); //Low!
 	PORT_OUT_B(0x61,(PORT_IN_B(0x61)|3)); //Enable the second speaker!
 	delay(1000000);
@@ -111,7 +110,6 @@ void dosoundtest()
 		if (playDROFile("music/ADLIB.DRO",1)) goto skipadlib;
 		adlibsetreg(0x20, 0x21); //Modulator multiple to 1!
 		adlibsetreg(0x40, 0x3F); //Modulator level about zero to produce a pure tone!
-		//adlibsetreg(0x40, 0x10); //Modulator level about 40dB!
 		adlibsetreg(0x60, 0xF7); //Modulator attack: quick; decay long!
 		adlibsetreg(0x80, 0xFF); //Modulator sustain: medium; release: medium
 		adlibsetreg(0xA0, 0x98); //Set voice frequency's LSB (it'll be a D#)!
@@ -164,19 +162,13 @@ void dosoundtest()
 	{
 		if (shuttingdown()) goto doshutdown;
 		stopTimers(1); //Stop ALL timers for testing speed!
-		//dolog("SF2","Sounding test central C...");
-		//printmsg(0xF,"MIDI Piano central C...");
 		//Don't worry about timing!
 		PORT_OUT_B(0x331, 0xFF); //Reset!
 		PORT_OUT_B(0x331, 0x3F); //Kick to UART mode!
 		PORT_OUT_B(0x330, 0xC0);
 		PORT_OUT_B(0x330, 0x00); //Piano
-		//PORT_OUT_B(0x330,20); //Organ!
-		//PORT_OUT_B(0x330,26); //Jazz guitar
-		//PORT_OUT_B(0x330, 73); //Flute!
 
 		//Apply drum kit!
-		//PORT_OUT_B(0x330, 0x00); //Default drum kit!
 
 		//Switch to the drum kit set!
 		PORT_OUT_B(0x330, 0xB0); //Controller change!

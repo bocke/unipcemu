@@ -536,7 +536,6 @@ void resetMMU()
 	if (__HW_DISABLED) return; //Abort!
 	doneMMU(); //We're doing a full reset!
 resetmmu:
-	//dolog("MMU","Initialising MMU...");
 	MMU.size = BIOS_GetMMUSize(); //Take over predefined: don't try to detect!
 
 	if (((EMULATED_CPU==CPU_80386) && is_XT) || (is_Compaq==1)) //Compaq or XT reserved area?
@@ -548,7 +547,6 @@ resetmmu:
 	}
 	if ((EMULATED_CPU <= CPU_NECV30) && (MMU.size>0x100000)) MMU.size = 0x100000; //Limit unsupported sizes by the CPU!
 
-	//dolog("zalloc","Allocating MMU memory...");
 	MMU.memory = (byte *)zalloc(MMU.size, "MMU_Memory", NULL); //Allocate the memory available for the segments
 	MMU.invaddr = 0; //Default: MMU address OK!
 	user_memory_used = 0; //Default: no memory used yet!
@@ -702,14 +700,11 @@ OPTINLINE byte applyMemoryHoles(uint_64 realaddress, byte isread)
 
 	if (unlikely(memoryhole)) //Memory hole?
 	{
-		// *nonexistant = 1; //We're non-existant!
 		if (BIOSROM_LowMemoryBecomesHighMemory && (memoryhole==1)) //Compaq remaps RAM from E0000-FFFFF to FE0000-FFFFFF.
 		{
 			if ((originaladdress>=0xE0000) && (originaladdress<=0xFFFFF)) //Low memory hole to remap to the available memory hole memory? This is the size that's defined in MMU_RESERVEDMEMORY!
 			{
-				//memloc = 2; //We're the second block instead! Don't need to assign, as it's unused!
 				originaladdress |= 0xF00000; //Patch to physical FE0000-FFFFFF reserved memory range to use!
-				// *realaddress = originaladdress; //This is what we're remapping to!
 			}
 		}
 		//Implemented (According to PCJs): Compaq has 384Kb of RAM at 0xFA0000-0xFFFFFF always. The rest of RAM is mapped low and above 16MB. The FE0000-FFFFFF range can be remapped to E0000-FFFFF, while it can be write-protected.
@@ -717,7 +712,6 @@ OPTINLINE byte applyMemoryHoles(uint_64 realaddress, byte isread)
 		{
 			if (unlikely(memoryprotect_FE0000 && (!isread) && (originaladdress>=0xFE0000))) //Memory protected?
 			{
-				// *nonexistant = 1; //We're non-existant!
 				return 1; //Abort!
 			}
 			//Reading or not protected?
@@ -725,7 +719,6 @@ OPTINLINE byte applyMemoryHoles(uint_64 realaddress, byte isread)
 			{
 				originaladdress += MMU.size-(0xFA0000+(0x100000-0xA0000)); //Patch to physical FE0000-FFFFFF reserved memory range to use, at the end of the physical memory!
 				realaddress = originaladdress; //Save our new location!
-				// *nonexistant = 3; //Reserved memory!
 				if (unlikely((originaladdress>=MMU.size))) //Overflow/invalid location?
 					return 1; //Invalid memory location!
 				//Valid chunk to address!
@@ -744,7 +737,6 @@ OPTINLINE byte applyMemoryHoles(uint_64 realaddress, byte isread)
 	}
 	else //Plain memory?
 	{
-		// *nonexistant = 0; //We're to be used directly!
 		originaladdress -= maskedaddress; //Patch into memory holes as required!
 		if (unlikely(((originaladdress>=MMU.effectivemaxsize)))) //Overflow/invalid location?
 		{
@@ -913,7 +905,6 @@ byte MMU_INTERNAL_directrb_debugger(uint_64 realaddress, word index, uint_32 *re
 	memory_dataaddr = originaladdress; //What is the cached data address!
 	memory_datasize = 1; //1 byte only!
 	debugger_logmemoryaccess(0, (uint_32)((ptrnum)&memorymapinfo[precalcval].cache[realaddress & MMU_BLOCKALIGNMENT]-(ptrnum)MMU.memory), *result, LOGMEMORYACCESS_RAM_LOGMMUALL | (((index & 0x20) >> 5) << LOGMEMORYACCESS_PREFETCHBITSHIFT)); //Log it!
-	//is_debugging |= 2; //Already gotten!
 specialreadcycledebugger:
 	debugger_logmemoryaccess(0, originaladdress, *result, LOGMEMORYACCESS_RAM | (((index & 0x20) >> 5) << LOGMEMORYACCESS_PREFETCHBITSHIFT)); //Log it!
 	if (unlikely((index != 0xFF) && bushandler)) //Don't ignore BUS?

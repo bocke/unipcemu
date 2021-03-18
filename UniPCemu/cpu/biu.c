@@ -763,8 +763,6 @@ byte CPU_readOP(byte *result, byte singlefetch) //Reads the operation (byte) at 
 		}
 		//Not enough data in the PIQ? Refill for the next data!
 		return 1; //Wait for the PIQ to have new data! Don't change EIP(this is still the same)!
-		//CPU_fillPIQ(); //Fill instruction cache with next data!
-		//goto PIQ_retry; //Read again!
 	}
 	if (checkMMUaccess(CPU_SEGMENT_CS, REG_CS, instructionEIP,3,getCPL(),!CODE_SEGMENT_DESCRIPTOR_D_BIT(),0)) //Error accessing memory?
 	{
@@ -1653,7 +1651,6 @@ void BIU_cycle_active286()
 
 byte BIU_getHLDA()
 {
-	//return (BIU[activeCPU].currentrequest != 0); //Not an active request?
 	return 1; //Always active!
 }
 
