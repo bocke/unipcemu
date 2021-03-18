@@ -554,11 +554,6 @@ void CPU_CIMUL(uint_32 base, byte basesize, uint_32 multiplicant, byte multiplic
 	if (CPU[activeCPU].temp3l.val64s== CPU[activeCPU].temp2l.val64s) FLAGW_OF(0); //Overflow flag is cleared when high word is a sign extension of the low word(values are equal)!
 	else FLAGW_OF(1);
 	FLAGW_CF(FLAG_OF); //OF=CF!
-	/*
-	FLAGW_SF((temp3.val64&0x8000000000000000ULL)>>63); //Sign!
-	FLAGW_PF(parity[temp3.val16&0xFF]); //Parity flag!
-	FLAGW_ZF((temp3.val64==0)?1:0); //Set the zero flag!	
-	*/
 	if ((EMULATED_CPU == CPU_8086) && CPU_getprefix(0xF3)) //REP used on 8086/8088?
 	{
 		CPU[activeCPU].temp2l.val64s = -CPU[activeCPU].temp2l.val64s; //Flip like acting as a fused NEG to the result!
@@ -2463,10 +2458,6 @@ void CPU_exec() //Processes the opcode at CS:EIP (386) or CS:IP (8086).
 		//Prepare for the next (fetched or repeated) instruction to start executing!
 		CPU[activeCPU].instructionfetch.CPU_isFetching = CPU[activeCPU].instructionfetch.CPU_fetchphase = 1; //Start fetching the next instruction when available(not repeating etc.)!
 		//Handle REP instructions post-instruction next!
-		/*if (gotREP && !CPU[activeCPU].faultraised)
-		{
-			CPU[activeCPU].cycles_OP += 2; //finish rep! Both blocking and non-blocking!
-		}*/
 		if (CPU[activeCPU].gotREP && !CPU[activeCPU].faultraised && !CPU[activeCPU].blockREP) //Gotten REP, no fault/interrupt has been raised and we're executing?
 		{
 			if (unlikely(CPU[activeCPU].REPZ && (CPU_getprefix(0xF2) || CPU_getprefix(0xF3)))) //REP(N)Z used?

@@ -228,10 +228,6 @@ void GPUswitchvideomode(word mode); //Prototype!
 void DoDebugVGAGraphics(word mode, word xsize, word ysize, uint_32 maxcolor, int allequal, uint_32 centercolor, byte usecenter, byte screencapture)
 {
 	stopTimers(0); //Stop all timers!
-	/*
-	REG_AX = (word)mode; //Switch to graphics mode!
-	BIOS_int10();
-	*/
 
 	GPUswitchvideomode(mode); //Switch to said mode!
 
@@ -300,16 +296,6 @@ void DoDebugVGAGraphics(word mode, word xsize, word ysize, uint_32 maxcolor, int
 	GPU_textgotoxy(frameratesurface,33,2); //Goto Rendering... text!
 	GPU_textprintf(frameratesurface,RGB(0xFF,0xFF,0xFF),RGB(0x00,0x00,0x00),"Rendered.   ",mode);
 	GPU_text_releasesurface(frameratesurface);
-
-	/*
-	startTimers(0); //Start timers again!
-	VGA_waitforVBlank(); //Make sure we're ending drawing!
-	VGA_waitforVBlank(); //Make sure we've drawn the picture!
-	if (screencapture) //Screen capture?
-	{
-		debugTextModeScreenCapture(); //Debug a screen capture!
-	}
-	*/
 	
 	//dolog("VGA", "CRTC of mode %02X", mode); //Log what mode we're dumping!
 	//VGA_LOGCRTCSTATUS(); //Dump the current CRTC status!
@@ -388,12 +374,6 @@ void DoDebugTextMode(byte waitforever) //Do the text-mode debugging!
 		MMU_wb(-1,0xB800,27,0xE,0);
 		MMU_wb(-1,0xB800,28,'o',0);
 		MMU_wb(-1,0xB800,29,0xF,0);
-		/*
-		MMU_wb(-1,0xB800,156,'-');
-		MMU_wb(-1,0xB800,157,0xF);
-		MMU_wb(-1,0xB800,158,'E');
-		MMU_wb(-1,0xB800,159,0xF); //Green at the full width!
-		*/ //80x25
 		//SCREEN_CAPTURE = 2; //Enable a screen capture please, on the second frame (first is incomplete, since we've changed VRAM)!
 		
 		GPU_text_locksurface(frameratesurface);

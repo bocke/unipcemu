@@ -252,13 +252,6 @@ void CPU286_OP0F00() //Various extended 286+ instructions GRP opcode.
 			sbyte loadresult;
 			if ((loadresult = LOADDESCRIPTOR(-1, CPU[activeCPU].oper1, &verdescriptor,0))==1) //Load the descriptor!
 			{
-				/*
-				if ((loadresult = touchSegment(-1, oper1, &verdescriptor, 0)) != 1) //Errored out during touching?
-				{
-					goto failedverr286;
-				}
-				*/
-
 				if ((CPU[activeCPU].oper1 & 0xFFFC) == 0) //NULL segment selector?
 				{
 					goto invalidresultVERR286;
@@ -312,12 +305,6 @@ void CPU286_OP0F00() //Various extended 286+ instructions GRP opcode.
 			sbyte loadresult;
 			if ((loadresult = LOADDESCRIPTOR(-1, CPU[activeCPU].oper1, &verdescriptor,0))==1) //Load the descriptor!
 			{
-				/*
-				if ((loadresult = touchSegment(-1, oper1, &verdescriptor, 0)) != 1) //Errored out during touching?
-				{
-					goto failedverw286;
-				}
-				*/
 				if ((CPU[activeCPU].oper1 & 0xFFFC) == 0) //NULL segment selector?
 				{
 					goto invalidresultVERW286;
@@ -596,12 +583,6 @@ void CPU286_OP0F02() //LAR /r
 	CPUPROT1
 		if ((loadresult = LOADDESCRIPTOR(-1, CPU[activeCPU].oper1, &verdescriptor,0))==1) //Load the descriptor!
 		{
-			/*
-			if ((loadresult = touchSegment(-1, oper1, &verdescriptor, 0)) != 1) //Errored out during touching?
-			{
-				goto failedlar286;
-			}
-			*/
 			if ((CPU[activeCPU].oper1 & 0xFFFC) == 0) //NULL segment selector?
 			{
 				goto invalidresultLAR286;
@@ -695,12 +676,6 @@ void CPU286_OP0F03() //LSL /r
 	CPUPROT1
 		if ((loadresult = LOADDESCRIPTOR(-1, CPU[activeCPU].oper1, &verdescriptor,0))==1) //Load the descriptor!
 		{
-			/*
-			if ((loadresult = touchSegment(-1, oper1, &verdescriptor, 0)) != 1) //Errored out during touching?
-			{
-				goto failedlsl286;
-			}
-			*/
 			if ((CPU[activeCPU].oper1 & 0xFFFC) == 0) //NULL segment selector?
 			{
 				goto invalidresultLSL286;

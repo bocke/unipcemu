@@ -243,12 +243,6 @@ byte debugger_forceimmediatelogging = 0; //Force immediate logging?
 
 void debugger_logmemoryaccess(byte iswrite, uint_64 address, byte value, byte type)
 {
-	/*
-	if ((DEBUGGER_LOG==DEBUGGERLOG_ALWAYS_COMMONLOGFORMAT) || (DEBUGGER_LOG==DEBUGGERLOG_ALWAYS_DURINGSKIPSTEP_COMMONLOGFORMAT) || (DEBUGGER_LOG==DEBUGGERLOG_DEBUGGING_COMMONLOGFORMAT)) //Common log format?
-	{
-		return; //No memory access logging, we're disabled for now!
-	}
-	*/
 	if (activeCPU) return; //Not CPU #0?
 	if (advancedlog == 0) //Not logging advanced?
 	{

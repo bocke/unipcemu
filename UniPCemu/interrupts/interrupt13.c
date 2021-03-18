@@ -375,13 +375,6 @@ finishupw:
 
 //Now the functions!
 
-/*Structure used in function description:*/
-//Information
-//CPU.registers
-/*
-Return values
-*/
-
 void int13_00() //OK!
 {
 //Reset Disk Drive

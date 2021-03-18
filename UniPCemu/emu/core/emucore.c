@@ -104,15 +104,6 @@ extern byte allow_debuggerstep; //Disabled by default: needs to be enabled by ou
 //Log when running bogus(empty) memory?
 //#define LOG_BOGUS 2
 
-/*
-
-It's the row:
-0xF0001671 CALL DDS (AT BIOS)
-0xF000E1CC Allow NMI interrupts
-
-which is at the first row of the IBM AT POST3 function.
-*/
-
 //CPU default clock speeds (in Hz)!
 
 //The clock speed of the 8086 (~14.31818MHz divided by 3)!
@@ -561,12 +552,7 @@ void initEMU(int full) //Init!
 
 	//Check if we're allowed to use full Sound Blaster emulation!
 	useSoundBlaster = BIOS_Settings.useSoundBlaster; //Sound blaster used?
-	/*
-	if ((useMPU==0) && useSoundBlaster) //Sound Blaster without soundfont?
-	{
-		useSoundBlaster = 0; //No sound blaster to emulate! We can't run without a soundfont!
-	}
-	*/ //Seperate the Sound Blaster from the MPU: we're allowed to be used without MPU as well!
+	//Seperate the Sound Blaster from the MPU: we're allowed to be used without MPU as well!
 
 	if (useSoundBlaster) //Sound Blaster used?
 	{

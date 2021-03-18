@@ -239,10 +239,7 @@ byte Tseng34K_writeIO(word port, byte val)
 		if (((et4k_reg(et34kdata,3d4,34) & 0xA0) == 0x80) || (getActiveVGA()->enable_SVGA==2)) //Enable emulation and translation disabled?
 		{
 			et34kdata->CGAColorSelectRegister = val; //Save the register to be read!
-			/*if (et34kdata->ExtendedFeatureControl & 0x80) //Enable NMI?
-			{
-				//Execute an NMI!
-			}*/ //Doesn't have an NMI?
+			//Doesn't have an NMI?
 			return 1; //Handled!
 		}
 		return 0; //Not handled!
@@ -439,20 +436,6 @@ byte Tseng34K_writeIO(word port, byte val)
 			}
 			//Now, apply the bus width
 			--memsize; //Get wrapping mask!
-			/*
-			if (memsize>et34k(getActiveVGA())->memwrap_init) //Too much or autodetection probing?
-			{
-				if ((getActiveVGA()->enable_SVGA == 1) && et34k(getActiveVGA())->tsengExtensions) //ET4000/W32 variant?
-				{
-					val = (val & ~0x9) | (et34k(getActiveVGA())->et4k_reg37_init & 0x9); //Apply max!
-				}
-				else
-				{
-					val = (val & ~0xB) | (et34k(getActiveVGA())->et4k_reg37_init & 0xB); //Apply max!
-				}
-				memsize = et34k(getActiveVGA())->memwrap_init; //Back to the original value!
-			}
-			*/ //Disable probing like this!
 				
 			et34kdata->store_et4k_3d4_37 = val;
 			//et34k(getActiveVGA())->memwrap = memsize; //What to wrap against!
@@ -802,10 +785,7 @@ byte Tseng34K_readIO(word port, byte *result)
 		{
 			*result = et34kdata->MDAModeRegister; //Save the register to be read!
 			SETBITS(*result, 6, 1, GETBITS(et34kdata->herculescompatibilitymode,1,1));
-			/*if (et34kdata->ExtendedFeatureControl & 0x80) //Enable NMI?
-			{
-				//Execute an NMI!
-			}*/ //Doesn't do NMIs?
+			//Doesn't do NMIs?
 			return 1; //Handled!
 		}
 		return 0; //Not handled!
@@ -815,10 +795,7 @@ byte Tseng34K_readIO(word port, byte *result)
 		{
 			*result = et34kdata->CGAModeRegister; //Save the register to be read!
 			SETBITS(*result, 6, 1, GETBITS(et34kdata->herculescompatibilitymode, 1, 1));
-			/*if (et34kdata->ExtendedFeatureControl & 0x80) //Enable NMI?
-			{
-			//Execute an NMI!
-			}*/ //Doesn't do NMIs?
+			//Doesn't do NMIs?
 			return 1; //Handled!
 		}
 		return 0; //Not handled!
@@ -826,10 +803,7 @@ byte Tseng34K_readIO(word port, byte *result)
 		if ((et4k_reg(et34kdata, 3d4, 34) & 0xA0) == 0x80) //Enable emulation and translation disabled?
 		{
 			*result = et34kdata->CGAColorSelectRegister; //Save the register to be read!
-			/*if (et34kdata->ExtendedFeatureControl & 0x80) //Enable NMI?
-			{
-			//Execute an NMI!
-			}*/ //Doesn't do NMIs?
+			//Doesn't do NMIs?
 			return 1; //Handled!
 		}
 		return 0; //Not handled!
@@ -916,14 +890,7 @@ byte Tseng34K_readIO(word port, byte *result)
 		if (!GETBITS(getActiveVGA()->registers->ExternalRegisters.MISCOUTPUTREGISTER,0,1)) goto finishinput; //Block: we're a mono mode addressing as color!
 		readcrtvalue:
 	//Bitu read_p3d5_et4k(Bitu reg,Bitu iolen) {
-		/*
-		if (
-			((!et34kdata->extensionsEnabled) && (getActiveVGA()->enable_SVGA == 1)) && //ET4000 blocks this without the KEY?
-			(!((getActiveVGA()->registers->CRTControllerRegisters_Index == 0x33) || (getActiveVGA()->registers->CRTControllerRegisters_Index == 0x35))) //Unprotected registers for reads that can be read without the key?
-			&& (getActiveVGA()->registers->CRTControllerRegisters_Index>0x18) //For the ET4000 range of registers?
-			)
-			return 2; //Float the bus!
-		*/
+		//Don't block when the KEY isn't set?
 		switch(getActiveVGA()->registers->CRTControllerRegisters_Index)
 		{
 		//ET4K
@@ -1082,7 +1049,6 @@ byte Tseng34K_readIO(word port, byte *result)
 		switchval = ~switchval; //Reverse the switch for EGA+!
 		SETBITS(getActiveVGA()->registers->ExternalRegisters.INPUTSTATUS0REGISTER, 4, 1, (switchval & 1)); //Depends on the switches. This is the reverse of the actual switches used! Originally stuck to 1s, but reported as 0110!
 		*result = getActiveVGA()->registers->ExternalRegisters.INPUTSTATUS0REGISTER; //Give the register!
-		//*result &= VGA_RegisterWriteMasks_InputStatus0[(getActiveVGA()->enable_SVGA == 3) ? 1 : 0]; //Apply the write mask to the data written to the register!
 		if ((!et34kdata->extensionsEnabled) && (getActiveVGA()->enable_SVGA == 1)) //Disabled on ET4000?
 		{
 			*result &= ~0x60; //Disable reading of the extended register!
@@ -2185,12 +2151,6 @@ byte Tseng4k_tickAccelerator_step(byte noqueue)
 	//Now, determine and apply the Raster Operation!
 	operationx = et34k(getActiveVGA())->W32_ACLregs.Xposition; //X position to work on!
 	operationx &= 7; //Wrap!
-	/*
-	if (et34k(getActiveVGA())->W32_ACLregs.XYdirection&1) //Negative X?
-	{
-		operationx = 7-operationx; //Reversed order!
-	}
-	*/
 	ROP = et34k(getActiveVGA())->W32_ACLregs.BGFG_RasterOperation[((mixmap>>operationx)&1)];
 	result = 0; //Initialize the result!
 	ROPbits = 0x01; //What bit to process!
@@ -2396,11 +2356,6 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 		{
 			VGA->precalcs.MemoryClockDivide = 0; //Do not divide!
 		}
-		/*
-		if (et34k_tempreg & 0x80) //VGA-compatible settings instead of EGA-compatible settings?
-		{
-			goto VGAcompatibleMCLK;
-		}*/
 		VGAROM_mapping = ((et34k_tempreg&8)>>2)|((et34k_tempreg&0x20)>>5); //Bit 3 is the high bit, Bit 5 is the low bit!
 	}
 
@@ -3517,24 +3472,8 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 		{
 			pixelboost = 0; //Actual pixel boost!
 			possibleboost = GETBITS(et34k_tempreg, 0, 0xF); //Possible value, to be determined!
-			/*
-			if ((GETBITS(VGA->registers->SequencerRegisters.REGISTERS.CLOCKINGMODEREGISTER, 0, 1) == 0) && (VGA->precalcs.graphicsmode)) //Different behaviour with 9 pixel modes?
-			{
-				if (possibleboost >= 8) //No shift?
-				{
-					possibleboost = 0; //No shift!
-				}
-				else //Less than 8?
-				{
-					++possibleboost; //1 more!
-				}
-			}
-			else //Only 3 bits?
-			{
-			*/
 			//Only 8 pixel width? Only 3 bits are available for storage anyways!
-				possibleboost &= 0x7; //Repeat the low values!
-			//}
+			possibleboost &= 0x7; //Repeat the low values!
 			pixelboost = possibleboost; //Enable normally!
 			VGA->precalcs.SpriteCRTCpixelpannning = pixelboost; //No pixel panning possible!
 		}

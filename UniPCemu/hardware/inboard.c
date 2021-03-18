@@ -122,10 +122,6 @@ void initInboard(byte initFullspeed) //Initialize the Inboard chipset, if needed
 		MoveLowMemoryHigh = 0; //Default: disable the HMA memory and enable the memory hole and BIOS ROM!
 		if (MMU.size>=0x100000) //1MB+ detected?
 		{
-			/*
-			extendedmemory = (MMU.size-0xA0000); //The amount of extended memory!
-			MMU.maxsize = 0xA0000+(extendedmemory&0xFFF00000); //Only take extended memory in chunks of 1MB!
-			*/
 			MMU.maxsize = (MMU.size&0xFFF00000); //Round memory down to 1MB chunks!
 			if (MMU.maxsize==0) MMU.maxsize = 0x100000; //1MB at least!
 			MMU.maxsize -= (0x100000-0xA0000); //Substract reserved memory to be inaddressable!

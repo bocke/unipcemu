@@ -144,14 +144,8 @@ struct {
 OPTINLINE bool BIOS_AddKeyToBuffer(Bit16u code) {
 	Bit16u start,end,head,tail,ttail;
 	if (mem_readb(BIOS_KEYBOARD_FLAGS2)&8) return true;
-	/*if (machine==MCH_PCJR) {
-		/ should be done for cga and others as well, to be tested /
-		start=0x1e;
-		end=0x3e;
-	} else {*/
-		start=mem_readw(BIOS_KEYBOARD_BUFFER_START);
-		end	 =mem_readw(BIOS_KEYBOARD_BUFFER_END);
-	//}
+	start=mem_readw(BIOS_KEYBOARD_BUFFER_START);
+	end	 =mem_readw(BIOS_KEYBOARD_BUFFER_END);
 	head =mem_readw(BIOS_KEYBOARD_BUFFER_HEAD);
 	tail =mem_readw(BIOS_KEYBOARD_BUFFER_TAIL);
 	ttail=tail+2;
@@ -172,14 +166,8 @@ OPTINLINE void add_key(Bit16u code) {
 
 OPTINLINE bool get_key(Bit16u *code) {
 	Bit16u start,end,head,tail,thead;
-	/*if (machine==MCH_PCJR) {
-		/ should be done for cga and others as well, to be tested /
-		start=0x1e;
-		end=0x3e;
-	} else {*/
-		start=mem_readw(BIOS_KEYBOARD_BUFFER_START);
-		end	 =mem_readw(BIOS_KEYBOARD_BUFFER_END);
-	//}
+	start=mem_readw(BIOS_KEYBOARD_BUFFER_START);
+	end	 =mem_readw(BIOS_KEYBOARD_BUFFER_END);
 	head =mem_readw(BIOS_KEYBOARD_BUFFER_HEAD);
 	tail =mem_readw(BIOS_KEYBOARD_BUFFER_TAIL);
 
@@ -618,16 +606,8 @@ void BIOS_SetupKeyboard() {
 	InitBiosSegment();
 
 	/* Allocate/setup a callback for int 0x16 and for standard IRQ 1 handler */
-	/*call_int16=CALLBACK_Allocate();	
-	CALLBACK_Setup(call_int16,&INT16_Handler,CB_INT16,"Keyboard");
-	RealSetVec(0x16,CALLBACK_RealPointer(call_int16));
-	*/
 	addCBHandler(CB_DOSBOX_INT16,&INT16_Handler,0x16); //Register our handler our way!
 
-	/*call_irq1=CALLBACK_Allocate();	
-	CALLBACK_Setup(call_irq1,&IRQ1_Handler,CB_IRQ1,Real2Phys(BIOS_DEFAULT_IRQ1_LOCATION),"IRQ 1 Keyboard");
-	RealSetVec(0x09,BIOS_DEFAULT_IRQ1_LOCATION);
-	*/
 	addCBHandler(CB_DOSBOX_IRQ1,&IRQ1_Handler,(uint_32)BIOS_DEFAULT_IRQ1_LOCATION);
 	Dosbox_RealSetVec(0x09,(uint_32)BIOS_DEFAULT_IRQ1_LOCATION); //Our pointer!
 
@@ -649,75 +629,10 @@ void BIOS_SetupKeyboard() {
 	//	out 0x20, al
 	//	pop ax
 	//	iret
-
-	/*if (machine==MCH_PCJR) {
-		call_irq6=CALLBACK_Allocate();
-		CALLBACK_Setup(call_irq6,NULL,CB_IRQ6_PCJR,"PCJr kb irq");
-		RealSetVec(0x0e,CALLBACK_RealPointer(call_irq6));
-		// pseudocode for CB_IRQ6_PCJR:
-		//	push ax
-		//	in al, 0x60
-		//	cmp al, 0xe0
-		//	je skip
-		//	int 0x09
-		//	label skip:
-		//	cli
-		//	mov al, 0x20
-		//	out 0x20, al
-		//	pop ax
-		//	iret
-	}*/
 }
-
-/*Handler int16_functions[0x13] =
-{
-	int16_readkey, //0x00
-	int16_querykeyb_status_previewkey, //0x01
-	int16_querykeyb_shiftflags, //0x02
-	int16_set_typeamaticrate_and_delay, //0x03
-	NULL, //0x04: reserved
-	int16_storekeydata, //0x05
-	NULL, //0x06
-	NULL, //0x07
-	NULL, //0x08
-	NULL, //0x09
-	NULL, //0x0A
-	NULL, //0x0B
-	NULL, //0x0C
-	NULL, //0x0D
-	NULL, //0x0E
-	NULL, //0x0F
-	NULL, //int16_readextendedkeybinput, //0x10
-	NULL, //int16_queryextendedkeybstatus, //0x11
-	NULL //int16_queryextendedkeybshiftflags //0x12
-};*/
 
 void BIOS_int16()
 {
-//Not implemented yet!
-	/*int dohandle = 0;
-	dohandle = (REG_AH<(sizeof(int16_functions)/sizeof(Handler))); //handle?
-	if (CPU.blocked) //No output?
-	{
-		dohandle = 0; //No handling!
-	}
-
-	if (!dohandle) //Not within list to execute?
-	{
-		REG_AX = 0; //Break!
-	}
-	else //To handle?
-	{
-		if (int16_functions[REG_AH]) //Set?
-		{
-			int16_functions[REG_AH](); //Run the function!
-		}
-		else
-		{
-			REG_AX = 0; //Error: unknown command!
-		}
-	}*/
-
 	//Passthrough to dosbox handler!
 	INT16_Handler(); //Execute int16 handler of DOSBox!
 }

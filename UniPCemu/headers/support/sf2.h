@@ -326,21 +326,7 @@ enum sfGenerator
 //Our own defines!
 
 /*
-//ID lookup generators.
-#define GEN_INSTRUMENT 41
-#define GEN_SAMPLEID 53
-
-//Different kinds of tuning for getting the right tone of an sample.
-//Coarse tune: in semitones
-#define GEN_COARSETUNE 51
-//Fine tune: in cents
-#define GEN_FINETUNE 52
-//Scale tuning: How much does the MIDI key number affect pitch. 0=None, 100=Full semitone.
-#define GEN_SCALETUNING 56
-
-//Loop modes:
-#define GEN_SAMPLEMODES 54
-//Different sample modes:
+Different sample modes:
 */
 #define GEN_SAMPLEMODES_NOLOOP 0
 #define GEN_SAMPLEMODES_LOOP 1

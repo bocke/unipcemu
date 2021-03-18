@@ -659,12 +659,6 @@ OPTINLINE void MMU_INTERNAL_INVMEM(uint_64 originaladdress, uint_64 realaddress,
 	dolog("MMU","Invalid memory location addressed: %08X(=>%08X), Is write: %u, value on write: %02X index:%u, Memory hole: %u",originaladdress,realaddress,iswrite,writevalue,index,ismemoryhole);
 	#endif
 	return; //Don't ever give NMI's from memory!
-	/*
-	if (execNMI(1)) //Execute an NMI from memory!
-	{
-		MMU.invaddr = 1; //Signal invalid address!
-	}
-	*/
 }
 
 //isread: 0=write, 1=read, 3=Instruction read
@@ -701,9 +695,7 @@ OPTINLINE byte applyMemoryHoles(uint_64 realaddress, byte isread)
 	{
 		maskedaddress = memorymapinfo[isread].memorylocpatch; //Load the patch address!
 		//Now that our cache is loaded with relevant data, start processing it!
-		/*memloc =*/ memoryhole = memorymapinfo[isread].memLocHole; //Load it to split it into our two results!
-		//memloc &= 0xF; //The location of said memory!
-		//memoryhole >>= 4; //The map number that it's in, when it's not a hole!
+		memoryhole = memorymapinfo[isread].memLocHole; //Load it to split it into our two results!
 	}
 
 	memorymapinfo[isread].byteaddr = originaladdress; //New loaded cached address!
@@ -731,10 +723,10 @@ OPTINLINE byte applyMemoryHoles(uint_64 realaddress, byte isread)
 			//Reading or not protected?
 			if (likely(((EMULATED_CPU==CPU_80386) && is_XT) || (is_Compaq==1))) //Compaq or XT reserved area?
 			{
-				/**realaddress*/ originaladdress += MMU.size-(0xFA0000+(0x100000-0xA0000)); //Patch to physical FE0000-FFFFFF reserved memory range to use, at the end of the physical memory!
+				originaladdress += MMU.size-(0xFA0000+(0x100000-0xA0000)); //Patch to physical FE0000-FFFFFF reserved memory range to use, at the end of the physical memory!
 				realaddress = originaladdress; //Save our new location!
 				// *nonexistant = 3; //Reserved memory!
-				if (unlikely((originaladdress>=MMU.size) /*|| ((originaladdress>=MMU.effectivemaxsize) && (nonexistant!=3))*/ /*|| (nonexistant==1)*/ )) //Overflow/invalid location?
+				if (unlikely((originaladdress>=MMU.size))) //Overflow/invalid location?
 					return 1; //Invalid memory location!
 				//Valid chunk to address!
 
@@ -754,13 +746,13 @@ OPTINLINE byte applyMemoryHoles(uint_64 realaddress, byte isread)
 	{
 		// *nonexistant = 0; //We're to be used directly!
 		originaladdress -= maskedaddress; //Patch into memory holes as required!
-		if (unlikely(/*(realaddress>=MMU.size) ||*/ ((originaladdress>=MMU.effectivemaxsize) /*&& (nonexistant!=3)*/ ) /*|| (nonexistant==1)*/ )) //Overflow/invalid location?
+		if (unlikely(((originaladdress>=MMU.effectivemaxsize)))) //Overflow/invalid location?
 		{
 			return 1; //Not mapped or invalid!
 		}
 		//Load the new cache address now!
 		memorymapinfo[isread].cache = &MMU.memory[originaladdress]; //Cached address for the memory!
-		if (unlikely(/*(realaddress>=MMU.size) ||*/ (((originaladdress|MMU_BLOCKALIGNMENT)>=MMU.effectivemaxsize) /*&& (nonexistant!=3)*/ ) /*|| (nonexistant==1)*/ )) //Overflow/invalid location within block?
+		if (unlikely((((originaladdress|MMU_BLOCKALIGNMENT)>=MMU.effectivemaxsize)))) //Overflow/invalid location within block?
 		{
 			memorymapinfo[isread].byteaddr |= MMU_BLOCKALIGNMENT; //Make the overflow proper by handling it properly checking all addresses in it!
 		}

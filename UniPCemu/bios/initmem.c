@@ -65,24 +65,7 @@ void generateDPT(word offset, byte disk)
 	EMU_BIOS[offset] = 0; //Head unload time!
 	EMU_BIOS[offset+1] = 0; //Head load time, DMA mode!
 	EMU_BIOS[offset+2] = 0; //Timer ticks to wait till motor poweroff!
-	/*switch (floppy_bps(disksize(mounteddrives[disk])))
-	{
-		case 128:
-			MMU_wb(CB_ISCallback()?CPU_segment_index(CPU_SEGMENT_DS):-1,segment,offset+3,0); //Bytes per sector (0=128,1=256,2=512,3=1024)!
-		case 256:
-			MMU_wb(CB_ISCallback()?CPU_segment_index(CPU_SEGMENT_DS):-1,segment,offset+3,1); //Bytes per sector (0=128,1=256,2=512,3=1024)!
-		case 512:
-			MMU_wb(CB_ISCallback()?CPU_segment_index(CPU_SEGMENT_DS):-1,segment,offset+3,2); //Bytes per sector (0=128,1=256,2=512,3=1024)!
-			break;
-		case 1024:
-			MMU_wb(CB_ISCallback()?CPU_segment_index(CPU_SEGMENT_DS):-1,segment,offset+3,2); //Bytes per sector (0=128,1=256,2=512,3=1024)!
-			break;
-			
-		default: //Unknown? Default to 512 BPS.
-		*/
-			EMU_BIOS[offset+3] = 2; //Bytes per sector (0=128,1=256,2=512,3=1024)!
-	/*		break;		
-	}*/
+	EMU_BIOS[offset+3] = 2; //Bytes per sector (0=128,1=256,2=512,3=1024)!
 	EMU_BIOS[offset+4] = floppy_spt(disksize(mounteddrives[disk])); //SPT!
 	EMU_BIOS[offset+5] = 0; //Gap width between sectors!
 	EMU_BIOS[offset+6] = 0; //DTL (Data Transfer Length) max transfer when length not set
@@ -109,19 +92,6 @@ void initMEM() //Initialise memory for reset!
 		MMU_ww(-1,0x40,(i<<1)|8,0,0); //Not used LPT port address!
 	}
 
-	/*
-		byte BootFloppyInstalled : 1; //Boot floppy installed (0=Not installed, 1=Installed)
-		byte MathCOProcessorInstalled : 1; //Match Coprocessor installed (1=Installed, 0=Not installed)
-		byte PS2MouseInstalled : 1; //PS/2 Mouse installed (1=Installed, 0=Not installed)
-		byte NotUsedOnPS2 : 1; //Not used on PS/2
-		byte VideoMode : 2; //00: EGA+; 1=color 40x25, 2=color 80x25, 3=Mono 80x25
-		byte FloppyDrives : 2; //Number of floppy drives installed (plus 1 (0=1,1=2,2=3,3=4 drives)
-		byte NoDMAInstalled : 1; //0 if DMA installed.
-		byte SerialPorts : 3; //Number of serial ports installed (0+).
-		byte GameAdapterInstalled : 1; //1 if installed
-		byte InternalPS2Modem : 1; //1 if installed.
-		byte ParallelPorts : 2; //Number of parallel ports installed (00=1;01=2;03=3)
-	*/ //Equipment word definition!
 	word eq=0;
 
 	//eq.ParallelPorts = 0; //Ammount!

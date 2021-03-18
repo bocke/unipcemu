@@ -542,29 +542,6 @@ void addCBHandler(byte type, Handler CBhandler, uint_32 intnr) //Add a callback!
 		EMU_BIOS[incoffset] =(Bit8u)0xcb;		//An RETF Instruction
 		//return (use_cb?0x10:0x0c);
 		break;
-	/*case CB_DOSBOX_IRQ6_PCJR:	// pcjr keyboard interrupt
-		EMU_BIOS[dataoffset+0x00,(Bit8u)0x50);			// push ax
-		write_BIOSw(dataoffset+0x01,(Bit16u)0x60e4);		// in al, 0x60
-		write_BIOSw(dataoffset+0x03,(Bit16u)0xe03c);		// cmp al, 0xe0
-		if (use_cb) {
-			write_BIOSw(dataoffset+0x05,(Bit16u)0x0674);	// je skip
-			EMU_BIOS[dataoffset+0x07,(Bit8u)0xFE);		//GRP 4
-			EMU_BIOS[dataoffset+0x08,(Bit8u)0x38);		//Extra Callback instruction
-			write_BIOSw(dataoffset+0x09,(Bit16u)curhandler);			//The immediate word
-			physAddress+=4;
-		} else {
-			write_BIOSw(dataoffset+0x05,(Bit16u)0x0274);	// je skip
-		}
-		write_BIOSw(dataoffset+0x07,(Bit16u)0x09cd);		// int 9
-		// jump here to (skip):
-		EMU_BIOS[dataoffset+0x09,(Bit8u)0xfa);			// cli
-		write_BIOSw(dataoffset+0x0a,(Bit16u)0x20b0);		// mov al, 0x20
-		write_BIOSw(dataoffset+0x0c,(Bit16u)0x20e6);		// out 0x20, al
-		EMU_BIOS[dataoffset+0x0e,(Bit8u)0x58);			// pop ax
-		EMU_BIOS[dataoffset+0x0f,(Bit8u)0xcf);			//An IRET Instruction
-		//return (use_cb?0x14:0x10);
-		break;
-	*/
 	case CB_DOSBOX_MOUSE:
 		CB_createcallback(0,0,&dataoffset); //Create special zero callback!
 

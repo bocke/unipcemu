@@ -192,21 +192,11 @@ void dosoundtest()
 			PORT_OUT_B(0x330, 0x90); //First tone ON!
 			PORT_OUT_B(0x330, notes[i]); //This note...
 			PORT_OUT_B(0x330, 100); //Is sounded at AVG velocity!!
-			/*
-			PORT_OUT_B(0x330,0xB0); //Controller!
-			PORT_OUT_B(0x330,0x40); //Hold pedal!
-			PORT_OUT_B(0x330,0x40); //Enabled!
-			*/
 			delay(10000); //Wait 1 second!
 			if (shuttingdown()) goto doshutdown;
 			PORT_OUT_B(0x330, 0x80); //Note off!
 			PORT_OUT_B(0x330, notes[i]); //Previous note!
 			PORT_OUT_B(0x330, 100); //Normally off!
-			/*
-			PORT_OUT_B(0x330,0xB0); //Controller!
-			PORT_OUT_B(0x330,0x40); //Hold pedal!
-			PORT_OUT_B(0x330,0x00); //Disabled!
-			*/
 			delay(1000000); //Wait 1 second!
 			if (shuttingdown()) goto doshutdown;
 			++i; //Next note!

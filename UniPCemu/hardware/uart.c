@@ -225,12 +225,6 @@ byte getCOMport(word port) //What COM port?
 	return ((result<allocatedUARTs) && (result<4))?result:4; //Invalid by default!; //Give the COM port or 4 for unregistered COM port!
 }
 
-/*
-
-Processed until http://en.wikibooks.org/wiki/Serial_Programming/8250_UART_Programming#Modem_Control_Register
-
-*/
-
 //Offset calculator!
 #define COMPORT_offset(port) (port&0x7)
 

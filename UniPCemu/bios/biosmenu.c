@@ -656,14 +656,6 @@ byte runBIOS(byte showloadingtext) //Run the BIOS menu (whether in emulation or 
 
 /*
 
-
-Now comes our menus:
-
-
-*/
-
-/*
-
 First all global stuff:
 
 */
@@ -707,11 +699,6 @@ void BIOSClearScreen() //Resets the BIOS's screen!
 	GPU_text_releasesurface(frameratesurface);
 	char BIOSText[] = "UniPCemu Settings"; //The BIOS's text!
 	//cursorXY(0,0,0); //Goto top of the screen!
-
-	EMU_textcolor(BIOS_ATTR_TEXT); //Plain text!
-	/*REG_AX = VIDEOMODE_EMU; //Video mode 80x25 16 colors!
-	BIOS_int10(); //Switch video mode+Clearscreen!
-	*/
 	
 	EMU_textcolor(BIOSTOP_ATTR); //TOP FONT
 	clearrow(0); //Clear first row!
@@ -1299,15 +1286,6 @@ void hdd_information(char *filename) //Displays information about a harddisk to 
 int BIOS_dummyfile=0;
 void BIOS_noentries(sword x, sword y, char* message)
 {
-	/*
-	EMU_locktext();
-	EMU_gotoxy(x, y); //Goto 4th row!
-	EMU_textcolor(BIOS_ATTR_INACTIVE); //We're using inactive color for label!
-	GPU_EMU_printscreen(x, y, "No files present"); //Show selection init!
-	EMU_unlocktext();
-	delay(2000000); //Wait 2 seconds!
-	*/
-
 	numlist = 0; //Reset amount of files!
 	clearList(); //Clear the list!
 	addList(message); //Add the message as the only item!
@@ -1602,9 +1580,6 @@ void BIOS_ejectdisk(int disk) //Eject an ejectable disk?
 		{
 			if (ATA_allowDiskChange(disk,2)) //Allowed to be changed?
 			{
-				/*
-				safestrcpy(BIOS_Settings.cdrom0,sizeof(BIOS_Settings.cdrom0), ""); //Clear the option!
-				*/
 				//Don't actually unmount it, just leave the drive open to be changed!
 				ejected = 1; //We're ejected!
 			}
@@ -1615,9 +1590,6 @@ void BIOS_ejectdisk(int disk) //Eject an ejectable disk?
 		{
 			if (ATA_allowDiskChange(disk,2)) //Allowed to be changed?
 			{
-				/*
-				safestrcpy(BIOS_Settings.cdrom1,sizeof(BIOS_Settings.cdrom1), ""); //Clear the option!
-				*/
 				//Don't actually unmount it, just leave the drive open to be changed!
 				ejected = 1; //We're ejected!
 			}

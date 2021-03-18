@@ -103,13 +103,6 @@ void raisePF(uint_32 address, word flags)
 	CPU[activeCPU].registers->CR2 = address; //Fill CR2 with the address cause!
 	CPU[activeCPU].PFflags = flags; //Save a copy of the flags for debugging purposes!
 	//Call interrupt!
-	/*
-	if (CPU[activeCPU].have_oldESP && CPU[activeCPU].registers) //Returning the (E)SP to it's old value?
-	{
-		REG_ESP = CPU[activeCPU].oldESP; //Restore ESP to it's original value!
-		CPU[activeCPU].have_oldESP = 0; //Don't have anything to restore anymore!
-	}
-	*/
 	if (CPU_faultraised(EXCEPTION_PAGEFAULT)) //Fault raising exception!
 	{
 		CPU_resetOP(); //Go back to the start of the instruction!
@@ -329,25 +322,11 @@ byte isvalidpage(uint_32 address, byte iswrite, byte CPL, byte isPrefetch) //Do 
 	//Check PTE
 	if (likely(isS == 0)) //Not 4MB?
 	{
-		/*
-		if ((PDE&0x100) && ((((CPU[activeCPU].registers->CR4 & 0x10) >> 4) & (EMULATED_CPU>=CPU_PENTIUM))|isPAE)) //Reserved bit in PDE?
-		{
-			raisePF(address, PXE_P | (RW << 1) | (effectiveUS << 2)|8); //Run a reserved page fault!
-			return 0; //We have an error, abort!
-		}
-		*/
 		PTE = (uint_64)memory_BIUdirectrdw(((PDE&PXEsize) >> PXE_ADDRESSSHIFT) + (TABLE << PTEsize)); //Read the page table entry!
 		if (PTEsize == 3) //Needs high half too?
 		{
 			PTE |= (((uint_64)memory_BIUdirectrdw(((PDE & PXEsize) >> PXE_ADDRESSSHIFT) + ((TABLE << PTEsize)|4)))<<32); //Read the page table entry!
 		}
-		/*
-		if (((PTE&(0x180^(useG<<8)))) && ((((CPU[activeCPU].registers->CR4 & 0x10) >> 4) & (EMULATED_CPU>=CPU_PENTIUM))|isPAE)) //Reserved bit in PTE? Not G when said bit is enabled!
-		{
-			raisePF(address, (PTE&PXE_P) | (RW << 1) | (effectiveUS << 2)|8); //Run a reserved page fault!
-			return 0; //We have an error, abort!
-		}
-		*/
 		if (!(PTE&PXE_P)) //Not present?
 		{
 			CPU[activeCPU].PageFault_PDPT = PDPT; //Save!
@@ -360,13 +339,6 @@ byte isvalidpage(uint_32 address, byte iswrite, byte CPL, byte isPrefetch) //Do 
 
 	if (unlikely(isS)) //4MB? Only check the PDE, not the PTE!
 	{
-		/*
-		if ((PDE&(0x3FF100 ^ ((useG << 8) | (isPAE<<21)))) && ((((CPU[activeCPU].registers->CR4 & 0x10) >> 4) & (EMULATED_CPU>=CPU_PENTIUM))|isPAE)) //Reserved bit in PDE? The not the top bit in PAE(bit 21) or G(bit 8) when said features are enabled.
-		{
-			raisePF(address, PXE_P | (RW << 1) | (effectiveUS << 2)|8); //Run a reserved page fault!
-			return 0; //We have an error, abort!
-		}
-		*/
 		if ((PDE & (0x3FF000 ^ (isPAE << 21))) && ((((CPU[activeCPU].registers->CR4 & 0x10) >> 4) & (EMULATED_CPU >= CPU_PENTIUM)) | isPAE)) //Reserved bit in PDE?
 		{
 			CPU[activeCPU].PageFault_PDPT = PDPT; //Save!

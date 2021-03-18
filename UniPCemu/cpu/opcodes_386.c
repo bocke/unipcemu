@@ -132,17 +132,6 @@ List of hardware interrupts:
 
 //5 Override prefixes! (LOCK, CS, SS, DS, ES)
 
-//Prefix opcodes:
-/*
-void CPU80386_OPF0() {} //LOCK
-void CPU80386_OP2E() {} //CS:
-void CPU80386_OP36() {} //SS:
-void CPU80386_OP3E() {} //DS:
-void CPU80386_OP26() {} //ES:
-void CPU80386_OPF2() {} //REPNZ
-void CPU80386_OPF3() {} //REPZ
-*/
-
 /*
 
 WE START WITH ALL HELP FUNCTIONS
@@ -1357,13 +1346,6 @@ void CPU80386_internal_DIV(uint_64 val, uint_32 divisor, uint_32 *quotient, uint
 	}
 	if (issigned) //Check for signed overflow as well?
 	{
-		/*
-		if (checkSignedOverflow(temp,64,resultbits,remaindernegative))
-		{
-			*error = 1; //Raise divide by 0 error due to overflow!
-			return; //Abort!
-		}
-		*/
 		if (checkSignedOverflow(resultquotient,64,resultbits,quotientnegative))
 		{
 			*error = 1; //Raise divide by 0 error due to overflow!
@@ -3799,12 +3781,6 @@ void CPU80386_OPEF()
 	}
 	/*To memory?*/
 }
-/*
-void CPU80386_OPF1()
-{
-	modrm_generateInstructionTEXT("<Undefined and reserved opcode, no error>",0,0,PARAM_NONE);
-}
-*/
 
 /*
 
@@ -3813,12 +3789,6 @@ NOW COME THE GRP1-5 OPCODES:
 */
 
 //GRP1
-
-/*
-
-DEBUG: REALLY SUPPOSED TO HANDLE OP80-83 HERE?
-
-*/
 
 void CPU80386_OP81() //GRP1 Ev,Iv
 {
@@ -4188,13 +4158,6 @@ void CPU80386_OPF7() //GRP3b Ev
 		if (CPU80386_instructionstepwritemodrmdw(2, CPU[activeCPU].res32, CPU[activeCPU].MODRM_src0)) return;
 	}
 }
-//All OK up till here.
-
-/*
-
-DEBUG: REALLY SUPPOSED TO HANDLE HERE?
-
-*/
 
 void CPU80386_OPFF() //GRP5 Ev
 {
@@ -4962,23 +4925,13 @@ void CPU386_OP69()
 	}
 	if (unlikely(CPU[activeCPU].instructionstep==0)) //First step?
 	{
-		/*if (MODRM_MOD(params.modrm)!=3) //Use R/M to calculate the result(Three-operand version)?
+		if (unlikely(CPU[activeCPU].modrmstep==0))
 		{
-		*/
-			if (unlikely(CPU[activeCPU].modrmstep==0))
-			{
-				if (modrm_check32(&CPU[activeCPU].params,1,1|0x40)) return; //Abort on fault!
-				if (modrm_check32(&CPU[activeCPU].params,1,1|0xA0)) return; //Abort on fault!
-			}
-			if (CPU80386_instructionstepreadmodrmdw(0,&CPU[activeCPU].instructionbufferd, CPU[activeCPU].MODRM_src1)) return; //Read R/M!
-			CPU[activeCPU].temp1l.val32high = 0; //Clear high part by default!
-		/*}
-		else
-		{
-			if (CPU80386_instructionstepreadmodrmdw(0,&temp1.val32,0)) return; //Read reg instead! Word register = Word register * imm32!
-			temp1.val32high = 0; //Clear high part by default!
+			if (modrm_check32(&CPU[activeCPU].params,1,1|0x40)) return; //Abort on fault!
+			if (modrm_check32(&CPU[activeCPU].params,1,1|0xA0)) return; //Abort on fault!
 		}
-		*/
+		if (CPU80386_instructionstepreadmodrmdw(0,&CPU[activeCPU].instructionbufferd, CPU[activeCPU].MODRM_src1)) return; //Read R/M!
+		CPU[activeCPU].temp1l.val32high = 0; //Clear high part by default!
 		++CPU[activeCPU].instructionstep; //Next step!
 	}
 	if (CPU[activeCPU].instructionstep==1) //Second step?
@@ -5020,23 +4973,13 @@ void CPU386_OP6B()
 
 	if (unlikely(CPU[activeCPU].instructionstep==0)) //First step?
 	{
-		/*if (MODRM_MOD(params.modrm)!=3) //Use R/M to calculate the result(Three-operand version)?
+		if (unlikely(CPU[activeCPU].modrmstep==0))
 		{
-		*/
-			if (unlikely(CPU[activeCPU].modrmstep==0))
-			{
-				if (modrm_check32(&CPU[activeCPU].params,1,1|0x40)) return; //Abort on fault!
-				if (modrm_check32(&CPU[activeCPU].params,1,1|0xA0)) return; //Abort on fault!
-			}
-			if (CPU80386_instructionstepreadmodrmdw(0,&CPU[activeCPU].instructionbufferd, CPU[activeCPU].MODRM_src1)) return; //Read R/M!
-			CPU[activeCPU].temp1l.val32high = 0; //Clear high part by default!
-		/*}
-		else
-		{
-			if (CPU80386_instructionstepreadmodrmdw(0,&temp1.val32,CPU[activeCPU].MODRM_src0)) return; //Read reg instead! Word register = Word register * imm32!
-			temp1.val32high = 0; //Clear high part by default!
+			if (modrm_check32(&CPU[activeCPU].params,1,1|0x40)) return; //Abort on fault!
+			if (modrm_check32(&CPU[activeCPU].params,1,1|0xA0)) return; //Abort on fault!
 		}
-		*/
+		if (CPU80386_instructionstepreadmodrmdw(0,&CPU[activeCPU].instructionbufferd, CPU[activeCPU].MODRM_src1)) return; //Read R/M!
+		CPU[activeCPU].temp1l.val32high = 0; //Clear high part by default!
 		++CPU[activeCPU].instructionstep; //Next step!
 	}
 	if (CPU[activeCPU].instructionstep==1) //Second step?
@@ -5202,14 +5145,6 @@ void CPU386_OPC8_32()
 		if (unlikely(CPU[activeCPU].instructionstep==0)) if (checkStackAccess(1,1,1)) return; //Abort on error!		
 	}
 
-	/*
-	if (CPU[activeCPU].instructionstep==0) //Starting the instruction?
-	{
-		CPU[activeCPU].have_oldESP = 1; //We have an old ESP to jump back to!
-		CPU[activeCPU].oldESP = REG_ESP; //Back-up!
-	}
-	*/ //Done automatically at the start of an instruction!
-
 	if (CPU80386_PUSHdw(0,&REG_EBP)) return; //Busy pushing?
 
 	word framestep, instructionstep;
@@ -5309,14 +5244,6 @@ void CPU386_OPC8_16()
 	{
 		if (unlikely(CPU[activeCPU].instructionstep==0)) if (checkStackAccess(1,1,0)) return; //Abort on error!		
 	}
-
-	/*
-	if (CPU[activeCPU].instructionstep==0) //Starting the instruction?
-	{
-		CPU[activeCPU].have_oldESP = 1; //We have an old ESP to jump back to!
-		CPU[activeCPU].oldESP = REG_ESP; //Back-up!
-	}
-	*/ //Done automatically at the start of an instruction!
 
 	if (CPU8086_PUSHw(0,&REG_BP,0)) return; //Busy pushing?
 	word framestep, instructionstep;

@@ -323,24 +323,13 @@ void CPU186_OP69()
 	}
 	if (unlikely(CPU[activeCPU].instructionstep==0)) //First step?
 	{
-		/*
-		if (MODRM_MOD(params.modrm)!=3) //Use R/M to calculate the result(Three-operand version)?
+		if (unlikely(CPU[activeCPU].modrmstep==0))
 		{
-		*/
-			if (unlikely(CPU[activeCPU].modrmstep==0))
-			{
-				if (modrm_check16(&CPU[activeCPU].params,1,1|0x40)) return; //Abort on fault!
-				if (modrm_check16(&CPU[activeCPU].params,1,1|0xA0)) return; //Abort on fault!
-			}
-			if (CPU8086_instructionstepreadmodrmw(0,&CPU[activeCPU].instructionbufferw, CPU[activeCPU].MODRM_src1)) return; //Read R/M!
-			CPU[activeCPU].temp1.val16high = 0; //Clear high part by default!
-		/*}
-		else
-		{
-			if (CPU8086_instructionstepreadmodrmw(0,&temp1.val16,0)) return; //Read reg instead! Word register = Word register * imm16!
-			temp1.val16high = 0; //Clear high part by default!
+			if (modrm_check16(&CPU[activeCPU].params,1,1|0x40)) return; //Abort on fault!
+			if (modrm_check16(&CPU[activeCPU].params,1,1|0xA0)) return; //Abort on fault!
 		}
-		*/
+		if (CPU8086_instructionstepreadmodrmw(0,&CPU[activeCPU].instructionbufferw, CPU[activeCPU].MODRM_src1)) return; //Read R/M!
+		CPU[activeCPU].temp1.val16high = 0; //Clear high part by default!
 		++CPU[activeCPU].instructionstep; //Next step!
 	}
 	if (CPU[activeCPU].instructionstep==1) //Second step?
@@ -382,23 +371,13 @@ void CPU186_OP6B()
 
 	if (unlikely(CPU[activeCPU].instructionstep==0)) //First step?
 	{
-		/*if (MODRM_MOD(params.modrm)!=3) //Use R/M to calculate the result(Three-operand version)?
+		if (unlikely(CPU[activeCPU].modrmstep==0))
 		{
-		*/
-			if (unlikely(CPU[activeCPU].modrmstep==0))
-			{
-				if (modrm_check16(&CPU[activeCPU].params,1,1|0x40)) return; //Abort on fault!
-				if (modrm_check16(&CPU[activeCPU].params,1,1|0xA0)) return; //Abort on fault!
-			}
-			if (CPU8086_instructionstepreadmodrmw(0,&CPU[activeCPU].instructionbufferw, CPU[activeCPU].MODRM_src1)) return; //Read R/M!
-			CPU[activeCPU].temp1.val16high = 0; //Clear high part by default!
-		/*}
-		else
-		{
-			if (CPU8086_instructionstepreadmodrmw(0,&temp1.val16,MODRM_src0)) return; //Read reg instead! Word register = Word register * imm16!
-			temp1.val16high = 0; //Clear high part by default!
+			if (modrm_check16(&CPU[activeCPU].params,1,1|0x40)) return; //Abort on fault!
+			if (modrm_check16(&CPU[activeCPU].params,1,1|0xA0)) return; //Abort on fault!
 		}
-		*/
+		if (CPU8086_instructionstepreadmodrmw(0,&CPU[activeCPU].instructionbufferw, CPU[activeCPU].MODRM_src1)) return; //Read R/M!
+		CPU[activeCPU].temp1.val16high = 0; //Clear high part by default!
 		++CPU[activeCPU].instructionstep; //Next step!
 	}
 	if (CPU[activeCPU].instructionstep==1) //Second step?
@@ -709,14 +688,6 @@ void CPU186_OPC8()
 	{
 		if (unlikely(CPU[activeCPU].instructionstep==0)) if (checkStackAccess(1,1,0)) return; //Abort on error!		
 	}
-
-	/*
-	if (CPU[activeCPU].instructionstep==0) //Starting the instruction?
-	{
-		CPU[activeCPU].have_oldESP = 1; //We have an old ESP to jump back to!
-		CPU[activeCPU].oldESP = REG_ESP; //Back-up!
-	}
-	*/ //Done automatically at the start of an instruction!
 
 	if (CPU8086_PUSHw(0,&REG_BP,0)) return; //Busy pushing?
 

@@ -56,10 +56,6 @@ struct
 			byte command; //What command has been written?
 			byte last_was_error; //Last command was an error?
 
-			/*byte wrap_mode; //Pass data back to the CPU?
-			byte stream_mode; //Automatic stream? =Data reporting.
-			byte remote_mode; //Same as stream mode, but no IRQ!
-			*/
 			byte mode; //0=stream;1=wrap;2=remote
 			byte lastmode; //Last mode!
 			byte data_reporting; //Use data reporting?

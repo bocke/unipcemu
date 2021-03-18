@@ -327,18 +327,6 @@ void i430fx_PCIConfigurationChangeHandler(uint_32 address, byte device, byte fun
 		{
 			i430fx_configuration[address] &= 0x3F; //Only 6 bits/row!
 		}
-		/*
-		if (((i430fx_configuration[0x60] +
-			((i430fx_configuration[0x61] > i430fx_configuration[0x60])?i430fx_configuration[0x61] - i430fx_configuration[0x60]:0) +
-			((i430fx_configuration[0x62] > i430fx_configuration[0x61])?i430fx_configuration[0x62] - i430fx_configuration[0x61]:0) +
-			((i430fx_configuration[0x63] > i430fx_configuration[0x62])?i430fx_configuration[0x63] - i430fx_configuration[0x62]:0) +
-			((i430fx_configuration[0x64] > i430fx_configuration[0x63])?i430fx_configuration[0x64] - i430fx_configuration[0x63]:0)
-			)<<22) > *getarchmemory()) //Too much detected?
-		{
-			i430fx_configuration[address] = i430fx_previousDRAM[address-0x60]; //Reset back to the default: nothing!
-		}
-		i430fx_previousDRAM[address - 0x60] = i430fx_configuration[address]; //Change detection!
-		*/
 		//DRAM auto detection!
 		if (is_i430fx == 2) //i440fx?
 		{

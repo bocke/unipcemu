@@ -37,7 +37,7 @@ We handle direct input/output to/from hardware ports by the CPU!
 
 /*
 
-//Initialises ports support!
+Initialises ports support!
 
 */
 

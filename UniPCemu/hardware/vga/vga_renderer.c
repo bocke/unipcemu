@@ -469,18 +469,6 @@ void updateSequencerPixelDivider(VGA_Type* VGA, SEQ_DATA* Sequencer)
 	val = 1; //Default: don't divide!
 	if ((VGA->precalcs.effectiveDACmode&0x18)==0) //Adjusted?
 	{
-		/*
-		if (VGA->precalcs.effectiveDACmode & 4) //Doubling enabled?
-		{
-			val <<= 1; //Double the amount of clocks we're latching!
-		}
-		/
-		if (VGA->precalcs.linearmode&8) //Double clocking that's supposed to be divided?
-		{
-			val <<= 1; //Double the amount of clocks we're latching!
-		}
-		/
-		*/
 	}
 	else //24BPP/32BPP mode?
 	{
@@ -641,12 +629,7 @@ OPTINLINE void VGA_RenderOutput(SEQ_DATA *Sequencer, VGA_Type *VGA) //Render the
 	//First, render ourselves to the screen!
 	GPU.xres = Sequencer->xres; //Apply x resolution!
 	GPU.yres = Sequencer->yres; //Apply y resolution!
-	/*
-	if (Sequencer->is_topwindow) //Top window isn't supported yet?
-	{
-		GPU.yres = Sequencer->topwindowCRTbase; //Take the top window only, the bottom window(splitscreen) isn't supported yet!
-	}
-	*/ //Just render the bottom and top windows normally!
+	//Just render the bottom and top windows normally!
 	//unlockGPU(); //Unlock the GPU!
 	VGA_VBlankHandler(VGA); //Handle all VBlank stuff!
 	//lockGPU(); //Lock the GPU again! We're using it again!
@@ -1332,12 +1315,6 @@ void VGA_ActiveDisplay_noblanking_VGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_At
 			//doublepixels <<= (2>>attributeinfo->attributesize); //On top of the attribute doubling the clocks used, we (qua)druple it again for nibbles, double it for bytes and do nothing for words! 
 			//doublepixels <<= 1; //Double the pixels being plotted during active display!
 		}
-		/*
-		else if ((VGA->precalcs.AttributeModeControlRegister_ColorEnable8Bit == 1) && ((VGA->enable_SVGA >= 1) && (VGA->enable_SVGA <= 2)) && ((VGA->precalcs.ClockingModeRegister_DCR & 3)==0)) //Tseng 8-bit color special mode set?
-		{
-			doublepixels <<= 1; //Double the pixels being plotted during active display!
-		}
-		*/
 	}
 	if (VGA->precalcs.effectiveDACmode & 0x10) //Actually 4 times bigger?
 	{
@@ -1483,40 +1460,30 @@ void VGA_Overscan_noblanking_VGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_Attribu
 		}
 	}
 	//Overscan!
-	/*
-	if (VGA->precalcs.AttributeController_16bitDAC==3) //16-bit color mode?
+	if (VGA->precalcs.EGA_DisableInternalVideoDrivers) //Special case: internal video drivers disabled?
 	{
-		drawPixel(VGA,CLUT16bit[attributeinfo->attribute]); //Draw the 16-bit color pixel!
+		VGA->CRTC.DACOutput = (VGA->registers->ExternalRegisters.FEATURECONTROLREGISTER&3); //The FEAT0 and FEAT1 outputs become the new output!
+		if (VGA->precalcs.turnDACoff) //Turning the DAC off?
+		{
+			drawPixel(VGA, RGB(0x00, 0x00, 0x00)); //Draw blanked!
+		}
+		else
+		{
+			drawPixel(VGA, VGA_DAC(VGA, VGA->CRTC.DACOutput)); //Draw overscan in the specified color instead!
+		}
 	}
-	else //VGA compatibility mode?
+	else //Normal VGA behaviour?
 	{
-	*/
-		if (VGA->precalcs.EGA_DisableInternalVideoDrivers) //Special case: internal video drivers disabled?
+		VGA->CRTC.DACOutput = VGA->precalcs.overscancolor; //Overscan index!
+		if (VGA->precalcs.turnDACoff) //Turning the DAC off?
 		{
-			VGA->CRTC.DACOutput = (VGA->registers->ExternalRegisters.FEATURECONTROLREGISTER&3); //The FEAT0 and FEAT1 outputs become the new output!
-			if (VGA->precalcs.turnDACoff) //Turning the DAC off?
-			{
-				drawPixel(VGA, RGB(0x00, 0x00, 0x00)); //Draw blanked!
-			}
-			else
-			{
-				drawPixel(VGA, VGA_DAC(VGA, VGA->CRTC.DACOutput)); //Draw overscan in the specified color instead!
-			}
+			drawPixel(VGA, RGB(0x00, 0x00, 0x00)); //Draw blanked!
 		}
-		else //Normal VGA behaviour?
+		else
 		{
-			VGA->CRTC.DACOutput = VGA->precalcs.overscancolor; //Overscan index!
-			if (VGA->precalcs.turnDACoff) //Turning the DAC off?
-			{
-				drawPixel(VGA, RGB(0x00, 0x00, 0x00)); //Draw blanked!
-			}
-			else
-			{
-				//VGA->CRTC.DACOutput = 0x2; //Blue for debugging the overscan!
-				drawPixel(VGA, VGA_DAC(VGA, VGA->precalcs.overscancolor)); //Draw overscan!
-			}
+			drawPixel(VGA, VGA_DAC(VGA, VGA->precalcs.overscancolor)); //Draw overscan!
 		}
-	//}
+	}
 	video_updateLightPen(VGA,0); //Update the light pen!
 	if (++Sequencer->currentpixelclock >= Sequencer->pixelclockdivider) //Are we to tick the CRTC pixel clock?
 	{
@@ -2323,15 +2290,7 @@ void updateVGA(DOUBLE timepassed, uint_32 MHZ14passed)
 			}
 		} while (--renderings); //Ticks left to tick?
 
-		/*
-		if (getActiveVGA()->enable_SVGA!=4) //EGA/VGA+(Not MDA/CGA)?
-		{
-			SETBITS(getActiveVGA()->registers->ExternalRegisters.INPUTSTATUS1REGISTER,0,1,retracing); //Only update the display disabled when required to: it's only needed by the CPU, not the renderer!
-		}
-		else
-		{*/
-			SETBITS(getActiveVGA()->registers->ExternalRegisters.INPUTSTATUS1REGISTER,0,1,(getActiveVGA()->CRTC.DisplayEnabled^1)); //Only update the display disabled when required to: it's only needed by the CPU, not the renderer!
-		//}
+		SETBITS(getActiveVGA()->registers->ExternalRegisters.INPUTSTATUS1REGISTER,0,1,(getActiveVGA()->CRTC.DisplayEnabled^1)); //Only update the display disabled when required to: it's only needed by the CPU, not the renderer!
 
 		#ifdef LIMITVGA
 		if (unlikely(passedcounter && currentVGASpeed)) //Still counting?

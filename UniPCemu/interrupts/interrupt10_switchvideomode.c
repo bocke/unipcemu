@@ -99,9 +99,6 @@ Bitu VideoModeMemSize(Bitu mode) {
 	case SVGA_TsengET3K:
 		modelist = ModeList_VGA_Tseng;
 		break;
-	/*case SVGA_ParadisePVGA1A:
-		modelist = ModeList_VGA_Paradise;
-		break;*/
 	default:
 		modelist = ModeList_VGA;
 		break;
@@ -463,9 +460,6 @@ int INT10_Internal_SetVideoMode(word mode)
 
 	modeset_ctl=real_readb(BIOSMEM_SEG,BIOSMEM_MODESET_CTL);
 	if (IS_VGA_ARCH) {
-		/*if (svga.accepts_mode) {
-			if (!svga.accepts_mode(mode)) return false;
-		}*/
 
 		switch(svgaCard) {
 		case SVGA_TsengET4K: //ET4000?
@@ -479,19 +473,12 @@ int INT10_Internal_SetVideoMode(word mode)
 				return false;
 			}
 			break;
-		/*case SVGA_ParadisePVGA1A:
-			if (!SetCurMode(ModeList_VGA_Paradise,mode)){
-				//LOG(LOG_INT10,LOG_ERROR)("VGA:Trying to set illegal mode %X",mode);
-				return false;
-			}
-			break;*/
 		default:
 			if (!SetCurMode(ModeList_VGA,mode)){
 				//LOG(LOG_INT10,LOG_ERROR)("VGA:Trying to set illegal mode %X",mode);
 				return false;
 			}
 		}
-		/*}*/
 		// check for scanline backwards compatibility (VESA text modes??)
 		if (CurMode->type==M_TEXT)
 		{

@@ -591,13 +591,6 @@ Basic reading functions for presets, instruments and samples.
 
 */
 
-/*
-OPTINLINE RIFF_ENTRY getHydra(RIFFHEADER *sf) //Retrieves the HYDRA structure from the soundfont!
-{
-	return sf->hydra; //Give the hydra block!
-}
-*/
-
 //Preset!
 byte getSFPreset(RIFFHEADER *sf, uint_32 preset, sfPresetHeader *result)
 {
@@ -765,19 +758,6 @@ short getsample16(word sample)
 
 short getsample24_16(uint_32 sample) //Get 24 bits sample and convert it to a 16-bit sample!
 {
-	/*union
-	{
-		uint_32 sample32;
-		int_32 i;
-	} u;
-	u.sample32 = sample;
-	if (u.sample32&0x800000) //Sign bit set?
-	{
-		u.sample32 |= 0xFF000000; //Sign extend!sf->pcmdata
-	}
-    return (short)((((float)u.i)/(float)0xFFFFFF)*(float)SHRT_MAX); //Give the 24-bit sample as a 16-bit sample, converted!
-	*/
-
 	union
 	{
 		uint_32 sample32;

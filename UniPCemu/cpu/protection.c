@@ -723,47 +723,20 @@ sbyte SAVEDESCRIPTOR(int segment, word segmentval, SEGMENT_DESCRIPTOR *container
 
 	descriptor_address += descriptor_index; //Add the index multiplied with the width(8 bytes) to get the descriptor!
 
-	/*
-	SEGMENT_DESCRIPTOR tempcontainer;
-	if (EMULATED_CPU == CPU_80286) //80286 has less options?
-	{
-		if (LOADDESCRIPTOR(segment,segmentval,&tempcontainer,(isJMPorCALL&0x2FF)|0x100)) //Loaded the old container?
-		{
-			container->desc.base_high = tempcontainer.desc.base_high; //No high byte is present, so ignore the data to write!
-			container->desc.noncallgate_info = ((container->desc.noncallgate_info&~0xF)|(tempcontainer.desc.noncallgate_info&0xF)); //No high limit is present, so ignore the data to write!
-		}
-		//Don't handle any errors on descriptor loading!
-	}
-
-	//Patch back to memory values!
-	container->desc.limit_low = DESC_16BITS(container->desc.limit_low);
-	container->desc.base_low = DESC_16BITS(container->desc.base_low);
-	*/
 	int i;
-	/*
-	for (i = 0;i<(int)sizeof(container->desc.bytes);++i) //Process the descriptor data!
-	{
-	*/
 	descriptor_address += 5; //Only the access rights byte!
 		if ((result = (sbyte)checkDirectMMUaccess(descriptor_address++,0,/*getCPL()*/ 0))!=0) //Error in the paging unit?
 		{
 			return (result==2)?-2:-1; //Error out!
 		}
-	//}
-	//descriptor_address -= sizeof(container->desc.bytes);
 	descriptor_address -= 6; //Only the access rights byte!
 
-	/*
-	for (i = 0;i<(int)sizeof(container->desc.bytes);) //Process the descriptor data!
-	{
-	*/
 	i = 5; //Only the access rights byte!
 	descriptor_address += 5; //Only the access rights byte!
-		if (memory_writelinear(descriptor_address++,container->desc.bytes[i++])) //Read a descriptor byte directly from flat memory!
-		{
-			return 0; //Failed to load the descriptor!
-		}
-	//}
+	if (memory_writelinear(descriptor_address++,container->desc.bytes[i++])) //Read a descriptor byte directly from flat memory!
+	{
+		return 0; //Failed to load the descriptor!
+	}
 	return 1; //OK!
 }
 
@@ -876,13 +849,7 @@ SEGMENT_DESCRIPTOR *getsegment_seg(int segment, SEGMENT_DESCRIPTOR *dest, word *
 		case AVL_SYSTEM_TRAPGATE16BIT:
 		case AVL_SYSTEM_INTERRUPTGATE32BIT:
 		case AVL_SYSTEM_TRAPGATE32BIT:
-			/*
-			if ((isJMPorCALL & 0x1FF) == 2) //CALL? It's an programmed interrupt call!
-			{
-				CPU_handleInterruptGate(((isJMPorCALL&0x400)>>10),(*segmentval & 4) ? EXCEPTION_TABLE_LDT : EXCEPTION_TABLE_GDT, (*segmentval & 0xFFF8), &LOADEDDESCRIPTOR.desc, REG_CS, REG_EIP, -2, 1); //Raise an interrupt instead!
-				return NULL; //Abort: we're handled by the interrupt handler!
-			}
-			*/ //80386 user manual CALL instruction reference says that interrupt and other gates being loaded end up with a General Protection fault.
+			//80386 user manual CALL instruction reference says that interrupt and other gates being loaded end up with a General Protection fault.
 			//JMP isn't valid for interrupt gates?
 			//We're an invalid gate!
 			goto throwdescsegmentval; //Throw #GP error!		
@@ -1001,11 +968,6 @@ SEGMENT_DESCRIPTOR *getsegment_seg(int segment, SEGMENT_DESCRIPTOR *dest, word *
 			THROWDESCGP(originalval, ((isJMPorCALL & 0x400) >> 10), (originalval & 4) ? EXCEPTION_TABLE_LDT : EXCEPTION_TABLE_GDT); //Throw error!
 		}
 		return NULL; //Not present: limit exceeded!
-		/*
-	throwSSoriginalval:
-		THROWDESCSS(originalval,((isJMPorCALL&0x400)>>10),(originalval&4)?EXCEPTION_TABLE_LDT:EXCEPTION_TABLE_GDT); //Throw error!
-		return NULL; //Not present: limit exceeded!
-		*/
 	}
 
 	if (is_TSS && (*segmentval & 4)) //TSS in LDT detected? That's not allowed!
@@ -1325,10 +1287,6 @@ byte CPU_segmentWritten_protectedmode_JMPCALL(word *value, word isJMPorCALL, SEG
 		}
 	}
 
-	/*if ((EXECSEGMENTPTR_C(descriptor)==0) && (isDifferentCPL==1)) //Non-Conforming segment, call gate and more privilege?
-	{
-		CPU[activeCPU].CPL = GENERALSEGMENTPTR_DPL(descriptor); //CPL = DPL!
-	}*/
 	setRPL(*value, getCPL()); //RPL of CS always becomes CPL!
 
 	if (isDifferentCPL == 1) //Different CPL?

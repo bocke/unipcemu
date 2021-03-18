@@ -389,48 +389,6 @@ OPTINLINE void ResetACTL() {
 
 OPTINLINE void INT10_SetSinglePaletteRegister(Bit8u reg,Bit8u val) {
 	if (__HW_DISABLED) return; //Abort!
-	//switch (machine) {
-/*	case MCH_PCJR:
-		reg&=0xf;
-		IO_Read(VGAREG_TDY_RESET);
-		WriteTandyACTL(reg+0x10,val);
-		IO_Write(0x3da,0x0); // palette back on
-		break;
-	case MCH_TANDY:
-		// TODO waits for vertical retrace
-		switch(vga.mode) {
-		case M_TANDY2:
-			if (reg >= 0x10) break;
-			else if (reg==1) reg = 0x1f;
-			else reg |= 0x10;
-			WriteTandyACTL(reg+0x10,val);
-			break;
-		case M_TANDY4: {
-			if (CurMode->mode!=0x0a) {
-				// Palette values are kept constand by the BIOS.
-				// The four colors are mapped to special palette values by hardware.
-				// 3D8/3D9 registers influence this mapping. We need to figure out
-				// which entry is used for the requested color.
-				if (reg > 3) break;
-				if (reg != 0) { // 0 is assumed to be at 0
-					Bit8u color_select=real_readb(BIOSMEM_SEG,BIOSMEM_CURRENT_PAL);
-					reg = reg*2+8; // Green Red Brown
-					if (color_select& 0x20) reg++; // Cyan Magenta White
-				}
-				WriteTandyACTL(reg+0x10,val);
-			} 
-			// 4-color high resolution mode 0x0a isn't handled specially
-			else WriteTandyACTL(reg+0x10,val);
-			break;
-		}
-		default:
-			WriteTandyACTL(reg+0x10,val);
-			break;
-		}
-		IO_Write(0x3da,0x0); // palette back on
-		break;
-*/
-	//case EGAVGA_ARCH_CASE:
 		if (!IS_VGA_ARCH) reg&=0x1f;
 		if(reg<=ACTL_MAX_REG) {
 			ResetACTL();
@@ -438,38 +396,16 @@ OPTINLINE void INT10_SetSinglePaletteRegister(Bit8u reg,Bit8u val) {
 			IO_Write(VGAREG_ACTL_WRITE_DATA,val);
 		}
 		IO_Write(VGAREG_ACTL_ADDRESS,32);		//Enable output and protect palette
-		//break;
-	//}
 }
 
 OPTINLINE void INT10_SetOverscanBorderColor(Bit8u val) {
-	/*switch (machine) {
-	case TANDY_ARCH_CASE:
-		IO_Read(VGAREG_TDY_RESET);
-		WriteTandyACTL(0x02,val);
-		break;
-	case EGAVGA_ARCH_CASE:*/
 		ResetACTL();
 		IO_Write(VGAREG_ACTL_ADDRESS,0x11);
 		IO_Write(VGAREG_ACTL_WRITE_DATA,val);
 		IO_Write(VGAREG_ACTL_ADDRESS,32);		//Enable output and protect palette
-	/*	break;
-	}*/
 }
 
 OPTINLINE void INT10_SetAllPaletteRegisters(PhysPt data) {
-	/*switch (machine) {
-	case TANDY_ARCH_CASE:
-		IO_Read(VGAREG_TDY_RESET);
-		// First the colors
-		for(Bit8u i=0;i<0x10;i++) {
-			WriteTandyACTL(i+0x10,mem_readb(data));
-			data++;
-		}
-		// Then the border
-		WriteTandyACTL(0x02,mem_readb(data));
-		break;
-	case EGAVGA_ARCH_CASE:*/
 		ResetACTL();
 		// First the colors
 		Bit8u i;
@@ -482,8 +418,6 @@ OPTINLINE void INT10_SetAllPaletteRegisters(PhysPt data) {
 		IO_Write(VGAREG_ACTL_ADDRESS,0x11);
 		IO_Write(VGAREG_ACTL_WRITE_DATA,phys_readb(data));
 		IO_Write(VGAREG_ACTL_ADDRESS,32);		//Enable output and protect palette
-		/*break;
-	}*/
 }
 
 OPTINLINE void INT10_SetColorSelect(Bit8u val) {
@@ -491,34 +425,6 @@ OPTINLINE void INT10_SetColorSelect(Bit8u val) {
 	Bit8u temp=real_readb(BIOSMEM_SEG,BIOSMEM_CURRENT_PAL);
 	temp=(temp & 0xdf) | ((val & 1) ? 0x20 : 0x0);
 	real_writeb(BIOSMEM_SEG,BIOSMEM_CURRENT_PAL,temp);
-/*	if (machine == MCH_CGA || machine==MCH_TANDY)
-		IO_Write(0x3d9,temp);
-	else if (machine == MCH_PCJR) {
-		IO_Read(VGAREG_TDY_RESET); // reset the flipflop
-		switch(vga.mode) {
-		case M_TANDY2:
-			IO_Write(VGAREG_TDY_ADDRESS, 0x11);
-			IO_Write(VGAREG_PCJR_DATA, val&1? 0xf:0);
-			break;
-		case M_TANDY4:
-			for(Bit8u i = 0x11; i < 0x14; i++) {
-				const Bit8u t4_table[] = {0,2,4,6, 0,3,5,0xf};
-				IO_Write(VGAREG_TDY_ADDRESS, i);
-				IO_Write(VGAREG_PCJR_DATA, t4_table[(i-0x10)+(val&1? 4:0)]);
-			}
-			break;
-		default:
-			// 16-color modes: always write the same palette
-			for(Bit8u i = 0x11; i < 0x20; i++) {
-				IO_Write(VGAREG_TDY_ADDRESS, i);
-				IO_Write(VGAREG_PCJR_DATA, i-0x10);
-			}
-			break;
-		}
-		IO_Write(VGAREG_TDY_ADDRESS, 0); // enable palette
-	}
-	else if (IS_EGAVGA_ARCH) {
-*/
 		if (CurMode->mode <= 3) //Maybe even skip the total function!
 			return;
 		val = (temp & 0x10) | 2 | val;
@@ -792,18 +698,6 @@ OPTINLINE byte emu_getdisplaypage()
 	if (__HW_DISABLED) return 0; //Abort!
 	return MMU_rb(-1,BIOSMEM_SEG,BIOSMEM_CURRENT_PAGE,0,1); //Active page!
 }
-
-/*
-
-Font generator support!
-
-*/
-
-/*void INT10_ReloadFont()
-{
-	if (__HW_DISABLED) return; //Abort!
-	VGALoadCharTable(getActiveVGA(),getActiveVGA()->registers->CRTControllerRegisters.REGISTERS.MAXIMUMSCANLINEREGISTER.MaximumScanLine+1,0x0000); //Reload the font at 0x0000!
-}*/ //Seperate!
 
 OPTINLINE void INT10_SetSingleDacRegister(Bit8u index,Bit8u red,Bit8u green,Bit8u blue) {
 	IO_Write(VGAREG_DAC_WRITE_ADDRESS,(Bit8u)index);
@@ -1658,10 +1552,6 @@ void int10_SpecialFunctions() //REG_AH=12h
 		break;
 	case 0x36: {						/* VGA Refresh control */
 		if (!IS_VGA_ARCH) break;
-		/*if ((svgaCard==SVGA_S3Trio) && (REG_AL>1)) {
-			REG_AL=0;
-			break;
-		}*/
 		IO_Write(0x3c4,0x1);
 		Bit8u clocking = IO_Read(0x3c5);
 		
@@ -1874,44 +1764,6 @@ OPTINLINE bool INT10_VideoState_Save(Bitu state,RealPt buffer) {
 
 		base_dest+=0x303;
 	}
-
-	/*if ((svgaCard==SVGA_S3Trio) && (state&8))  {
-		real_writew(base_seg,RealOff(buffer)+6,base_dest);
-
-		Bit16u crt_reg=real_readw(BIOSMEM_SEG,BIOSMEM_CRTC_ADDRESS);
-
-		IO_WriteB(0x3c4,0x08);
-//		Bitu seq_8=IO_ReadB(0x3c5);
-		IO_ReadB(0x3c5);
-//		real_writeb(base_seg,base_dest+0x00,IO_ReadB(0x3c5));
-		IO_WriteB(0x3c5,0x06);	// unlock s3-specific registers
-
-		// sequencer
-		for (ct=0; ct<0x13; ct++) {
-			IO_WriteB(0x3c4,0x09+ct);
-			real_writeb(base_seg,base_dest+0x00+ct,IO_ReadB(0x3c5));
-		}
-
-		// unlock s3-specific registers
-		IO_WriteW(crt_reg,0x4838);
-		IO_WriteW(crt_reg,0xa539);
-
-		// crt controller
-		Bitu ct_dest=0x13;
-		for (ct=0; ct<0x40; ct++) {
-			if ((ct==0x4a-0x30) || (ct==0x4b-0x30)) {
-				IO_WriteB(crt_reg,0x45);
-				IO_ReadB(crt_reg+1);
-				IO_WriteB(crt_reg,0x30+ct);
-				real_writeb(base_seg,base_dest+(ct_dest++),IO_ReadB(crt_reg+1));
-				real_writeb(base_seg,base_dest+(ct_dest++),IO_ReadB(crt_reg+1));
-				real_writeb(base_seg,base_dest+(ct_dest++),IO_ReadB(crt_reg+1));
-			} else {
-				IO_WriteB(crt_reg,0x30+ct);
-				real_writeb(base_seg,base_dest+(ct_dest++),IO_ReadB(crt_reg+1));
-			}
-		}
-	}*/
 	return true;
 }
 
@@ -2028,60 +1880,6 @@ OPTINLINE bool INT10_VideoState_Restore(Bitu state,RealPt buffer) {
 			IO_WriteB(0x3c7,real_readb(base_seg,base_dest+0x001));
 		}
 	}
-
-	/*if ((svgaCard==SVGA_S3Trio) && (state&8))  {
-		base_dest=real_readw(base_seg,RealOff(buffer)+6);
-
-		Bit16u crt_reg=real_readw(BIOSMEM_SEG,BIOSMEM_CRTC_ADDRESS);
-
-		Bitu seq_idx=IO_ReadB(0x3c4);
-		IO_WriteB(0x3c4,0x08);
-//		Bitu seq_8=IO_ReadB(0x3c5);
-		IO_ReadB(0x3c5);
-//		real_writeb(base_seg,base_dest+0x00,IO_ReadB(0x3c5));
-		IO_WriteB(0x3c5,0x06);	// unlock s3-specific registers
-
-		// sequencer
-		for (ct=0; ct<0x13; ct++) {
-			IO_WriteW(0x3c4,(0x09+ct)+(real_readb(base_seg,base_dest+0x00+ct)<<8));
-		}
-		IO_WriteB(0x3c4,seq_idx);
-
-//		Bitu crtc_idx=IO_ReadB(0x3d4);
-
-		// unlock s3-specific registers
-		IO_WriteW(crt_reg,0x4838);
-		IO_WriteW(crt_reg,0xa539);
-
-		// crt controller
-		Bitu ct_dest=0x13;
-		for (ct=0; ct<0x40; ct++) {
-			if ((ct==0x4a-0x30) || (ct==0x4b-0x30)) {
-				IO_WriteB(crt_reg,0x45);
-				IO_ReadB(crt_reg+1);
-				IO_WriteB(crt_reg,0x30+ct);
-				IO_WriteB(crt_reg,real_readb(base_seg,base_dest+(ct_dest++)));
-			} else {
-				IO_WriteW(crt_reg,(0x30+ct)+(real_readb(base_seg,base_dest+(ct_dest++))<<8));
-			}
-		}
-
-		// mmio
-/		IO_WriteB(crt_reg,0x40);
-		Bitu sysval1=IO_ReadB(crt_reg+1);
-		IO_WriteB(crt_reg+1,sysval|1);
-		IO_WriteB(crt_reg,0x53);
-		Bitu sysva2=IO_ReadB(crt_reg+1);
-		IO_WriteB(crt_reg+1,sysval2|0x10);
-
-		real_writew(0xa000,0x8128,0xffff);
-
-		IO_WriteB(crt_reg,0x40);
-		IO_WriteB(crt_reg,sysval1);
-		IO_WriteB(crt_reg,0x53);
-		IO_WriteB(crt_reg,sysval2);
-		IO_WriteB(crt_reg,crtc_idx); /
-	}*/
 
 	return true;
 }

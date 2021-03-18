@@ -24,37 +24,6 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 #include "headers/hardware/ports.h" //CMOS support!
 #include "headers/cpu/cb_manager.h" //Callback support!
 
-/*
-OPTINLINE byte CMOS_readAutoBCD(byte number)
-{
-	PORT_OUT_B(0x70, 0xB); //Status register B!
-	byte SREGB = PORT_IN_B(0x71); //Read Status register B!
-	PORT_OUT_B(0x70, number); //Select our register!
-	byte data;
-	data = PORT_IN_B(0x71); //Read the original value!
-	byte PM = 0;
-	if ((SREGB & 1) && (number == 4)) //12 hour format and getting hours?
-	{
-		PM = data; //Load the original data!
-		PM &= 0x80; //Are we PM?
-		data &= 0x7F; //Mask the PM bit off to get 12 hour clock correctly!
-	}
-	if (!(SREGB & 2)) //BCD mode?
-	{
-		data = ((data & 0xF0) >> 1) + ((data & 0xF0) >> 3) + (data & 0xf); //Convert to binary!
-	}
-	if ((SREGB & 1) && (number == 4)) //12 hour format and getting hours?
-	{
-		if (PM) //Are we PM?
-		{
-			data += 12; //Add 12 hours for PM!
-			data %= 24; //Modulo 24 hours!
-		}
-	}
-	return data; //Give the correct data!
-}
-*/
-
 //Our IRQ0 handler!
 void BIOS_IRQ0()
 {

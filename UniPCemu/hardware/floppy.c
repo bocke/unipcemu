@@ -449,21 +449,6 @@ enum FloppyCommands
    SCAN_HIGH_OR_EQUAL =         29
 };
 
-/*
-{  KB,SPT,SIDES,TRACKS,  }
-{ 160,  8, 1   , 40   , 0 },
-{ 180,  9, 1   , 40   , 0 },
-{ 200, 10, 1   , 40   , 0 },
-{ 320,  8, 2   , 40   , 1 },
-{ 360,  9, 2   , 40   , 1 },
-{ 400, 10, 2   , 40   , 1 },
-{ 720,  9, 2   , 80   , 3 },
-{1200, 15, 2   , 80   , 2 },
-{1440, 18, 2   , 80   , 4 },
-{2880, 36, 2   , 80   , 6 },
-
-*/
-
 //Allowed transfer rates!
 #define TRANSFERRATE_500k 0
 #define TRANSFERRATE_300k 1
@@ -1154,78 +1139,6 @@ OPTINLINE void FLOPPY_startData(byte drive) //Start a Data transfer if needed!
 	}
 }
 
-//Physical floppy CHS emulation!
-/*
-DOUBLE floppyCHStiming = 0.0; //CHS timing!
-void updateFloppy(DOUBLE timepassed)
-{
-	byte timed = 0; //Are we timed?
-	//Use FLOPPY_steprate, FLOPPY_head(un)loadtimerate and FLOPPY_sectorrate(/bytespersector) to time all output!
-	if (unlikely(floppyCHStiming)>0.0) //Time left?
-	{
-		floppyCHStiming -= timepassed; //Tick some time!
-		if (likely(floppyCHStiming>0.0)) return; //Abort when time is left?
-	}
-	nexttiming: //Next timing is looped?
-	//We're to process the next requested step!
-	if (FLOPPY.currentaction&1) //What action to take? We're seeking the track?
-	{
-		if (FLOPPY.currentcylinder[FLOPPPY_DOR_DRIVENUMBERR]<FLOPPY.requestedcylinder[FLOPPY_DOR_DRIVENUMBERR]) //To increase cylinder?
-		{
-			++FLOPPY.currentcylinder[FLOPPY_DOR_DRIVENUMBER]; //Increase cylinder!
-			floppyCHStiming += FLOPPY_steprate(FLOPPY_DOR_DRIVENUMBERR); //Delay until done!
-			timed = 1; //Timed!
-		}
-		else if (FLOPPY.currentcylinder[FLOPPPY_DOR_DRIVENUMBERR]>FLOPPY.requestedcylinder[FLOPPY_DOR_DRIVENUMBERR]) //To decrease cylinder?
-		{
-			--FLOPPY.currentcylinder[FLOPPY_DOR_DRIVENUMBER]; //Increase cylinder!
-			floppyCHStiming += FLOPPY_steprate(FLOPPY_DOR_DRIVENUMBERR); //Delay until done!
-			timed = 1; //Timed!
-		}
-		else //Track found?
-		{
-			FLOPPY.currentaction &= ~1; //Finished this action!
-		}
-	}
-	else if (FLOPPY.currentaction&2) //Are we seeking a sector?
-	{
-		if (FLOPPY.currentsector[FLOPPY_DOR_DRIVENUMBERR]==FLOPPY.requestedsector[FLOPPY_DOR_DRIVENUMBERR]) //Requested sector found?
-		{
-			FLOPPY.currentaction &= ~1; //Finished: sector found!
-		}
-		else //Sector not yet found? Increase sector, check and delay!
-		{
-			//Detect index hole, when at sector #0!
-			if (FLOPPY.indexhole[FLOPPY_DOR_DRIVENUMBERR]) //Index hole?
-			{
-				if (++FLOPPY.indexholes[FLOPPY_DOR_DRIVENUMBERR]==2) //Passed for the second time?
-				{
-					FLOPPY.currentaction &= ~2; //Abort: sector not found!
-					return; //Abort!
-				}
-			}
-			++FLOPPY.currentsector[FLOPPY_DOR_DRIVENUMBERR]; //Goto next sector!
-			floppyCHStiming += FLOPPY_sectorrate(FLOPPY_DOR_DRIVENUMBERR); //Delay until done!
-			timed = 1; //Timed!
-		}
-	}
-	else //At the sector that's requested(or not when erroring out)!
-	{
-		if (FLOPPY.currentsector[FLOPPY_DOR_DRIVENUMBERR]==FLOPPY.requestedsector[FLOPPY_DOR_DRIVENUMBER]) //Found sector at the track?
-		{
-			//Do something with the sector, read it or write it?
-		}
-	}
-	if ((floppyCHStiming<0) && timed) //Still something left to time?
-	{
-		timed = 0; //Timed!
-		goto nexttiming; //Apply next timing, if needed, right away!
-	}
-}
-*/
-
-//Normal floppy disk emulation again!
-
 void floppy_erroringout() //Generic handling of when a floppy errors out!
 {
 	FLOPPY.DMAPending = 0; //DMA not pending anymore, so stop handling that!
@@ -1287,14 +1200,6 @@ void floppy_readsector() //Request a read sector command!
 			FLOPPY.erroringtiming |= (1<<FLOPPY_DOR_DRIVENUMBERR); //Erroring!
 			goto floppy_errorread; //Error out!
 		}
-		/*
-		else //Invalid media?
-		{
-			FLOPPY.ST1 = 0x01; //Couldn't find any sector!
-			FLOPPY.ST2 = 0x01; //Data address mark not found!
-			goto floppy_errorread; //Error out!
-		}
-		*/
 		return;
 	}
 	if ((FLOPPY.geometries[FLOPPY_DOR_DRIVENUMBERR]->DoubleDensity!=(FLOPPY.MFM&~DENSITY_IGNORE)) && (!(FLOPPY.geometries[FLOPPY_DOR_DRIVENUMBERR]->DoubleDensity&DENSITY_IGNORE) || density_forced) && EMULATE_DENSITY) //Wrong density?
@@ -1721,20 +1626,6 @@ void FLOPPY_formatsector(byte nodata) //Request a read sector command!
 	}
 	else //Writeable disk?
 	{
-		//Check normal error conditions that applies to all disk images!
-		/*
-		if (FLOPPY_IMPLIEDSEEKENABLER) //Implied seek?
-		{
-			if (FLOPPY.RWRequestedCylinder<FLOPPY.geometries[FLOPPY_DOR_DRIVENUMBERR]->tracks) //Valid track?
-			{
-				FLOPPY.physicalcylinder[FLOPPY_DOR_DRIVENUMBERR] = FLOPPY.currentcylinder[FLOPPY_DOR_DRIVENUMBERR] = FLOPPY.RWRequestedCylinder; //Implied seek!
-				clearDiskChanged(FLOPPY_DOR_DRIVENUMBERR); //Clear the disk changed flag for the new command!
-				FLOPPY_finishseek(FLOPPY_DOR_DRIVENUMBERR,0); //Simulate seek complete!
-				FLOPPY_checkfinishtiming(FLOPPY_DOR_DRIVENUMBERR); //Seek is completed!
-			}
-		}
-		*/
-
 		//Check disk specific information!
 		if (nodata) goto format_havenodata;
 		if ((DSKImageFile = getDSKimage((FLOPPY_DOR_DRIVENUMBERR) ? FLOPPY1 : FLOPPY0)) || (IMDImageFile = getIMDimage((FLOPPY_DOR_DRIVENUMBERR) ? FLOPPY1 : FLOPPY0))) //Are we a DSK/IMD image file?
@@ -1748,21 +1639,7 @@ void FLOPPY_formatsector(byte nodata) //Request a read sector command!
 			}
 			else if (IMDImageFile) //IMD image file?
 			{
-				/*
-				for (;;) //Loop searching for the next sector!
-				{
-					if (!readIMDSectorInfo(IMDImageFile, FLOPPY.physicalcylinder[FLOPPY_DOR_DRIVENUMBERR],FLOPPY.currentphysicalhead[FLOPPY_DOR_DRIVENUMBERR], FLOPPY.currentformatsector[FLOPPY_DOR_DRIVENUMBERR], &IMD_sectorinfo)) //Failed to read sector information block?
-					{
-						goto floppy_errorformat;
-					}
-					if (IMD_sectorinfo.headnumber != FLOPPY.currenthead[FLOPPY_DOR_DRIVENUMBERR]) //Wrong head?
-					{
-						++FLOPPY.currentformatsector[FLOPPY_DOR_DRIVENUMBERR]; //Ignore this side and skip over it!
-						continue; //Ignore this head!
-					}
-					break; //Found the corresponding sector number!
-				}
-				*/ //Ignore what's on the disk!
+				//Ignore what's on the disk!
 			}
 			
 			if (DSKImageFile) //DSK image?
@@ -1785,14 +1662,7 @@ void FLOPPY_formatsector(byte nodata) //Request a read sector command!
 			}
 			else if (IMDImageFile) //IMD image?
 			{
-				/*
-				if ((IMD_sectorinfo.cylinderID != FLOPPY.databuffer[0]) ||
-					(IMD_sectorinfo.headnumber != FLOPPY.databuffer[1]) ||
-					(IMD_sectorinfo.sectorID != FLOPPY.databuffer[2])) //Sector ID mismatch?
-				{
-					goto floppy_errorformat;
-				}
-				*/ //Allow any custom amount of formatting information to be used with this format!
+				//Allow any custom amount of formatting information to be used with this format!
 				sectorbuffer = &FLOPPY.formatbuffer[(FLOPPY.currentformatsector[FLOPPY_DOR_DRIVENUMBERR])<<2]; //The location of the packet containing the sector to format!
 				//Construct the format information buffer for the selected sector!
 				sectorbuffer[0] = FLOPPY.databuffer[0];//Cylinder
@@ -2669,17 +2539,6 @@ void floppy_executeCommand() //Execute a floppy command. Buffers are fully fille
 				goto floppy_errorReadID; //Error out!
 			}
 			FLOPPY.RWRequestedCylinder = FLOPPY.currentcylinder[drive]; //Cylinder to access?
-			/*
-			if (FLOPPY_IMPLIEDSEEKENABLER) //Implied seek?
-			{
-				if ((FLOPPY_MSR_BUSYINPOSITIONINGMODER(drive) == 0) && ((FLOPPY.ST0 & 0x20) == 0)) //Not in positioning mode and not finished seeking according to status?
-				{
-					clearDiskChanged(drive); //Clear the disk changed flag for the new command!
-					FLOPPY_finishseek(drive, 0); //Simulate seek complete!
-					FLOPPY_checkfinishtiming(drive); //Seek is completed!
-				}
-			}
-			*/
 			if (!FLOPPY_supportsrate(drive)) //We don't support the rate?
 			{
 				FLOPPY.ST1 = 0x01; //Couldn't find any sector!
@@ -2869,12 +2728,6 @@ void floppy_executeCommand() //Execute a floppy command. Buffers are fully fille
 			}
 			else //Normal disk? Generate valid data!
 			{
-				/*
-				if (FLOPPY.RWRequestedCylinder != FLOPPY.physicalcylinder[drive]) //Wrong cylinder?
-				{
-					goto floppy_errorReadID; //Error out!
-				}
-				*/
 				FLOPPY.ST1 = 0x00; //Clear ST1!
 				FLOPPY.ST2 = 0x00; //Clear ST2!
 				updateST3(drive); //Update track 0!

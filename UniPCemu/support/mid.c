@@ -289,12 +289,6 @@ word readMID(char *filename, HEADER_CHNK *header, TRACK_CHNK *tracks, byte **cha
 		goto nexttrack; //Next track to check!
 	}
 
-	/*if (!emufeof64(f)) //Not @EOF when required?
-	{
-		emufclose64(f);
-		freez((void **)data, byteswap32(currenttrack.length), "MIDI_DATA"); //Release current if there!
-		return 0; //Incomplete file!
-	}*/
 	emufclose64(f);
 	return currenttrackn; //Give the result: the ammount of tracks loaded!
 }

@@ -118,17 +118,6 @@ List of hardware interrupts:
 
 //5 Override prefixes! (LOCK, CS, SS, DS, ES)
 
-//Prefix opcodes:
-/*
-void CPU8086_OPF0() {} //LOCK
-void CPU8086_OP2E() {} //CS:
-void CPU8086_OP36() {} //SS:
-void CPU8086_OP3E() {} //DS:
-void CPU8086_OP26() {} //ES:
-void CPU8086_OPF2() {} //REPNZ
-void CPU8086_OPF3() {} //REPZ
-*/
-
 /*
 
 WE START WITH ALL HELP FUNCTIONS
@@ -3159,25 +3148,6 @@ OPTINLINE byte CPU8086_internal_MOVSB()
 	{
 		if (CPU_apply286cycles()==0) //No 80286+ cycles instead?
 		{
-			/*
-			if (CPU[activeCPU].repeating) //Are we a repeating instruction?
-			{
-				if (newREP) //Include the REP?
-				{
-					CPU[activeCPU].cycles_OP += 3; //Clock cycles including REP!
-				}
-				else //Repeating instruction itself?
-				{
-					CPU[activeCPU].cycles_OP += 1; //Clock cycles excluding REP!
-				}
-			}
-			else //Plain non-repeating instruction?
-			{
-				CPU[activeCPU].cycles_OP += 4; //Clock cycles!
-			}
-			++CPU[activeCPU].internalinstructionstep; //Next internal instruction step!
-			CPU[activeCPU].executed = 0; return 1; //Wait for execution phase to finish!
-			*/
 		}
 		++CPU[activeCPU].internalinstructionstep; //Next internal instruction step!
 	}
@@ -3253,25 +3223,6 @@ OPTINLINE byte CPU8086_internal_MOVSW()
 	{
 		if (CPU_apply286cycles()==0) //No 80286+ cycles instead?
 		{
-			/*
-			if (CPU[activeCPU].repeating) //Are we a repeating instruction?
-			{
-				if (newREP) //Include the REP?
-				{
-					CPU[activeCPU].cycles_OP += 3; //Clock cycles including REP!
-				}
-				else //Repeating instruction itself?
-				{
-					CPU[activeCPU].cycles_OP += 1; //Clock cycles excluding REP!
-				}
-			}
-			else //Plain non-repeating instruction?
-			{
-				CPU[activeCPU].cycles_OP += 4; //Clock cycles!
-			}
-			++CPU[activeCPU].internalinstructionstep; //Next internal instruction step!
-			CPU[activeCPU].executed = 0; return 1; //Wait for execution phase to finish!
-			*/
 		}
 		++CPU[activeCPU].internalinstructionstep; //Next internal instruction step!
 	}
@@ -3398,23 +3349,6 @@ OPTINLINE byte CPU8086_internal_CMPSB()
 	if (CPU_apply286cycles()==0) //No 80286+ cycles instead?
 	{
 		//Huh? No timing on the CMPSB instruction? But it does for the CMPSW instruction?
-		/*
-		if (CPU[activeCPU].repeating) //Are we a repeating instruction?
-		{
-			if (newREP) //Include the REP?
-			{
-				CPU[activeCPU].cycles_OP += 8; //Clock cycles including REP!
-			}
-			else //Repeating instruction itself?
-			{
-				CPU[activeCPU].cycles_OP += 7; //Clock cycles excluding REP!
-			}
-		}
-		else //Plain non-repeating instruction?
-		{
-			CPU[activeCPU].cycles_OP += 8; //Clock cycles!
-		}
-		*/
 	}
 	return 0;
 }
@@ -3574,23 +3508,6 @@ OPTINLINE byte CPU8086_internal_STOSB()
 	CPUPROT2
 	if (CPU_apply286cycles()==0) //No 80286+ cycles instead?
 	{
-		/*
-		if (CPU[activeCPU].repeating) //Are we a repeating instruction?
-		{
-			if (newREP) //Include the REP?
-			{
-				CPU[activeCPU].cycles_OP += 3; //Clock cycles including REP!
-			}
-			else //Repeating instruction itself?
-			{
-				CPU[activeCPU].cycles_OP += 3; //Clock cycles excluding REP!
-			}
-		}
-		else //Plain non-repeating instruction?
-		{
-			CPU[activeCPU].cycles_OP += 4; //Clock cycles!
-		}
-		*/
 	}
 	return 0;
 }
@@ -3649,23 +3566,6 @@ OPTINLINE byte CPU8086_internal_STOSW()
 	CPUPROT2
 	if (CPU_apply286cycles()==0) //No 80286+ cycles instead?
 	{
-		/*
-		if (CPU[activeCPU].repeating) //Are we a repeating instruction?
-		{
-			if (newREP) //Include the REP?
-			{
-				CPU[activeCPU].cycles_OP += 3; //Clock cycles including REP!
-			}
-			else //Repeating instruction itself?
-			{
-				CPU[activeCPU].cycles_OP += 3; //Clock cycles excluding REP!
-			}
-		}
-		else //Plain non-repeating instruction?
-		{
-			CPU[activeCPU].cycles_OP += 4; //Clock cycles!
-		}
-		*/
 	}
 	return 0;
 }
@@ -3736,23 +3636,6 @@ OPTINLINE byte CPU8086_internal_LODSB()
 
 	if (CPU_apply286cycles()==0) //No 80286+ cycles instead?
 	{
-		/*
-		if (CPU[activeCPU].repeating) //Are we a repeating instruction?
-		{
-			if (newREP) //Include the REP?
-			{
-				CPU[activeCPU].cycles_OP += 6; //Clock cycles including REP!
-			}
-			else //Repeating instruction itself?
-			{
-				CPU[activeCPU].cycles_OP += 5; //Clock cycles excluding REP!
-			}
-		}
-		else //Plain non-repeating instruction?
-		{
-			CPU[activeCPU].cycles_OP += 5; //Clock cycles!
-		}
-		*/
 	}
 	return 0;
 }
@@ -3826,23 +3709,6 @@ OPTINLINE byte CPU8086_internal_LODSW()
 	CPUPROT2
 	if (CPU_apply286cycles()==0) //No 80286+ cycles instead?
 	{
-		/*
-		if (CPU[activeCPU].repeating) //Are we a repeating instruction?
-		{
-			if (newREP) //Include the REP?
-			{
-				CPU[activeCPU].cycles_OP += 6; //Clock cycles including REP!
-			}
-			else //Repeating instruction itself?
-			{
-				CPU[activeCPU].cycles_OP += 5; //Clock cycles excluding REP!
-			}
-		}
-		else //Plain non-repeating instruction?
-		{
-			CPU[activeCPU].cycles_OP += 5; //Clock cycles!
-		}
-		*/
 	}
 	return 0;
 }
@@ -3908,23 +3774,6 @@ OPTINLINE byte CPU8086_internal_SCASB()
 	CPUPROT2
 	if (CPU_apply286cycles()==0) //No 80286+ cycles instead?
 	{
-		/*
-		if (CPU[activeCPU].repeating) //Are we a repeating instruction?
-		{
-			if (newREP) //Include the REP?
-			{
-				CPU[activeCPU].cycles_OP += 7; //Clock cycles including REP!
-			}
-			else //Repeating instruction itself?
-			{
-				CPU[activeCPU].cycles_OP += 6; //Clock cycles excluding REP!
-			}
-		}
-		else //Plain non-repeating instruction?
-		{
-			CPU[activeCPU].cycles_OP += 7; //Clock cycles!
-		}
-		*/
 	}
 	return 0;
 }
@@ -3993,23 +3842,6 @@ OPTINLINE byte CPU8086_internal_SCASW()
 	CPUPROT2
 	if (CPU_apply286cycles()==0) //No 80286+ cycles instead?
 	{
-		/*
-		if (CPU[activeCPU].repeating) //Are we a repeating instruction?
-		{
-			if (newREP) //Include the REP?
-			{
-				CPU[activeCPU].cycles_OP += 7; //Clock cycles including REP!
-			}
-			else //Repeating instruction itself?
-			{
-				CPU[activeCPU].cycles_OP += 6; //Clock cycles excluding REP!
-			}
-		}
-		else //Plain non-repeating instruction?
-		{
-			CPU[activeCPU].cycles_OP += 7; //Clock cycles!
-		}
-		*/
 	}
 	return 0;
 }
@@ -7691,15 +7523,6 @@ OPTINLINE void op_div8(word valdiv, byte divisor)
 		CPU_exDIV0(); //Exception!
 		return; //Exception executed!
 	}
-	/*
-	if (applycycles) / No 80286+ cycles instead? *=/
-	{
-		if (MODRM_EA(params)) //Memory?
-		{
-			CPU[activeCPU].cycles_OP += 6 - EU_CYCLES_SUBSTRACT_ACCESSREAD; //Mem max!
-		}
-	}
-	*/
 }
 
 OPTINLINE void op_idiv8(word valdiv, byte divisor)
@@ -7724,15 +7547,6 @@ OPTINLINE void op_idiv8(word valdiv, byte divisor)
 		CPU_exDIV0(); //Exception!
 		return; //Exception executed!
 	}
-	/*
-	if (applycycles) / No 80286+ cycles instead? /
-	{
-		if (MODRM_EA(params)) //Memory?
-		{
-			CPU[activeCPU].cycles_OP += 6 - EU_CYCLES_SUBSTRACT_ACCESSREAD; //Mem max!
-		}
-	}
-	*/
 }
 
 extern byte CPU_databussize; //Current data bus size!
@@ -7803,23 +7617,6 @@ void op_grp3_8()
 			FLAGW_ZF(CPU[activeCPU].tempAL); //Restore Zero flag!
 			if (REG_AX) FLAGW_ZF(0); //8086/8088 clears the Zero flag when not zero only. Undocumented bug!
 		}
-		/*
-		if (CPU_apply286cycles()==0) / No 80286+ cycles instead? /
-		{
-			if (MODRM_EA(params)) //Memory?
-			{
-				CPU[activeCPU].cycles_OP += 76 - EU_CYCLES_SUBSTRACT_ACCESSREAD; //Mem max!
-			}
-			else //Register?
-			{
-				CPU[activeCPU].cycles_OP += 70; //Reg!
-			}
-			if (NumberOfSetBits(tempAL)>1) //More than 1 bit set?
-			{
-				CPU[activeCPU].cycles_OP += NumberOfSetBits(tempAL) - 1; //1 cycle for all bits more than 1 bit set!
-			}
-		}
-		*/
 		break;
 
 	case 5: //IMULB
@@ -7839,19 +7636,6 @@ void op_grp3_8()
 		{
 			FLAGW_ZF(0); //Clear ZF!
 		}
-		/*
-		if (CPU_apply286cycles()==0) / No 80286+ cycles instead? /
-		{
-			if (MODRM_EA(params)) //Memory?
-			{
-				CPU[activeCPU].cycles_OP += 86 - EU_CYCLES_SUBSTRACT_ACCESSREAD; //Mem max!
-			}
-			else //Register?
-			{
-				CPU[activeCPU].cycles_OP += 80; //Reg!
-			}
-		}
-		*/
 		break;
 
 	case 6: //DIV
@@ -7883,15 +7667,6 @@ OPTINLINE void op_div16(uint32_t valdiv, word divisor)
 		CPU_exDIV0(); //Exception!
 		return; //Exception executed!
 	}
-	/*
-	if (applycycles) / No 80286+ cycles instead? /
-	{
-		if (MODRM_EA(params)) //Memory?
-		{
-			CPU[activeCPU].cycles_OP += 6 - EU_CYCLES_SUBSTRACT_ACCESSREAD; //Mem max!
-		}
-	}
-	*/
 }
 
 OPTINLINE void op_idiv16(uint32_t valdiv, word divisor)
@@ -7910,15 +7685,6 @@ OPTINLINE void op_idiv16(uint32_t valdiv, word divisor)
 		CPU_exDIV0(); //Exception!
 		return; //Exception executed!
 	}
-	/*
-	if (applycycles) / No 80286+ cycles instead? /
-	{
-		if (MODRM_EA(params)) //Memory?
-		{
-			CPU[activeCPU].cycles_OP += 6 - EU_CYCLES_SUBSTRACT_ACCESSREAD; //Mem max!
-		}
-	}
-	*/
 }
 
 void op_grp3_16()
@@ -7982,23 +7748,6 @@ void op_grp3_16()
 			FLAGW_ZF(CPU[activeCPU].tempAL); //Restore!
 			if ((EMULATED_CPU==CPU_8086) && (CPU[activeCPU].temp1.val16| CPU[activeCPU].temp2.val16)) FLAGW_ZF(0); //8086/8088 clears the Zero flag when not zero only.
 		}
-		/*
-		if (CPU_apply286cycles()==0) / No 80286+ cycles instead? /
-		{
-			if (MODRM_EA(params)) //Memory?
-			{
-				CPU[activeCPU].cycles_OP += 124 - EU_CYCLES_SUBSTRACT_ACCESSREAD; //Mem max!
-			}
-			else //Register?
-			{
-				CPU[activeCPU].cycles_OP += 118; //Reg!
-			}
-			if (NumberOfSetBits(tempAX)>1) //More than 1 bit set?
-			{
-				CPU[activeCPU].cycles_OP += NumberOfSetBits(tempAX) - 1; //1 cycle for all bits more than 1 bit set!
-			}
-		}
-		*/
 		break;
 	case 5: //IMULW
 		CPU8086_internal_IMUL(REG_AX, (word)CPU[activeCPU].oper1, &CPU[activeCPU].oper1, &CPU[activeCPU].oper2, 16, &applycycles, 0, modrm_isregister(CPU[activeCPU].params)); //Execute MUL!
@@ -8015,19 +7764,6 @@ void op_grp3_16()
 		{
 			FLAGW_ZF(0); //Clear ZF!
 		}
-		/*
-		if (CPU_apply286cycles()==0) / No 80286+ cycles instead? /
-		{
-			if (MODRM_EA(params)) //Memory?
-			{
-				CPU[activeCPU].cycles_OP += 128 - EU_CYCLES_SUBSTRACT_ACCESSREAD; //Mem max!
-			}
-			else //Register?
-			{
-				CPU[activeCPU].cycles_OP += 134; //Reg max!
-			}
-		}
-		*/
 		break;
 	case 6: //DIV
 		op_div16(((uint32_t)REG_DX << 16) | REG_AX, CPU[activeCPU].oper1);

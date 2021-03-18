@@ -1107,14 +1107,7 @@ OPTINLINE void setCGAMDAColors(byte isGraphics, byte GraphicsMode)
 		{
 			getActiveVGA()->registers->AttributeControllerRegisters.REGISTERS.PALETTEREGISTERS[i] = i; //Make us equal!
 		}
-		/*if (getActiveVGA()->registers->Compatibility_CGAModeControl&0x10) //High resolution graphics mode(640 pixels)?
-		{
-			getActiveVGA()->registers->AttributeControllerRegisters.REGISTERS.OVERSCANCOLORREGISTER = 0; //This forces black overscan!
-		}
-		else //Use overscan!
-		{*/
-			getActiveVGA()->registers->AttributeControllerRegisters.REGISTERS.OVERSCANCOLORREGISTER = (getActiveVGA()->registers->Compatibility_CGAPaletteRegister&0xF);
-		//}
+		getActiveVGA()->registers->AttributeControllerRegisters.REGISTERS.OVERSCANCOLORREGISTER = (getActiveVGA()->registers->Compatibility_CGAPaletteRegister&0xF);
 	}
 
 	VGA_calcprecalcs(getActiveVGA(),WHEREUPDATED_ALL_SECTION|WHEREUPDATED_ATTRIBUTECONTROLLER); //We have been updated(whole attribute controller mode)!

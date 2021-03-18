@@ -350,37 +350,11 @@ void INT10_SetupRomMemory(byte setinterrupts)
 	}
 
 	INT10_SetupBasicVideoParameterTable();
-
-	/*
-	if (IS_TANDY_ARCH) {
-		RealSetVec(0x44,int10.rom.font_8_first);
-	}*/
 }
 
 void INT10_ReloadRomFonts() {
 	//Superfury: It's an actual ROM in UniPCemu, don't reload, as this cannot be changed by software!
-	// 16x8 font
-	/*
-	PhysPt font16pt=Real2Phys(int10.rom.font_16);
-	Bitu interrupt10_romfont_i;
-	for (interrupt10_romfont_i=0;interrupt10_romfont_i<256*16;interrupt10_romfont_i++) {
-		phys_writeb(font16pt+interrupt10_romfont_i,int10_font_16[interrupt10_romfont_i]);
-	}
-	// 14x8 font
-	PhysPt font14pt=Real2Phys(int10.rom.font_14);
-	for (interrupt10_romfont_i=0;interrupt10_romfont_i<256*14;interrupt10_romfont_i++) {
-		phys_writeb(font14pt+interrupt10_romfont_i,int10_font_14[interrupt10_romfont_i]);
-	}
-	// 8x8 fonts
-	PhysPt font8pt=Real2Phys(int10.rom.font_8_first);
-	for (interrupt10_romfont_i=0;interrupt10_romfont_i<128*8;interrupt10_romfont_i++) {
-		phys_writeb(font8pt+interrupt10_romfont_i,int10_font_08[interrupt10_romfont_i]);
-	}
-	font8pt=Real2Phys(int10.rom.font_8_second);
-	for (interrupt10_romfont_i=0;interrupt10_romfont_i<128*8;interrupt10_romfont_i++) {
-		phys_writeb(font8pt+interrupt10_romfont_i,int10_font_08[interrupt10_romfont_i+128*8]);
-	}
-	*/ //This isn't needed: it's stored in a ROM!
+	//This isn't needed: it's stored in a ROM!
 }
 
 void INT10_SetupRomMemoryChecksum() {

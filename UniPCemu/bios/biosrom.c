@@ -1857,7 +1857,7 @@ byte BIOS_readhandler(uint_32 offset, byte index) /* A pointer to a handler func
 		case BIOSROMTYPE_U34_35: //Odd/even ROM
 		case BIOSROMTYPE_U27_47: //Odd/even ROM
 		case BIOSROMTYPE_U13_15: //U13&15 combo? Also Odd/even ROM!
-			/*segment =*/ tempoffset = basepos; //Load the offset! General for AT+ ROMs!
+			tempoffset = basepos; //Load the offset! General for AT+ ROMs!
 			if (likely(tempoffset<BIOS_ROM_U13_15_double)) //This is doubled in ROM!
 			{
 				if (unlikely(tempoffset>=BIOS_ROM_U13_15_single)) //Second copy?
@@ -1865,18 +1865,6 @@ byte BIOS_readhandler(uint_32 offset, byte index) /* A pointer to a handler func
 					tempoffset -= BIOS_ROM_U13_15_single; //Patch to first block to address!
 				}
 			}
-			/*
-			tempoffset >>= 1; //The offset is at every 2 bytes of memory!
-			segment &= 1; //Even=u27, Odd=u47
-			segment <<= 1; //1:15(+2),0=13(+0).
-			segment += 13; //The ROM number!
-			if (likely(BIOS_ROM_size[segment]>tempoffset)) //Within range?
-			{
-				memory_dataread = BIOS_ROMS[segment][tempoffset]; //Give the value!
-				memory_datasize = 1; //Only 1 byte!
-				return 1;
-			}
-			*/
 
 			if (likely(BIOS_combinedROM_size > tempoffset)) //Within range?
 			{
@@ -1920,114 +1908,13 @@ byte BIOS_readhandler(uint_32 offset, byte index) /* A pointer to a handler func
 				}
 			}
 			break;
-		//case BIOSROMTYPE_U27_47: //U27&47 combo?
-			/*segment =*/ /*tempoffset = basepos;*/ //Load the offset! General for AT+ ROMs!
-			/*
-			tempoffset >>= 1; //The offset is at every 2 bytes of memory!
-			segment &= 1; //Even=u27, Odd=u47
-			segment = (((segment << 3) + (segment << 1)) << 1); //Set to 20 for the (*10*2 using bit shifts) for the offset to the ROM number!
-			segment += 27; //The base ROM number!
-			if (likely(BIOS_ROM_size[segment]>tempoffset)) //Within range?
-			{
-				memory_dataread = BIOS_ROMS[segment][tempoffset]; //Give the value!
-				return 1;
-			}
-			*/
-			/*
-			if (likely(BIOS_combinedROM_size > tempoffset)) //Within range?
-			{
-				#ifdef USE_MEMORY_CACHING
-				if ((index & 3) == 0)
-				{
-					if (((tempoffset & 3) == 0) && ((tempoffset | 3) < BIOS_combinedROM_size)) //Enough to read a dword?
-					{
-						memory_dataread = SDL_SwapLE32(*((uint_32*)(&BIOS_combinedROM[tempoffset]))); //Read the data from the ROM!
-						memory_datasize = 4; //A whole dword!
-						return 1; //Done: we've been read!
-					}
-					else if (((tempoffset & 1) == 0) && ((tempoffset | 1) < BIOS_combinedROM_size)) //Enough to read a word, aligned?
-					{
-						memory_dataread = SDL_SwapLE16(*((word*)(&BIOS_combinedROM[tempoffset]))); //Read the data from the ROM, reversed!
-						memory_datasize = 2; //Only 2 bytes!
-						return 1; //Done: we've been read!				
-					}
-					else //Enough to read a byte only?
-					{
-						memory_dataread = BIOS_combinedROM[tempoffset]; //Read the data from the ROM, reversed!
-						memory_datasize = 1; //Only 1 byte!
-						return 1; //Done: we've been read!				
-					}
-				}
-				else //Enough to read a byte only?
-				#endif
-				{
-					memory_dataread = BIOS_combinedROM[tempoffset]; //Read the data from the ROM, reversed!
-					memory_datasize = 1; //Only 1 byte!
-					return 1; //Done: we've been read!				
-				}
-			}
-			break;
-			*/
-		//case BIOSROMTYPE_U34_35: //U34&35 combo?
-			/*segment =*/ /*tempoffset = basepos;*/ //Load the offset! General for AT+ ROMs!
-			/*
-			tempoffset >>= 1; //The offset is at every 2 bytes of memory!
-			segment &= 1; //Even=u27, Odd=u47
-			segment += 34; //The segment number to use!
-			if (likely(BIOS_ROM_size[segment]>tempoffset)) //Within range?
-			{
-				memory_dataread = BIOS_ROMS[segment][tempoffset]; //Give the value!
-				return 1;
-			}
-			*/
-
-			/*
-			if (likely(BIOS_combinedROM_size > tempoffset)) //Within range?
-			{
-				#ifdef USE_MEMORY_CACHING
-				if ((index & 3) == 0)
-				{
-					if (((tempoffset & 3) == 0) && ((tempoffset | 3) < BIOS_combinedROM_size)) //Enough to read a dword?
-					{
-						memory_dataread = SDL_SwapLE32(*((uint_32*)(&BIOS_combinedROM[tempoffset]))); //Read the data from the ROM!
-						memory_datasize = 4; //A whole dword!
-						return 1; //Done: we've been read!
-					}
-					else if (((tempoffset & 1) == 0) && ((tempoffset | 1) < BIOS_combinedROM_size)) //Enough to read a word, aligned?
-					{
-						memory_dataread = SDL_SwapLE16(*((word*)(&BIOS_combinedROM[tempoffset]))); //Read the data from the ROM, reversed!
-						memory_datasize = 2; //Only 2 bytes!
-						return 1; //Done: we've been read!				
-					}
-					else //Enough to read a byte only?
-					{
-						memory_dataread = BIOS_combinedROM[tempoffset]; //Read the data from the ROM, reversed!
-						memory_datasize = 1; //Only 1 byte!
-						return 1; //Done: we've been read!				
-					}
-				}
-				else //Enough to read a byte only?
-				#endif
-				{
-					memory_dataread = BIOS_combinedROM[tempoffset]; //Read the data from the ROM, reversed!
-					memory_datasize = 1; //Only 1 byte!
-					return 1; //Done: we've been read!				
-				}
-			}
-			break;
-			*/
-			default: break; //Unknown even/odd mapping!
+		default: break; //Unknown even/odd mapping!
 	}
 	return OPTROM_readhandler(offset,index); //OPTROM or nothing? Out of range (32-bit)?
 }
 
 void BIOS_registerROM()
 {
-	//Register our read&write handlers for 16&32-bit CPUs!
-	/*
-	MMU_registerWriteHandler(&BIOS_writehandler,"BIOSOPTROM");
-	MMU_registerReadHandler(&BIOS_readhandler,"BIOSOPTROM");
-	*/
 	//This is called directly now!
 
 	//Initialize flash ROM if used!

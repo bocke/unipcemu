@@ -282,16 +282,6 @@ int getBootImage(int device, char *imagefile) //Returns TRUE on bootable (image 
 		return FALSE; //Not to boot!
 	}
 
-	/*byte *pBootImg; //Is going to contain the Boot image.
-	pBootImg = zalloc(dwLen,"ISO_Image"); //Allocate memory for Boot image!
-	*/
-
-	/*if (!pBootImg)
-	{
-		dolog("cdrom_error","Ran out of memory allocating Boot Image buffer.");
-		return FALSE; //Not to boot!
-	}*/
-
 //read the boot image
 //Process the "boot sector"=boot image
 

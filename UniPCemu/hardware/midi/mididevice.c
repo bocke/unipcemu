@@ -2405,11 +2405,6 @@ OPTINLINE void MIDIDEVICE_noteOn(byte selectedchannel, byte channel, byte note, 
 							volume *= activevoices[voiceactive].rvolume; //Right volume!
 						}
 						currentranking += (int_32)(volume * 1000.0f); //Factor in volume, on a scale of 1000!
-						/*if ((activevoices[voice].bank == MIDI_channels[channel].bank) && (activevoices[voice].instrument == MIDI_channels[channel].program) && (activevoices[voice].note->note == note)) //Same note retriggered?
-						{
-							currentranking -= (int_32)(volume*1000.0f); //We're giving us priority to be stolen, if needed! Take us as if we're having no volume at all!
-							++currentranking; //We're taking all but the lowest volume (0)!
-						}*/
 						if ((stolenvoiceranking > currentranking) || (voicetosteal == -1)) //We're a lower rank or the first ranking?
 						{
 							stolenvoiceranking = currentranking; //New voice to steal!

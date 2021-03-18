@@ -404,29 +404,6 @@ enum {
 byte ATA_channel = 0; //What channel are we processing?
 byte ATA_slave = 0; //Are we processing master or slave?
 
-/*
-byte encodeBCD8ATA(byte value)
-{
-	INLINEREGISTER byte temp, result = 0;
-	temp = value; //Load the original value!
-	temp %= 100; //Rest to be sure!
-	result |= (0x0010 * (temp / 10)); //Factor 10!
-	temp %= 10;
-	result |= temp; //Factor 1!
-	return result;
-}
-
-byte decodeBCD8ATA(byte bcd)
-{
-	INLINEREGISTER byte temp, result = 0;
-	temp = bcd; //Load the BCD value!
-	result += (temp & 0xF); //Factor 1!
-	temp >>= 4;
-	result += (temp & 0xF) * 10; //Factor 10!
-	return result; //Give the decoded integer value!
-}
-*/
-
 uint_32 MSF2LBAbin(byte M, byte S, byte F)
 {
 	return (((M * 60) + S) * 75) + F; //75 frames per second, 60 seconds in a minute!
@@ -442,22 +419,6 @@ void LBA2MSFbin(uint_32 LBA, byte *M, byte *S, byte *F)
 	rest -= *S * 75;
 	*F = rest % 75; //Frame, if any!
 }
-
-/*
-uint_32 MSF2LBA(byte M, byte S, byte F)
-{
-	return MSF2LBAbin(decodeBCD8ATA(M), decodeBCD8ATA(S), decodeBCD8ATA(F));
-}
-
-void LBA2MSF(uint_32 LBA, byte *M, byte *S, byte *F)
-{
-	LBA2MSFbin(LBA, M, S, F); //Convert first!
-	//Encode after!
-	*M = encodeBCD8ATA(*M);
-	*S = encodeBCD8ATA(*S);
-	*F = encodeBCD8ATA(*F);
-}
-*/
 
 OPTINLINE byte ATA_activeDrive(byte channel)
 {
@@ -3779,10 +3740,6 @@ void ATAPI_executeCommand(byte channel, byte drive) //Prototype for ATAPI execut
 					ATA[channel].Drive[drive].ATAPI_processingPACKET = 2; //We're transferring ATAPI data now!
 					ATAPI_giveresultsize(channel,drive,ATA[channel].Drive[drive].datablock*ATA[channel].Drive[drive].datasize,1); //No result size!
 				}
-				/*else
-				{
-					goto ATAPI_invalidcommand; //Error out!
-				}*/
 				break; //Stop searching!
 			}
 		}
@@ -5520,12 +5477,6 @@ byte outATA8(word port, byte value)
 			ATA[ATA_channel].driveselectTiming = ATA_DRIVESELECT_TIMEOUT; //Drive select timing to use!
 		}
 		ATA[ATA_channel].activedrive = (value >> 4) & 1; //The active drive!
-		/*
-		if (ATA[ATA_channel].Drive[ATA_activeDrive(ATA_channel)].PARAMETERS.reportReady == 0) //Partial ROM(non-drive bit)
-		{
-			value = (ATA[ATA_channel].Drive[ATA_activeDrive(ATA_channel)].PARAMETERS.drivehead&(~0x10)) | (value & 0x10); //ROM all but drive bit!
-		}
-		*/
 		ATA[ATA_channel].Drive[0].PARAMETERS.drivehead = 0xA0; //Set drive head!
 		ATA[ATA_channel].Drive[1].PARAMETERS.drivehead = 0xA0; //Set drive head!
 		ATA[ATA_channel].Drive[0].PARAMETERS.drivehead |= (value&0x4F); //Set drive head and LBA mode!
@@ -6326,12 +6277,6 @@ void initATA()
 	{
 		ATA_Drives[0][0] = HDD1; //Mount HDD1!
 	}
-	/*
-	else
-	{
-		CDROM_channel = 0; //Move CDROM to primary channel!
-	}
-	*/
 	ATA_Drives[CDROM_channel][0] = CDROM0; //CDROM0 always present as master!
 	ATA_Drives[CDROM_channel][1] = CDROM1; //CDROM1 always present as slave!
 	int i,j,k;

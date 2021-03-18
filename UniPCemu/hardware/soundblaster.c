@@ -434,12 +434,6 @@ OPTINLINE void DSP_startDMADAC(byte autoinitDMA, byte isRecording)
 	}
 	SOUNDBLASTER.commandstep = 1; //Goto step 1!
 	SOUNDBLASTER.AutoInit = SOUNDBLASTER.AutoInitBuf; //Apply auto-init setting, when supported!
-	/*
-	if (autoinitDMA) //Autoinit?
-	{
-		SOUNDBLASTER.wordparamoutput = SOUNDBLASTER.AutoInitBlockSize; //Apply auto init to our size!
-	}
-	*/
 	//Auto-init DMA starting already has wordparamoutput loaded during the parameter phase!
 
 	//According to Bochs, starting a DMA transfer loads the block size setting with the selected DMA length, even when not using Auto-Init DMA!
@@ -1040,12 +1034,6 @@ OPTINLINE void DSP_writeData(byte data, byte isDMA)
 		break;
 	case 0x38: //MIDI write poll
 		SOUNDBLASTER.command = 0; //Finished!
-		/*
-		if (MPU_ready) //Is the MPU installed?
-		{
-			MIDI_OUT(data); //Write the data to the MIDI device directly (UART mode forced)!
-		}
-		*/
 		break;
 	case 0x48: //Set DMA Block size(DSP 2.01+)
 		if (isDMA) return; //Not for DMA transfers!

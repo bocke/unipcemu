@@ -1445,15 +1445,6 @@ validIMDheaderRead:
 					physicalsectorsize = sectorsizemap[sectornumber]; //Physical sector size!
 					//The sector is loaded and valid!
 				sectorreadyRead:
-					//Fill up the sector information block!
-					/*
-					result->cylinderID = physicalcylindernr; //Physical cylinder number!
-					result->headnumber = physicalheadnr; //Physical head number!
-					result->sectorID = physicalsectornr; //Physical sector number!
-					result->MFM_speedmode = trackinfo.mode; //The mode!
-					result->sectorsize = physicalsectorsize; //Physical sector size!
-					*/
-
 					//Finish up!
 					if (sectorsizemap) //Allocated sector size map?
 					{
@@ -1952,15 +1943,6 @@ validIMDheaderWrite:
 					physicalsectorsize = sectorsizemap[sectornumber]; //Physical sector size!
 					//The sector is loaded and valid!
 				sectorreadyWrite:
-					//Fill up the sector information block!
-					/*
-					result->cylinderID = physicalcylindernr; //Physical cylinder number!
-					result->headnumber = physicalheadnr; //Physical head number!
-					result->sectorID = physicalsectornr; //Physical sector number!
-					result->MFM_speedmode = trackinfo.mode; //The mode!
-					result->sectorsize = physicalsectorsize; //Physical sector size!
-					*/
-
 					//Finish up!
 					if (sectorsizemap) //Allocated sector size map?
 					{

@@ -268,12 +268,6 @@ OPTINLINE byte BIU_readResponse(uint_64 *response) //CPU: Read a response from t
 
 //Actual requesting something from the BIU, for the CPU module to call!
 //MMU accesses
-/*
-if (is_paging()) //Are we paging?
-{
-offset = mappage(offset,0,getCPL()); //Map it using the paging mechanism!
-}
-*/
 byte BIU_request_Memoryrb(uint_32 address, byte useTLB)
 {
 	return BIU_request(REQUEST_MMUREAD,address,useTLB); //Request a read!

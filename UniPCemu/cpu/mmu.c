@@ -245,17 +245,6 @@ uint_32 MMU_realaddrPhys(SEGMENT_DESCRIPTOR *segdesc, word segment, uint_32 offs
 		realaddress &= addresswrappingbase_simple; //Apply address wrapping for the CPU offset, when needed!
 	}
 
-	/*if (likely(segdesc!=-1)) //valid segment descriptor?
-	{
-		descriptor = &CPU[activeCPU].SEG_DESCRIPTOR[segdesc]; //Get our using descriptor!
-		if (unlikely((GENERALSEGMENTPTR_S(descriptor) == 1) && (EXECSEGMENTPTR_ISEXEC(descriptor) == 0) && DATASEGMENTPTR_E(descriptor))) //Data segment that's expand-down?
-		{
-			if (is_offset16) //16-bits offset? Set the high bits for compatibility!
-			{
-				realaddress |= 0xFFFF0000; //Convert to 32-bits for adding correctly!
-			}
-		}
-	}*/
 	realaddress += (uint_32)CPU_MMU_startPhys(segdesc, segment);
 
 	//We work!
@@ -646,11 +635,6 @@ OPTINLINE void MMU_INTERNAL_wb(sword segdesc, word segment, uint_32 offset, byte
 		MMU.invaddr = 1; //Invalid address signaling!
 		return; //Out of bounds!
 	}
-	
-	/*if (LOG_MMU_WRITES) //Log MMU writes?
-	{
-		dolog("debugger","MMU: Write to %04X:%08X=%02X",segment,offset,val); //Log our written value!
-	}*/
 
 	realaddress = MMU_realaddr(segdesc, segment, offset, CPU[activeCPU].writeword, is_offset16); //Real adress!
 
