@@ -1593,9 +1593,7 @@ byte debugger_memoryvieweraddress()
 	EMU_gotoxy(0, 4); //Goto position for info!
 	GPU_EMU_printscreen(0, 4, "Address: "); //Show the filename!
 	EMU_unlocktext();
-#ifndef IS_PSP
 	word maxoffsetsize = 8;
-#endif
 	result = 0; //Default: not handled!
 	unlock(LOCK_INPUT); //Make sure the input isn't locked!
 	if (BIOS_InputAddressWithMode(9, 4, &breakpointstr[0], sizeof(breakpointstr) - 1, 0, 0, 0)) //Input text confirmed?
