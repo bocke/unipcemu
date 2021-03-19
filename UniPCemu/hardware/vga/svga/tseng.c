@@ -2162,6 +2162,12 @@ byte Tseng4k_tickAccelerator_step(byte noqueue)
 	//Now, determine and apply the Raster Operation!
 	operationx = et34k(getActiveVGA())->W32_ACLregs.Xposition; //X position to work on!
 	operationx &= 7; //Wrap!
+
+	if (et34k(getActiveVGA())->W32_ACLregs.XYdirection & 1) //ET4000/W32i 2.11.5.3 Data alignment: When the X direction is decreasing(1), the most-significant bit of the mix data is processed first.
+	{
+		operationx = 7 - operationx; //Start from the MSb instead of the LSb!
+	}
+
 	ROP = et34k(getActiveVGA())->W32_ACLregs.BGFG_RasterOperation[((mixmap>>operationx)&1)];
 	result = 0; //Initialize the result!
 	ROPbits = 0x01; //What bit to process!
