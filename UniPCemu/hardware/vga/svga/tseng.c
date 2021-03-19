@@ -2255,6 +2255,10 @@ void Tseng4k_tickAccelerator()
 		if (result == 4) //Transfer to the ACL register queue instead?
 		{
 			Tseng4k_writeMMUregisterUnqueued(et34k(getActiveVGA())->W32_MMUqueueval_address, et34k(getActiveVGA())->W32_MMUqueueval); //Writing from the queue to the ACL register!
+			if (!et34k(getActiveVGA())->W32_acceleratorbusy) //Accelerator not busy on anything?
+			{
+				Tseng4k_doBecomeIdle(); //The accelerator becomes idle now (no input anymore)! We're waiting for input!
+			}
 		}
 		else if ((et34k(getActiveVGA())->W32_acceleratorbusy & 2) != 0) //Not terminated?
 		{
