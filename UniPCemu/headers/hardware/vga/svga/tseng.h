@@ -164,6 +164,7 @@ typedef struct {
 	byte W32_MMUqueuefilled; //Is the queue filled?
 	byte W32_MMUqueueval; //What value is stored inside the queue?
 	uint_32 W32_MMUqueueval_address; //What offset inside the queue is filled!
+	uint_32 W32_MMUqueueval_bankaddress; //Address for any bank, if supplied by an MMU aperture!
 	byte W32_acceleratorbusy; //Is the accelerator started up in a processing?
 	byte W32_acceleratorleft; //How many ticks are left to process!
 	ET4000_W32_ACL_PRECALCS W32_ACLregs; //ACL registers used during rendering

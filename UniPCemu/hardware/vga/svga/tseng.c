@@ -1838,12 +1838,13 @@ byte Tseng4k_writeMMUaccelerator(byte area, uint_32 address, byte value)
 			Tseng4k_startAccelerator(1); //Starting the accelerator by MMU trigger!
 		}
 
-		address += getActiveVGA()->precalcs.MMU012_aperture[area & 3]; //Apply the area we're selecting to get the actual VRAM address!
 		et34k(getActiveVGA())->W32_MMUqueuefilled = (1 | queuefilledboost); //The queue is now filled!
+		et34k(getActiveVGA())->W32_MMUqueueval_bankaddress = getActiveVGA()->precalcs.MMU012_aperture[area & 3]; //Apply the area we're selecting to get the actual VRAM address!
 	}
 	else //To the MMU registers?
 	{
 		et34k(getActiveVGA())->W32_MMUqueuefilled = 4; //The MMU register queue is now filled!
+		et34k(getActiveVGA())->W32_MMUqueueval_bankaddress = 0; //No bank address used!
 	}
 
 	et34k(getActiveVGA())->W32_MMUqueueval_address = address; //What offset is filled!
@@ -2132,6 +2133,7 @@ byte Tseng4k_tickAccelerator_step(byte noqueue)
 			return 1|2; //Not handled yet! Terminate immediately on the same clock!
 			break;
 		}
+		queueaddress += et34k(getActiveVGA())->W32_MMUqueueval_bankaddress; //Apply the bank address for the MMU window accordingly!
 		//Since we're starting a new block processing, check for address updates!
 		if (
 			((et34k(getActiveVGA())->W32_ACLregs.W32_newXYblock) && ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 0x30) == 0)) || //Load destination address during first write?
