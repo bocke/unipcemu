@@ -2226,9 +2226,10 @@ void Tseng4k_tickAccelerator()
 	byte result;
 	//For now, just empty the queue, if filled and become idle!
 	if (!(et34k(getActiveVGA()) && (getActiveVGA()->enable_SVGA == 1))) return; //Not ET4000/W32? Do nothing!
-	if (et34k(getActiveVGA())->W32_MMUsuspendterminatefilled) goto forcehandlesuspendterminate; //Force handle suspend/terminate?
+	if (et34k(getActiveVGA())->W32_MMUsuspendterminatefilled) goto forcehandlesuspendterminateMMU; //Force handle suspend/terminate?
+	if (et34k(getActiveVGA())->W32_MMUqueuefilled == 4) goto forcehandlesuspendterminateMMU; //Force handle queued MMU memory mapped registers?
 	if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x36] & 0x04) == 0) return; //Transfer isn't active? Don't do anything!
-	forcehandlesuspendterminate: //Force handling of suspend/terminate!
+	forcehandlesuspendterminateMMU: //Force handling of suspend/terminate!
 	if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x30] & 0x11)) //Suspend or Terminate requested?
 	{
 		if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x30] & 0x10)==0x10) //Terminate requested?
