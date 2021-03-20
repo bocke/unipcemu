@@ -2252,8 +2252,11 @@ void Tseng4k_tickAccelerator()
 				effectiveoffset <<= 3; //Shift left by 3 bits!
 			}
 			effectiveoffset += et34k(getActiveVGA())->W32_MMUqueueval_bankaddress; //The effective base address for the operation!
+			//Fully update the destination address in both queued, unqueued and active locations!
+			et34k(getActiveVGA())->W32_ACLregs.destinationaddress = effectiveoffset; //The default destination address that's to be loaded!
 			setTsengLE32(&et34k(getActiveVGA())->W32_MMUregisters[0][0xA0], effectiveoffset); //Load the banked address into the queued destination address?
 			setTsengLE32(&et34k(getActiveVGA())->W32_MMUregisters[1][0xA0], effectiveoffset); //Load the banked address into the queued destination address?
+			//Initialize the X and Y position to start rendering!
 			et34k(getActiveVGA())->W32_ACLregs.Xposition = et34k(getActiveVGA())->W32_ACLregs.Yposition = 0; //Initialize the position!
 			goto forcehandlesuspendterminateMMU; //Force handle the starting of a transfer!
 		}
