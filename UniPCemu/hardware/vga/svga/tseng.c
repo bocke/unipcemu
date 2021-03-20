@@ -1719,6 +1719,7 @@ byte Tseng4k_writeMMUregisterUnqueued(byte address, byte value)
 		//Interrupt causes: Bit 0=Queue not full, 1=Queue empty and accelerator goes idle, 2=Write to a full queue
 		break;
 	case 0x36: //ACL Accelerator Status Register
+		/*
 		if ((value & 4) && ((et34k(getActiveVGA())->W32_MMUregisters[0][0x36] & 4) == 0)) //Raised XYST?
 		{
 			Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO()); //Starting a transfer!
@@ -1728,6 +1729,7 @@ byte Tseng4k_writeMMUregisterUnqueued(byte address, byte value)
 		{
 			Tseng4k_status_XYblockTerminalCount(); //Perform like a terminal count!
 		}
+		*/ //Don't handle writes to this register?
 		break;
 	case 0x80:
 	case 0x81:
@@ -1801,7 +1803,6 @@ byte Tseng4k_readMMUaccelerator(byte area, uint_32 address, byte* result)
 
 byte Tseng4k_writeMMUaccelerator(byte area, uint_32 address, byte value)
 {
-	byte queuefilledboost;
 	MMU_waitstateactive = 0; //No wait state!
 	//Index 32 bit 0 being set causes this to set MMU_waitstateactive to 1 when not ready yet and abort (waitstate).
 	//Otherwise, when not ready yet, ignore!
@@ -1831,20 +1832,7 @@ byte Tseng4k_writeMMUaccelerator(byte area, uint_32 address, byte value)
 			}
 		}
 
-		queuefilledboost = 0; //Default: no extra flags!
-
-		if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x36] & 0x04) == 0) //Transfer isn't active yet?
-		{
-			et4k_transferQueuedMMURegisters(); //Load the queued MMU registers!
-			if ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 0) //CPU data isn't used?
-			{
-				queuefilledboost = 2; //Extra flag: we're started by a queue write which isn't used!
-			}
-			Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO()); //Starting a transfer!
-			Tseng4k_startAccelerator(1); //Starting the accelerator by MMU trigger!
-		}
-
-		et34k(getActiveVGA())->W32_MMUqueuefilled = (1 | queuefilledboost); //The queue is now filled!
+		et34k(getActiveVGA())->W32_MMUqueuefilled = 1; //The queue is now filled!
 		et34k(getActiveVGA())->W32_MMUqueueval_bankaddress = getActiveVGA()->precalcs.MMU012_aperture[area & 3]; //Apply the area we're selecting to get the actual VRAM address!
 	}
 	else //To the MMU registers?
@@ -2246,7 +2234,21 @@ void Tseng4k_tickAccelerator()
 	if (!(et34k(getActiveVGA()) && (getActiveVGA()->enable_SVGA == 1))) return; //Not ET4000/W32? Do nothing!
 	if (et34k(getActiveVGA())->W32_MMUsuspendterminatefilled) goto forcehandlesuspendterminateMMU; //Force handle suspend/terminate?
 	if (et34k(getActiveVGA())->W32_MMUqueuefilled == 4) goto forcehandlesuspendterminateMMU; //Force handle queued MMU memory mapped registers?
-	if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x36] & 0x04) == 0) return; //Transfer isn't active? Don't do anything!
+	if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x36] & 0x04) == 0)
+	{
+		if (et34k(getActiveVGA())->W32_MMUqueuefilled==1) //Queue is filled while inactive?
+		{
+			et4k_transferQueuedMMURegisters(); //Load the queued MMU registers!
+			if ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 0) //CPU data isn't used?
+			{
+				et34k(getActiveVGA())->W32_MMUqueuefilled |= 2; //Extra flag: we're started by a queue write which isn't used!
+			}
+			Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO()); //Starting a transfer!
+			Tseng4k_startAccelerator(1); //Starting the accelerator by MMU trigger!
+			goto forcehandlesuspendterminateMMU; //Force handle the starting of a transfer!
+		}
+		return; //Transfer isn't active? Don't do anything!
+	}
 	forcehandlesuspendterminateMMU: //Force handling of suspend/terminate!
 	if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x30] & 0x11)) //Suspend or Terminate requested?
 	{
