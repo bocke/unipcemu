@@ -2278,7 +2278,7 @@ void Tseng4k_tickAccelerator()
 				Tseng4k_doBecomeIdle(); //The accelerator becomes idle now (no input anymore)! We're waiting for input!
 			}
 		}
-		else if ((et34k(getActiveVGA())->W32_acceleratorbusy & 2) != 0) //Not terminated?
+		else //Handling an input on the accelerator?
 		{
 			if ((result = Tseng4k_tickAccelerator_step(0))!=0) //Queue version of ticking the accelerator?
 			{
