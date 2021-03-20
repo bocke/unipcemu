@@ -1622,6 +1622,12 @@ void Tseng4k_startAccelerator(byte triggerfromMMU)
 		et34k(getActiveVGA())->W32_acceleratorleft = 1; //Always more left until finishing! This keeps us running!
 	}
 	et34k(getActiveVGA())->W32_performMMUoperationstart = triggerfromMMU; //Trigger start from MMU type write?
+	if ((et34k(getActiveVGA())->W32_MMUqueuefilled == 0) && (!et34k(getActiveVGA())->W32_performMMUoperationstart)) //Queue not filled yet and not starting from the accelerator window?
+	{
+		//Make sure that the queue addresses are properly set!
+		et34k(getActiveVGA())->W32_MMUqueueval_bankaddress = 0; //Default: no bank address loaded yet!
+		et34k(getActiveVGA())->W32_MMUqueueval_address = et34k(getActiveVGA())->W32_ACLregs.destinationaddress; //Default: no address loaded yet, so use the specified address!
+	}
 }
 
 byte et4k_emptyqueuedummy = 0;
@@ -2015,6 +2021,7 @@ byte et4k_stepx()
 //result: bit0=Set to have handled tick, bit1=Set to immediately check for termination on the same clock.
 byte Tseng4k_tickAccelerator_step(byte noqueue)
 {
+	byte operationstart; //Starting a new operation through the MMU window?
 	uint_32 queueaddress;
 	byte destination,source,pattern,mixmap,ROP,result,operationx;
 	word ROPbits;
@@ -2086,8 +2093,10 @@ byte Tseng4k_tickAccelerator_step(byte noqueue)
 
 	et34k(getActiveVGA())->W32_acceleratorbusy |= 2; //Busy accelerator!
 
-	if ((et34k(getActiveVGA())->W32_acceleratorleft == 0) || (et34k(getActiveVGA())->W32_performMMUoperationstart)) //Need to start a new block? Also when triggered by the MMU to start!
+	if (et34k(getActiveVGA())->W32_acceleratorleft == 0) //Need to start a new block?
 	{
+		//Triggering a new MMU operation block only when not having data left to process. Don't look at it until we're starting a new block!
+		operationstart = et34k(getActiveVGA())->W32_performMMUoperationstart; //Are we triggered through a new operation?
 		et34k(getActiveVGA())->W32_performMMUoperationstart = 0; //We're finished triggering now!
 		if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x30] & 0x11)) //Suspend or Terminate requested?
 		{
@@ -2138,6 +2147,7 @@ byte Tseng4k_tickAccelerator_step(byte noqueue)
 		if (
 			((et34k(getActiveVGA())->W32_ACLregs.W32_newXYblock) && ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 0x30) == 0)) || //Load destination address during first write?
 			((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 0x30) == 0x10) //Always reload destination address?
+			&& (operationstart) //Triggered through the MMU?
 			) //To load the destination address?
 		{
 			et34k(getActiveVGA())->W32_ACLregs.destinationaddress = queueaddress; //Load the destination address!
