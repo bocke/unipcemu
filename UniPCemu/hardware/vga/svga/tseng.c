@@ -86,6 +86,49 @@ OPTINLINE uint_32 getcol256_Tseng(VGA_Type* VGA, byte color) //Convert color to 
 	return RGB(convertrel((colorEntry.r & DACbits), DACbits, 0xFF), convertrel((colorEntry.g & DACbits), DACbits, 0xFF), convertrel((colorEntry.b & DACbits), DACbits, 0xFF)); //Convert using DAC (Scale of DAC is RGB64, we use RGB256)!
 }
 
+//Easy retrieval and storage of bits from an aperture containing a single number in little endian format!
+uint_32 getTsengLE32(byte* list)
+{
+	return (((((list[0x03] << 8) | list[0x02]) << 8) | list[0x01]) << 8) | list[0x00];
+}
+
+uint_32 getTsengLE24(byte* list)
+{
+	return ((((list[0x02]) << 8) | list[0x01]) << 8) | list[0x00];
+}
+
+uint_32 getTsengLE16(byte* list)
+{
+	return (list[0x01] << 8) | list[0x00];
+}
+
+void setTsengLE32(byte* list, uint_32 val)
+{
+	list[0] = (val & 0xFF);
+	val >>= 8;
+	list[1] = (val & 0xFF);
+	val >>= 8;
+	list[2] = (val & 0xFF);
+	val >>= 8;
+	list[3] = (val & 0xFF);
+}
+
+void setTsengLE24(byte* list, uint_32 val)
+{
+	list[0] = (val & 0xFF);
+	val >>= 8;
+	list[1] = (val & 0xFF);
+	val >>= 8;
+	list[2] = (val & 0xFF);
+}
+
+void setTsengLE16(byte* list, word val)
+{
+	list[0] = (val & 0xFF);
+	val >>= 8;
+	list[1] = (val & 0xFF);
+}
+
 extern uint_32 VGA_MemoryMapBankRead, VGA_MemoryMapBankWrite; //The memory map bank to use!
 
 void updateET34Ksegmentselectregister(byte val)
@@ -1279,49 +1322,6 @@ byte Tseng34k_doublecharacterclocks(VGA_Type *VGA)
 	return et34k(VGA)->doublehorizontaltimings; //Double the horizontal timings?
 }
 
-//Easy retrieval and storage of bits from an aperture containing a single number in little endian format!
-uint_32 getTsengLE32(byte* list)
-{
-	return (((((list[0x03] << 8) | list[0x02]) << 8) | list[0x01]) << 8) | list[0x00];
-}
-
-uint_32 getTsengLE24(byte* list)
-{
-	return ((((list[0x02]) << 8) | list[0x01]) << 8) | list[0x00];
-}
-
-uint_32 getTsengLE16(byte* list)
-{
-	return (list[0x01] << 8) | list[0x00];
-}
-
-void setTsengLE32(byte* list, uint_32 val)
-{
-	list[0] = (val&0xFF);
-	val >>= 8;
-	list[1] = (val & 0xFF);
-	val >>= 8;
-	list[2] = (val & 0xFF);
-	val >>= 8;
-	list[3] = (val & 0xFF);
-}
-
-void setTsengLE24(byte* list, uint_32 val)
-{
-	list[0] = (val & 0xFF);
-	val >>= 8;
-	list[1] = (val & 0xFF);
-	val >>= 8;
-	list[2] = (val & 0xFF);
-}
-
-void setTsengLE16(byte* list, word val)
-{
-	list[0] = (val & 0xFF);
-	val >>= 8;
-	list[1] = (val & 0xFF);
-}
-
 byte Tseng4k_readMMUregister(byte address, byte *result)
 {
 	*result = 0xFF; //Unhandled: float the bus by default!
@@ -2238,6 +2238,7 @@ void Tseng4k_tickAccelerator()
 	{
 		if (et34k(getActiveVGA())->W32_MMUqueuefilled==1) //Queue is filled while inactive?
 		{
+			setTsengLE32(&et34k(getActiveVGA())->W32_MMUregisters[0][0xA0], et34k(getActiveVGA())->W32_MMUqueueval_address + et34k(getActiveVGA())->W32_MMUqueueval_bankaddress); //Load the banked address into the queued destination address?
 			et4k_transferQueuedMMURegisters(); //Load the queued MMU registers!
 			if ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 0) //CPU data isn't used?
 			{
