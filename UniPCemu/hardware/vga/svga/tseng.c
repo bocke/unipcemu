@@ -2030,7 +2030,7 @@ byte Tseng4k_tickAccelerator_step(byte noqueue)
 	byte ROPmaskpattern[2] = {0x0F,0xF0};
 	//noqueue: handle without queue only. Otherwise, ticking an input on the currently loaded queue or no queue processing.
 	//acceleratorleft is used to process an queued 8-pixel block from the CPU! In 1:1 ration instead of 1:8 ratio, it's simply set to 1!
-	if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x36] & 0x04) == 0) return 2; //Transfer isn't active? Don't do anything!)
+	if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x36] & 0x04) == 0) return 0; //Transfer isn't active? Don't do anything!)
 	switch (et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) //What kind of operation is used?
 	{
 	case 0: //CPU data isn't used!
