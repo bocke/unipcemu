@@ -2245,6 +2245,7 @@ void Tseng4k_tickAccelerator()
 			}
 			Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO()); //Starting a transfer!
 			Tseng4k_startAccelerator(1); //Starting the accelerator by MMU trigger!
+			et34k(getActiveVGA())->W32_ACLregs.Xposition = et34k(getActiveVGA())->W32_ACLregs.Yposition = 0; //Initialize the position!
 			goto forcehandlesuspendterminateMMU; //Force handle the starting of a transfer!
 		}
 		return; //Transfer isn't active? Don't do anything!
