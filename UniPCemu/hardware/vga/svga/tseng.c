@@ -1621,6 +1621,10 @@ void Tseng4k_startAccelerator(byte triggerfromMMU)
 	{
 		et34k(getActiveVGA())->W32_acceleratorleft = 1; //Always more left until finishing! This keeps us running!
 	}
+	else //New inputs required for the accelerated operation?
+	{
+		et34k(getActiveVGA())->W32_acceleratorleft = 0; //Starting a new operation!
+	}
 	et34k(getActiveVGA())->W32_performMMUoperationstart = triggerfromMMU; //Trigger start from MMU type write?
 	if ((et34k(getActiveVGA())->W32_MMUqueuefilled == 0) && (!et34k(getActiveVGA())->W32_performMMUoperationstart)) //Queue not filled yet and not starting from the accelerator window?
 	{
@@ -2000,6 +2004,7 @@ byte et4k_stepx()
 		et34k(getActiveVGA())->W32_ACLregs.Xposition = 0; //Reset
 		et34k(getActiveVGA())->W32_ACLregs.patternmap_x = et34k(getActiveVGA())->W32_ACLregs.patternmap_x_backup; //Restore the backup!
 		et34k(getActiveVGA())->W32_ACLregs.sourcemap_x = et34k(getActiveVGA())->W32_ACLregs.sourcemap_x_backup; //Restore the backup!
+		et34k(getActiveVGA())->W32_acceleratorleft = 0; //Starting a new operation, so start with new byte data inputs!
 		result = 1 | (et4k_stepy()); //Step Y! X count reached!
 		return result; //Give the result!
 	}
