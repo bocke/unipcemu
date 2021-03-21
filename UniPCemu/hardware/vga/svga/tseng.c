@@ -2239,18 +2239,16 @@ void Tseng4k_tickAccelerator()
 	{
 		if (et34k(getActiveVGA())->W32_MMUqueuefilled==1) //Queue is filled while inactive?
 		{
-			et4k_transferQueuedMMURegisters(); //Load the queued MMU registers!
-			Tseng4k_decodeAcceleratorRegisters(); //Make sure our copy is up-to-date!
 			effectiveoffset = et34k(getActiveVGA())->W32_MMUqueueval_address; //The offset!
-			if ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 2) //Mix data?
+			if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x9C] & 7) == 2) //Mix data is going to be used?
 			{
 				effectiveoffset <<= 3; //Shift left by 3 bits!
 			}
 			effectiveoffset += et34k(getActiveVGA())->W32_MMUqueueval_bankaddress; //The effective base address for the operation!
 			//Fully update the destination address in both queued, unqueued and active locations!
-			et34k(getActiveVGA())->W32_ACLregs.destinationaddress = effectiveoffset; //The default destination address that's to be loaded!
 			setTsengLE32(&et34k(getActiveVGA())->W32_MMUregisters[0][0xA0], effectiveoffset); //Load the banked address into the queued destination address?
-			setTsengLE32(&et34k(getActiveVGA())->W32_MMUregisters[1][0xA0], effectiveoffset); //Load the banked address into the queued destination address?
+			et4k_transferQueuedMMURegisters(); //Load the queued MMU registers!
+			Tseng4k_decodeAcceleratorRegisters(); //Make sure our internal state is up-to-date!
 			if ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 0) //CPU data isn't used?
 			{
 				et34k(getActiveVGA())->W32_MMUqueuefilled |= 2; //Extra flag: we're started by a queue write which isn't used!
