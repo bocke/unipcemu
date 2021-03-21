@@ -1108,7 +1108,7 @@ byte VGA_handleSpriteCRTCwindow(VGA_Type* VGA, SEQ_DATA* Sequencer, VGA_Attribut
 					VGA->CRTC.CRTCBwindowEnabled &= ~1; //The window is now inactive!
 					return 0; //Not ready to handle yet this frame!
 				}
-				if (Sequencer->x >= (VGA->precalcs.SpriteCRTChorizontaldisplaydelay + VGA->precalcs.SpriteCRTChorizontalwindowwidth)) //Out of horizontal range?
+				if (Sequencer->x >= (VGA->precalcs.SpriteCRTChorizontaldisplaydelay + (VGA->precalcs.SpriteCRTChorizontalwindowwidth*VGA->precalcs.SpriteCRTCpixelwidth))) //Out of horizontal range?
 				{
 					VGA->CRTC.CRTCBwindowEnabled &= ~1; //The window is now inactive!
 					return 0; //Not handled!
