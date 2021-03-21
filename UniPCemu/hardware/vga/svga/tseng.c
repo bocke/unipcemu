@@ -2138,7 +2138,7 @@ byte Tseng4k_tickAccelerator_step(byte noqueue)
 		queueaddress += et34k(getActiveVGA())->W32_MMUqueueval_bankaddress; //Apply the bank address for the MMU window accordingly!
 		//Since we're starting a new block processing, check for address updates!
 		if (
-			((et34k(getActiveVGA())->W32_ACLregs.W32_newXYblock) && ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 0x30) == 0)) || //Load destination address during first write?
+			((et34k(getActiveVGA())->W32_ACLregs.W32_newXYblock) && ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 0x30) != 0x10)) || //Load destination address during first write?
 			((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 0x30) == 0x10) //Always reload destination address?
 			&& (operationstart) //Triggered through the MMU address?
 			) //To load the destination address?
