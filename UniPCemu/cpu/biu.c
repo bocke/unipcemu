@@ -1103,7 +1103,7 @@ OPTINLINE byte BIU_processRequests(byte memory_waitstates, byte bus_waitstates)
 					if (MMU_waitstateactive) //No result yet?
 					{
 						BIU[activeCPU].currentrequest &= ~REQUEST_SUB1; //Request 8-bit half again(low byte)!
-						BIU[activeCPU].newrequest = 0; //We're not a new request!
+						BIU[activeCPU].newrequest = 1; //We're a new request!
 						return 1; //Keep polling!
 					}
 					if (unlikely((MMU_logging == 1) && (BIU[activeCPU].currentpayload[1] & 1))) //To log the paged layer?
@@ -1183,7 +1183,6 @@ OPTINLINE byte BIU_processRequests(byte memory_waitstates, byte bus_waitstates)
 					{
 						if (BIU_response(1)) //Result given? We're giving OK!
 						{
-							BIU[activeCPU].waitstateRAMremaining += memory_waitstates; //Apply the waitstates for the fetch!
 							value = ((BIU[activeCPU].currentpayload[0] >> BIU_access_writeshift[0]) & 0xFF); //What to write?
 							if (unlikely((MMU_logging == 1) && (BIU[activeCPU].currentpayload[1] & 1))) //To log the paged layer?
 							{
@@ -1196,9 +1195,10 @@ OPTINLINE byte BIU_processRequests(byte memory_waitstates, byte bus_waitstates)
 								uint_64 temp;
 								temp = BIU_readResponse(&temp); //Discard the response!
 								BIU[activeCPU].currentrequest &= ~REQUEST_SUB1; //Request 8-bit half again(low byte)!
-								BIU[activeCPU].newrequest = 0; //We're not a new request!
+								BIU[activeCPU].newrequest = 1; //We're a new request!
 								return 1; //Keep polling!
 							}
+							BIU[activeCPU].waitstateRAMremaining += memory_waitstates; //Apply the waitstates for the fetch!
 							BIU[activeCPU].currentrequest = REQUEST_NONE; //No request anymore! We're finished!
 							BIU_terminatemem();
 							BIU[activeCPU].newrequest = 0; //We're not a new request!
@@ -1236,6 +1236,8 @@ OPTINLINE byte BIU_processRequests(byte memory_waitstates, byte bus_waitstates)
 						BIU_directwb(physicaladdress, value, 0x100); //Write directly to memory now!
 						if (MMU_waitstateactive) //No result yet?
 						{
+							BIU[activeCPU].currentrequest &= ~REQUEST_SUB1; //Request 8-bit half again(low byte)!
+							BIU[activeCPU].newrequest = 1; //We're a new request!
 							return 1; //Keep polling!
 						}
 						if (unlikely(memory_datawrittensize != BIU[activeCPU].datawritesizeexpected)) //Wrong size than expected?
