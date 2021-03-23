@@ -2012,7 +2012,7 @@ byte et4k_stepx()
 }
 
 //result: bit0=Set to have handled tick, bit1=Set to immediately check for termination on the same clock.
-byte Tseng4k_tickAccelerator_step(byte noqueue)
+byte Tseng4k_tickAccelerator_step(byte autotransfer)
 {
 	byte operationstart; //Starting a new operation through the MMU window?
 	uint_32 queueaddress;
@@ -2023,15 +2023,15 @@ byte Tseng4k_tickAccelerator_step(byte noqueue)
 	byte ROPmaskpattern[2] = {0x0F,0xF0};
 	//noqueue: handle without queue only. Otherwise, ticking an input on the currently loaded queue or no queue processing.
 	//acceleratorleft is used to process an queued 8-pixel block from the CPU! In 1:1 ration instead of 1:8 ratio, it's simply set to 1!
-	if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x36] & 0x04) == 0) return 0; //Transfer isn't active? Don't do anything!)
+	if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x36] & 0x04) == 0) return 0; //Transfer isn't active? Don't do anything!
 	switch (et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) //What kind of operation is used?
 	{
 	case 0: //CPU data isn't used!
 		//Handling without CPU data now!
-		if ((!noqueue) || (et34k(getActiveVGA())->W32_acceleratorleft == 0)) return 0; //NOP when a queue version or not processing!		
+		if ((autotransfer==0) || (et34k(getActiveVGA())->W32_acceleratorleft == 0)) return 0; //NOP when a queue version or not processing!		
 		break;
 	case 1: //CPU data is source data!
-		if (noqueue && (et34k(getActiveVGA())->W32_acceleratorleft == 0)) //Waiting for input?
+		if (autotransfer) //Autotransferring?
 		{
 			if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x30] & 0x11)) //Suspend or Terminate requested?
 			{
@@ -2042,7 +2042,7 @@ byte Tseng4k_tickAccelerator_step(byte noqueue)
 		}
 		break;
 	case 2: //CPU data is mix data!
-		if (noqueue && (et34k(getActiveVGA())->W32_acceleratorleft == 0)) //Waiting for input?
+		if (autotransfer && (et34k(getActiveVGA())->W32_acceleratorleft == 0)) //Autotransfer without data left to process?
 		{
 			if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x30] & 0x11)) //Suspend or Terminate requested?
 			{
@@ -2053,7 +2053,7 @@ byte Tseng4k_tickAccelerator_step(byte noqueue)
 		}
 		break;
 	case 4: //CPU data is X count
-		if (noqueue && (et34k(getActiveVGA())->W32_acceleratorleft == 0)) //Waiting for input?
+		if (autotransfer && (et34k(getActiveVGA())->W32_acceleratorleft == 0)) //Autotransfer without data left to process?
 		{
 			if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x30] & 0x11)) //Suspend or Terminate requested?
 			{
@@ -2064,7 +2064,7 @@ byte Tseng4k_tickAccelerator_step(byte noqueue)
 		}
 		break;
 	case 5: //CPU data is Y count
-		if (noqueue && (et34k(getActiveVGA())->W32_acceleratorleft == 0)) //Waiting for input?
+		if (autotransfer && (et34k(getActiveVGA())->W32_acceleratorleft == 0)) //Autotransfer without data left to process?
 		{
 			if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x30] & 0x11)) //Suspend or Terminate requested?
 			{
