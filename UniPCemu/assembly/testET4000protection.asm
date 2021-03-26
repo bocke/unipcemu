@@ -15,10 +15,10 @@ pop ds ; Make sure we start out correctly!
 mov dx,0x3cc
 in al,dx
 push ax ; Original save
-mov al,0x00 ; B/W mode!
+mov al,0x01 ; Color mode!
 mov dx,0x3c2
 out dx,al ; Write Misc Output Register!
-mov dx,0x3b4
+mov dx,0x3d4
 in al,dx ; Backup the original index!
 push ax ; Original save!
 
@@ -46,7 +46,7 @@ call near ET4000_clearKEY ; Clear the KEY!
 
 ; Finish up the ET4000!
 pop ax ; Pop the original index
-mov dx,0x3b4
+mov dx,0x3d4
 out dx,al ; Restore the CRTC index!
 pop ax ; Pop the original Misc Output Register
 mov dx,0x3c2
@@ -80,7 +80,7 @@ readCRTC:
 push ax
 push dx
 push bx
-mov dx,0x3b4
+mov dx,0x3d4
 xchg ah,al ; AL=Index, AH=whatever
 out dx,al ; Write the index!
 xchg ah,al ; Restore AX. AL=whatever, AH=Index
@@ -96,7 +96,7 @@ ret
 ; writeCRTC: IN: ah=index, al=value
 writeCRTC:
 push dx
-mov dx,0x3b4
+mov dx,0x3d4
 xchg ah,al ; AL=Index, AH=value
 out dx,al ; Write the index!
 xchg ah,al ; AH=Index, AL=value
