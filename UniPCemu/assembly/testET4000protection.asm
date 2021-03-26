@@ -39,6 +39,14 @@ call near writeCRTC ; Write the index!
 call near ET4000_clearKEY ; Clear the KEY!
 ; End of testing code
 
+; Finish up the ET4000!
+pop ax ; Pop the original index
+mov dx,0x3d4
+out dx,al ; Restore the CRTC index!
+pop ax ; Pop the original Misc Output Register
+mov dx,0x3c2
+out dx,al
+;Finish up!
 ; Display results
 and dx,0xff ; Only the lower 8 bits are used!
 mov dl,[originalvaluereadwithoutkey] ; What to display!
@@ -49,15 +57,6 @@ mov dl,[valuewrittenwithkeyenabled] ; What to display!
 call near printhex08
 mov dl,[valuereadwithkeydisabledandbitsflipped] ; What to display!
 call near printhex08
-
-; Finish up the ET4000!
-pop ax ; Pop the original index
-mov dx,0x3d4
-out dx,al ; Restore the CRTC index!
-pop ax ; Pop the original Misc Output Register
-mov dx,0x3c2
-out dx,al
-;Finish up!
 mov dx,13
 call near printchar ;CR
 mov dx,10
