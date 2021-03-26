@@ -30,6 +30,8 @@ mov [originalvaluereadwithkey],al ; Save!
 xor al,08h ; Toggle bit 3 (safe?)
 mov [valuewrittenwithkeyenabled],al ; Save!
 call near writeCRTC ; Write the index!
+call near readCRTC ; Read it back!
+mov [valueactuallywrittenwithkeyenabled],al ; Save!
 call near ET4000_clearKEY ; Clear the KEY!
 call near readCRTC ; Read back the value!
 mov [valuereadwithkeydisabledandbitsflipped],al ; What is read back without the KEY!
@@ -54,6 +56,8 @@ call near printhex08
 mov dl,[originalvaluereadwithkey] ; What to display!
 call near printhex08
 mov dl,[valuewrittenwithkeyenabled] ; What to display!
+call near printhex08
+mov dl,[valueactuallywrittenwithkeyenabled] ; What to display!
 call near printhex08
 mov dl,[valuereadwithkeydisabledandbitsflipped] ; What to display!
 call near printhex08
@@ -172,4 +176,5 @@ ret
 originalvaluereadwithoutkey db 0
 originalvaluereadwithkey db 0
 valuewrittenwithkeyenabled db 0
+valueactuallywrittenwithkeyenabled db 0
 valuereadwithkeydisabledandbitsflipped db 0
