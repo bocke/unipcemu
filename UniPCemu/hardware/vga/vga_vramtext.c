@@ -43,6 +43,7 @@ OPTINLINE byte reverse8_VGA(byte b) { //Reverses byte value bits!
 
 OPTINLINE void fillgetcharxy_values(VGA_Type *VGA, int_32 address)
 {
+	byte attribute = 0; //0 or 1 (bit value 0x4 of the attribute, 1 bit)!
 	byte doublewidthfont=0;
 	word *getcharxy_values;
 	getcharxy_values = &VGA->getcharxy_values[0]; //The values!
@@ -63,7 +64,7 @@ OPTINLINE void fillgetcharxy_values(VGA_Type *VGA, int_32 address)
 	}
 	for (;character<0x100;) //256 characters (8 bits)!
 	{
-		byte attribute = 0; //0 or 1 (bit value 0x4 of the attribute, 1 bit)!
+		attribute = 0; //0 or 1 (bit value 0x4 of the attribute, 1 bit)!
 		for (;attribute<2;) //2 attributes!
 		{
 			if (unlikely(singlerow==-1)) y = 0; //Ignore the selected row if single isn't set!
