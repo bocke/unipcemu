@@ -121,11 +121,11 @@ ret
 ET4000_clearKEY: ; Procedure
 push ax
 push dx
-mov ax,0x3D8
-mov al,0x00
-out dx,al
-mov dl,0xBF
+mov ax,0x3BF
 mov al,0x01
+out dx,al
+mov dl,0xD8
+mov al,0x29
 out dx,al
 pop dx
 pop ax
