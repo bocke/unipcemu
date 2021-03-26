@@ -153,7 +153,7 @@ void VGA_TextDecoder(VGA_Type *VGA, word loadedlocation)
 	else //(S)VGA mode?
 	{
 	VGAtext: //VGA text catch-all!
-		attr3 = (byte)attribute; //Load the attribute!
+		attr3 = (byte)(attribute>>VGA_SEQUENCER_ATTRIBUTESHIFT); //Load the attribute byte itself!
 		attr3 >>= 3; //...
 		attr3 &= 1; //... Take bit 3 to get the actual attribute we need!
 		x = 0; //Start with the first pixel!
