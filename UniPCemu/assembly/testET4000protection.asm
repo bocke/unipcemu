@@ -15,7 +15,8 @@ pop ds ; Make sure we start out correctly!
 mov dx,0x3cc
 in al,dx
 push ax ; Original save
-mov al,0x01 ; Color mode!
+and al,0xfe ; Read original!
+or al,1 ; Color mode!
 mov dx,0x3c2
 out dx,al ; Write Misc Output Register!
 mov dx,0x3d4
@@ -77,20 +78,14 @@ int 21h
 
 ; readCRTC: IN: ah: index, OUT: al=value read, ah: index
 readCRTC:
-push ax
 push dx
-push bx
 mov dx,0x3d4
 xchg ah,al ; AL=Index, AH=whatever
 out dx,al ; Write the index!
 xchg ah,al ; Restore AX. AL=whatever, AH=Index
 inc dx
 in al,dx ; Read the result
-mov [crtctemp],ax ; Store the result!
-pop bx
 pop dx
-pop ax
-mov ax,[crtctemp] ; Retrieve the result!
 ret
 
 ; writeCRTC: IN: ah=index, al=value
@@ -179,4 +174,3 @@ originalvaluereadwithkey db 0
 valuewrittenwithkeyenabled db 0
 valueactuallywrittenwithkeyenabled db 0
 valuereadwithkeydisabledandbitsflipped db 0
-crtctemp dw 0
