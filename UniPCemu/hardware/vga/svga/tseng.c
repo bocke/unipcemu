@@ -955,8 +955,8 @@ byte Tseng34K_readIO(word port, byte *result)
 		}
 	case 0x3C5: //Sequencer data register?
 		switch(getActiveVGA()->registers->SequencerRegisters_Index) {
-		RESTORE_ET34K(3c4, 06);
-		RESTORE_ET34K(3c4, 07);
+		RESTORE_ET34K_UNPROTECTED(3c4, 06);
+		RESTORE_ET34K_UNPROTECTED(3c4, 07);
 		default:
 			break;
 		}
@@ -1065,8 +1065,8 @@ byte Tseng34K_readIO(word port, byte *result)
 		break;
 	case 0x3C1: //Attribute controller read?
 		switch (VGA_3C0_INDEXR) {
-			RESTORE_ET34K(3c0, 16);
-			RESTORE_ET34K(3c0, 17);
+			RESTORE_ET34K_UNPROTECTED(3c0, 16);
+			RESTORE_ET34K_UNPROTECTED(3c0, 17);
 		default:
 			break;
 		}
