@@ -9,19 +9,22 @@ push bx ; Original save
 push cx ; Original save
 push dx ;Original save
 
+push cs
+pop ds ; Make sure we start out correctly!
+
 mov dx,0x3cc
 in al,dx
 push ax ; Original save
-mov al,0x01 ; Color mode!
+mov al,0x00 ; B/W mode!
 mov dx,0x3c2
 out dx,al ; Write Misc Output Register!
-mov dx,0x3d4
+mov dx,0x3b4
 in al,dx ; Backup the original index!
 push ax ; Original save!
 
 ; Start of testing code
 call near ET4000_clearKEY ; Make sure the KEY starts out disabled, since we don't know it's initial status!
-mov ax,0x3400 ; Index 34!
+mov ax,0x1800 ; Index 34!
 call near readCRTC ; Read the index!
 mov [originalvaluereadwithoutkey],al ; Save!
 call near ET4000_setKEY ; Set the KEY!
@@ -43,7 +46,7 @@ call near ET4000_clearKEY ; Clear the KEY!
 
 ; Finish up the ET4000!
 pop ax ; Pop the original index
-mov dx,0x3d4
+mov dx,0x3b4
 out dx,al ; Restore the CRTC index!
 pop ax ; Pop the original Misc Output Register
 mov dx,0x3c2
@@ -77,31 +80,28 @@ readCRTC:
 push ax
 push dx
 push bx
-push bx
-mov dx,0x3d4
+mov dx,0x3b4
 xchg ah,al ; AL=Index, AH=whatever
 out dx,al ; Write the index!
 xchg ah,al ; Restore AX. AL=whatever, AH=Index
 inc dx
 in al,dx ; Read the result
-mov bx,sp
-add bx,6 ; Index with the result AX!
-mov word [bx],ax ; Overwrite result AX with the result!
-pop bx
+mov [crtctemp],ax ; Store the result!
 pop bx
 pop dx
 pop ax
+mov ax,[crtctemp] ; Retrieve the result!
 ret
 
 ; writeCRTC: IN: ah=index, al=value
 writeCRTC:
 push dx
-mov dx,0x3d4
+mov dx,0x3b4
 xchg ah,al ; AL=Index, AH=value
 out dx,al ; Write the index!
 xchg ah,al ; AH=Index, AL=value
 inc dx
-in al,dx ; Read the result
+out dx,al ; Write the result
 pop dx
 ret
 
@@ -111,7 +111,7 @@ push dx
 mov dx,0x3BF
 mov al,0x03
 out dx,al
-mov dl,0xB8
+mov dl,0xD8
 mov al,0xA0
 out dx,al
 pop dx
@@ -121,10 +121,10 @@ ret
 ET4000_clearKEY: ; Procedure
 push ax
 push dx
-mov ax,0x3b8
+mov ax,0x3D8
 mov al,0x00
 out dx,al
-mov dl,0xbf
+mov dl,0xBF
 mov al,0x01
 out dx,al
 pop dx
@@ -133,13 +133,13 @@ ret
 
 printhex08: ; Procedure!
 push dx
-and dx,0xff ; 8-bits only!
+and dx,0x00ff ; 8-bits only!
 push dx
 shr dx,4 ; High 4 bits first!
 and dx,0xf ; 4 bits only!
 call near printhex04
 pop dx
-and dx,0xf ; Low 4 bits last!
+and dx,0x000f ; Low 4 bits last!
 call near printhex04
 pop dx
 ret
@@ -150,6 +150,7 @@ push ax
 and dx,0xf ; Limit possibilities to within range!
 cmp dl,0xa ; <A
 jc isnumber
+sub dl,0xa
 add dl,'A' ; A-F
 call printchar ; Print it!
 jmp endprinthex04 ; Finish up!
@@ -178,3 +179,4 @@ originalvaluereadwithkey db 0
 valuewrittenwithkeyenabled db 0
 valueactuallywrittenwithkeyenabled db 0
 valuereadwithkeydisabledandbitsflipped db 0
+crtctemp dw 0
