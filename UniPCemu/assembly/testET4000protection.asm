@@ -24,7 +24,7 @@ push ax ; Original save!
 
 ; Start of testing code
 call near ET4000_clearKEY ; Make sure the KEY starts out disabled, since we don't know it's initial status!
-mov ax,0x1800 ; Index 34!
+mov ax,0x3400 ; Index 34!
 call near readCRTC ; Read the index!
 mov [originalvaluereadwithoutkey],al ; Save!
 call near ET4000_setKEY ; Set the KEY!
