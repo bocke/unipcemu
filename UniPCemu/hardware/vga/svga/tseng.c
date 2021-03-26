@@ -2338,9 +2338,9 @@ void Tseng4k_tickAccelerator()
 					//Documentation says that all ACL registers are returned to a state they were during the reset of the chip.
 					//All known registers are cleared by this command, returning to power-up state!
 					et34k(getActiveVGA())->W32_MMUregisters[0][0x34] = 0; //Cleared register by the reset! No interrupts enabled!
-					memset(et34k(getActiveVGA())->W32_MMUregisters[1][0x80], 0, (sizeof(et34k(getActiveVGA())->W32_MMUregisters[1][0]) * 0x80)); //Clear the internal registers!
-					memset(et34k(getActiveVGA())->W32_MMUregisters[0][0x80], 0, (sizeof(et34k(getActiveVGA())->W32_MMUregisters[0][0]) * 0x80)); //Clear the queue itself!
-					memset(et34k(getActiveVGA())->W32_MMUregisters[0][0], 0, 0x14); //Clear the MMU base registers!
+					memset(&et34k(getActiveVGA())->W32_MMUregisters[1][0x80], 0, (sizeof(et34k(getActiveVGA())->W32_MMUregisters[1][0]) * 0x80)); //Clear the internal registers!
+					memset(&et34k(getActiveVGA())->W32_MMUregisters[0][0x80], 0, (sizeof(et34k(getActiveVGA())->W32_MMUregisters[0][0]) * 0x80)); //Clear the queue itself!
+					memset(&et34k(getActiveVGA())->W32_MMUregisters[0][0], 0, 0x14); //Clear the MMU base registers!
 					SETBITS(et34k(getActiveVGA())->W32_MMUregisters[0][0x36], 4, 0xF, 0); //Clear the reserved bits of the status register!
 					Tseng4k_status_XYblockTerminalCount(); //Terminal count reached during the tranfer!
 					et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress = et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress = 0; //Reset the internal adresses (officially: undefined on power-up state)!
