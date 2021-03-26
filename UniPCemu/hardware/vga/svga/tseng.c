@@ -1670,7 +1670,7 @@ byte Tseng4k_writeMMUregisterUnqueued(byte address, byte value)
 	case 0x31: //ACL Operation State Register (W/O?)
 	case 0x32: //ACL Sync Enable Register
 	case 0x34: //ACL Interrupt Mask Register
-		et34k(getActiveVGA())->W32_MMUregisters[0][address & 0xFF] = value; //Set the register!
+		et34k(getActiveVGA())->W32_MMUregisters[0][address & 0xFF] = value; //Set the register with all it's bits writable!
 		if ((address == 0x31) && (value & 1)) //Restore operation?
 		{
 			et4k_transferQueuedMMURegisters(); //Load the queued MMU registers!
@@ -1723,6 +1723,7 @@ byte Tseng4k_writeMMUregisterUnqueued(byte address, byte value)
 		//Interrupt causes: Bit 0=Queue not full, 1=Queue empty and accelerator goes idle, 2=Write to a full queue
 		break;
 	case 0x36: //ACL Accelerator Status Register
+		SETBITS(et34k(getActiveVGA())->W32_MMUregisters[0][0x36], 4, 0xF, GETBITS(value, 4, 0xF)); //Bits 4-7 are set directly to whatever is written (marked as Reserved)!
 		if ((value & 4) && ((et34k(getActiveVGA())->W32_MMUregisters[0][0x36] & 4) == 0)) //Raised XYST?
 		{
 			Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO()); //Starting a transfer!
@@ -2322,7 +2323,7 @@ void Tseng4k_tickAccelerator()
 		{
 			if ((et34k(getActiveVGA())->W32_acceleratorbusy & 2) == 0) //Terminated?
 			{
-				if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x30] & 0x10) == 0x00) //Suspend requested?
+				if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x30] & 0x10) == 0x00) //Suspend requested without terminate?
 				{
 					et34k(getActiveVGA())->W32_acceleratorbusy = 0; //Not busy anymore!
 					et34k(getActiveVGA())->W32_ACLregs.patternmapaddress = (et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress & 0x3FFFFF); //Internal Pattern address
@@ -2332,6 +2333,27 @@ void Tseng4k_tickAccelerator()
 					Tseng4k_status_acceleratorsuspended(); //Accelerator has been suspended!
 				}
 				Tseng4k_status_suspendterminatefinished(); //Suspend/term8nate finished.
+				if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x30] & 0x10) == 0x10) //Terminate requested?
+				{
+					//Documentation says that all ACL registers are returned to a state they were during the reset of the chip.
+					//All known registers are cleared by this command, returning to power-up state!
+					et34k(getActiveVGA())->W32_MMUregisters[0][0x34] = 0; //Cleared register by the reset! No interrupts enabled!
+					memset(et34k(getActiveVGA())->W32_MMUregisters[1][0x80], 0, (sizeof(et34k(getActiveVGA())->W32_MMUregisters[1][0]) * 0x80)); //Clear the internal registers!
+					memset(et34k(getActiveVGA())->W32_MMUregisters[0][0x80], 0, (sizeof(et34k(getActiveVGA())->W32_MMUregisters[0][0]) * 0x80)); //Clear the queue itself!
+					memset(et34k(getActiveVGA())->W32_MMUregisters[0][0], 0, 0x14); //Clear the MMU base registers!
+					SETBITS(et34k(getActiveVGA())->W32_MMUregisters[0][0x36], 4, 0xF, 0); //Clear the reserved bits of the status register!
+					Tseng4k_status_XYblockTerminalCount(); //Terminal count reached during the tranfer!
+					et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress = et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress = 0; //Reset the internal adresses (officially: undefined on power-up state)!
+					et4k_decodeAcceleratorRegisters(); //Make sure that we're up-to-date with our internal registers!
+					//Leave register 30h bit 4 untouched, this is to be done by software itself!
+					et34k(getActiveVGA())->W32_MMUregisters[0][0x30] &= 0x10; //Cleared register by the reset! Only leave the terminate bit left for the software to clear!
+					et34k(getActiveVGA())->W32_MMUregisters[0][0x31] = 0; //Cleared register by the reset!
+					et34k(getActiveVGA())->W32_MMUregisters[0][0x32] = 0; //Cleared register by the reset! No sync enable!
+					VGA_calcprecalcs(getActiveVGA(), WHEREUPDATED_MEMORYMAPPED | 0x13); //The memory mapped registers has been updated!
+					et4k_emptyqueuedummy = Tseng4k_doEmptyQueue(); //Empty the queue if possible for the new operation to start! Since interrupts are disabled, doesn't trigger an IRQ!
+					Tseng4k_doBecomeIdle(); //Accelerator becomes idle now!
+					Tseng4k_writeMMUregisterUnqueued(0x35, 0x7); //Clear interrupts from the cause of a write error only? Others are interpreted by the CPU itself for a new operation to start! Since documentation says 'reset of the chip', I assume it clears the other interrupts as well.
+				}
 			}
 		}
 		//Tick the accelerator with the specified address and value loaded!
