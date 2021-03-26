@@ -316,7 +316,7 @@ int readStream(byte **stream, byte *eos)
 
 extern GPU_TEXTSURFACE *BIOS_Surface; //Our display(BIOS) text surface!
 
-void showTime(float playtime, float *oldplaytime)
+byte showTime(float playtime, float *oldplaytime)
 {
 	static char playtimetext[256] = ""; //Time in text format!
 	if ((playtime != *oldplaytime) && (playtime>=(*oldplaytime+PLAYER_TIMEINTERVAL))) //Playtime updated?
@@ -328,7 +328,9 @@ void showTime(float playtime, float *oldplaytime)
 		GPU_textprintf(BIOS_Surface, RGB(0xFF, 0xFF, 0xFF), RGB(0xBB, 0x00, 0x00), "Play time: %s", playtimetext); //Current play time!
 		GPU_text_releasesurface(BIOS_Surface); //Lock!			
 		*oldplaytime = playtime; //We're updated with this value!
+		return 1; //Time updated!
 	}
+	return 0; //Time not updated!
 }
 
 void clearTime()
@@ -359,11 +361,12 @@ void finishDROPlayer()
 
 void stepDROPlayer(DOUBLE timepassed)
 {
+	byte timeupdated;
 	if (droplayer) //Are we playing anything?
 	{
 		droplayer->currenttime += timepassed; //Add the time passed to the playback time!
 		//Checks time and plays the DRO file selected!
-		showTime((float)droplayer->currenttime, &droplayer->oldplaytime); //Update time!
+		timeupdated = showTime((float)droplayer->currenttime, &droplayer->oldplaytime); //Update time!
 		if (droplayer->currenttime>=droplayer->playtime) //Enough time passed to start playback (again)?
 		{
 			for (;droplayer->currenttime>=droplayer->playtime;) //Execute all commands we can in this time!
@@ -456,6 +459,21 @@ void stepDROPlayer(DOUBLE timepassed)
 				OPLXsetreg(droplayer->droversion, droplayer->newheader.iHardwareType,1,(droplayer->w&0x7F),&droplayer->CodemapTable[0], droplayer->newheader.iCodemapLength,0); //Clear all registers, as per the DR0 specification!
 			}
 			finishDROPlayer(); //Finish our player!
+		}
+		else if (timeupdated) //Time is updated without anything playing and waiting for something?
+		{
+			//Check for stopping the song!			
+			lock(LOCK_INPUT);
+			if (psp_keypressed(BUTTON_CIRCLE) || psp_keypressed(BUTTON_STOP)) //Circle/stop pressed? Request to stop playback!
+			{
+				droplayer->stoprunning |= 2; //Set termination flag to request a termination by pressing!
+			}
+			else if ((droplayer->stoprunning & 2) || shuttingdown()) //Requested termination by pressing and released?
+			{
+				droplayer->stoprunning = 1; //We're terminating now!
+			}
+			unlock(LOCK_INPUT);
+			if (droplayer->stoprunning & 1) goto finishinput; //Requesting termination? Start quitting!
 		}
 	}
 	continueplayer: return; //Continue playing!
