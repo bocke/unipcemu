@@ -2344,7 +2344,7 @@ void Tseng4k_tickAccelerator()
 					SETBITS(et34k(getActiveVGA())->W32_MMUregisters[0][0x36], 4, 0xF, 0); //Clear the reserved bits of the status register!
 					Tseng4k_status_XYblockTerminalCount(); //Terminal count reached during the tranfer!
 					et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress = et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress = 0; //Reset the internal adresses (officially: undefined on power-up state)!
-					et4k_decodeAcceleratorRegisters(); //Make sure that we're up-to-date with our internal registers!
+					Tseng4k_decodeAcceleratorRegisters(); //Make sure that we're up-to-date with our internal registers!
 					//Leave register 30h bit 4 untouched, this is to be done by software itself!
 					et34k(getActiveVGA())->W32_MMUregisters[0][0x30] &= 0x10; //Cleared register by the reset! Only leave the terminate bit left for the software to clear!
 					et34k(getActiveVGA())->W32_MMUregisters[0][0x31] = 0; //Cleared register by the reset!
