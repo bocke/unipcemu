@@ -1150,8 +1150,8 @@ byte OPTROM_readhandler(uint_32 offset, byte index)    /* A pointer to a handler
 						case 1: //ROM disabled (ET3K/4K-AX), C000-C5FFF(ET3K/4K-AF)
 							return 0; //Disable the ROM!
 						case 2: //C000-C5FF, C680-C7FF Enabled
-							if ((temppos>=0x6000) && (temppos<0x6800)) return 0; //Unmapped in the mid-range!
-							//Passthrough to the end mapping!
+							if (((temppos>=0x6000) && (temppos<0x6800)) || (temppos>=0x8000)) return 0; //Unmapped in the mid-range!
+							break;
 						case 3: //C000-C7FF Enabled
 							if (temppos>=0x8000) return 0; //Disabled!
 							break;
