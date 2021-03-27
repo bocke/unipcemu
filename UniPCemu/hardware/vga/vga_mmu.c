@@ -197,39 +197,23 @@ Special operations for write!
 
 */
 
-OPTINLINE uint_32 LogicalOperation(uint_32 input)
+OPTINLINE uint_32 ALUMaskLatchOperation(uint_32 input, uint_32 bitmask)
 {
-	switch (GETBITS(getActiveVGA()->registers->GraphicsRegisters.REGISTERS.DATAROTATEREGISTER,3,3))
+	switch (GETBITS(getActiveVGA()->registers->GraphicsRegisters.REGISTERS.DATAROTATEREGISTER, 3, 3))
 	{
 	case 0x00:	/* None */
-		return input; //Unmodified
+		return ((input&bitmask) | (LE32(getActiveVGA()->registers->ExternalRegisters.DATALATCH.latch) &(~bitmask))); //Only apply the bitmask!
 	case 0x01:	/* AND */
-		return input & LE32(getActiveVGA()->registers->ExternalRegisters.DATALATCH.latch);
+		return ((input|(~bitmask)) & (LE32(getActiveVGA()->registers->ExternalRegisters.DATALATCH.latch)));
 	case 0x02:	/* OR */
-		return input | LE32(getActiveVGA()->registers->ExternalRegisters.DATALATCH.latch);
+		return ((input&bitmask) | LE32(getActiveVGA()->registers->ExternalRegisters.DATALATCH.latch));
 	case 0x03:	/* XOR */
-		return input ^ LE32(getActiveVGA()->registers->ExternalRegisters.DATALATCH.latch);
+		return ((input&bitmask) ^ LE32(getActiveVGA()->registers->ExternalRegisters.DATALATCH.latch));
 	default:
+		//Shouldn't happen!
 		break;
 	};
-	return input; //Unknown, just give the input!
-}
-
-OPTINLINE uint_32 BitmaskOperation(uint_32 input, byte bitmaskregister)
-{
-	INLINEREGISTER uint_32 result = 0; //The result built!
-	INLINEREGISTER uint_32 mask,inputdata; //Latch and extended mask!
-	//Load the mask to use, extend to all four planes!
-	mask = getActiveVGA()->ExpandTable[bitmaskregister]; //Load the current mask(one plane) expanded!
-	//Convert the value&latch to result using the mask!
-	inputdata = input; //Load the input to process!
-	inputdata &= mask; //Apply the mask to get the bits to turn on!
-	result |= inputdata; //Apply the bits to turn on to the result!
-	mask ^= 0xFFFFFFFF; //Flip the mask bits to get the bits to retrieve from the latch!
-	inputdata = LE32(getActiveVGA()->registers->ExternalRegisters.DATALATCH.latch); //Load the latch!
-	inputdata &= mask; //Apply the mask to get the bits to turn on!
-	result |= inputdata; //Apply the bits to turn on to the result!
-	return result; //Give the resulting value!
+	return input; //Shouldn't happen!
 }
 
 /*
@@ -261,8 +245,7 @@ uint_32 VGA_WriteMode0(uint_32 data) //Read-Modify-Write operation!
 		}
 		curplane <<= 1; //Next plane!
 	} while (curplane!=0x10); //Only the 4 planes are used!
-	data = LogicalOperation(data); //Execute the logical operation!
-	data = BitmaskOperation(data, getActiveVGA()->registers->GraphicsRegisters.REGISTERS.BITMASKREGISTER); //Execute the bitmask operation!
+	data = ALUMaskLatchOperation(data, getActiveVGA()->ExpandTable[getActiveVGA()->registers->GraphicsRegisters.REGISTERS.BITMASKREGISTER]); //Execute the bitmask operation!
 	return data; //Give the resulting data!
 }
 
@@ -274,8 +257,7 @@ uint_32 VGA_WriteMode1(uint_32 data) //Video-to-video transfer
 uint_32 VGA_WriteMode2(uint_32 data) //Write color to all pixels in the source address byte of VRAM. Use Bit Mask Register.
 {
 	data = getActiveVGA()->FillTable[data&0xF]; //Replicate across all 4 planes to 8 bits set or cleared of their respective planes. The upper 4 bits of the CPU input are unused.
-	data = LogicalOperation(data); //Execute the logical operation!
-	data = BitmaskOperation(data, getActiveVGA()->registers->GraphicsRegisters.REGISTERS.BITMASKREGISTER); //Execute the bitmask operation fully!
+	data = ALUMaskLatchOperation(data, getActiveVGA()->ExpandTable[getActiveVGA()->registers->GraphicsRegisters.REGISTERS.BITMASKREGISTER]); //Execute the bitmask operation fully!
 	return data;
 }
 
@@ -283,7 +265,7 @@ uint_32 VGA_WriteMode3(uint_32 data) //Ignore enable set reset register!
 {
 	data = ror(data, GETBITS(getActiveVGA()->registers->GraphicsRegisters.REGISTERS.DATAROTATEREGISTER,0,7)); //Rotate it! Keep 8-bit data!
 	data &= getActiveVGA()->registers->GraphicsRegisters.REGISTERS.BITMASKREGISTER; //AND with the Bit Mask field.
-	data = BitmaskOperation(LogicalOperation(getActiveVGA()->FillTable[GETBITS(getActiveVGA()->registers->GraphicsRegisters.REGISTERS.SETRESETREGISTER,0,0xF)]), data); //Use the generated data on the Set/Reset register
+	data = ALUMaskLatchOperation(getActiveVGA()->FillTable[GETBITS(getActiveVGA()->registers->GraphicsRegisters.REGISTERS.SETRESETREGISTER,0,0xF)], getActiveVGA()->ExpandTable[data]); //Use the generated data on the Set/Reset register
 	return data;
 }
 
