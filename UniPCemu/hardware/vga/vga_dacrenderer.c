@@ -290,14 +290,13 @@ void VGA_initColorLevels(VGA_Type* VGA)
 {
 	float startrange, endrange, rangestep, currange;
 	int i;
-	startrange = 0.0f; //Start of the active range!
+	startrange = ((7.5/100.0)*255.0); //Start of the active range!
 	endrange = 255.0f; //End of the active range!
 	rangestep = (endrange - startrange) / 255.0f; //Steps for the range to take!
 	currange = startrange; //What the starting level is!
 	for (i = 0; i < 0x100; ++i) //Process all output levels!
 	{
-		//VGA->DACbrightness[i] = (byte)currange; //The selected brightness for this level!
-		VGA->DACbrightness[i] = (byte)i; //The selected brightness for this level!
+		VGA->DACbrightness[i] = (byte)currange; //The selected brightness for this level!
 		currange += rangestep; //Next entry level!
 	}
 }
