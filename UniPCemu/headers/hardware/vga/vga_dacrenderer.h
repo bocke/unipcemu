@@ -32,6 +32,7 @@ void VGA_DUMPColors(); //Dumps the full DAC and Attribute colors!
 
 void VGA_initBWConversion(); //Init B/W conversion data!
 void VGA_initRGBAconversion(); //Init RGBA conversion!
+void VGA_initColorLevels(VGA_Type* VGA); //Initialize the color levels to use for VGA active display colors!
 byte DAC_Use_BWMonitor(byte use); //Use B/W monitor?
 byte DAC_BWColor(byte use); //What B/W color to use?
 byte DAC_Use_BWluminance(byte use); //What luminance method to use?

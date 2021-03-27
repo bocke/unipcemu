@@ -1405,6 +1405,9 @@ void VGA_ActiveDisplay_noblanking_VGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_At
 			DACcolor = VGA_DAC(VGA,(Sequencer->lastDACcolor&0xFF)); //Render through the 8-bit DAC!
 		}
 	}
+
+	DACcolor = RGB(VGA->DACbrightness[GETR(DACcolor)], VGA->DACbrightness[GETG(DACcolor)], VGA->DACbrightness[GETB(DACcolor)]); //Make sure we're active display levels of brightness!
+
 	if (VGA->precalcs.turnDACoff) //Turning the DAC off?
 	{
 		DACcolor = RGB(0x00, 0x00, 0x00); //No output on the DAC!
@@ -1438,6 +1441,7 @@ void VGA_ActiveDisplay_noblanking_CGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_At
 
 void VGA_Overscan_noblanking_VGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_AttributeInfo *attributeinfo)
 {
+	uint_32 DACcolor;
 	VGA->CRTC.CRTCBwindowEnabled &= ~1; //Not active right now!
 	VGA_handleSpriteCRTCwindowNonActiveDisplay(VGA, Sequencer, attributeinfo, &overrideattributeinfo); //Handle without display!
 	VGA->CRTC.CRTCBwindowmaxstatus = MAX(VGA->CRTC.CRTCBwindowmaxstatus, VGA->CRTC.CRTCBwindowEnabled); //Maximum status detected!
@@ -1461,7 +1465,9 @@ void VGA_Overscan_noblanking_VGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_Attribu
 		}
 		else
 		{
-			drawPixel(VGA, VGA_DAC(VGA, VGA->CRTC.DACOutput)); //Draw overscan in the specified color instead!
+			DACcolor = VGA_DAC(VGA, VGA->CRTC.DACOutput); //What color to render?
+			DACcolor = RGB(VGA->DACbrightness[GETR(DACcolor)], VGA->DACbrightness[GETG(DACcolor)], VGA->DACbrightness[GETB(DACcolor)]); //Make sure we're active display levels of brightness!
+			drawPixel(VGA, DACcolor); //Draw overscan in the specified color instead!
 		}
 	}
 	else //Normal VGA behaviour?
@@ -1473,7 +1479,9 @@ void VGA_Overscan_noblanking_VGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_Attribu
 		}
 		else
 		{
-			drawPixel(VGA, VGA_DAC(VGA, VGA->precalcs.overscancolor)); //Draw overscan!
+			DACcolor = VGA_DAC(VGA, VGA->precalcs.overscancolor); //Draw overscan!
+			DACcolor = RGB(VGA->DACbrightness[GETR(DACcolor)], VGA->DACbrightness[GETG(DACcolor)], VGA->DACbrightness[GETB(DACcolor)]); //Make sure we're active display levels of brightness!
+			drawPixel(VGA, DACcolor); //Draw overscan in the specified color instead!
 		}
 	}
 	video_updateLightPen(VGA,0); //Update the light pen!

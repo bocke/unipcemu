@@ -402,6 +402,7 @@ typedef struct
 	byte WaitStateCounter; //What are we counting to?
 	void *SVGAExtension; //The SVGA extension data, if any!
 	byte enable_SVGA; //Enable SVGA? If >0, a SVGA extension is enabled. Then initialize it as needed!
+	byte DACbrightness[0x100]; //All 256 levels of brightness for active display DAC!
 } VGA_Type; //VGA dataset!
 
 typedef DOUBLE (*VGA_clockrateextensionhandler)(VGA_Type *VGA); //The clock rate extension handler!

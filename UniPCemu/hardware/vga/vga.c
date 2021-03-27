@@ -250,6 +250,9 @@ VGA_Type *VGAalloc(uint_32 custom_vram_size, int update_bios, byte extension) //
 		VGA_setupEGAPalette(VGA); //Setup the EGA palette!
 	}
 
+	//Finally, make sure that the VGA DAC output levels are in the correct range!
+	VGA_initColorLevels(VGA); //Initialize the color levels to use for output!
+
 	debugrow("VGA: Allocation ready.");
 	return VGA; //Give the new allocated VGA!
 }
