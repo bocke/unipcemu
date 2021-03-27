@@ -8,26 +8,24 @@ push ax ; Original save
 push bx ; Original save
 push cx ; Original save
 push dx ;Original save
-
-push cs
-pop ds ; Make sure we start out correctly!
+pushf ;Original save
 
 mov dx,0x3cc
 in al,dx
-push ax ; Original save
+push ax ; Original Misc Output save
 and al,0xfe ; Read original!
 or al,1 ; Color mode!
 mov dx,0x3c2
 out dx,al ; Write Misc Output Register!
 mov dx,0x3d4
 in al,dx ; Backup the original index!
-push ax ; Original save!
+push ax ; Original index save!
 
 ; Start of testing code
 call near ET4000_clearKEY ; Make sure the KEY starts out disabled, since we don't know it's initial status!
 mov ax,0x3400 ; Index 34!
 call near readCRTC ; Read the index!
-mov [originalvaluereadwithoutkey],al ; Save!
+mov [originalvaluereadwithoutkey],al ; Save (also the original value is stored)!
 call near ET4000_setKEY ; Set the KEY!
 call near readCRTC ; Read the index!
 mov [originalvaluereadwithkey],al ; Save!
@@ -40,7 +38,7 @@ call near ET4000_clearKEY ; Clear the KEY!
 call near readCRTC ; Read back the value!
 mov [valuereadwithkeydisabledandbitsflipped],al ; What is read back without the KEY!
 call near ET4000_setKEY ; Set the KEY again
-mov al,originalvaluereadwithkey ; Original value to restore!
+mov al,[originalvaluereadwithkey] ; Original value to restore!
 call near writeCRTC ; Write the index!
 call near ET4000_clearKEY ; Clear the KEY!
 ; End of testing code
@@ -51,24 +49,25 @@ mov dx,0x3d4
 out dx,al ; Restore the CRTC index!
 pop ax ; Pop the original Misc Output Register
 mov dx,0x3c2
-out dx,al
-;Finish up!
+out dx,al ; Restore the Misc Output Register
+;Finish up the program!
 ; Display results
-and dx,0xff ; Only the lower 8 bits are used!
 mov dl,[originalvaluereadwithoutkey] ; What to display!
 call near printhex08
+call near printCRLF
 mov dl,[originalvaluereadwithkey] ; What to display!
 call near printhex08
+call near printCRLF
 mov dl,[valuewrittenwithkeyenabled] ; What to display!
 call near printhex08
+call near printCRLF
 mov dl,[valueactuallywrittenwithkeyenabled] ; What to display!
 call near printhex08
+call near printCRLF
 mov dl,[valuereadwithkeydisabledandbitsflipped] ; What to display!
 call near printhex08
-mov dx,13
-call near printchar ;CR
-mov dx,10
-call near printchar ;LF
+call near printCRLF
+popf
 pop dx
 pop cx
 pop bx
@@ -116,7 +115,7 @@ ret
 ET4000_clearKEY: ; Procedure
 push ax
 push dx
-mov ax,0x3BF
+mov dx,0x3BF
 mov al,0x01
 out dx,al
 mov dl,0xD8
@@ -147,12 +146,11 @@ cmp dl,0xa ; <A
 jc isnumber
 sub dl,0xa
 add dl,'A' ; A-F
-call printchar ; Print it!
 jmp endprinthex04 ; Finish up!
 isnumber: ; We're a number?
 add dl,'0' ; 0-9
-call printchar ; Print it!
 endprinthex04:
+call printchar ; Print it!
 pop ax
 pop dx
 ret
@@ -168,6 +166,15 @@ pop dx
 pop ax
 ret
 
+
+printCRLF: ; Procedure
+push dx
+mov dx,13
+call near printchar ;CR
+mov dx,10
+call near printchar ;LF
+pop dx
+ret
 ; uninitialized data
 originalvaluereadwithoutkey db 0
 originalvaluereadwithkey db 0
