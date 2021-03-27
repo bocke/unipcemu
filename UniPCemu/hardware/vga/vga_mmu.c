@@ -234,6 +234,7 @@ uint_32 VGA_WriteMode0(uint_32 data) //Read-Modify-Write operation!
 {
 	INLINEREGISTER byte curplane;
 	data = (byte)ror((byte)data, GETBITS(getActiveVGA()->registers->GraphicsRegisters.REGISTERS.DATAROTATEREGISTER,0,7)); //Rotate it! Keep 8-bit data!
+	data &= 0xFF; //Prevent overflow!
 	data = getActiveVGA()->ExpandTable[data]; //Make sure the data is on the all planes!
 
 	curplane = 1; //Process all 4 plane bits!
@@ -264,8 +265,8 @@ uint_32 VGA_WriteMode2(uint_32 data) //Write color to all pixels in the source a
 uint_32 VGA_WriteMode3(uint_32 data) //Ignore enable set reset register!
 {
 	data = ror(data, GETBITS(getActiveVGA()->registers->GraphicsRegisters.REGISTERS.DATAROTATEREGISTER,0,7)); //Rotate it! Keep 8-bit data!
-	data &= getActiveVGA()->registers->GraphicsRegisters.REGISTERS.BITMASKREGISTER; //AND with the Bit Mask field.
-	data = ALUMaskLatchOperation(getActiveVGA()->FillTable[GETBITS(getActiveVGA()->registers->GraphicsRegisters.REGISTERS.SETRESETREGISTER,0,0xF)], getActiveVGA()->ExpandTable[data]); //Use the generated data on the Set/Reset register
+	data &= 0xFF; //Prevent overflow!
+	data = ALUMaskLatchOperation(getActiveVGA()->FillTable[GETBITS(getActiveVGA()->registers->GraphicsRegisters.REGISTERS.SETRESETREGISTER,0,0xF)], getActiveVGA()->ExpandTable[data]&getActiveVGA()->ExpandTable[getActiveVGA()->registers->GraphicsRegisters.REGISTERS.BITMASKREGISTER]); //Use the generated data on the Set/Reset register
 	return data;
 }
 
@@ -333,7 +334,7 @@ byte VGA_ReadMode1(byte planes, uint_32 offset) //Read mode 1: Compare display m
 	byte dontcare;
 	uint_32 result;
 	dontcare = GETBITS(getActiveVGA()->registers->GraphicsRegisters.REGISTERS.COLORDONTCAREREGISTER,0,0xF); //Don't care bits!
-	result = (LE32(getActiveVGA()->registers->ExternalRegisters.DATALATCH.latch)&getActiveVGA()->FillTable[dontcare])^(getActiveVGA()->FillTable[GETBITS(getActiveVGA()->registers->GraphicsRegisters.REGISTERS.COLORCOMPAREREGISTER,0,0xF)^dontcare]);
+	result = (LE32(getActiveVGA()->registers->ExternalRegisters.DATALATCH.latch)&getActiveVGA()->FillTable[dontcare])^(getActiveVGA()->FillTable[GETBITS(getActiveVGA()->registers->GraphicsRegisters.REGISTERS.COLORCOMPAREREGISTER,0,0xF)&dontcare]);
 	return (byte)(~(result|(result>>8)|(result>>16)|(result>>24))); //Give the value!
 }
 
