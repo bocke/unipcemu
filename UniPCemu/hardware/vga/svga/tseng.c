@@ -1713,6 +1713,7 @@ byte Tseng4k_writeMMUregisterUnqueued(byte address, byte value)
 	case 0x35: //ACL Interrupt Status Register
 		//Writing bits 0-2 with a set bit clears said interrupt condition!
 		//Clearing all set bits clears the interrupt status!
+		SETBITS(et34k(getActiveVGA())->W32_MMUregisters[0][0x35],3,0x1F,GETBITS(value,3,0x1F)); //Set the high bits!
 		oldintstatus = et34k(getActiveVGA())->W32_MMUregisters[0][0x35]; //What is causing the interrupt!
 		et34k(getActiveVGA())->W32_MMUregisters[0][0x35] &= ~(value & 7); //Clear all acnowledged interrupts!
 		if ((oldintstatus & ~(value & 7)) == 0) //Cleared all interrupt causes?
