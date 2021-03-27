@@ -576,7 +576,7 @@ void initEMU(int full) //Init!
 	uint_32 VRAMSizeBackup;
 	VRAMSizeBackup = BIOS_Settings.VRAM_size; //Save the original VRAM size for extensions!
 
-	MainVGA = VGAalloc(0,1,(BIOS_Settings.VGA_Mode==6)?1:(BIOS_Settings.VGA_Mode==7?2:((BIOS_Settings.VGA_Mode==8)?3:0))); //Allocate a main VGA or compatible, automatically by BIOS!
+	MainVGA = VGAalloc(0,1,(BIOS_Settings.VGA_Mode==6)?1:(BIOS_Settings.VGA_Mode==7?2:((BIOS_Settings.VGA_Mode==8)?3:0)),BIOS_Settings.video_blackpedestal); //Allocate a main VGA or compatible, automatically by BIOS!
 	debugrow("Activating main VGA engine...");
 	setActiveVGA(MainVGA); //Initialise primary VGA using the BIOS settings, for the system itself!
 	VGA_initTimer(); //Initialise the VGA timer for usage!

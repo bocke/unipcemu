@@ -194,11 +194,11 @@ extern byte CGA_RGB; //Are we a RGB monitor(1) or Composite monitor(0)?
 OPTINLINE void drawCGALine(VGA_Type *VGA) //Draw the current CGA line to display!
 {
 	INLINEREGISTER uint_32 drawx;
+	INLINEREGISTER uint_32 color; //The full color to draw!
 	if (CGALineSize>2048) CGALineSize = 2048; //Limit to what we have available!
 	if (VGA->registers->specialMDAflags&1) //MDA rendering mode?
 	{
 		INLINEREGISTER byte data; //The current entry to draw!
-		INLINEREGISTER uint_32 color; //The full color to draw!
 		INLINEREGISTER byte *bufferpos, *finalpos; //The current and end position to draw!
 		if (unlikely(CGALineSize==0)) return; //Abort if nothing to render!
 		finalpos = &CGALineBuffer[CGALineSize]; //End of the output buffer to process!
@@ -210,6 +210,7 @@ OPTINLINE void drawCGALine(VGA_Type *VGA) //Draw the current CGA line to display
 			data &= 3; //Only 2 bits are used for the MDA!
 			data = MDAcolors[data]; //Translate the pixel to proper DAC indexes!
 			color = VGA->precalcs.effectiveMDADAC[data]; //Look up the MDA DAC color to use(translate to RGB)!
+			color = RGB(VGA->DACbrightness[GETR(color)], VGA->DACbrightness[GETG(color)], VGA->DACbrightness[GETB(color)]); //Make sure we're active display levels of brightness!
 			drawPixel_real(color,drawx,VGA->CRTC.y); //Render the pixel as MDA colors through the B/W DAC!
 			++bufferpos; //Next pixel!
 			if (unlikely(bufferpos == finalpos)) break; //Stop processing when finished!
@@ -226,7 +227,9 @@ OPTINLINE void drawCGALine(VGA_Type *VGA) //Draw the current CGA line to display
 		drawx = 0; //Start index to draw at!
 		for (;;) //Render all pixels!
 		{
-			drawPixel_real(GA_color2bw(*bufferpos,0),drawx,VGA->CRTC.y); //Render the converted CGA output signal!
+			color = GA_color2bw(*bufferpos, 0); //The color to render!
+			color = RGB(VGA->DACbrightness[GETR(color)], VGA->DACbrightness[GETG(color)], VGA->DACbrightness[GETB(color)]); //Make sure we're active display levels of brightness!
+			drawPixel_real(color,drawx,VGA->CRTC.y); //Render the converted CGA output signal!
 			if (unlikely(++bufferpos==finalpos)) break; //Stop processing when finished!
 			++drawx; //Next line index!
 		}

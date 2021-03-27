@@ -106,7 +106,7 @@ http://webpages.charter.net/danrollins/techhelp/0114.HTM
 
 */
 
-VGA_Type *VGAalloc(uint_32 custom_vram_size, int update_bios, byte extension) //Initialises VGA and gives the current set!
+VGA_Type *VGAalloc(uint_32 custom_vram_size, int update_bios, byte extension, byte enableColorPedestal) //Initialises VGA and gives the current set!
 {
 	if (__HW_DISABLED) return NULL; //Abort!
 
@@ -251,7 +251,7 @@ VGA_Type *VGAalloc(uint_32 custom_vram_size, int update_bios, byte extension) //
 	}
 
 	//Finally, make sure that the VGA DAC output levels are in the correct range!
-	VGA_initColorLevels(VGA); //Initialize the color levels to use for output!
+	VGA_initColorLevels(VGA, enableColorPedestal); //Initialize the color levels to use for output!
 
 	debugrow("VGA: Allocation ready.");
 	return VGA; //Give the new allocated VGA!

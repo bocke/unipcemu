@@ -286,7 +286,7 @@ void DAC_updateEntries(VGA_Type *VGA)
 	}
 }
 
-void VGA_initColorLevels(VGA_Type* VGA)
+void VGA_initColorLevels(VGA_Type* VGA, byte enablePedestal)
 {
 	float startrange, endrange, rangestep, currange;
 	int i;
@@ -296,7 +296,14 @@ void VGA_initColorLevels(VGA_Type* VGA)
 	currange = startrange; //What the starting level is!
 	for (i = 0; i < 0x100; ++i) //Process all output levels!
 	{
-		VGA->DACbrightness[i] = (byte)currange; //The selected brightness for this level!
+		if (enablePedestal) //Enable the pedestal?
+		{
+			VGA->DACbrightness[i] = (byte)currange; //The selected brightness for this level!
+		}
+		else //Pure black?
+		{
+			VGA->DACbrightness[i] = (byte)i; //The selected brightness for this level!
+		}
 		currange += rangestep; //Next entry level!
 	}
 }

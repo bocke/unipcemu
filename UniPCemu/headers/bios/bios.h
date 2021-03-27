@@ -143,6 +143,7 @@ typedef struct
 	byte bwmonitor_luminancemode; //B/w monitor luminance mode?
 	byte SVGA_DACmode; //DAC mode?
 	byte ET4000_extensions; //ET4000 extensions! 0=ET4000AX, 1=ET4000/W32
+	byte video_blackpedestal; //Enable a black pedestal! 0=No pedestal, 1=7.5 IRE pedestal.
 } BIOS_Settings_TYPE; //BIOS Settings!
 
 //Debug modes:
@@ -292,6 +293,15 @@ enum ET4000_Extensions
 	ET4000_EXTENSIONS_MAX = 1
 };
 #define DEFAULT_ET4000_EXTENSIONS ET4000_EXTENSIONS_ET4000AX
+
+enum Video_Blackpedestal
+{
+	VIDEO_BLACKPEDESTAL_BLACK = 0,
+	VIDEO_BLACKPEDESTAL_75IRE = 1,
+	VIDEO_BLACKPEDESTAL_MIN = 0,
+	VIDEO_BLACKPEDESTAL_MAX = 1
+};
+#define DEFAULT_VIDEO_BLACKPEDESTAL VIDEO_BLACKPEDESTAL_BLACK
 
 //Default values for new BIOS settings:
 #define DEFAULT_BOOT_ORDER 0

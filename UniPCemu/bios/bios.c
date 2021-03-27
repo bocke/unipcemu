@@ -1154,6 +1154,7 @@ void BIOS_LoadDefaults(int tosave) //Load BIOS defaults, but not memory size!
 	BIOS_Settings.GameBlaster_Volume = DEFAULT_BLASTERVOL; //Default Game Blaster volume knob!
 	BIOS_Settings.ShowFramerate = DEFAULT_FRAMERATE; //Default framerate setting!
 	BIOS_Settings.SVGA_DACmode = DEFAULT_SVGA_DACMODE; //Default SVGA DAC mode!
+	BIOS_Settings.video_blackpedestal = DEFAULT_VIDEO_BLACKPEDESTAL; //Default VGA black pedestal!
 	BIOS_Settings.ET4000_extensions = DEFAULT_ET4000_EXTENSIONS; //Default SVGA DAC mode!
 	BIOS_Settings.VGASynchronization = DEFAULT_VGASYNCHRONIZATION; //Default VGA synchronization setting!
 	BIOS_Settings.diagnosticsportoutput_breakpoint = DEFAULT_DIAGNOSTICSPORTOUTPUT_BREAKPOINT; //Default breakpoint setting!
@@ -1327,6 +1328,7 @@ void BIOS_LoadData() //Load BIOS settings!
 	BIOS_Settings.bwmonitor_luminancemode = LIMITRANGE((byte)get_private_profile_uint64("video", "bwmonitor_luminancemode", DEFAULT_BWMONITOR_LUMINANCEMODE, inifile),BWMONITOR_LUMINANCEMODE_MIN,BWMONITOR_LUMINANCEMODE_MAX); //b/w monitor luminance mode?
 	BIOS_Settings.ShowFramerate = LIMITRANGE((byte)get_private_profile_uint64("video", "showframerate", DEFAULT_FRAMERATE, inifile),0,1); //Show the frame rate?
 	BIOS_Settings.SVGA_DACmode = LIMITRANGE((byte)get_private_profile_uint64("video", "SVGA_DACmode", DEFAULT_FRAMERATE, inifile), SVGA_DACMODE_MIN, SVGA_DACMODE_MAX); //Show the frame rate?
+	BIOS_Settings.video_blackpedestal = LIMITRANGE((byte)get_private_profile_uint64("video", "blackpedestal", DEFAULT_FRAMERATE, inifile), VIDEO_BLACKPEDESTAL_MIN, VIDEO_BLACKPEDESTAL_MAX); //Show the frame rate?
 	BIOS_Settings.ET4000_extensions = LIMITRANGE((byte)get_private_profile_uint64("video", "ET4000_extensions", DEFAULT_FRAMERATE, inifile), ET4000_EXTENSIONS_MIN, ET4000_EXTENSIONS_MAX); //Show the frame rate?
 
 	//Sound
@@ -1649,7 +1651,8 @@ int BIOS_SaveData() //Save BIOS settings!
 	safestrcat(video_comment, sizeof(video_comment), "bwmonitor: 0=Color, 1=B/W monitor: white, 2=B/W monitor: green, 3=B/W monitor: amber\n");
 	safestrcat(video_comment, sizeof(video_comment), "bwmonitor_luminancemode: 0=Averaged, 1=Luminance\n");
 	safestrcat(video_comment, sizeof(video_comment), "showframerate: 0=Disabled, otherwise Enabled\n");
-	safestrcat(video_comment, sizeof(video_comment), "SVGA_DACmode: 0=Sierra SC11487, 1=UMC UM70C178, 2=AT&T 20C490, 3=Sierra SC15025");
+	safestrcat(video_comment, sizeof(video_comment), "SVGA_DACmode: 0=Sierra SC11487, 1=UMC UM70C178, 2=AT&T 20C490, 3=Sierra SC15025\n");
+	safestrcat(video_comment, sizeof(video_comment), "blackpedestal: 0=Black, 1=7.5 IRE\n");
 	safestrcat(video_comment, sizeof(video_comment), "ET4000_extensions: 0=ET4000AX, 1=ET4000/W32");
 	char *video_commentused = NULL;
 	if (video_comment[0]) video_commentused = &video_comment[0];
@@ -1663,6 +1666,7 @@ int BIOS_SaveData() //Save BIOS settings!
 	if (!write_private_profile_uint64("video", video_commentused, "bwmonitor_luminancemode", BIOS_Settings.bwmonitor_luminancemode, inifile)) ABORT_SAVEDATA //Are we a b/w monitor?
 	if (!write_private_profile_uint64("video", video_commentused, "showframerate", BIOS_Settings.ShowFramerate, inifile)) ABORT_SAVEDATA //Show the frame rate?
 	if (!write_private_profile_uint64("video", video_commentused, "SVGA_DACmode", BIOS_Settings.SVGA_DACmode, inifile)) ABORT_SAVEDATA //Show the frame rate?
+	if (!write_private_profile_uint64("video", video_commentused, "blackpedestal", BIOS_Settings.video_blackpedestal, inifile)) ABORT_SAVEDATA //Show the frame rate?
 	if (!write_private_profile_uint64("video", video_commentused, "ET4000_extensions", BIOS_Settings.ET4000_extensions, inifile)) ABORT_SAVEDATA //Show the frame rate?
 
 	//Sound

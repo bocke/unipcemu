@@ -435,7 +435,7 @@ All functions!
 
 */
 
-VGA_Type *VGAalloc(uint_32 custom_vram_size, int update_bios, byte extension); //Allocates VGA and gives the current set!
+VGA_Type *VGAalloc(uint_32 custom_vram_size, int update_bios, byte extension, byte enableColorPedestal); //Allocates VGA and gives the current set!
 void setupVGA(); //Sets the VGA up for PC usage (CPU access etc.)!
 void setActiveVGA(VGA_Type *VGA); //Sets the active VGA chipset!
 void terminateVGA(); //Terminate running VGA and disable it! Only to be used by root processes (non-VGA processes!)
