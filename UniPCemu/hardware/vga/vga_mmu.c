@@ -264,7 +264,7 @@ uint_32 VGA_WriteMode2(uint_32 data) //Write color to all pixels in the source a
 
 uint_32 VGA_WriteMode3(uint_32 data) //Ignore enable set reset register!
 {
-	data = ror(data, GETBITS(getActiveVGA()->registers->GraphicsRegisters.REGISTERS.DATAROTATEREGISTER,0,7)); //Rotate it! Keep 8-bit data!
+	data = (byte)ror((byte)data, GETBITS(getActiveVGA()->registers->GraphicsRegisters.REGISTERS.DATAROTATEREGISTER,0,7)); //Rotate it! Keep 8-bit data!
 	data &= 0xFF; //Prevent overflow!
 	data = ALUMaskLatchOperation(getActiveVGA()->FillTable[GETBITS(getActiveVGA()->registers->GraphicsRegisters.REGISTERS.SETRESETREGISTER,0,0xF)], getActiveVGA()->ExpandTable[data]&getActiveVGA()->ExpandTable[getActiveVGA()->registers->GraphicsRegisters.REGISTERS.BITMASKREGISTER]); //Use the generated data on the Set/Reset register
 	return data;
