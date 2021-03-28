@@ -4508,7 +4508,6 @@ void BIOS_video_blackpedestal()
 		if (file != current) //Not current?
 		{
 			BIOS_Changed = 1; //Changed!
-			reboot_needed |= 1; //Reboot needed to apply!
 			BIOS_Settings.video_blackpedestal = file; //Select black pedestal!
 		}
 		break;
@@ -5446,7 +5445,7 @@ void BIOS_VideoSettingsMenu() //Manage stuff concerning input.
 			if (!EMU_RUNNING) BIOS_Menu = 88; //ET4000 extensions!
 			break;
 		case 11: //Black pedestal?
-			if (!EMU_RUNNING) BIOS_Menu = 89; //Black pedestal!
+			BIOS_Menu = 89; //Black pedestal!
 			break;
 		default:
 			BIOS_Menu = NOTIMPLEMENTED; //Not implemented yet!

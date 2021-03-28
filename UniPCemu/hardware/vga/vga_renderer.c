@@ -2355,5 +2355,6 @@ void EMU_update_VGA_Settings() //Update the VGA settings!
 		if ((CGAMode&3)!=CGAMode) CGAMode = 0; //Default to RGB, old-style CGA!
 		setCGA_NTSC(CGAMode&1); //RGB with modes 0&2, NTSC with modes 1&3
 		setCGA_NewCGA(CGAMode&2); //New-style with modes 2&3, Old-style with modes 0&1
+		VGA_initColorLevels(getActiveVGA(), BIOS_Settings.video_blackpedestal); //Initialize the color levels to use for output!
 	}
 }
