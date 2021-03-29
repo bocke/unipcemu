@@ -470,16 +470,23 @@ byte Tseng34K_writeIO(word port, byte val)
 			{
 				memsize = ((256 * 1024) << (((val^8) & 8) >> 2)); //Init size to detect! 256k or 1M times(bit 3) 16 or 32 bit bus width(bit 0)!
 				memsize <<= 1+(val & 1); //setting bit 1 doubles it and setting bits 1 and 0 together doubles it again(value 2=x2, value 3=x3).
-				val = ((val & ~0x9) | (et34kdata->store_et4k_3d4_37 & 0x9)); //Prevent changing of the bits indicating memory size of the modules!
+				if ((val & 0x42)&0x42) //Writing these bits set? Internal test mode activated! Only bit 1 seems to be set during boot!
+				{
+					val = (val & ~0x9) | (et34k(getActiveVGA())->et4k_reg37_init & 0x9); //Replace the VRAM detect bits with the detected VRAM chips!
+				}
 			}
 			else //ET4000AX?
 			{
 				memsize = ((64 * 1024) << ((val & 8) >> 2)); //The memory size for this item!
 				memsize <<= ((val & 2) >> 1) + (((val & 2) >> 1) & (val & 1)); //setting bit 1 doubles it and setting bits 1 and 0 together doubles it again(value 2=x2, value 3=x3).
+				if ((val & 0x40) & 0x40) //Writing these bits set? Internal test mode activated!
+				{
+					val = (val & ~0xB) | (et34k(getActiveVGA())->et4k_reg37_init & 0xB); //Replace the VRAM detect bits with the detected VRAM chips!
+				}
 			}
 			//Now, apply the bus width
 			--memsize; //Get wrapping mask!
-				
+			
 			et34kdata->store_et4k_3d4_37 = val;
 			//et34k(getActiveVGA())->memwrap = memsize; //What to wrap against!
 			VGA_calcprecalcs(getActiveVGA(),WHEREUPDATED_CRTCONTROLLER|0x37); //Update all precalcs!
