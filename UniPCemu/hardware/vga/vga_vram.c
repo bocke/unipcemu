@@ -38,8 +38,8 @@ byte readVRAMplane(VGA_Type *VGA, byte plane, uint_32 offset, uint_32 bank, byte
 	fulloffset2 |= plane; //The plane goes from low to high, through all indexes!
 	fulloffset2 += bank; //Add the bank directly!
 
-	if (unlikely((fulloffset2>=VGA->VRAM_size) || ((fulloffset2 > VGA->precalcs.VRAM_limit) && VGA->precalcs.VRAM_limit && is_CPU))) return 0xFF; //VRAM valid, simple check?
 	fulloffset2 &= VGA->precalcs.VMemMask; //Only 64K memory available, so wrap arround it when needed!
+	if (unlikely((fulloffset2>=VGA->VRAM_size) || ((fulloffset2 > VGA->precalcs.VRAM_limit) && VGA->precalcs.VRAM_limit && is_CPU))) return 0xFF; //VRAM valid, simple check?
 	if (fulloffset2 > VGA->VRAM_used) VGA->VRAM_used = fulloffset2; //How much VRAM is actually used by software?
 	return VGA->VRAM[fulloffset2]; //Read the data from VRAM!
 }
@@ -55,8 +55,8 @@ void writeVRAMplane(VGA_Type *VGA, byte plane, uint_32 offset, uint_32 bank, byt
 	fulloffset2 |= plane; //The plane goes from low to high, through all indexes!
 	fulloffset2 += bank; //Add the bank directly!
 
-	if (unlikely((fulloffset2>=VGA->VRAM_size) || ((fulloffset2 > VGA->precalcs.VRAM_limit) && VGA->precalcs.VRAM_limit && is_CPU))) return; //VRAM valid, simple check?
 	fulloffset2 &= VGA->precalcs.VMemMask; //Only 64K memory available, so wrap arround it when needed!
+	if (unlikely((fulloffset2>=VGA->VRAM_size) || ((fulloffset2 > VGA->precalcs.VRAM_limit) && VGA->precalcs.VRAM_limit && is_CPU))) return; //VRAM valid, simple check?
 	VGA->VRAM[fulloffset2++] = value; //Set the data in VRAM! Also increase the address afterwards to detect how much is used.
 	if (fulloffset2 > VGA->VRAM_used) VGA->VRAM_used = fulloffset2; //How much VRAM is actually used by software?
 	if (unlikely(plane&2)) //Character RAM updated(both plane 2/3)?

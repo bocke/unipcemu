@@ -470,6 +470,7 @@ byte Tseng34K_writeIO(word port, byte val)
 			{
 				memsize = ((256 * 1024) << (((val^8) & 8) >> 2)); //Init size to detect! 256k or 1M times(bit 3) 16 or 32 bit bus width(bit 0)!
 				memsize <<= 1+(val & 1); //setting bit 1 doubles it and setting bits 1 and 0 together doubles it again(value 2=x2, value 3=x3).
+				val = ((val & ~0x9) | (et34kdata->store_et4k_3d4_37 & 0x9)); //Prevent changing of the bits indicating memory size of the modules!
 			}
 			else //ET4000AX?
 			{
@@ -1250,6 +1251,9 @@ void Tseng34k_init()
 			byte regval=0; //Highest memory size that fits!
 			uint_32 memsize; //Current memory size!
 			uint_32 lastmemsize = 0; //Last memory size!
+			//et34k(getActiveVGA())->memwrap = et34k(getActiveVGA())->memwrap_init = (lastmemsize-1); //The memory size used!
+			et34k(getActiveVGA())->memwrap = et34k(getActiveVGA())->memwrap_init = ~0; //Don't wrap any further!
+
 			for (VRAMsize = 0;VRAMsize < 0x10;++VRAMsize) //Try all VRAM sizes!
 			{
 				if ((getActiveVGA()->enable_SVGA == 1) && et34k(getActiveVGA())->tsengExtensions) //ET4000/W32 variant?
@@ -1276,9 +1280,35 @@ void Tseng34k_init()
 					lastmemsize = memsize; //Use this as the last value found!
 				}
 			}
+
+			if (getActiveVGA()->enable_SVGA == 1) //ET4000 chip?
+			{
+				if (et34k(getActiveVGA())->tsengExtensions) //W32 chip?
+				{
+					//We somehow got the choice between 512KB, 1MB, 2MB and 4MB.
+					if (lastmemsize >= (4 * 1024 * 1024)) //4MB
+					{
+						regval = 0x01; //4MB indicator!
+					}
+					else if (lastmemsize >= (2 * 1024 * 1024)) //2MB?
+					{
+						regval = 0x00; //2MB indicator!
+					}
+					else if (lastmemsize >= (1 * 1024 * 1024)) //1MB?
+					{
+						regval = 0x09; //1MB indicator! Tseng and WhatVGA says 512K, but somehow this is reported as 1MB due to hardware checking errors!
+						et34k(getActiveVGA())->memwrap = et34k(getActiveVGA())->memwrap_init = 0xFFFFF; //Wrapping around 1MB!
+					}
+					else //512KB?
+					{
+						regval = 0x08; //512KB indicator!
+						et34k(getActiveVGA())->memwrap = et34k(getActiveVGA())->memwrap_init = 0x7FFFF; //Wrapping around 512KB!
+					}
+					//Although the BIOS seems to support 256K and 512K, it cannot seem to display this?
+				}
+			}
+
 			et4k_reg(et34k(getActiveVGA()),3d4,37) = et34k(getActiveVGA())->et4k_reg37_init = regval; //Apply the best register value describing our memory!
-			//et34k(getActiveVGA())->memwrap = et34k(getActiveVGA())->memwrap_init = (lastmemsize-1); //The memory size used!
-			et34k(getActiveVGA())->memwrap = et34k(getActiveVGA())->memwrap_init = ~0; //Don't wrap any further!
 
 			// Tseng ROM signature
 			EMU_VGAROM[0x0075] = ' ';
@@ -2951,7 +2981,7 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 			}
 		}
 		VGA->precalcs.VRAMmask = (VGA->VRAM_size - 1); //Don't limit VGA memory, wrap normally! Undocumented, but only affects multiple fonts in the font select register on the Tseng chipsets!
-		VGA->precalcs.VMemMask = VGA->precalcs.VRAMmask&et34kdata->memwrap; //Apply the SVGA memory wrap on top of the normal memory wrapping!
+		VGA->precalcs.VMemMask = et34kdata->memwrap; //Apply the SVGA memory wrap on top of the normal memory wrapping!
 	}
 
 	if ((whereupdated==WHEREUPDATED_ALL) || (whereupdated==WHEREUPDATED_DACMASKREGISTER) || //DAC Mask register has been updated?
