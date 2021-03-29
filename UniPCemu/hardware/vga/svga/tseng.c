@@ -470,7 +470,7 @@ byte Tseng34K_writeIO(word port, byte val)
 			{
 				memsize = ((256 * 1024) << (((val^8) & 8) >> 2)); //Init size to detect! 256k or 1M times(bit 3) 16 or 32 bit bus width(bit 0)!
 				memsize <<= 1+(val & 1); //setting bit 1 doubles it and setting bits 1 and 0 together doubles it again(value 2=x2, value 3=x3).
-				if ((val & 0x42)&0x42) //Writing these bits set? Internal test mode activated! Only bit 1 seems to be set during boot!
+				if ((val & 0x42)&0x42) //Writing these bits set? Internal test mode activated! Only bit 1 seems to be set during boot which is required to trigger this!
 				{
 					val = (val & ~0x9) | (et34k(getActiveVGA())->et4k_reg37_init & 0x9); //Replace the VRAM detect bits with the detected VRAM chips!
 				}
