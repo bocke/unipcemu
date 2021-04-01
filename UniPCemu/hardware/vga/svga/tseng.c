@@ -1438,9 +1438,12 @@ byte Tseng4k_readMMUregister(byte address, byte *result)
 	return 1; //Handled!
 }
 
+void Tseng4k_queuedRegistersUnmodified(); //Prototype!
+
 void et4k_transferQueuedMMURegisters()
 {
 	memcpy(&et34k(getActiveVGA())->W32_MMUregisters[1][0x80], &et34k(getActiveVGA())->W32_MMUregisters[0][0x80], 0x80); //Load all queued registers into the internal state!
+	Tseng4k_queuedRegistersUnmodified(); //Not modified anymore!
 }
 
 extern byte is_XT; //Are we emulating an XT architecture?
@@ -1480,6 +1483,16 @@ void Tseng4k_status_startXYblock(byte is_screentoscreen) //Starting an X/Y block
 void Tseng4k_status_XYblockTerminalCount() //Finished an X/Y block and Terminal Count reached?
 {
 	et34k(getActiveVGA())->W32_MMUregisters[0][0x36] &= ~0x0C; //Finished X/Y block!
+}
+
+void Tseng4k_queuedRegisterModified()
+{
+	et34k(getActiveVGA())->W32_MMUregisters[0][0x36] |= 0x10; //Queue modified!
+}
+
+void Tseng4k_queuedRegistersUnmodified()
+{
+	et34k(getActiveVGA())->W32_MMUregisters[0][0x36] &= ~0x10; //Unmodified!
 }
 
 //Helper functions for below
@@ -1761,7 +1774,7 @@ byte Tseng4k_writeMMUregisterUnqueued(byte address, byte value)
 		//Interrupt causes: Bit 0=Queue not full, 1=Queue empty and accelerator goes idle, 2=Write to a full queue
 		break;
 	case 0x36: //ACL Accelerator Status Register
-		SETBITS(et34k(getActiveVGA())->W32_MMUregisters[0][0x36], 4, 0xF, GETBITS(value, 4, 0xF)); //Bits 4-7 are set directly to whatever is written (marked as Reserved)!
+		SETBITS(et34k(getActiveVGA())->W32_MMUregisters[0][0x36], 5, 0x7, GETBITS(value, 5, 0x7)); //Bits 5-7 are set directly to whatever is written (marked as Reserved)!
 		if ((value & 4) && ((et34k(getActiveVGA())->W32_MMUregisters[0][0x36] & 4) == 0)) //Raised XYST?
 		{
 			Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO()); //Starting a transfer!
@@ -1806,6 +1819,7 @@ byte Tseng4k_writeMMUregisterUnqueued(byte address, byte value)
 	case 0xA1:
 	case 0xA2:
 	case 0xA3: //ACL Destination Address Register
+		Tseng4k_queuedRegisterModified(); //Modified queue!
 		et34k(getActiveVGA())->W32_MMUregisters[0][address & 0xFF] = value; //Set the register, queued!
 		if ((address == 0xA3) && (et34k(getActiveVGA())->W32_MMUregisters[0][0x31] & 0x10)) //Operation state ASEN enabled and Final byte of the ACL Destination Address Register written?
 		{
@@ -2379,7 +2393,7 @@ void Tseng4k_tickAccelerator()
 					memset(&et34k(getActiveVGA())->W32_MMUregisters[1][0x80], 0, (sizeof(et34k(getActiveVGA())->W32_MMUregisters[1][0]) * 0x80)); //Clear the internal registers!
 					memset(&et34k(getActiveVGA())->W32_MMUregisters[0][0x80], 0, (sizeof(et34k(getActiveVGA())->W32_MMUregisters[0][0]) * 0x80)); //Clear the queue itself!
 					memset(&et34k(getActiveVGA())->W32_MMUregisters[0][0], 0, 0x14); //Clear the MMU base registers!
-					SETBITS(et34k(getActiveVGA())->W32_MMUregisters[0][0x36], 4, 0xF, 0); //Clear the reserved bits of the status register!
+					SETBITS(et34k(getActiveVGA())->W32_MMUregisters[0][0x36], 5, 0x7, 0); //Clear the reserved bits of the status register!
 					Tseng4k_status_XYblockTerminalCount(); //Terminal count reached during the tranfer!
 					et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress = et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress = 0; //Reset the internal adresses (officially: undefined on power-up state)!
 					Tseng4k_decodeAcceleratorRegisters(); //Make sure that we're up-to-date with our internal registers!
