@@ -33,12 +33,12 @@ typedef struct
 	word xres;
 	word yres; //The full resolution currently counted!
 	
-	word Scanline; //Current scanline to process! Also the VGA's row scan counter!
+	word Scanline,currentScanline; //Current scanline to process! Also the VGA's row scan counter!
 	
 	
 	//Pixel specific
 	VGA_AttributeInfo Attributeinfo; //Attribute info, kept between pixels!
-	word x; //Current pixel on the scanline!
+	word x,currentx; //Current pixel on the scanline!
 	//Newline recalculation
 	uint_32 startmap; //Where our map starts!
 	

@@ -966,15 +966,15 @@ void VGA_handleSpriteCRTCwindowNonActiveDisplay(VGA_Type* VGA, SEQ_DATA* Sequenc
 	VGA->CRTC.CRTCBwindowEnabled &= ~1; //The window is not yet active this scanline!
 	if (VGA->precalcs.SpriteCRTCEnabled) //Sprite/CRTC window enabled?
 	{
-		if (Sequencer->Scanline >= VGA->precalcs.SpriteCRTCverticaldisplaydelay) //Vertically within range?
+		if (Sequencer->currentScanline >= VGA->precalcs.SpriteCRTCverticaldisplaydelay) //Vertically within range?
 		{
-			if (Sequencer->x >= VGA->precalcs.SpriteCRTChorizontaldisplaydelay) //Horizontally within range?
+			if (Sequencer->currentx >= VGA->precalcs.SpriteCRTChorizontaldisplaydelay) //Horizontally within range?
 			{
 				//We're perhaps a part of the sprite or CRTC display.
 				VGA->CRTC.CRTCBwindowEnabled |= 2; //The window is active this scanline!
 				if (Sequencer->SpriteCRTCxlatched) //Starting horizontal display?
 				{
-					if (Sequencer->Scanline == VGA->precalcs.SpriteCRTCverticaldisplaydelay) //Starting vertical display?
+					if (Sequencer->currentScanline == VGA->precalcs.SpriteCRTCverticaldisplaydelay) //Starting vertical display?
 					{
 						//Latching the first scanline, so within range!
 					}
@@ -1004,7 +1004,7 @@ void VGA_handleSpriteCRTCwindowNonActiveDisplay(VGA_Type* VGA, SEQ_DATA* Sequenc
 			{
 				if (Sequencer->SpriteCRTCxlatched) //Starting horizontal display this scanline perhaps?
 				{
-					if (Sequencer->Scanline == VGA->precalcs.SpriteCRTCverticaldisplaydelay) //Starting vertical display?
+					if (Sequencer->currentScanline == VGA->precalcs.SpriteCRTCverticaldisplaydelay) //Starting vertical display?
 					{
 						VGA->CRTC.CRTCBwindowEnabled |= 2; //The window is active this scanline!
 					}
@@ -1051,15 +1051,15 @@ byte VGA_handleSpriteCRTCwindow(VGA_Type* VGA, SEQ_DATA* Sequencer, VGA_Attribut
 {
 	if (VGA->precalcs.SpriteCRTCEnabled) //Sprite/CRTC window enabled?
 	{
-		if (Sequencer->Scanline >= VGA->precalcs.SpriteCRTCverticaldisplaydelay) //Vertically within range?
+		if (Sequencer->currentScanline >= VGA->precalcs.SpriteCRTCverticaldisplaydelay) //Vertically within range?
 		{
-			if (Sequencer->x >= VGA->precalcs.SpriteCRTChorizontaldisplaydelay) //Horizontally within range?
+			if (Sequencer->currentx >= VGA->precalcs.SpriteCRTChorizontaldisplaydelay) //Horizontally within range?
 			{
 				//We're perhaps a part of the sprite or CRTC display.
 				VGA->CRTC.CRTCBwindowEnabled |= 2; //The window is active this scanline!
 				if (Sequencer->SpriteCRTCxlatched) //Starting horizontal display?
 				{
-					if (Sequencer->Scanline == VGA->precalcs.SpriteCRTCverticaldisplaydelay) //Starting vertical display?
+					if (Sequencer->currentScanline == VGA->precalcs.SpriteCRTCverticaldisplaydelay) //Starting vertical display?
 					{
 						if (Sequencer->SpriteCRTCylatched) //To latch first row?
 						{
@@ -1111,7 +1111,7 @@ byte VGA_handleSpriteCRTCwindow(VGA_Type* VGA, SEQ_DATA* Sequencer, VGA_Attribut
 					VGA->CRTC.CRTCBwindowEnabled &= ~1; //The window is now inactive!
 					return 0; //Not ready to handle yet this frame!
 				}
-				if (Sequencer->x >= (VGA->precalcs.SpriteCRTChorizontaldisplaydelay + (VGA->precalcs.SpriteCRTChorizontalwindowwidth*VGA->precalcs.SpriteCRTCpixelwidth))) //Out of horizontal range?
+				if (Sequencer->currentx >= (VGA->precalcs.SpriteCRTChorizontaldisplaydelay + (VGA->precalcs.SpriteCRTChorizontalwindowwidth*VGA->precalcs.SpriteCRTCpixelwidth))) //Out of horizontal range?
 				{
 					VGA->CRTC.CRTCBwindowEnabled &= ~1; //The window is now inactive!
 					return 0; //Not handled!
@@ -1129,7 +1129,7 @@ byte VGA_handleSpriteCRTCwindow(VGA_Type* VGA, SEQ_DATA* Sequencer, VGA_Attribut
 				VGA->CRTC.CRTCBwindowEnabled &= ~1; //The window is now inactive!
 				if (Sequencer->SpriteCRTCxlatched) //Starting horizontal display this scanline perhaps?
 				{
-					if (Sequencer->Scanline == VGA->precalcs.SpriteCRTCverticaldisplaydelay) //Starting vertical display?
+					if (Sequencer->currentScanline == VGA->precalcs.SpriteCRTCverticaldisplaydelay) //Starting vertical display?
 					{
 						VGA->CRTC.CRTCBwindowEnabled |= 2; //The window is active this scanline!
 					}
@@ -1530,27 +1530,20 @@ VGA_Sequencer_Mode activedisplay_blank_handler = NULL;
 VGA_Sequencer_Mode overscan_noblanking_handler = NULL;
 VGA_Sequencer_Mode overscan_blank_handler = NULL;
 
-byte is_retryinghighresmode; //Are we retrying hi-res mode style?
-
 //Active display handler!
 void VGA_ActiveDisplay_Text(SEQ_DATA *Sequencer, VGA_Type *VGA)
 {
 	VGA_overrideoutputs = 0; //Default: not overriding anything!
-	is_retryinghighresmode = 0; //Not retrying high-res mode!
 	//Render our active display here!
+	VGA_overrideoutputs = VGA_handleSpriteCRTCwindow(VGA, Sequencer, &currentattributeinfo, &overrideattributeinfo); //Handle the Sprite/CRTC window overlay!
 	retryTimingText: //For linear mode!
 	if (VGA_ActiveDisplay_timing(Sequencer, VGA)) //Execute our timings!
 	{
 		VGA_Sequencer_TextMode(VGA,Sequencer,&currentattributeinfo); //Get the color to render!
-		if (is_retryinghighresmode == 0) //Not retrying in high resolution mode?
-		{
-			VGA_overrideoutputs = VGA_handleSpriteCRTCwindow(VGA, Sequencer, &currentattributeinfo, &overrideattributeinfo); //Handle the Sprite/CRTC window overlay!
-		}
 		if (VGA_AttributeController(&currentattributeinfo,VGA))
 		{
 			if ((VGA->precalcs.AttributeModeControlRegister_ColorEnable8Bit & 2) && (VGA->precalcs.ClockingModeRegister_DCR & 2) == 2) //Special mode active?
 			{
-				is_retryinghighresmode = 1; //Retrying high-res mode!
 				goto retryTimingText; //Retry text timing!
 			}
 			return; //Nibbled!
@@ -1576,23 +1569,18 @@ void VGA_ActiveDisplay_Text(SEQ_DATA *Sequencer, VGA_Type *VGA)
 void VGA_ActiveDisplay_Text_blanking(SEQ_DATA *Sequencer, VGA_Type *VGA)
 {
 	VGA_overrideoutputs = 0; //Default: not overriding anything!
-	is_retryinghighresmode = 0; //Not retrying high-res mode!
 	Sequencer->DACcounter = 0; //Reset the DAC counter: the DAC starts scanning again after blanking ends!
 	//Render our active display here!
+	VGA_overrideoutputs = VGA_handleSpriteCRTCwindow(VGA, Sequencer, &currentattributeinfo, &overrideattributeinfo); //Handle the Sprite/CRTC window overlay!
 	retryTimingTextBlanking: //For linear mode!
 	if (VGA_ActiveDisplay_timing(Sequencer, VGA)) //Execute our timings!
 	{
 		VGA_Sequencer_TextMode(VGA, Sequencer, &currentattributeinfo); //Get the color to render!
-		if (is_retryinghighresmode == 0) //Not retrying in high resolution mode?
-		{
-			VGA_overrideoutputs = VGA_handleSpriteCRTCwindow(VGA, Sequencer, &currentattributeinfo, &overrideattributeinfo); //Handle the Sprite/CRTC window overlay!
-		}
 		if (VGA_AttributeController(&currentattributeinfo, VGA))
 		{
 			Sequencer->DACcounter = 0; //Reset the DAC counter: the DAC starts scanning again after blanking ends!
 			if ((VGA->precalcs.AttributeModeControlRegister_ColorEnable8Bit & 2) && (VGA->precalcs.ClockingModeRegister_DCR & 2) == 2) //Special mode active?
 			{
-				is_retryinghighresmode = 1; //Retrying high-res mode!
 				goto retryTimingTextBlanking; //Retry text timing!
 			}
 			return; //Nibbled!
@@ -1622,21 +1610,16 @@ void VGA_ActiveDisplay_Text_blanking(SEQ_DATA *Sequencer, VGA_Type *VGA)
 void VGA_ActiveDisplay_Graphics(SEQ_DATA *Sequencer, VGA_Type *VGA)
 {
 	VGA_overrideoutputs = 0; //Default: not overriding anything!
-	is_retryinghighresmode = 0; //Not retrying high-res mode!
 	//Render our active display here!
+	VGA_overrideoutputs = VGA_handleSpriteCRTCwindow(VGA, Sequencer, &currentattributeinfo, &overrideattributeinfo); //Handle the Sprite/CRTC window overlay!
 	retryTimingGraphics: //For linear mode!
 	if (VGA_ActiveDisplay_timing(Sequencer, VGA)) //Execute our timings!
 	{
 		VGA_Sequencer_GraphicsMode(VGA, Sequencer, &currentattributeinfo); //Get the color to render!
-		if (is_retryinghighresmode == 0) //Not retrying in high resolution mode?
-		{
-			VGA_overrideoutputs = VGA_handleSpriteCRTCwindow(VGA, Sequencer, &currentattributeinfo, &overrideattributeinfo); //Handle the Sprite/CRTC window overlay!
-		}
 		if (VGA_AttributeController(&currentattributeinfo, VGA))
 		{
 			if ((VGA->precalcs.AttributeModeControlRegister_ColorEnable8Bit & 2) && (VGA->precalcs.ClockingModeRegister_DCR & 2) == 2) //Special mode active?
 			{
-				is_retryinghighresmode = 1; //Retrying high-res mode!
 				goto retryTimingGraphics; //Retry text timing!
 			}
 			return; //Nibbled!
@@ -1663,22 +1646,17 @@ void VGA_ActiveDisplay_Graphics(SEQ_DATA *Sequencer, VGA_Type *VGA)
 void VGA_ActiveDisplay_Graphics_blanking(SEQ_DATA *Sequencer, VGA_Type *VGA)
 {
 	VGA_overrideoutputs = 0; //Default: not overriding anything!
-	is_retryinghighresmode = 0; //Not retrying high-res mode!
 	//Render our active display here! Start with text mode!		
+	VGA_overrideoutputs = VGA_handleSpriteCRTCwindow(VGA, Sequencer, &currentattributeinfo, &overrideattributeinfo); //Handle the Sprite/CRTC window overlay!
 	retryTimingGraphicsBlanking: //For linear mode!
 	if (VGA_ActiveDisplay_timing(Sequencer,VGA)) //Execute our timings!
 	{
 		VGA_Sequencer_GraphicsMode(VGA, Sequencer, &currentattributeinfo); //Get the color to render!
-		if (is_retryinghighresmode == 0) //Not retrying in high resolution mode?
-		{
-			VGA_overrideoutputs = VGA_handleSpriteCRTCwindow(VGA, Sequencer, &currentattributeinfo, &overrideattributeinfo); //Handle the Sprite/CRTC window overlay!
-		}
 		if (VGA_AttributeController(&currentattributeinfo, VGA))
 		{
 			Sequencer->DACcounter = 0; //Reset the DAC counter: the DAC starts scanning again after blanking ends!
 			if ((VGA->precalcs.AttributeModeControlRegister_ColorEnable8Bit & 2) && (VGA->precalcs.ClockingModeRegister_DCR & 2) == 2) //Special mode active?
 			{
-				is_retryinghighresmode = 1; //Retrying high-res mode!
 				goto retryTimingGraphicsBlanking; //Retry text timing!
 			}
 			return; //Nibbled!
@@ -1891,11 +1869,13 @@ byte vtotal = 0, htotal = 0; //V/HTotal busy?
 byte VGA_hblankstart = 0; //HBlank started?
 extern byte CGAMDARenderer; //CGA/MDA renderer?
 
-OPTINLINE uint_32 get_display(VGA_Type *VGA, word Scanline, word x) //Get/adjust the current display part for the next pixel (going from 0-total on both x and y)!
+OPTINLINE uint_32 get_display(VGA_Type *VGA, SEQ_DATA *Sequencer, word Scanline, word x) //Get/adjust the current display part for the next pixel (going from 0-total on both x and y)!
 {
 	INLINEREGISTER uint_32 stat; //The status of the pixel!
 	//We are a maximum of 4096x1024 size!
+	Sequencer->currentScanline = Scanline; //What scanline!
 	Scanline >>= VGA->precalcs.CRTCModeControlRegister_SLDIV; //Apply Scan Doubling on the row scan counter: we take effect on content (double scanning)!
+	Sequencer->currentx = x; //What coordinate on the scanline!
 	if (unlikely(Scanline > 0x7FFF)) Scanline = 0x7FFF; //Clip to the allowed range!
 	if (unlikely(x >= 0x7FFF)) x = 0x7FFF; //Clip to the allowed range!
 	Scanline &= 0x7FFF; //Range safety: 4095 scanlines!
@@ -2129,7 +2109,7 @@ recalcsignal: //Recalculate the signal to process!
 	if (unlikely(tempsignal&VGA_SIGNAL_HTOTAL)) //HTotal?
 	{
 		VGA_HTotal(Sequencer,VGA); //Process HTotal!
-		displaystate = get_display(getActiveVGA(), Sequencer->Scanline, Sequencer->x++); //Current display state!
+		displaystate = get_display(getActiveVGA(), Sequencer, Sequencer->Scanline, Sequencer->x++); //Current display state!
 		tempsignal = tempsignalbackup = displaystate; //The back-up of the signal!
 		htotal = 1; //Triggered horizontal total!
 	}
@@ -2140,7 +2120,7 @@ recalcsignal: //Recalculate the signal to process!
 	if (unlikely(tempsignal&VGA_SIGNAL_VTOTAL)) //VTotal?
 	{
 		VGA_VTotal(Sequencer,VGA); //Process VTotal!
-		displaystate = get_display(getActiveVGA(), Sequencer->Scanline, Sequencer->x++); //Current display state, keep x coordinate(retain x coordinate on the next frame)!
+		displaystate = get_display(getActiveVGA(), Sequencer, Sequencer->Scanline, Sequencer->x++); //Current display state, keep x coordinate(retain x coordinate on the next frame)!
 		tempsignal = tempsignalbackup = displaystate; //The back-up of the signal!
 		vtotal = 1;
 		Sequencer->frame_latchpending = 1; //Latch is pending!
@@ -2184,7 +2164,7 @@ OPTINLINE void VGA_Renderer(SEQ_DATA *Sequencer)
 {
 	static byte totalretracing = 0;
 	//Process one pixel only!
-	displaystate = get_display(getActiveVGA(), Sequencer->Scanline, Sequencer->x++); //Current display state!
+	displaystate = get_display(getActiveVGA(), Sequencer, Sequencer->Scanline, Sequencer->x++); //Current display state!
 	VGA_SIGNAL_HANDLER(Sequencer, getActiveVGA(),&totalretracing,(displaystate&VGA_HBLANKRETRACEMASK)?1:0); //Handle any change in display state first!
 	displayrenderhandler[totalretracing][displaystate](Sequencer, getActiveVGA()); //Execute our signal!
 	if (((getActiveVGA()->CRTC.CRTCBwindowmaxstatus ^ getActiveVGA()->CRTC.CRTCBwindowEnabled) & getActiveVGA()->CRTC.CRTCBwindowmaxstatus) & 2) //CRTCB window is finished rendering (the scanline active marker has been lowered)?
