@@ -38,7 +38,7 @@ typedef struct
 	
 	//Pixel specific
 	VGA_AttributeInfo Attributeinfo; //Attribute info, kept between pixels!
-	word x,currentx; //Current pixel on the scanline!
+	word x,currentx,activedisplayx; //Current pixel on the scanline!
 	//Newline recalculation
 	uint_32 startmap; //Where our map starts!
 	
