@@ -1520,20 +1520,27 @@ VGA_Sequencer_Mode activedisplay_blank_handler = NULL;
 VGA_Sequencer_Mode overscan_noblanking_handler = NULL;
 VGA_Sequencer_Mode overscan_blank_handler = NULL;
 
+byte is_retryinghighresmode; //Are we retrying hi-res mode style?
+
 //Active display handler!
 void VGA_ActiveDisplay_Text(SEQ_DATA *Sequencer, VGA_Type *VGA)
 {
 	VGA_overrideoutputs = 0; //Default: not overriding anything!
+	is_retryinghighresmode = 0; //Not retrying high-res mode!
 	//Render our active display here!
-	VGA_overrideoutputs = VGA_handleSpriteCRTCwindow(VGA, Sequencer, &currentattributeinfo, &overrideattributeinfo); //Handle the Sprite/CRTC window overlay!
 	retryTimingText: //For linear mode!
 	if (VGA_ActiveDisplay_timing(Sequencer, VGA)) //Execute our timings!
 	{
 		VGA_Sequencer_TextMode(VGA,Sequencer,&currentattributeinfo); //Get the color to render!
+		if (is_retryinghighresmode == 0) //Not retrying in high resolution mode?
+		{
+			VGA_overrideoutputs = VGA_handleSpriteCRTCwindow(VGA, Sequencer, &currentattributeinfo, &overrideattributeinfo); //Handle the Sprite/CRTC window overlay!
+		}
 		if (VGA_AttributeController(&currentattributeinfo,VGA))
 		{
 			if ((VGA->precalcs.AttributeModeControlRegister_ColorEnable8Bit & 2) && (VGA->precalcs.ClockingModeRegister_DCR & 2) == 2) //Special mode active?
 			{
+				is_retryinghighresmode = 1; //Retrying high-res mode!
 				goto retryTimingText; //Retry text timing!
 			}
 			return; //Nibbled!
@@ -1583,18 +1590,23 @@ void VGA_ActiveDisplay_Text(SEQ_DATA *Sequencer, VGA_Type *VGA)
 void VGA_ActiveDisplay_Text_blanking(SEQ_DATA *Sequencer, VGA_Type *VGA)
 {
 	VGA_overrideoutputs = 0; //Default: not overriding anything!
+	is_retryinghighresmode = 0; //Not retrying high-res mode!
 	Sequencer->DACcounter = 0; //Reset the DAC counter: the DAC starts scanning again after blanking ends!
 	//Render our active display here!
-	VGA_overrideoutputs = VGA_handleSpriteCRTCwindow(VGA, Sequencer, &currentattributeinfo, &overrideattributeinfo); //Handle the Sprite/CRTC window overlay!
 	retryTimingTextBlanking: //For linear mode!
 	if (VGA_ActiveDisplay_timing(Sequencer, VGA)) //Execute our timings!
 	{
 		VGA_Sequencer_TextMode(VGA, Sequencer, &currentattributeinfo); //Get the color to render!
+		if (is_retryinghighresmode == 0) //Not retrying in high resolution mode?
+		{
+			VGA_overrideoutputs = VGA_handleSpriteCRTCwindow(VGA, Sequencer, &currentattributeinfo, &overrideattributeinfo); //Handle the Sprite/CRTC window overlay!
+		}
 		if (VGA_AttributeController(&currentattributeinfo, VGA))
 		{
 			Sequencer->DACcounter = 0; //Reset the DAC counter: the DAC starts scanning again after blanking ends!
 			if ((VGA->precalcs.AttributeModeControlRegister_ColorEnable8Bit & 2) && (VGA->precalcs.ClockingModeRegister_DCR & 2) == 2) //Special mode active?
 			{
+				is_retryinghighresmode = 1; //Retrying high-res mode!
 				goto retryTimingTextBlanking; //Retry text timing!
 			}
 			return; //Nibbled!
@@ -1648,16 +1660,21 @@ void VGA_ActiveDisplay_Text_blanking(SEQ_DATA *Sequencer, VGA_Type *VGA)
 void VGA_ActiveDisplay_Graphics(SEQ_DATA *Sequencer, VGA_Type *VGA)
 {
 	VGA_overrideoutputs = 0; //Default: not overriding anything!
+	is_retryinghighresmode = 0; //Not retrying high-res mode!
 	//Render our active display here!
-	VGA_overrideoutputs = VGA_handleSpriteCRTCwindow(VGA, Sequencer, &currentattributeinfo, &overrideattributeinfo); //Handle the Sprite/CRTC window overlay!
 	retryTimingGraphics: //For linear mode!
 	if (VGA_ActiveDisplay_timing(Sequencer, VGA)) //Execute our timings!
 	{
 		VGA_Sequencer_GraphicsMode(VGA, Sequencer, &currentattributeinfo); //Get the color to render!
+		if (is_retryinghighresmode == 0) //Not retrying in high resolution mode?
+		{
+			VGA_overrideoutputs = VGA_handleSpriteCRTCwindow(VGA, Sequencer, &currentattributeinfo, &overrideattributeinfo); //Handle the Sprite/CRTC window overlay!
+		}
 		if (VGA_AttributeController(&currentattributeinfo, VGA))
 		{
 			if ((VGA->precalcs.AttributeModeControlRegister_ColorEnable8Bit & 2) && (VGA->precalcs.ClockingModeRegister_DCR & 2) == 2) //Special mode active?
 			{
+				is_retryinghighresmode = 1; //Retrying high-res mode!
 				goto retryTimingGraphics; //Retry text timing!
 			}
 			return; //Nibbled!
@@ -1708,17 +1725,22 @@ void VGA_ActiveDisplay_Graphics(SEQ_DATA *Sequencer, VGA_Type *VGA)
 void VGA_ActiveDisplay_Graphics_blanking(SEQ_DATA *Sequencer, VGA_Type *VGA)
 {
 	VGA_overrideoutputs = 0; //Default: not overriding anything!
+	is_retryinghighresmode = 0; //Not retrying high-res mode!
 	//Render our active display here! Start with text mode!		
-	VGA_overrideoutputs = VGA_handleSpriteCRTCwindow(VGA, Sequencer, &currentattributeinfo, &overrideattributeinfo); //Handle the Sprite/CRTC window overlay!
 	retryTimingGraphicsBlanking: //For linear mode!
 	if (VGA_ActiveDisplay_timing(Sequencer,VGA)) //Execute our timings!
 	{
 		VGA_Sequencer_GraphicsMode(VGA, Sequencer, &currentattributeinfo); //Get the color to render!
+		if (is_retryinghighresmode == 0) //Not retrying in high resolution mode?
+		{
+			VGA_overrideoutputs = VGA_handleSpriteCRTCwindow(VGA, Sequencer, &currentattributeinfo, &overrideattributeinfo); //Handle the Sprite/CRTC window overlay!
+		}
 		if (VGA_AttributeController(&currentattributeinfo, VGA))
 		{
 			Sequencer->DACcounter = 0; //Reset the DAC counter: the DAC starts scanning again after blanking ends!
 			if ((VGA->precalcs.AttributeModeControlRegister_ColorEnable8Bit & 2) && (VGA->precalcs.ClockingModeRegister_DCR & 2) == 2) //Special mode active?
 			{
+				is_retryinghighresmode = 1; //Retrying high-res mode!
 				goto retryTimingGraphicsBlanking; //Retry text timing!
 			}
 			return; //Nibbled!
