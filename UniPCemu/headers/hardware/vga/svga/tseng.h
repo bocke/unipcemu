@@ -169,6 +169,7 @@ typedef struct {
 	byte W32_acceleratorleft; //How many ticks are left to process!
 	ET4000_W32_ACL_PRECALCS W32_ACLregs; //ACL registers used during rendering
 	byte W32_version; //What version of the W32 is emulated?
+	byte W32_mixmapposition; //Position in the mix map data currently to be processed!
 } SVGA_ET34K_DATA; //Dosbox ET4000 saved data!
 
 //Retrieve a point to the et4k?

@@ -1682,6 +1682,7 @@ void Tseng4k_startAccelerator(byte triggerfromMMU)
 		et34k(getActiveVGA())->W32_MMUqueueval_bankaddress = 0; //Default: no bank address loaded yet!
 		et34k(getActiveVGA())->W32_MMUqueueval_address = et34k(getActiveVGA())->W32_ACLregs.destinationaddress; //Default: no address loaded yet, so use the specified address!
 	}
+	et34k(getActiveVGA())->W32_mixmapposition = 0; //Initialize the mix map position to the first bit!
 }
 
 byte et4k_emptyqueuedummy = 0;
@@ -2053,6 +2054,7 @@ byte et4k_stepx()
 	{
 		//X overflow? Step vertically!
 		et34k(getActiveVGA())->W32_ACLregs.Xposition = 0; //Reset
+		et34k(getActiveVGA())->W32_mixmapposition = 0; //Reset mix map position!
 		et34k(getActiveVGA())->W32_ACLregs.patternmap_x = et34k(getActiveVGA())->W32_ACLregs.patternmap_x_backup; //Restore the backup!
 		et34k(getActiveVGA())->W32_ACLregs.sourcemap_x = et34k(getActiveVGA())->W32_ACLregs.sourcemap_x_backup; //Restore the backup!
 		et34k(getActiveVGA())->W32_acceleratorleft = 0; //Starting a new operation, so start with new byte data inputs!
@@ -2218,7 +2220,7 @@ byte Tseng4k_tickAccelerator_step(byte autotransfer)
 	}
 
 	//Now, determine and apply the Raster Operation!
-	operationx = et34k(getActiveVGA())->W32_ACLregs.Xposition; //X position to work on!
+	operationx = et34k(getActiveVGA())->W32_mixmapposition++; //X position to work on!
 	operationx &= 7; //Wrap!
 
 	if (et34k(getActiveVGA())->W32_ACLregs.XYdirection & 1) //ET4000/W32i 2.11.5.3 Data alignment: When the X direction is decreasing(1), the most-significant bit of the mix data is processed first.
