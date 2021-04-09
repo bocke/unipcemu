@@ -1682,7 +1682,6 @@ void Tseng4k_startAccelerator(byte triggerfromMMU)
 		et34k(getActiveVGA())->W32_MMUqueueval_bankaddress = 0; //Default: no bank address loaded yet!
 		et34k(getActiveVGA())->W32_MMUqueueval_address = et34k(getActiveVGA())->W32_ACLregs.destinationaddress; //Default: no address loaded yet, so use the specified address!
 	}
-	et34k(getActiveVGA())->W32_mixmapposition = 0; //Initialize the mix map position to the first bit!
 }
 
 byte et4k_emptyqueuedummy = 0;
@@ -1731,6 +1730,7 @@ byte Tseng4k_writeMMUregisterUnqueued(byte address, byte value)
 			et4k_emptyqueuedummy = Tseng4k_doEmptyQueue(); //Empty the queue if possible for the new operation to start!
 			Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO()); //Starting a transfer!
 			Tseng4k_startAccelerator(0); //Starting the accelerator!
+			et34k(getActiveVGA())->W32_mixmapposition = 0; //Initialize the mix map position to the first bit!
 		}
 		if ((address == 0x30) && (value & 1)) //Suspend operation requested?
 		{
@@ -1829,6 +1829,7 @@ byte Tseng4k_writeMMUregisterUnqueued(byte address, byte value)
 			et4k_emptyqueuedummy = Tseng4k_doEmptyQueue(); //Empty the queue if possible for the new operation to start!
 			Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO()); //Starting a transfer!
 			Tseng4k_startAccelerator(0); //Starting the accelerator!
+			et34k(getActiveVGA())->W32_mixmapposition = 0; //Initialize the mix map position to the first bit!
 			et34k(getActiveVGA())->W32_ACLregs.Xposition = et34k(getActiveVGA())->W32_ACLregs.Yposition = 0; //Initialize the position!
 		}
 		break;
@@ -2163,6 +2164,7 @@ byte Tseng4k_tickAccelerator_step(byte autotransfer)
 		case 2: //CPU data is mix data!
 			et34k(getActiveVGA())->W32_acceleratorleft = 8; //Processing 8 pixels!
 			et34k(getActiveVGA())->W32_ACLregs.latchedmixmap = et34k(getActiveVGA())->W32_MMUqueueval; //Latch the written value!
+			et34k(getActiveVGA())->W32_mixmapposition = 0; //Initialize the mix map position to the first bit!
 			queueaddress <<= 3; //Multiply the address by 8!
 			break;
 		case 4: //CPU data is X count
@@ -2315,6 +2317,7 @@ void Tseng4k_tickAccelerator()
 			}
 			Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO()); //Starting a transfer!
 			Tseng4k_startAccelerator(1); //Starting the accelerator by MMU trigger!
+			et34k(getActiveVGA())->W32_mixmapposition = 0; //Initialize the mix map position to the first bit!
 			//Initialize the X and Y position to start rendering!
 			et34k(getActiveVGA())->W32_ACLregs.Xposition = et34k(getActiveVGA())->W32_ACLregs.Yposition = 0; //Initialize the position!
 			goto forcehandlesuspendterminateMMU; //Force handle the starting of a transfer!
