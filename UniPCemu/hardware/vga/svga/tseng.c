@@ -1557,10 +1557,7 @@ void Tseng4k_status_suspendterminatefinished()
 	{
 		et34k(getActiveVGA())->W32_MMUsuspendterminatefilled = 0; //Not anymore!		
 	}
-	if ((et34k(getActiveVGA())->W32_MMUsuspendterminatefilled|et34k(getActiveVGA())->W32_MMUqueuefilled)==0) //The suspend and normal queue are now emptied?
-	{
-		Tseng4k_status_queueEmptied(); //The queue has been emptied now!
-	}
+	Tseng4k_status_queueEmptied(); //The queue has been emptied now!
 }
 
 void Tseng4k_doBecomeIdle() //Accelerator becomes idle!
