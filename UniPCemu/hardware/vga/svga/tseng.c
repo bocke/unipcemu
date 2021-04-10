@@ -2373,7 +2373,7 @@ void Tseng4k_tickAccelerator()
 	{
 		Tseng4k_doBecomeIdle(); //The accelerator becomes idle now! We're waiting for input!
 	}
-	if (et34k(getActiveVGA())->W32_acceleratorbusy || (et34k(getActiveVGA())->W32_MMUsuspendterminatefilled && ((et34k(getActiveVGA())->W32_acceleratorbusy&3)==0))) //Accelerator was busy or suspending/terminating while allowed to?
+	if (((et34k(getActiveVGA())->W32_acceleratorbusy&2)==0) || (et34k(getActiveVGA())->W32_MMUsuspendterminatefilled && ((et34k(getActiveVGA())->W32_acceleratorbusy&3)==0))) //Accelerator was busy or suspending/terminating while allowed to?
 	{
 		if ((et34k(getActiveVGA())->W32_MMUsuspendterminatefilled & 0x11)) //Suspend or Terminate requested?
 		{
@@ -2415,13 +2415,10 @@ void Tseng4k_tickAccelerator()
 		}
 		//Tick the accelerator with the specified address and value loaded!
 		//Abort if still processing! Otherwise, finish up below:
-		if ((et34k(getActiveVGA())->W32_acceleratorbusy & 2) == 0) //Terminated?
-		{
-			Tseng4k_status_XYblockTerminalCount(); //Terminal count reached during the tranfer!
-			Tseng4k_doBecomeIdle(); //Accelerator becomes idle now!
-			Tseng4k_processRegisters_finished();
-			Tseng4k_encodeAcceleratorRegisters(); //Encode the registers, updating them for the CPU!
-		}
+		Tseng4k_status_XYblockTerminalCount(); //Terminal count reached during the tranfer!
+		Tseng4k_doBecomeIdle(); //Accelerator becomes idle now!
+		Tseng4k_processRegisters_finished();
+		Tseng4k_encodeAcceleratorRegisters(); //Encode the registers, updating them for the CPU!
 	}
 }
 
