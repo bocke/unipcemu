@@ -2415,10 +2415,13 @@ void Tseng4k_tickAccelerator()
 		}
 		//Tick the accelerator with the specified address and value loaded!
 		//Abort if still processing! Otherwise, finish up below:
-		Tseng4k_status_XYblockTerminalCount(); //Terminal count reached during the tranfer!
-		Tseng4k_doBecomeIdle(); //Accelerator becomes idle now!
-		Tseng4k_processRegisters_finished();
-		Tseng4k_encodeAcceleratorRegisters(); //Encode the registers, updating them for the CPU!
+		if ((et34k(getActiveVGA())->W32_acceleratorbusy & 2) == 0) //Terminated?
+		{
+			Tseng4k_status_XYblockTerminalCount(); //Terminal count reached during the tranfer!
+			Tseng4k_doBecomeIdle(); //Accelerator becomes idle now!
+			Tseng4k_processRegisters_finished();
+			Tseng4k_encodeAcceleratorRegisters(); //Encode the registers, updating them for the CPU!
+		}
 	}
 }
 
