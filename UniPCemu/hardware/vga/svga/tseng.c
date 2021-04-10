@@ -2415,7 +2415,7 @@ void Tseng4k_tickAccelerator()
 		}
 		//Tick the accelerator with the specified address and value loaded!
 		//Abort if still processing! Otherwise, finish up below:
-		if ((et34k(getActiveVGA())->W32_acceleratorbusy & 2) == 0) //Terminated?
+		if (((et34k(getActiveVGA())->W32_acceleratorbusy & 2) == 0) && (et34k(getActiveVGA())->W32_MMUregisters[0][0x36] & 4)) //Terminated a running tranafer?
 		{
 			Tseng4k_status_XYblockTerminalCount(); //Terminal count reached during the tranfer!
 			Tseng4k_doBecomeIdle(); //Accelerator becomes idle now!
