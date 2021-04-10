@@ -2374,8 +2374,10 @@ void Tseng4k_tickAccelerator()
 					et34k(getActiveVGA())->W32_ACLregs.patternmapaddress = (et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress & 0x3FFFFF); //Internal Pattern address
 					et34k(getActiveVGA())->W32_ACLregs.sourcemapaddress = (et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress & 0x3FFFFF); //Internal Pattern address
 					Tseng4k_processRegisters_finished(); //What to do when a blit has finished?
-					Tseng4k_encodeAcceleratorRegisters(); //Encode the registers, updating them for the CPU!
 					Tseng4k_status_acceleratorsuspended(); //Accelerator has been suspended!
+					Tseng4k_status_XYblockTerminalCount(); //Terminal count reached during the tranfer!
+					et4k_emptyqueuedummy = Tseng4k_doEmptyQueue(); //Empty the queue if possible for the new operation to start! Since interrupts are disabled, doesn't trigger an IRQ!
+					Tseng4k_encodeAcceleratorRegisters(); //Encode the registers, updating them for the CPU!
 				}
 				terminationrequested = et34k(getActiveVGA())->W32_MMUsuspendterminatefilled; //Was termination requested?
 				Tseng4k_status_suspendterminatefinished(); //Suspend/terminate finished.
