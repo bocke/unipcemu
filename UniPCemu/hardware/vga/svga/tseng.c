@@ -2318,12 +2318,9 @@ void Tseng4k_tickAccelerator()
 		return; //Transfer isn't active? Don't do anything!
 	}
 	forcehandlesuspendterminateMMU: //Force handling of suspend/terminate!
-	if ((et34k(getActiveVGA())->W32_MMUsuspendterminatefilled & 0x11)) //Suspend or Terminate requested?
+	if ((et34k(getActiveVGA())->W32_MMUsuspendterminatefilled & 0x10) == 0x10) //Terminate requested?
 	{
-		if ((et34k(getActiveVGA())->W32_MMUsuspendterminatefilled & 0x10)==0x10) //Terminate requested?
-		{
-			et34k(getActiveVGA())->W32_acceleratorbusy = 0; //Not busy anymore!
-		}
+		et34k(getActiveVGA())->W32_acceleratorbusy = 0; //Not busy anymore!
 	}
 	if ((result = Tseng4k_tickAccelerator_step(1))!=0) //No queue version of ticking the accelerator?
 	{
