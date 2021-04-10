@@ -2331,7 +2331,7 @@ void Tseng4k_tickAccelerator()
 		{
 			return; //Not ready to process yet!
 		}
-		//Otherwise, it's 2, requeating suspend/terminate!
+		//Otherwise, it's 2, requesting suspend/terminate!
 	}
 	else if ((result = Tseng4k_doEmptyQueue())!=0) //Try and perform an emptying of the queue, if it's filled (act like it's processed into the accelerator)!
 	{
