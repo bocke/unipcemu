@@ -1774,6 +1774,10 @@ byte Tseng4k_writeMMUregisterUnqueued(byte address, byte value)
 		else if (((value & 4) == 0) && (et34k(getActiveVGA())->W32_MMUregisters[0][0x36] & 4)) //Lowered XYST?
 		{
 			Tseng4k_status_XYblockTerminalCount(); //Perform like a terminal count!
+			if ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 0) //CPU data isn't used?
+			{
+				et4k_emptyqueuedummy = Tseng4k_doEmptyQueue(); //Acnowledge and empty the queue: it's a start trigger instead!
+			}
 		}
 		break;
 	case 0x80:
@@ -2306,10 +2310,6 @@ void Tseng4k_tickAccelerator()
 			setTsengLE32(&et34k(getActiveVGA())->W32_MMUregisters[0][0xA0], effectiveoffset); //Load the banked address into the queued destination address?
 			et4k_transferQueuedMMURegisters(); //Load the queued MMU registers!
 			Tseng4k_decodeAcceleratorRegisters(); //Make sure our internal state is up-to-date!
-			if ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 0) //CPU data isn't used?
-			{
-				result = Tseng4k_doEmptyQueue(); //Acnowledge and empty the queue: it's a start trigger instead!
-			}
 			Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO()); //Starting a transfer!
 			Tseng4k_startAccelerator(1); //Starting the accelerator by MMU trigger!
 			et34k(getActiveVGA())->W32_mixmapposition = 0; //Initialize the mix map position to the first bit!
@@ -2417,6 +2417,10 @@ void Tseng4k_tickAccelerator()
 		//Abort if still processing! Otherwise, finish up below:
 		if (((et34k(getActiveVGA())->W32_acceleratorbusy & 2) == 0) && (et34k(getActiveVGA())->W32_MMUregisters[0][0x36] & 4)) //Terminated a running tranafer?
 		{
+			if ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 0) //CPU data isn't used?
+			{
+				result = Tseng4k_doEmptyQueue(); //Acnowledge and empty the queue: it's a start trigger instead!
+			}
 			Tseng4k_status_XYblockTerminalCount(); //Terminal count reached during the tranfer!
 			Tseng4k_doBecomeIdle(); //Accelerator becomes idle now!
 			Tseng4k_processRegisters_finished();
