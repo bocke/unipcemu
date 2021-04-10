@@ -1918,6 +1918,10 @@ byte Tseng4k_blockQueueAccelerator()
 	{
 		return 0; //Never blocking on the ACL register queue: always writable!
 	}
+	if (et34k(getActiveVGA())->W32_MMUsuspendterminatefilled) //Suspend/terminate pending?
+	{
+		return 2; //Blocking the queue, but not termination!
+	}
 	if ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 0) //CPU data isn't used?
 	{
 		return 1; //Always blocking the queue!
@@ -2332,9 +2336,13 @@ void Tseng4k_tickAccelerator()
 			return; //Abort!
 		}
 	}
-	else if (Tseng4k_blockQueueAccelerator()) //Not ready to process the queue yet?
+	else if (result = Tseng4k_blockQueueAccelerator()) //Not ready to process the queue yet?
 	{
-		return; //Not ready to process yet!
+		if (result == 1) //Fully block?
+		{
+			return; //Not ready to process yet!
+		}
+		//Otherwise, it's 2, requeating suspend/terminate!
 	}
 	else if ((result = Tseng4k_doEmptyQueue())!=0) //Try and perform an emptying of the queue, if it's filled (act like it's processed into the accelerator)!
 	{
