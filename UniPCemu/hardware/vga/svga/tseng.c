@@ -1553,10 +1553,7 @@ byte Tseng4k_doEmptyQueue() //Try and perform an emptying of the queue! Result: 
 
 void Tseng4k_status_suspendterminatefinished()
 {
-	if (et34k(getActiveVGA())->W32_MMUsuspendterminatefilled) //The suspend/terminate queue was filled?
-	{
-		et34k(getActiveVGA())->W32_MMUsuspendterminatefilled = 0; //Not anymore!		
-	}
+	et34k(getActiveVGA())->W32_MMUsuspendterminatefilled = 0; //Not anymore!
 	Tseng4k_status_queueEmptied(); //The queue has been emptied now!
 }
 
