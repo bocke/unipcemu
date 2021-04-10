@@ -1513,16 +1513,15 @@ void Tseng4k_status_becameIdleAndQueueisempty() //Became idle and queue is empty
 //Basic support for accelerator operations
 void Tseng4k_status_acceleratorsuspended() //Accelerator is suspended?
 {
-	et34k(getActiveVGA())->W32_MMUregisters[0][0x36] &= ~0x02; //Lower status!
+	//et34k(getActiveVGA())->W32_MMUregisters[0][0x36] &= ~0x02; //Lower status!
+	//Don't lower the status. This is being done by the accelerator becoming idle only!
 }
 
 void Tseng4k_status_queueFilled(byte is_suspendterminate) //Queue has been filled?
 {
 	if (is_suspendterminate) //Suspend/Terminate?
 	{
-		et34k(getActiveVGA())->W32_MMUsuspendterminatefilled |= is_suspendterminate; //Fill the suspend and/or terminate flag!
-		if (et34k(getActiveVGA())->W32_MMUqueuefilled!=4) //Not clearing for MMU register writes?
-			et34k(getActiveVGA())->W32_MMUqueuefilled = 0; //The queue isn't filled anymore: a suspend/abort is in progress!
+		et34k(getActiveVGA())->W32_MMUsuspendterminatefilled |= is_suspendterminate; //Fill the suspend/terminate flag!
 	}
 	et34k(getActiveVGA())->W32_MMUregisters[0][0x36] |= 0x01; //Raise status!
 	Tseng4k_status_becomebusy_queuefilled(); //Became busy or queue was filled!
@@ -1530,11 +1529,14 @@ void Tseng4k_status_queueFilled(byte is_suspendterminate) //Queue has been fille
 
 void Tseng4k_status_queueEmptied() //Queue has been emptied by processing?
 {
-	if (et34k(getActiveVGA())->W32_MMUregisters[0][0x36] & 0x01) //Was filled?
+	if ((et34k(getActiveVGA())->W32_MMUsuspendterminatefilled | et34k(getActiveVGA())->W32_MMUqueuefilled) == 0) //The suspend and normal queue are emptied?
 	{
-		Tseng4k_raiseMMUinterrupt(1); //Queue has been emptied interrupt!
+		if (et34k(getActiveVGA())->W32_MMUregisters[0][0x36] & 0x01) //Was filled?
+		{
+			Tseng4k_raiseMMUinterrupt(1); //Queue has been emptied interrupt!
+		}
+		et34k(getActiveVGA())->W32_MMUregisters[0][0x36] &= ~0x01; //Lower status!
 	}
-	et34k(getActiveVGA())->W32_MMUregisters[0][0x36] &= ~0x01; //Lower status!
 }
 
 byte Tseng4k_doEmptyQueue() //Try and perform an emptying of the queue! Result: 1=Was filled, 0=Was already empty
@@ -1551,10 +1553,12 @@ byte Tseng4k_doEmptyQueue() //Try and perform an emptying of the queue! Result: 
 
 void Tseng4k_status_suspendterminatefinished()
 {
-	if (et34k(getActiveVGA())->W32_MMUsuspendterminatefilled) //The suspend queue was filled?
+	if (et34k(getActiveVGA())->W32_MMUsuspendterminatefilled) //The suspend/terminate queue was filled?
 	{
-		et34k(getActiveVGA())->W32_MMUsuspendterminatefilled = 0; //Not anymore!
-		et34k(getActiveVGA())->W32_MMUqueuefilled = 0; //The queue isn't filled anymore!
+		et34k(getActiveVGA())->W32_MMUsuspendterminatefilled = 0; //Not anymore!		
+	}
+	if ((et34k(getActiveVGA())->W32_MMUsuspendterminatefilled|et34k(getActiveVGA())->W32_MMUqueuefilled)==0) //The suspend and normal queue are now emptied?
+	{
 		Tseng4k_status_queueEmptied(); //The queue has been emptied now!
 	}
 }
@@ -1737,18 +1741,12 @@ byte Tseng4k_writeMMUregisterUnqueued(byte address, byte value)
 		if ((address == 0x30) && (value & 1)) //Suspend operation requested?
 		{
 			//The accelerator should now be suspending operation and become idle!
-			if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x30] & 0x01)) //Suspend or Terminate requested?
-			{
-				Tseng4k_status_queueFilled(1); //The queue has been filled for suspend/termination!
-			}
+			Tseng4k_status_queueFilled(1); //The queue has been filled for suspend/termination!
 		}
 		if ((address == 0x30 && (value & 0x10))) //Terminate operation requested?
 		{
 			//The accelerator should now be terminating operation and become idle!
-			if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x30] & 0x10)) //Suspend or Terminate requested?
-			{
-				Tseng4k_status_queueFilled(0x10); //The queue has been filled for suspend/termination!
-			}
+			Tseng4k_status_queueFilled(0x10); //The queue has been filled for suspend/termination!
 		}
 		break;
 	case 0x35: //ACL Interrupt Status Register
@@ -1922,12 +1920,12 @@ byte Tseng4k_blockQueueAccelerator()
 	{
 		return 0; //Never blocking on the ACL register queue: always writable!
 	}
-	if (et34k(getActiveVGA())->W32_MMUsuspendterminatefilled) //Suspend/terminate pending?
-	{
-		return 2; //Blocking the queue, but not termination!
-	}
 	if ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 0) //CPU data isn't used?
 	{
+		if (et34k(getActiveVGA())->W32_MMUsuspendterminatefilled) //Suspend/terminate pending?
+		{
+			return 2; //Blocking the queue, but not termination!
+		}
 		return 1; //Always blocking the queue!
 	}
 	//Cases 4 and 5 are always blocked because they keep W32_acceleratorleft set to 1 all the time after receiving their starting byte with the respective X and Y counts!
@@ -2410,6 +2408,10 @@ void Tseng4k_tickAccelerator()
 					et4k_emptyqueuedummy = Tseng4k_doEmptyQueue(); //Empty the queue if possible for the new operation to start! Since interrupts are disabled, doesn't trigger an IRQ!
 					Tseng4k_doBecomeIdle(); //Accelerator becomes idle now!
 					Tseng4k_writeMMUregisterUnqueued(0x35, 0x7); //Clear interrupts from the cause of a write error only? Others are interpreted by the CPU itself for a new operation to start! Since documentation says 'reset of the chip', I assume it clears the other interrupts as well.
+				}
+				else //Become idle only!
+				{
+					Tseng4k_doBecomeIdle(); //The accelerator becomes idle now! We're waiting for input!
 				}
 			}
 		}
