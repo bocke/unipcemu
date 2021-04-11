@@ -2454,6 +2454,7 @@ void Tseng4k_tickAccelerator()
 					et4k_emptyqueuedummy = Tseng4k_doEmptyQueue(); //Empty the queue if possible for the new operation to start! Since interrupts are disabled, doesn't trigger an IRQ!
 					Tseng4k_doBecomeIdle(); //Accelerator becomes idle now!
 					Tseng4k_writeMMUregisterUnqueued(0x35, 0x7); //Clear interrupts from the cause of a write error only? Others are interpreted by the CPU itself for a new operation to start! Since documentation says 'reset of the chip', I assume it clears the other interrupts as well.
+					Tseng4k_encodeAcceleratorRegisters(); //Make sure that we're up-to-date with our internal registers!
 				}
 				else //Become idle only!
 				{
