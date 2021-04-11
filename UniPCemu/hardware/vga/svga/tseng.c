@@ -1620,8 +1620,8 @@ void Tseng4k_decodeAcceleratorRegisters()
 void Tseng4k_encodeAcceleratorRegisters()
 {
 	//TODO: Save and encode all changable accelerator registers that can be modified into the accelerator registers for the CPU to read.
-	//setTsengLE24(&et34k(getActiveVGA())->W32_MMUregisters[1][0x80], (et34k(getActiveVGA())->W32_ACLregs.patternmapaddress & 0x3FFFFF)); //Internal Pattern address
-	//setTsengLE24(&et34k(getActiveVGA())->W32_MMUregisters[1][0x84], (et34k(getActiveVGA())->W32_ACLregs.sourcemapaddress & 0x3FFFFF)); //Internal Source address
+	setTsengLE24(&et34k(getActiveVGA())->W32_MMUregisters[1][0x80], (et34k(getActiveVGA())->W32_ACLregs.patternmapaddress & 0x3FFFFF)); //Pattern map address
+	setTsengLE24(&et34k(getActiveVGA())->W32_MMUregisters[1][0x84], (et34k(getActiveVGA())->W32_ACLregs.sourcemapaddress & 0x3FFFFF)); //Source map address
 	setTsengLE32(&et34k(getActiveVGA())->W32_MMUregisters[1][0xA4], et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress); //Internal Pattern address
 	setTsengLE32(&et34k(getActiveVGA())->W32_MMUregisters[1][0xA8], et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress); //Internal Source address
 	setTsengLE16(&et34k(getActiveVGA())->W32_MMUregisters[1][0x94], et34k(getActiveVGA())->W32_ACLregs.Xposition); //X position
@@ -1751,10 +1751,12 @@ byte Tseng4k_writeMMUregisterUnqueued(byte address, byte value)
 			if (value & 0x01) //Restore operation?
 			{
 				et4k_transferQueuedMMURegisters(); //Load the queued MMU registers!
+				Tseng4k_decodeAcceleratorRegisters(); //Decode the registers now loaded!
 				if (et34k(getActiveVGA())->W32_acceleratorwassuspended) //Were we busy? We're part of the state-save interrupt handler as the ET4000/W32i documentation provides in 2.11.8.1 State-Save Interrupt Handler
 				{
-					Tseng4k_processRegisters_finished(); //Load the ìnternal registers into the reported registers when requested?
+					Tseng4k_processRegisters_finished(); //Load the internal registers into the reported registers when requested?
 				}
+				Tseng4k_encodeAcceleratorRegisters(); //Encode the registers now changed!
 			}
 			if (value & 0x08) //Resume operation? Can be combined with above restore operation!
 			{
