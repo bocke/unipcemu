@@ -2439,16 +2439,17 @@ void Tseng4k_tickAccelerator()
 					et34k(getActiveVGA())->W32_acceleratorwassuspended = 0; //The accelerator wasn't counted as busy anymore!
 					memset(&et34k(getActiveVGA())->W32_MMUregisters[1][0x80], 0, (sizeof(et34k(getActiveVGA())->W32_MMUregisters[1][0]) * 0x80)); //Clear the internal registers!
 					memset(&et34k(getActiveVGA())->W32_MMUregisters[0][0x80], 0, (sizeof(et34k(getActiveVGA())->W32_MMUregisters[0][0]) * 0x80)); //Clear the queue itself!
-					memset(&et34k(getActiveVGA())->W32_MMUregisters[0][0], 0, 0x14); //Clear the MMU base registers!
+					//memset(&et34k(getActiveVGA())->W32_MMUregisters[0][0], 0, 0x14); //Clear the MMU base registers!
 					SETBITS(et34k(getActiveVGA())->W32_MMUregisters[0][0x36], 5, 0x7, 0); //Clear the reserved bits of the status register!
 					Tseng4k_status_XYblockTerminalCount(); //Terminal count reached during the tranfer!
+					Tseng4k_queuedRegistersUnmodified(); //The queue is unmodified now!
 					et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress = et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress = 0; //Reset the internal adresses (officially: undefined on power-up state)!
 					Tseng4k_decodeAcceleratorRegisters(); //Make sure that we're up-to-date with our internal registers!
-					//Leave register 30h bit 4 untouched, this is to be done by software itself!
-					et34k(getActiveVGA())->W32_MMUregisters[0][0x30] &= 0x10; //Cleared register by the reset! Only leave the terminate bit left for the software to clear!
+					//Leave register 30h bit 4 untouched, this is to be done by software itself?
+					et34k(getActiveVGA())->W32_MMUregisters[0][0x30] = 0; //Cleared register by the reset! Only leave the terminate bit left for the software to clear?
 					et34k(getActiveVGA())->W32_MMUregisters[0][0x31] = 0; //Cleared register by the reset!
-					//et34k(getActiveVGA())->W32_MMUregisters[0][0x34] = 0; //Cleared register by the reset! No interrupts enabled!
-					//et34k(getActiveVGA())->W32_MMUregisters[0][0x32] = 1; //Init register by the reset! Sync enable?
+					et34k(getActiveVGA())->W32_MMUregisters[0][0x32] = 1; //Init register by the reset! Sync enable?
+					et34k(getActiveVGA())->W32_MMUregisters[0][0x34] = 0; //Cleared register by the reset! No interrupts enabled!
 					VGA_calcprecalcs(getActiveVGA(), WHEREUPDATED_MEMORYMAPPED | 0x13); //The memory mapped registers has been updated!
 					et4k_emptyqueuedummy = Tseng4k_doEmptyQueue(); //Empty the queue if possible for the new operation to start! Since interrupts are disabled, doesn't trigger an IRQ!
 					Tseng4k_doBecomeIdle(); //Accelerator becomes idle now!
