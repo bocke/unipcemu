@@ -1346,6 +1346,9 @@ void Tseng34k_init()
 			VGA_calcprecalcs(getActiveVGA(),WHEREUPDATED_ALL); //Update all precalcs!
 			et34k(getActiveVGA())->W32_version = 0; //What version is reported to the user!
 			SETBITS(et34k(getActiveVGA())->W32_21xA_shadowRegisters[(0xEC - 0xE0) & 0x1F], 4, 0xF, et34k(getActiveVGA())->W32_version); //Set the high 4 bits to indicate ET4000/W32!
+
+			//Initialize what's needed for the ACL registers to be initialized!
+			et34k(getActiveVGA())->W32_MMUregisters[0][0x32] = 1; //Init register by the reset! Sync enable?
 		}
 	}
 }
@@ -1846,7 +1849,7 @@ byte Tseng4k_writeMMUregisterUnqueued(byte address, byte value)
 	case 0xA3: //ACL Destination Address Register
 		Tseng4k_queuedRegisterModified(); //Modified queue!
 		et34k(getActiveVGA())->W32_MMUregisters[0][address & 0xFF] = value; //Set the register, queued!
-		if ((address == 0xA3) && (et34k(getActiveVGA())->W32_MMUregisters[0][0x31] & 0x10)) //Operation state ASEN enabled and Final byte of the ACL Destination Address Register written?
+		if (address == 0xA3) //Operation state ASEN enabled? and Final byte of the ACL Destination Address Register written?
 		{
 			et4k_transferQueuedMMURegisters(); //Load the queued registers to become active!
 			//Start a new operation!
@@ -2440,7 +2443,7 @@ void Tseng4k_tickAccelerator()
 					//Leave register 30h bit 4 untouched, this is to be done by software itself!
 					et34k(getActiveVGA())->W32_MMUregisters[0][0x30] &= 0x10; //Cleared register by the reset! Only leave the terminate bit left for the software to clear!
 					et34k(getActiveVGA())->W32_MMUregisters[0][0x31] = 0; //Cleared register by the reset!
-					et34k(getActiveVGA())->W32_MMUregisters[0][0x32] = 0; //Cleared register by the reset! No sync enable!
+					et34k(getActiveVGA())->W32_MMUregisters[0][0x32] = 1; //Init register by the reset! Sync enable?
 					VGA_calcprecalcs(getActiveVGA(), WHEREUPDATED_MEMORYMAPPED | 0x13); //The memory mapped registers has been updated!
 					et4k_emptyqueuedummy = Tseng4k_doEmptyQueue(); //Empty the queue if possible for the new operation to start! Since interrupts are disabled, doesn't trigger an IRQ!
 					Tseng4k_doBecomeIdle(); //Accelerator becomes idle now!
