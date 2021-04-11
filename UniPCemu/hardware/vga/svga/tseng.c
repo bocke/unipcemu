@@ -2375,7 +2375,7 @@ void Tseng4k_tickAccelerator()
 			return; //Abort!
 		}
 	}
-	else if (result = Tseng4k_blockQueueAccelerator()) //Not ready to process the queue yet?
+	else if ((result = Tseng4k_blockQueueAccelerator())!=0) //Not ready to process the queue yet?
 	{
 		if (result == 1) //Fully block?
 		{
