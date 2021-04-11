@@ -65,6 +65,7 @@ typedef struct
 	uint_32 sourcewrap_x; //Horizontal source wrap
 	uint_32 sourcewrap_y; //Vertical source wrap
 	byte W32_newXYblock; //Starting a new X/Y block?
+	byte ACL_active; //ACL is actually active and running?
 } ET4000_W32_ACL_PRECALCS;
 
 typedef struct {
@@ -166,6 +167,7 @@ typedef struct {
 	uint_32 W32_MMUqueueval_address; //What offset inside the queue is filled!
 	uint_32 W32_MMUqueueval_bankaddress; //Address for any bank, if supplied by an MMU aperture!
 	byte W32_acceleratorbusy; //Is the accelerator started up in a processing? bit 0=ticking this clock,  bit 1=operation still in progress
+	byte W32_acceleratorwassuspended; //Were we busy on something?
 	byte W32_acceleratorleft; //How many ticks are left to process!
 	ET4000_W32_ACL_PRECALCS W32_ACLregs; //ACL registers used during rendering
 	byte W32_version; //What version of the W32 is emulated?
