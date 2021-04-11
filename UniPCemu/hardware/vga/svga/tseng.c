@@ -1914,6 +1914,11 @@ byte Tseng4k_blockQueueAccelerator()
 	{
 		return 0; //Never blocking on the ACL register queue: always writable!
 	}
+	//It's normal accelerator window data while it's idling!
+	if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x36] & 0x04) == 0) //Not ready to handle the queue?
+	{
+		return 2; //Blocking the queue, but not termination!
+	}
 	if ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 0) //CPU data isn't used?
 	{
 		if (et34k(getActiveVGA())->W32_MMUsuspendterminatefilled) //Suspend/terminate pending?
