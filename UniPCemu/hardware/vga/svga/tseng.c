@@ -1445,6 +1445,9 @@ void Tseng4k_queuedRegistersUnmodified(); //Prototype!
 
 void et4k_transferQueuedMMURegisters()
 {
+	//Note that the source and pattern address register is 3 stage instead of two-stage: it shifts from the queue into a initial register and from the initial register into the internal state! (ET4000/W32i 2.11.3 The Accelerator's queue)
+	//The latter 2 stages happen internally during processing finishing up, while only the first 2 happen in this function for these registers.
+	//So this only loads from the queue to said Initial registers for those registers. The latter transfer is performed by doing this twice after suspension.
 	memcpy(&et34k(getActiveVGA())->W32_MMUregisters[1][0x80], &et34k(getActiveVGA())->W32_MMUregisters[0][0x80], 0x80); //Load all queued registers into the internal state!
 	Tseng4k_queuedRegistersUnmodified(); //Not modified anymore!
 }
