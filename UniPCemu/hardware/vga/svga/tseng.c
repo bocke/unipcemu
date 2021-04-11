@@ -1539,6 +1539,18 @@ void Tseng4k_status_queueEmptied() //Queue has been emptied by processing?
 	}
 }
 
+void Tseng4k_doBecomeIdle(); //Accelerator becomes idle! PROTOTYPE!
+
+void Tseng4k_status_suspendterminatecleared(byte is_suspendterminate)
+{
+	et34k(getActiveVGA())->W32_MMUsuspendterminatefilled &= ~is_suspendterminate; //Clear the requested flags!
+	Tseng4k_status_queueEmptied(); //Check for emptying of the queue!
+	if ((et34k(getActiveVGA())->W32_acceleratorbusy & 2) == 0) //Fully suspended?
+	{
+		Tseng4k_doBecomeIdle(); //Accelerator became idle!
+	}
+}
+
 byte Tseng4k_doEmptyQueue() //Try and perform an emptying of the queue! Result: 1=Was filled, 0=Was already empty
 {
 	byte result;
@@ -1721,26 +1733,41 @@ byte Tseng4k_writeMMUregisterUnqueued(byte address, byte value)
 	case 0x32: //ACL Sync Enable Register
 	case 0x34: //ACL Interrupt Mask Register
 		et34k(getActiveVGA())->W32_MMUregisters[0][address & 0xFF] = value; //Set the register with all it's bits writable!
-		if ((address == 0x31) && (value & 1)) //Restore operation?
+		if (address == 0x31) //Restore/Resume operation?
 		{
-			et4k_transferQueuedMMURegisters(); //Load the queued MMU registers!
+			if (value & 0x01) //Restore operation?
+			{
+				et4k_transferQueuedMMURegisters(); //Load the queued MMU registers!
+			}
+			if (value & 0x08) //Resume operation? Can be combined with above restore operation!
+			{
+				et4k_emptyqueuedummy = Tseng4k_doEmptyQueue(); //Empty the queue if possible for the new operation to start!
+				Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO()); //Starting a transfer!
+				Tseng4k_startAccelerator(0); //Starting the accelerator!
+				et34k(getActiveVGA())->W32_mixmapposition = 0; //Initialize the mix map position to the first bit!
+			}
 		}
-		if ((address == 0x31) && (value & 8)) //Resume operation? Can be combined with above restore operation!
+		if (address == 0x30) //Suspend operation requested?
 		{
-			et4k_emptyqueuedummy = Tseng4k_doEmptyQueue(); //Empty the queue if possible for the new operation to start!
-			Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO()); //Starting a transfer!
-			Tseng4k_startAccelerator(0); //Starting the accelerator!
-			et34k(getActiveVGA())->W32_mixmapposition = 0; //Initialize the mix map position to the first bit!
-		}
-		if ((address == 0x30) && (value & 1)) //Suspend operation requested?
-		{
-			//The accelerator should now be suspending operation and become idle!
-			Tseng4k_status_queueFilled(1); //The queue has been filled for suspend/termination!
-		}
-		if ((address == 0x30 && (value & 0x10))) //Terminate operation requested?
-		{
-			//The accelerator should now be terminating operation and become idle!
-			Tseng4k_status_queueFilled(0x10); //The queue has been filled for suspend/termination!
+			if (value & 0x01) //Raised suspend?
+			{
+				//The accelerator should now be suspending operation and become idle!
+				Tseng4k_status_queueFilled(0x01); //The queue has been filled for suspend/termination!
+			}
+			else //Lowered suspend?
+			{
+				Tseng4k_status_suspendterminatecleared(0x01); //The queue has been cleared!
+			}
+
+			if (value & 0x10) //Raised terminate?
+			{
+				//The accelerator should now be terminating operation and become idle!
+				Tseng4k_status_queueFilled(0x10); //The queue has been filled for suspend/termination!
+			}
+			else //Lowered terminate?
+			{
+				Tseng4k_status_suspendterminatecleared(0x10); //The queue has been cleared!
+			}
 		}
 		break;
 	case 0x35: //ACL Interrupt Status Register
