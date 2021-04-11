@@ -1950,13 +1950,13 @@ byte Tseng4k_writeMMUregister(byte address, byte value)
 //result: 1: blocking the queue from being processed because we're not ready to process yet.
 byte Tseng4k_blockQueueAccelerator()
 {
-	if (et34k(getActiveVGA())->W32_acceleratorleft) //Anything left to process? This is cleared by the noqueue accelerator stepping!
-	{
-		return 1; //Blocking the queue, because we're not ready to process yet!
-	}
 	if ((et34k(getActiveVGA()))->W32_MMUqueuefilled == 4) //Queue filled for the ACL registers?
 	{
 		return 0; //Never blocking on the ACL register queue: always writable!
+	}
+	if (et34k(getActiveVGA())->W32_acceleratorleft) //Anything left to process? This is cleared by the noqueue accelerator stepping!
+	{
+		return 1; //Blocking the queue, because we're not ready to process yet!
 	}
 	//It's normal accelerator window data while it's idling!
 	if (et34k(getActiveVGA())->W32_ACLregs.ACL_active == 0) //Not ready to handle the queue?
