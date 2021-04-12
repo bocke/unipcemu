@@ -1555,8 +1555,8 @@ byte Tseng4k_status_readMultiQueue()
 	uint_32 data1,data2;
 	if (readfifobuffer32_2(et34k(getActiveVGA())->W32_MMUqueue,&data1,&data2)) //Filled?
 	{
-		et34k(getActiveVGA())->W32_MMUqueueval_bankaddress = (data2&0xFFFFFFF); //Bank address!
-		et34k(getActiveVGA())->W32_MMUqueueval_address = (data1&0xFFFFFFF); //Address!
+		et34k(getActiveVGA())->W32_MMUqueueval_bankaddress = (data2&0xFFFFFF); //Bank address!
+		et34k(getActiveVGA())->W32_MMUqueueval_address = (data1&0xFFFFFF); //Address!
 		et34k(getActiveVGA())->W32_MMUqueueval = (data2>>24)&0xFF; //The value!
 		return ((data1>>24)&0xFF); //The queue filled status!
 	}
@@ -1567,7 +1567,7 @@ byte Tseng4k_status_writeMultiQueue(byte type, byte value, uint_32 address, uint
 {
 	uint_32 data1, data2;
 	if (!type) return 0; //Invalid type?
-	data1 = (address&0xFFFFFFF)|(type<<24); //First data: address and type!
+	data1 = (address&0xFFFFFF)|(type<<24); //First data: address and type!
 	data2 = (bank&0xFFFFFF)|(value<<24); //Second data: bank and value!
 	return writefifobuffer32_2(et34k(getActiveVGA())->W32_MMUqueue,data1,data2); //Write to the queue!
 }
