@@ -1885,6 +1885,7 @@ byte Tseng4k_writeMMUregisterUnqueued(byte address, byte value)
 	case 0xA3: //ACL Destination Address Register
 		Tseng4k_queuedRegisterModified(); //Modified queue!
 		et34k(getActiveVGA())->W32_MMUregisters[0][address & 0xFF] = value; //Set the register, queued!
+		/*
 		if (address == 0xA3) //Operation state ASEN enabled? and Final byte of the ACL Destination Address Register written?
 		{
 			et4k_transferQueuedMMURegisters(); //Load the queued registers to become active!
@@ -1895,6 +1896,8 @@ byte Tseng4k_writeMMUregisterUnqueued(byte address, byte value)
 			et34k(getActiveVGA())->W32_mixmapposition = 0; //Initialize the mix map position to the first bit!
 			et34k(getActiveVGA())->W32_ACLregs.Xposition = et34k(getActiveVGA())->W32_ACLregs.Yposition = 0; //Initialize the position!
 		}
+		*/
+		//ET4000/W32i: 2.11.2 Starting an Accelerator Operation says this is caused by writes to the MMU aperture and Accelerator Operation State Register only!
 		break;
 	case 0xA4:
 	case 0xA5:
