@@ -1563,6 +1563,19 @@ byte Tseng4k_status_readMultiQueue()
 	return 0; //Not filled!
 }
 
+byte Tseng4k_status_peekMultiQueue_apply()
+{
+	uint_32 data1, data2;
+	if (peekfifobuffer32_2u(et34k(getActiveVGA())->W32_MMUqueue, &data1, &data2)) //Filled?
+	{
+		et34k(getActiveVGA())->W32_MMUqueueval_bankaddress = (data2 & 0xFFFFFF); //Bank address!
+		et34k(getActiveVGA())->W32_MMUqueueval_address = (data1 & 0xFFFFFF); //Address!
+		et34k(getActiveVGA())->W32_MMUqueueval = (data2 >> 24) & 0xFF; //The value!
+		return ((data1 >> 24) & 0xFF); //The queue filled status!
+	}
+	return 0; //Not filled!
+}
+
 byte Tseng4k_status_writeMultiQueue(byte type, byte value, uint_32 address, uint_32 bank)
 {
 	uint_32 data1, data2;
@@ -2393,22 +2406,25 @@ void Tseng4k_tickAccelerator()
 	{
 		if (Tseng4k_status_multiqueueFilled()==1) //Queue is filled while inactive?
 		{
-			effectiveoffset = et34k(getActiveVGA())->W32_MMUqueueval_address; //The offset!
-			if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x9C] & 7) == 2) //Mix data is going to be used?
+			if (Tseng4k_status_peekMultiQueue_apply()==1) //Peeked and read into pre-processing?
 			{
-				effectiveoffset <<= 3; //Shift left by 3 bits!
+				effectiveoffset = et34k(getActiveVGA())->W32_MMUqueueval_address; //The offset!
+				if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x9C] & 7) == 2) //Mix data is going to be used?
+				{
+					effectiveoffset <<= 3; //Shift left by 3 bits!
+				}
+				effectiveoffset += et34k(getActiveVGA())->W32_MMUqueueval_bankaddress; //The effective base address for the operation!
+				//Fully update the destination address in both queued, unqueued and active locations!
+				setTsengLE32(&et34k(getActiveVGA())->W32_MMUregisters[0][0xA0], effectiveoffset); //Load the banked address into the queued destination address?
+				et4k_transferQueuedMMURegisters(); //Load the queued MMU registers!
+				Tseng4k_decodeAcceleratorRegisters(); //Make sure our internal state is up-to-date!
+				Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO(), 2); //Starting a transfer! Make the accelerator active as a new transfer!
+				Tseng4k_startAccelerator(1); //Starting the accelerator by MMU trigger!
+				et34k(getActiveVGA())->W32_mixmapposition = 0; //Initialize the mix map position to the first bit!
+				//Initialize the X and Y position to start rendering!
+				et34k(getActiveVGA())->W32_ACLregs.Xposition = et34k(getActiveVGA())->W32_ACLregs.Yposition = 0; //Initialize the position!
+				goto forcehandlesuspendterminateMMU; //Force handle the starting of a transfer!
 			}
-			effectiveoffset += et34k(getActiveVGA())->W32_MMUqueueval_bankaddress; //The effective base address for the operation!
-			//Fully update the destination address in both queued, unqueued and active locations!
-			setTsengLE32(&et34k(getActiveVGA())->W32_MMUregisters[0][0xA0], effectiveoffset); //Load the banked address into the queued destination address?
-			et4k_transferQueuedMMURegisters(); //Load the queued MMU registers!
-			Tseng4k_decodeAcceleratorRegisters(); //Make sure our internal state is up-to-date!
-			Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO(), 2); //Starting a transfer! Make the accelerator active as a new transfer!
-			Tseng4k_startAccelerator(1); //Starting the accelerator by MMU trigger!
-			et34k(getActiveVGA())->W32_mixmapposition = 0; //Initialize the mix map position to the first bit!
-			//Initialize the X and Y position to start rendering!
-			et34k(getActiveVGA())->W32_ACLregs.Xposition = et34k(getActiveVGA())->W32_ACLregs.Yposition = 0; //Initialize the position!
-			goto forcehandlesuspendterminateMMU; //Force handle the starting of a transfer!
 		}
 		return; //Transfer isn't active? Don't do anything!
 	}
