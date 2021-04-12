@@ -1924,7 +1924,10 @@ byte Tseng4k_readMMUaccelerator(byte area, uint_32 address, byte* result)
 //Handling of termination of a CPU access!
 void Tseng4k_handleTermination()
 {
-	//TODO: Perform termination of memory pending!
+	if (et34k(getActiveVGA())) //Tseng chips?
+	{
+		et34k(getActiveVGA())->W32_waitstateremainderofqueue = 0; //Not waitstating on the remainder of the transfer anymore!
+	}
 }
 
 byte Tseng4k_writeMMUaccelerator(byte area, uint_32 address, byte value)
@@ -1937,7 +1940,7 @@ byte Tseng4k_writeMMUaccelerator(byte area, uint_32 address, byte value)
 	if (Tseng4k_status_multiqueueFilled()||et34k(getActiveVGA())->W32_MMUsuspendterminatefilled) //Queue already filled?
 	{
 	handleQueueWaiting:
-		if (et34k(getActiveVGA())->W32_MMUregisters[0][0x32] & 1) //Waitstate to apply for writes?
+		if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x32] & 1) || et34k(getActiveVGA())->W32_waitstateremainderofqueue) //Waitstate to apply for writes?
 		{
 			MMU_waitstateactive = 1; //Start waitstate to become ready!
 			return 1; //Handled!
@@ -1972,6 +1975,7 @@ byte Tseng4k_writeMMUaccelerator(byte area, uint_32 address, byte value)
 	queueaddress = address; //What offset is filled!
 	Tseng4k_status_writeMultiQueue(queuetype,value,queueaddress,queuebank); //Fill the specific offset that's filled!
 	Tseng4k_status_queueFilled(0); //The queue has been filled!
+	et34k(getActiveVGA())->W32_waitstateremainderofqueue = 1; //Waitstate the remainder of the transfer if needed!
 	return 1; //Handled!
 }
 
