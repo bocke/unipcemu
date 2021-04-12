@@ -1890,6 +1890,12 @@ byte Tseng4k_readMMUaccelerator(byte area, uint_32 address, byte* result)
 	return 1; //Handled!
 }
 
+//Handling of termination of a CPU access!
+void Tseng4k_handleTermination()
+{
+	//TODO: Perform termination of memory pending!
+}
+
 byte Tseng4k_writeMMUaccelerator(byte area, uint_32 address, byte value)
 {
 	MMU_waitstateactive = 0; //No wait state!
@@ -3715,6 +3721,16 @@ DOUBLE Tseng34k_getClockRate(VGA_Type *VGA)
 	return 0.0; //Not an ET3K/ET4K clock rate, default to VGA rate!
 }
 
+//Basic Container/wrapper support
+void freeTsengQueue(void** ptr, uint_32 size, SDL_sem* lock) //Free a pointer (used internally only) allocated with nzalloc/zalloc and our internal functions!
+{
+	FIFOBUFFER* obj = (FIFOBUFFER*)*ptr; //Take the object out of the pointer!
+	//Start by freeing the surfaces in the handlers!
+	changedealloc((void *)obj, sizeof(*obj), getdefaultdealloc()); //Change the deallocation function back to it's default!
+	//We're always allowed to release the container.
+	free_fifobuffer(&obj); //Free normally using the normally used functions!
+}
+
 void SVGA_Setup_TsengET4K(uint_32 VRAMSize, byte ET4000_extensions) {
 	if ((getActiveVGA()->enable_SVGA == 2) || (getActiveVGA()->enable_SVGA == 1)) //ET3000/ET4000?
 		VGA_registerExtension(&Tseng34K_readIO, &Tseng34K_writeIO, &Tseng34k_init,&Tseng34k_calcPrecalcs,&Tseng34k_getClockRate,NULL);
@@ -3729,5 +3745,7 @@ void SVGA_Setup_TsengET4K(uint_32 VRAMSize, byte ET4000_extensions) {
 	{
 		et34k_reg(et34k(getActiveVGA()),3c4,07) = 0x4|(0x8|0x20)|0x80; //Default to VGA mode(bit 7 set) with full memory map (bits 3&5 set), Other bits are set always.
 		et34k(getActiveVGA())->tsengExtensions = ET4000_extensions; //What extension is enabled in the settings!
+		et34k(getActiveVGA())->W32_MMUqueue = allocfifobuffer(0x10000 * sizeof(uint_64), 0); //Basic fifo to use!
+		changedealloc(et34k(getActiveVGA())->W32_MMUqueue, sizeof(*et34k(getActiveVGA())->W32_MMUqueue), &freeTsengQueue); //Deallocation support for the FIFO!
 	}
 }

@@ -36,6 +36,7 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 #include "headers/cpu/easyregs.h" //Easy register support!
 #include "headers/hardware/pci.h" //Bus termination supoort!
 #include "headers/hardware/pic.h" //APIC support!
+#include "headers/hardware/vga/svga/tseng.h" //Tseng support for termination of transfers!
 
 //Define the below to throw faults on instructions causing an invalid jump somewhere!
 //#define FAULT_INVALID_JUMPS
@@ -398,6 +399,7 @@ void BIU_terminatemem()
 		BIU[activeCPU].terminationpending = 0; //Not pending anymore!
 		//Handle any events requiring termination!
 		APIC_handletermination(); //Handle termination of the APIC writes!
+		Tseng4k_handleTermination(); //Terminate a memory cycle!
 	}
 }
 

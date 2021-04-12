@@ -23,6 +23,7 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "headers/types.h" //Basic types!
 #include "headers/hardware/vga/vga.h" //Basic VGA!
+#include "headers/support/fifobuffer.h" //Fifo support!
 
 typedef struct
 {
@@ -162,6 +163,7 @@ typedef struct {
 	byte W32_MMUregisters[2][0x100]; //All W32 memory mapped registers! First is the queued registers(or non-queued). Second is the processing registers.
 	byte W32_performMMUoperationstart; //Perform a MMU-type operation start?
 	byte W32_MMUsuspendterminatefilled; //Is the suspend/terminate flag filled (alternative to the queue)?
+	FIFOBUFFER* W32_MMUqueue; //The actual queue that's maintained in the background with multiple entries!
 	byte W32_MMUqueuefilled; //Is the queue filled?
 	byte W32_MMUqueueval; //What value is stored inside the queue?
 	uint_32 W32_MMUqueueval_address; //What offset inside the queue is filled!
@@ -309,4 +311,5 @@ byte Tseng4k_writeMMUregister(byte address, byte value);
 byte Tseng4k_readMMUaccelerator(byte area, uint_32 address, byte * result);
 byte Tseng4k_writeMMUaccelerator(byte area, uint_32 address, byte value);
 void Tseng4k_tickAccelerator(); //Tick the accelerator one clock!
+void Tseng4k_handleTermination(); //Terminate a memory cycle!
 #endif
