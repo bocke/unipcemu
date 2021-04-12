@@ -1924,9 +1924,12 @@ byte Tseng4k_readMMUaccelerator(byte area, uint_32 address, byte* result)
 //Handling of termination of a CPU access!
 void Tseng4k_handleTermination()
 {
-	if (et34k(getActiveVGA())) //Tseng chips?
+	if (getActiveVGA()->enable_SVGA==1) //ET4000 chip?
 	{
-		et34k(getActiveVGA())->W32_waitstateremainderofqueue = 0; //Not waitstating on the remainder of the transfer anymore!
+		if (et34k(getActiveVGA())) //Tseng chips valid?
+		{
+			et34k(getActiveVGA())->W32_waitstateremainderofqueue = 0; //Not waitstating on the remainder of the transfer anymore!
+		}
 	}
 }
 
