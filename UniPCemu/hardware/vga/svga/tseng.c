@@ -1540,9 +1540,41 @@ void Tseng4k_status_queueFilled(byte is_suspendterminate) //Queue has been fille
 	Tseng4k_status_becomebusy_queuefilled(); //Became busy or queue was filled!
 }
 
+byte Tseng4k_status_multiqueueFilled()
+{
+	uint_32 data1,data2;
+	if (peekfifobuffer32_2(et34k(getActiveVGA())->W32_MMUqueue,&data1,&data2)) //Filled?
+	{
+		return ((data1>>24)&0xFF); //The queue filled status!
+	}
+	return 0; //Not filled!
+}
+
+byte Tseng4k_status_readMultiQueue()
+{
+	uint_32 data1,data2;
+	if (readfifobuffer32_2(et34k(getActiveVGA())->W32_MMUqueue,&data1,&data2)) //Filled?
+	{
+		et34k(getActiveVGA())->W32_MMUqueueval_bankaddress = (data2&0xFFFFFFF); //Bank address!
+		et34k(getActiveVGA())->W32_MMUqueueval_address = (data1&0xFFFFFFF); //Address!
+		et34k(getActiveVGA())->W32_MMUqueueval = (data2>>24)&0xFF; //The value!
+		return ((data1>>24)&0xFF); //The queue filled status!
+	}
+	return 0; //Not filled!
+}
+
+byte Tseng4k_status_writeMultiQueue(byte type, byte value, uint_32 address, uint_32 bank)
+{
+	uint_32 data1, data2;
+	if (!type) return 0; //Invalid type?
+	data1 = (address&0xFFFFFFF)|(type<<24); //First data: address and type!
+	data2 = (bank&0xFFFFFF)|(value<<24); //Second data: bank and value!
+	return writefifobuffer32_2(et34k(getActiveVGA())->W32_MMUqueue,data1,data2); //Write to the queue!
+}
+
 void Tseng4k_status_queueEmptied() //Queue has been emptied by processing?
 {
-	if ((et34k(getActiveVGA())->W32_MMUsuspendterminatefilled | et34k(getActiveVGA())->W32_MMUqueuefilled) == 0) //The suspend and normal queue are emptied?
+	if ((et34k(getActiveVGA())->W32_MMUsuspendterminatefilled | Tseng4k_status_multiqueueFilled()) == 0) //The suspend and normal queue are emptied?
 	{
 		if (et34k(getActiveVGA())->W32_MMUregisters[0][0x36] & 0x01) //Was filled?
 		{
@@ -1567,9 +1599,8 @@ void Tseng4k_status_suspendterminatecleared(byte is_suspendterminate)
 byte Tseng4k_doEmptyQueue() //Try and perform an emptying of the queue! Result: 1=Was filled, 0=Was already empty
 {
 	byte result;
-	if ((result = et34k(getActiveVGA())->W32_MMUqueuefilled)!=0) //The queue was filled?
+	if ((result = Tseng4k_status_readMultiQueue())!=0) //The queue was filled?
 	{
-		et34k(getActiveVGA())->W32_MMUqueuefilled = 0; //The queue isn't filled anymore!
 		Tseng4k_status_queueEmptied(); //The queue has been emptied now!
 		return result; //Was filled with this value!
 	}
@@ -1584,7 +1615,7 @@ void Tseng4k_status_suspendterminatefinished()
 
 void Tseng4k_doBecomeIdle() //Accelerator becomes idle!
 {
-	if ((et34k(getActiveVGA())->W32_MMUqueuefilled|et34k(getActiveVGA())->W32_MMUsuspendterminatefilled) == 0) //Queue isn't filled anymore while becoming idle?
+	if ((Tseng4k_status_multiqueueFilled()|et34k(getActiveVGA())->W32_MMUsuspendterminatefilled) == 0) //Queue isn't filled anymore while becoming idle?
 	{
 		Tseng4k_status_becameIdleAndQueueisempty(); //Became idle and queue is empty!
 	}
@@ -1701,7 +1732,7 @@ void Tseng4k_startAccelerator(byte triggerfromMMU)
 		et34k(getActiveVGA())->W32_acceleratorleft = 0; //Starting a new operation!
 	}
 	et34k(getActiveVGA())->W32_performMMUoperationstart = triggerfromMMU; //Trigger start from MMU type write?
-	if ((et34k(getActiveVGA())->W32_MMUqueuefilled == 0) && (!et34k(getActiveVGA())->W32_performMMUoperationstart)) //Queue not filled yet and not starting from the accelerator window?
+	if ((Tseng4k_status_multiqueueFilled() == 0) && (!et34k(getActiveVGA())->W32_performMMUoperationstart)) //Queue not filled yet and not starting from the accelerator window?
 	{
 		//Make sure that the queue addresses are properly set!
 		et34k(getActiveVGA())->W32_MMUqueueval_bankaddress = 0; //Default: no bank address loaded yet!
@@ -1898,10 +1929,12 @@ void Tseng4k_handleTermination()
 
 byte Tseng4k_writeMMUaccelerator(byte area, uint_32 address, byte value)
 {
+	byte queuetype;
+	uint_32 queuebank,queueaddress;
 	MMU_waitstateactive = 0; //No wait state!
 	//Index 32 bit 0 being set causes this to set MMU_waitstateactive to 1 when not ready yet and abort (waitstate).
 	//Otherwise, when not ready yet, ignore!
-	if (et34k(getActiveVGA())->W32_MMUqueuefilled||et34k(getActiveVGA())->W32_MMUsuspendterminatefilled) //Queue already filled?
+	if (Tseng4k_status_multiqueueFilled()||et34k(getActiveVGA())->W32_MMUsuspendterminatefilled) //Queue already filled?
 	{
 	handleQueueWaiting:
 		if (et34k(getActiveVGA())->W32_MMUregisters[0][0x32] & 1) //Waitstate to apply for writes?
@@ -1927,17 +1960,17 @@ byte Tseng4k_writeMMUaccelerator(byte area, uint_32 address, byte value)
 			}
 		}
 
-		et34k(getActiveVGA())->W32_MMUqueuefilled = 1; //The queue is now filled!
-		et34k(getActiveVGA())->W32_MMUqueueval_bankaddress = getActiveVGA()->precalcs.MMU012_aperture[area & 3]; //Apply the area we're selecting to get the actual VRAM address!
+		queuetype = 1; //The queue is now filled!
+		queuebank = getActiveVGA()->precalcs.MMU012_aperture[area & 3]; //Apply the area we're selecting to get the actual VRAM address!
 	}
 	else //To the MMU registers?
 	{
-		et34k(getActiveVGA())->W32_MMUqueuefilled = 4; //The MMU register queue is now filled!
-		et34k(getActiveVGA())->W32_MMUqueueval_bankaddress = 0; //No bank address used!
+		queuetype = 4; //The MMU register queue is now filled!
+		queuebank = 0; //No bank address used!
 	}
 
-	et34k(getActiveVGA())->W32_MMUqueueval_address = address; //What offset is filled!
-	et34k(getActiveVGA())->W32_MMUqueueval = value; //Fill the specific offset that's filled!
+	queueaddress = address; //What offset is filled!
+	Tseng4k_status_writeMultiQueue(queuetype,value,queueaddress,queuebank); //Fill the specific offset that's filled!
 	Tseng4k_status_queueFilled(0); //The queue has been filled!
 	return 1; //Handled!
 }
@@ -1958,7 +1991,7 @@ byte Tseng4k_writeMMUregister(byte address, byte value)
 //result: 1: blocking the queue from being processed because we're not ready to process yet.
 byte Tseng4k_blockQueueAccelerator()
 {
-	if ((et34k(getActiveVGA()))->W32_MMUqueuefilled == 4) //Queue filled for the ACL registers?
+	if (Tseng4k_status_multiqueueFilled() == 4) //Queue filled for the ACL registers?
 	{
 		return 0; //Never blocking on the ACL register queue: always writable!
 	}
@@ -2345,10 +2378,10 @@ void Tseng4k_tickAccelerator()
 	//For now, just empty the queue, if filled and become idle!
 	if (!(et34k(getActiveVGA()) && (getActiveVGA()->enable_SVGA == 1))) return; //Not ET4000/W32? Do nothing!
 	if (et34k(getActiveVGA())->W32_MMUsuspendterminatefilled) goto forcehandlesuspendterminateMMU; //Force handle suspend/terminate?
-	if (et34k(getActiveVGA())->W32_MMUqueuefilled == 4) goto forcehandlesuspendterminateMMU; //Force handle queued MMU memory mapped registers?
+	if (Tseng4k_status_multiqueueFilled() == 4) goto forcehandlesuspendterminateMMU; //Force handle queued MMU memory mapped registers?
 	if (et34k(getActiveVGA())->W32_ACLregs.ACL_active == 0) //ACL inactive?
 	{
-		if (et34k(getActiveVGA())->W32_MMUqueuefilled==1) //Queue is filled while inactive?
+		if (Tseng4k_status_multiqueueFilled()==1) //Queue is filled while inactive?
 		{
 			effectiveoffset = et34k(getActiveVGA())->W32_MMUqueueval_address; //The offset!
 			if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x9C] & 7) == 2) //Mix data is going to be used?
