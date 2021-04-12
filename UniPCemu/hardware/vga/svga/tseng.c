@@ -1479,7 +1479,7 @@ void Tseng4k_status_startXYblock(byte is_screentoscreen, byte doResume) //Starti
 {
 	if (doResume) //Perform resume and become an active accelerator by this?
 	{
-		if (doResume == 2) //Starting a new block?
+		if ((doResume == 2) && (et34k(getActiveVGA())->W32_ACLregs.ACL_active==0)) //Starting a new block?
 		{
 			et34k(getActiveVGA())->W32_ACLregs.W32_newXYblock = 1; //Starting a new transfer now!
 		}
