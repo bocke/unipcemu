@@ -164,7 +164,6 @@ typedef struct {
 	byte W32_performMMUoperationstart; //Perform a MMU-type operation start?
 	byte W32_MMUsuspendterminatefilled; //Is the suspend/terminate flag filled (alternative to the queue)?
 	FIFOBUFFER* W32_MMUqueue; //The actual queue that's maintained in the background with multiple entries!
-	byte W32_MMUqueuefilled; //Is the queue filled?
 	byte W32_MMUqueueval; //What value is stored inside the queue?
 	uint_32 W32_MMUqueueval_address; //What offset inside the queue is filled!
 	uint_32 W32_MMUqueueval_bankaddress; //Address for any bank, if supplied by an MMU aperture!
