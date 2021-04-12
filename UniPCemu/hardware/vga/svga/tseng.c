@@ -1479,7 +1479,7 @@ void Tseng4k_status_startXYblock(byte is_screentoscreen, byte doResume) //Starti
 {
 	if (doResume) //Perform resume and become an active accelerator by this?
 	{
-		if (et34k(getActiveVGA())->W32_ACLregs.ACL_active == 0) //Starting a new block?
+		if (doResume == 2) //Starting a new block?
 		{
 			et34k(getActiveVGA())->W32_ACLregs.W32_newXYblock = 1; //Starting a new transfer now!
 		}
@@ -1792,7 +1792,7 @@ byte Tseng4k_writeMMUregisterUnqueued(byte address, byte value)
 			if (value & 0x08) //Resume operation? Can be combined with above restore operation!
 			{
 				et4k_emptyqueuedummy = Tseng4k_doEmptyQueue(); //Empty the queue if possible for the new operation to start!
-				Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO(), 1); //Starting a transfer! Make the accelerator active again!
+				Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO(), 2); //Starting a transfer! Make the accelerator active again!
 				Tseng4k_startAccelerator(0); //Starting the accelerator!
 				et34k(getActiveVGA())->W32_mixmapposition = 0; //Initialize the mix map position to the first bit!
 			}
@@ -1837,7 +1837,7 @@ byte Tseng4k_writeMMUregisterUnqueued(byte address, byte value)
 		SETBITS(et34k(getActiveVGA())->W32_MMUregisters[0][0x36], 5, 0x7, GETBITS(value, 5, 0x7)); //Bits 5-7 are set directly to whatever is written (marked as Reserved)!
 		if ((value & 4) && ((et34k(getActiveVGA())->W32_MMUregisters[0][0x36] & 4) == 0)) //Raised XYST?
 		{
-			Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO(), 0); //Starting a transfer, don't become an active accelerator yet!
+			Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO(), 1); //Starting a transfer, don't become an active accelerator yet!
 			//Don't start the accelerator again by this write! This is to be done by a resume command!
 		}
 		else if (((value & 4) == 0) && (et34k(getActiveVGA())->W32_MMUregisters[0][0x36] & 4)) //Lowered XYST?
@@ -2403,7 +2403,7 @@ void Tseng4k_tickAccelerator()
 			setTsengLE32(&et34k(getActiveVGA())->W32_MMUregisters[0][0xA0], effectiveoffset); //Load the banked address into the queued destination address?
 			et4k_transferQueuedMMURegisters(); //Load the queued MMU registers!
 			Tseng4k_decodeAcceleratorRegisters(); //Make sure our internal state is up-to-date!
-			Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO(), 1); //Starting a transfer! Make the accelerator active!
+			Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO(), 2); //Starting a transfer! Make the accelerator active as a new transfer!
 			Tseng4k_startAccelerator(1); //Starting the accelerator by MMU trigger!
 			et34k(getActiveVGA())->W32_mixmapposition = 0; //Initialize the mix map position to the first bit!
 			//Initialize the X and Y position to start rendering!
