@@ -208,7 +208,14 @@ void CPU_initMSRs()
 	{
 		MSRmasklow[MSRnumbers[0x1B] - 1] = ~0x6FF; //APICBASE mask. Invalid bits are bits 0-7, 9, 10!
 		MSRmaskwritelow_readonly[MSRnumbers[0x1B] - 1] = 0x100; //ROM bit!
-		MSRmaskhigh[MSRnumbers[0x1B] - 1] = 0xF; //APICBASE mask. Invalid bits are bits MAXPHYSADDR-63 are invalid. MAXPHYSADDR is 35 in this case(35-bit physical addresses are supported!)
+		if (EMULATED_CPU <= CPU_PENTIUMPRO) //Pentium Pro and below?
+		{
+			MSRmaskhigh[MSRnumbers[0x1B] - 1] = 0x0; //APICBASE mask. Invalid bits are bits MAXPHYSADDR-63 are invalid. MAXPHYSADDR is 32 in this case(although 35-bit physical addresses are supported!)
+		}
+		else //Pentium II?
+		{
+			MSRmaskhigh[MSRnumbers[0x1B] - 1] = 0xF; //APICBASE mask. Invalid bits are bits MAXPHYSADDR-63 are invalid. MAXPHYSADDR is 35 in this case(35-bit physical addresses are supported!)
+		}
 	}
 	if (EMULATED_CPU==CPU_PENTIUM) //Pentium-only?
 	{
