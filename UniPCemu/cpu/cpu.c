@@ -206,9 +206,9 @@ void CPU_initMSRs()
 	memset(&MSRmaskreadhigh_writeonly, 0, sizeof(MSRmaskreadhigh_writeonly)); //No write-only bits!
 	if (EMULATED_CPU >= CPU_PENTIUMPRO) //Pentium Pro and up?
 	{
-		MSRmasklow[MSRnumbers[0x1B] - 1] = 0xF0; //APICBASE mask
+		MSRmasklow[MSRnumbers[0x1B] - 1] = ~0x6FF; //APICBASE mask. Invalid bits are bits 0-7, 9, 10!
 		MSRmaskwritelow_readonly[MSRnumbers[0x1B] - 1] = 0x100; //ROM bit!
-		MSRmaskhigh[MSRnumbers[0x1B] - 1] = 0; //APICBASE mask
+		MSRmaskhigh[MSRnumbers[0x1B] - 1] = 0xF; //APICBASE mask. Invalid bits are bits MAXPHYSADDR-63 are invalid. MAXPHYSADDR is 35 in this case(35-bit physical addresses are supported!)
 	}
 	if (EMULATED_CPU==CPU_PENTIUM) //Pentium-only?
 	{
