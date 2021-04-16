@@ -2180,7 +2180,7 @@ byte Tseng4k_tickAccelerator_step(byte autotransfer)
 	byte ROPmaskpattern[2] = {0x0F,0xF0};
 	//noqueue: handle without queue only. Otherwise, ticking an input on the currently loaded queue or no queue processing.
 	//acceleratorleft is used to process an queued 8-pixel block from the CPU! In 1:1 ration instead of 1:8 ratio, it's simply set to 1!
-	if (et34k(getActiveVGA())->W32_ACLregs.ACL_active == 0) return 0; //Transfer isn't active? Don't do anything!
+	if (likely(et34k(getActiveVGA())->W32_ACLregs.ACL_active == 0)) return 0; //Transfer isn't active? Don't do anything!
 	switch (et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) //What kind of operation is used?
 	{
 	case 0: //CPU data isn't used!
@@ -2243,7 +2243,7 @@ byte Tseng4k_tickAccelerator_step(byte autotransfer)
 
 	et34k(getActiveVGA())->W32_acceleratorbusy |= 2; //Busy accelerator!
 
-	if (et34k(getActiveVGA())->W32_acceleratorleft == 0) //Need to start a new block?
+	if (unlikely(et34k(getActiveVGA())->W32_acceleratorleft == 0)) //Need to start a new block?
 	{
 		//Triggering a new MMU operation block only when not having data left to process. Don't look at it until we're starting a new block!
 		operationstart = et34k(getActiveVGA())->W32_performMMUoperationstart; //Are we triggered through a new operation?
@@ -2400,13 +2400,13 @@ void Tseng4k_tickAccelerator()
 	byte result;
 	//For now, just empty the queue, if filled and become idle!
 	if (!(et34k(getActiveVGA()) && (getActiveVGA()->enable_SVGA == 1))) return; //Not ET4000/W32? Do nothing!
-	if (et34k(getActiveVGA())->W32_MMUsuspendterminatefilled) goto forcehandlesuspendterminateMMU; //Force handle suspend/terminate?
-	if (Tseng4k_status_multiqueueFilled() == 4) goto forcehandlesuspendterminateMMU; //Force handle queued MMU memory mapped registers?
+	if (unlikely(et34k(getActiveVGA())->W32_MMUsuspendterminatefilled)) goto forcehandlesuspendterminateMMU; //Force handle suspend/terminate?
+	if (unlikely(Tseng4k_status_multiqueueFilled() == 4)) goto forcehandlesuspendterminateMMU; //Force handle queued MMU memory mapped registers?
 	if (et34k(getActiveVGA())->W32_ACLregs.ACL_active == 0) //ACL inactive?
 	{
-		if (Tseng4k_status_multiqueueFilled()==1) //Queue is filled while inactive?
+		if (unlikely(Tseng4k_status_multiqueueFilled()==1)) //Queue is filled while inactive?
 		{
-			if (Tseng4k_status_peekMultiQueue_apply()==1) //Peeked and read into pre-processing?
+			if (likely(Tseng4k_status_peekMultiQueue_apply()==1)) //Peeked and read into pre-processing?
 			{
 				effectiveoffset = et34k(getActiveVGA())->W32_MMUqueueval_address; //The offset!
 				if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x9C] & 7) == 2) //Mix data is going to be used?
@@ -2429,11 +2429,11 @@ void Tseng4k_tickAccelerator()
 		return; //Transfer isn't active? Don't do anything!
 	}
 	forcehandlesuspendterminateMMU: //Force handling of suspend/terminate!
-	if ((et34k(getActiveVGA())->W32_MMUsuspendterminatefilled & 0x10) == 0x10) //Terminate requested?
+	if (unlikely((et34k(getActiveVGA())->W32_MMUsuspendterminatefilled & 0x10) == 0x10)) //Terminate requested?
 	{
 		et34k(getActiveVGA())->W32_acceleratorbusy = 0; //Not busy anymore!
 	}
-	if ((result = Tseng4k_tickAccelerator_step(1))!=0) //No queue version of ticking the accelerator?
+	if (likely((result = Tseng4k_tickAccelerator_step(1))!=0)) //No queue version of ticking the accelerator?
 	{
 		Tseng4k_encodeAcceleratorRegisters(); //Encode the registers, updating them for the CPU!
 		et34k(getActiveVGA())->W32_acceleratorbusy |= (result&1); //Become a busy accelerator!
@@ -2450,7 +2450,7 @@ void Tseng4k_tickAccelerator()
 		}
 		//Otherwise, it's 2, requesting suspend/terminate!
 	}
-	else if ((result = Tseng4k_doEmptyQueue())!=0) //Try and perform an emptying of the queue, if it's filled (act like it's processed into the accelerator)!
+	else if (likely((result = Tseng4k_doEmptyQueue())!=0)) //Try and perform an emptying of the queue, if it's filled (act like it's processed into the accelerator)!
 	{
 		if (result == 4) //Transfer to the ACL register queue instead?
 		{
@@ -2479,11 +2479,11 @@ void Tseng4k_tickAccelerator()
 	{
 		Tseng4k_doBecomeIdle(); //The accelerator becomes idle now! We're waiting for input!
 	}
-	if (((et34k(getActiveVGA())->W32_acceleratorbusy&2)==0) || (et34k(getActiveVGA())->W32_MMUsuspendterminatefilled && ((et34k(getActiveVGA())->W32_acceleratorbusy&3)==0))) //Accelerator was busy or suspending/terminating while allowed to?
+	if (unlikely(((et34k(getActiveVGA())->W32_acceleratorbusy&2)==0) || (et34k(getActiveVGA())->W32_MMUsuspendterminatefilled && ((et34k(getActiveVGA())->W32_acceleratorbusy&3)==0)))) //Accelerator was busy or suspending/terminating while allowed to?
 	{
-		if ((et34k(getActiveVGA())->W32_MMUsuspendterminatefilled & 0x11)) //Suspend or Terminate requested?
+		if (unlikely(et34k(getActiveVGA())->W32_MMUsuspendterminatefilled & 0x11)) //Suspend or Terminate requested?
 		{
-			if ((et34k(getActiveVGA())->W32_acceleratorbusy & 2) == 0) //Terminated?
+			if (likely((et34k(getActiveVGA())->W32_acceleratorbusy & 2) == 0)) //Terminated?
 			{
 				et34k(getActiveVGA())->W32_acceleratorbusy = 0; //Not busy anymore!
 				et34k(getActiveVGA())->W32_ACLregs.ACL_active = 0; //ACL is inactive!
@@ -2529,7 +2529,7 @@ void Tseng4k_tickAccelerator()
 		}
 		//Tick the accelerator with the specified address and value loaded!
 		//Abort if still processing! Otherwise, finish up below:
-		if (((et34k(getActiveVGA())->W32_acceleratorbusy & 2) == 0) && et34k(getActiveVGA())->W32_ACLregs.ACL_active) //Terminated a running tranafer?
+		if (unlikely(((et34k(getActiveVGA())->W32_acceleratorbusy & 2) == 0) && et34k(getActiveVGA())->W32_ACLregs.ACL_active)) //Terminated a running tranafer?
 		{
 			et34k(getActiveVGA())->W32_ACLregs.ACL_active = 0; //ACL is inactive!
 			if ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 0) //CPU data isn't used?
