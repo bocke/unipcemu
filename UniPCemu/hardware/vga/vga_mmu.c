@@ -588,6 +588,12 @@ void applyCGAMDAOffset(byte CPUtiming, uint_32 *offset)
 	}
 }
 
+byte extVGA_isnotVRAM(uint_32 offset)
+{
+	return !is_A000VRAM(offset); //Isn't VRAM and within range?
+}
+
+
 byte MMUblock; //What block is addressed for MMU0-2?
 byte bit8read;
 extern uint_32 memory_dataread;

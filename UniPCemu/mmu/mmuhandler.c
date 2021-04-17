@@ -263,9 +263,12 @@ OPTINLINE byte MMU_IO_writehandler(uint_64 offset, byte value, word index)
 		}
 		else if (likely(offset < (uint_64)MMU.maxsize)) //Probably mapped to memory?
 		{
-			if (likely((checkMemoryHoles(offset, index_writeprecalcs[index]))==0)) //Not a memory hole?
+			if (likely(extVGA_isnotVRAM(offset))) //Not VRAM?
 			{
-				return 1; //normal memory access!
+				if (likely((checkMemoryHoles(offset, index_writeprecalcs[index]))==0)) //Not a memory hole?
+				{
+					return 1; //normal memory access!
+				}
 			}
 		}
 	}
@@ -346,9 +349,12 @@ OPTINLINE byte MMU_IO_readhandler(uint_64 offset, word index)
 		}
 		else if (likely(offset < (uint_64)MMU.maxsize)) //Probably mapped to memory?
 		{
-			if (likely((checkMemoryHoles(offset, index_readprecalcs[index])) == 0)) //Not a memory hole?
+			if (likely(extVGA_isnotVRAM(offset))) //Not VRAM?
 			{
-				return 1; //normal memory access!
+				if (likely((checkMemoryHoles(offset, index_readprecalcs[index])) == 0)) //Not a memory hole?
+				{
+					return 1; //normal memory access!
+				}
 			}
 		}
 	}
