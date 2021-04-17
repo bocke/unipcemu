@@ -274,8 +274,8 @@ OPTINLINE byte MMU_IO_writehandler(uint_64 offset, byte value, word index)
 	}
 	if (likely((offset & 0xFFFFFFFF00000000ULL) == 0)) //32-bit address?
 	{
+		if (unlikely(VGAmemIO_wb((uint_32)offset, value))) return 0; //Video responded!
 		if (unlikely(BIOS_writehandler((uint_32)offset, value))) return 0; //BIOS responded!
-		if (VGAmemIO_wb((uint_32)offset, value)) return 0; //Video responded!
 		current = *(list = &MMUHANDLER.writehandlers[0]); //Start of our list!
 		if (likely(current == NULL))
 		{
@@ -360,8 +360,8 @@ OPTINLINE byte MMU_IO_readhandler(uint_64 offset, word index)
 	}
 	if (likely((offset & 0xFFFFFFFF00000000ULL) == 0))
 	{
-		if (BIOS_readhandler((uint_32)offset, index)) return 0; //BIOS responded!
 		if (VGAmemIO_rb((uint_32)offset)) return 0; //Video responded!
+		if (BIOS_readhandler((uint_32)offset, index)) return 0; //BIOS responded!
 		current = *(list = &MMUHANDLER.readhandlers[0]); //Start of our list!
 		if (likely(current == NULL))
 		{
