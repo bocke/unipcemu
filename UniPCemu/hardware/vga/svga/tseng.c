@@ -3041,6 +3041,7 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 			}
 			if ((et34k_tempreg & 0x10)==0x00) //Segment configuration?
 			{
+				enforceSegmentMode:
 				VGA->precalcs.linearmemorymask = 0; //Disable the memory window on W32 chips!
 				VGA_MemoryMapBankRead = et34kdata->bank_read<<16; //Read bank!
 				VGA_MemoryMapBankWrite = et34kdata->bank_write<<16; //Write bank!
@@ -3050,6 +3051,10 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 			{
 				if ((VGA->enable_SVGA == 1) && et34k(VGA)->tsengExtensions) //W32 chip?
 				{
+					if (GETBITS(VGA->registers->GraphicsRegisters.REGISTERS.MISCGRAPHICSREGISTER, 2, 3) != 0) //Not a valid map layout to use? Enforce the low mapping instead!
+					{
+						goto enforceSegmentMode; //Enforce segment mode!
+					}
 					VGA->precalcs.disableVGAlegacymemoryaperture = 1; //Enforce disabling VGA memory access through the low aperture!
 					VGA_MemoryMapBankRead = 0; //No read bank!
 					VGA_MemoryMapBankWrite = 0; //No write bank!
