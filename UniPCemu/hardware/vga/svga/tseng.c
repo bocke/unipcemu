@@ -1564,6 +1564,7 @@ byte Tseng4k_status_readMultiQueue()
 		et34k(getActiveVGA())->W32_MMUqueueval_bankaddress = (data2&0xFFFFFF); //Bank address!
 		et34k(getActiveVGA())->W32_MMUqueueval_address = (data1&0xFFFFFF); //Address!
 		et34k(getActiveVGA())->W32_MMUqueueval = (data2>>24)&0xFF; //The value!
+		Tseng4k_checkAcceleratorActivity(); //Check for accelerator activity!
 		return ((data1>>24)&0xFF); //The queue filled status!
 	}
 	return 0; //Not filled!
@@ -1617,6 +1618,7 @@ void Tseng4k_status_suspendterminatecleared(byte is_suspendterminate)
 	{
 		Tseng4k_doBecomeIdle(); //Accelerator became idle!
 	}
+	Tseng4k_checkAcceleratorActivity(); //Check for accelerator activity!
 }
 
 byte Tseng4k_doEmptyQueue() //Try and perform an emptying of the queue! Result: 1=Was filled, 0=Was already empty
@@ -1634,6 +1636,7 @@ void Tseng4k_status_suspendterminatefinished()
 {
 	et34k(getActiveVGA())->W32_MMUsuspendterminatefilled = 0; //Not anymore!
 	Tseng4k_status_queueEmptied(); //The queue has been emptied now!
+	Tseng4k_checkAcceleratorActivity(); //Check for accelerator activity!
 }
 
 void Tseng4k_doBecomeIdle() //Accelerator becomes idle!
@@ -2573,10 +2576,6 @@ void Tseng4k_checkAcceleratorActivity()
 	{
 		if (unlikely(Tseng4k_status_multiqueueFilled() == 1)) //Queue is filled while inactive?
 		{
-			if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x36] & 4) == 0) //Blocked because the XYST is lowered?
-			{
-				return; //Don't parse the queue while it's blocked!
-			}
 		startTicking:
 			getActiveVGA()->precalcs.Tseng4k_accelerator_tickhandler = &Tseng4k_tickAccelerator_active; //Become active!
 		}
