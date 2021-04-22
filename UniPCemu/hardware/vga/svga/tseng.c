@@ -2581,6 +2581,7 @@ void Tseng4k_checkAcceleratorActivity()
 			getActiveVGA()->precalcs.Tseng4k_accelerator_tickhandler = &Tseng4k_tickAccelerator_active; //Become active!
 		}
 	}
+	else goto startTicking; //Active accelerator to tick!
 }
 
 extern byte VGA_WriteMemoryMode, VGA_ReadMemoryMode; //Write/read memory modes used for accessing VRAM!
