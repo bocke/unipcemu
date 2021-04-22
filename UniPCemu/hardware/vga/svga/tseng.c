@@ -1600,6 +1600,7 @@ void Tseng4k_status_queueEmptied() //Queue has been emptied by processing?
 			Tseng4k_raiseMMUinterrupt(1); //Queue has been emptied interrupt!
 		}
 		et34k(getActiveVGA())->W32_MMUregisters[0][0x36] &= ~0x01; //Lower status!
+		Tseng4k_checkAcceleratorActivity(); //Check for accelerator activity!
 	}
 }
 
