@@ -1262,12 +1262,30 @@ void VGA_ActiveDisplay_noblanking_VGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_At
 		}
 		else //24BPP/32BPP mode?
 		{
-			Sequencer->lastDACcolor >>= 8; //Latching 8 bits, whether used or not!
-			Sequencer->lastDACcolor |= ((attributeinfo->attribute)<<(((VGA->precalcs.effectiveDACmode & 0x8)<<1)|((VGA->precalcs.effectiveDACmode & 0x10)>>1))); //Latching this attribute to 24 or 32 bits! Low byte is latched first!
-
-			if ((++Sequencer->DACcounter)<(3+((VGA->precalcs.effectiveDACmode & 0x10)>>4))) //To latch and not process yet? This is the least significant byte/bits of the counter!
+			if ((VGA->precalcs.effectiveDACmode & 0x400) == 0) //Latching 8-bits at a time?
 			{
-				return; //Skip this data: we only latch every two pixels!
+				Sequencer->lastDACcolor >>= 8; //Latching 8 bits, whether used or not!
+				Sequencer->lastDACcolor |= ((attributeinfo->attribute) << (((VGA->precalcs.effectiveDACmode & 0x8) << 1) | ((VGA->precalcs.effectiveDACmode & 0x10) >> 1))); //Latching this attribute to 24 or 32 bits! Low byte is latched first!
+			}
+			else //Latching 16 bits at a time instead?
+			{
+				Sequencer->lastDACcolor >>= 16; //Latching 16 bits, whether used or not!
+				Sequencer->lastDACcolor |= ((attributeinfo->attribute) << (((VGA->precalcs.effectiveDACmode & 0x8) << 1) | ((VGA->precalcs.effectiveDACmode & 0x10) >> 1))); //Latching this attribute to 24 or 32 bits! Low byte is latched first!
+			}
+
+			if (VGA->precalcs.effectiveDACmode & 0x400) //Latching 16-bits at a time?
+			{
+				if ((++Sequencer->DACcounter) < 2) //To latch and not process yet? This is the least significant byte/bits of the counter!
+				{
+					return; //Skip this data: we only latch every two pixels!
+				}
+			}
+			else //Latching 8 bits at a time?
+			{
+				if ((++Sequencer->DACcounter) < (3 + ((VGA->precalcs.effectiveDACmode & 0x10) >> 4))) //To latch and not process yet? This is the least significant byte/bits of the counter!
+				{
+					return; //Skip this data: we only latch every two pixels!
+				}
 			}
 			Sequencer->DACcounter = 0; //Simply clear after every 3 pixels!
 		}
@@ -1318,12 +1336,24 @@ void VGA_ActiveDisplay_noblanking_VGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_At
 		//Now draw in the selected color depth!
 		if (VGA->precalcs.effectiveDACmode&0x10) //32-bit color?
 		{
-			if (VGA->precalcs.effectiveDACmode & 0x20) //RGB mode instead of BGR mode?
+			if (VGA->precalcs.effectiveDACmode & 0x800) //True RGBA?
 			{
-				Sequencer->lastDACcolor = (((Sequencer->lastDACcolor >> 16) & 0xFF) | (Sequencer->lastDACcolor&0xFF00)) | ((Sequencer->lastDACcolor & 0xFF) << 16); //Convert RGB to BGR!
+				if (VGA->precalcs.effectiveDACmode & 0x20) //RGBA mode instead of BGRA mode?
+				{
+					Sequencer->lastDACcolor = (((Sequencer->lastDACcolor >> 16) & 0xFF) | (Sequencer->lastDACcolor & 0xFF00FF00)) | ((Sequencer->lastDACcolor & 0xFF) << 16); //Convert RGBA to BGRA!
+				}
+				Sequencer->lastDACcolor &= (getActiveVGA()->precalcs.SC15025_pixelmaskregister|0xFF000000U); //Apply the pixel mask, but with the 3rd byte enabled!
+				DACcolor = RGBA(((Sequencer->lastDACcolor >> 24) & 0xFF), ((Sequencer->lastDACcolor >> 16) & 0xFF), ((Sequencer->lastDACcolor >> 8) & 0xFF), ((Sequencer->lastDACcolor) & 0xFF)); //Draw the 32BPP color pixel!
 			}
-			Sequencer->lastDACcolor &= getActiveVGA()->precalcs.SC15025_pixelmaskregister; //Apply the pixel mask!
-			DACcolor = RGBA(((Sequencer->lastDACcolor>>24)&0xFF),((Sequencer->lastDACcolor>>16)&0xFF),((Sequencer->lastDACcolor>>8)&0xFF),((Sequencer->lastDACcolor)&0xFF)); //Draw the 24BPP color pixel!
+			else //Plain RGBA?
+			{
+				if (VGA->precalcs.effectiveDACmode & 0x20) //RGB mode instead of BGR mode?
+				{
+					Sequencer->lastDACcolor = (((Sequencer->lastDACcolor >> 16) & 0xFF) | (Sequencer->lastDACcolor & 0xFF00)) | ((Sequencer->lastDACcolor & 0xFF) << 16); //Convert RGBA to BGRA!
+				}
+				Sequencer->lastDACcolor &= getActiveVGA()->precalcs.SC15025_pixelmaskregister; //Apply the pixel mask!
+				DACcolor = RGBA(((Sequencer->lastDACcolor >> 24) & 0xFF), ((Sequencer->lastDACcolor >> 16) & 0xFF), ((Sequencer->lastDACcolor >> 8) & 0xFF), ((Sequencer->lastDACcolor) & 0xFF)); //Draw the 32BPP color pixel!
+			}
 		}
 		else if (VGA->precalcs.effectiveDACmode&8) //24-bit color?
 		{
@@ -1386,7 +1416,7 @@ void VGA_ActiveDisplay_noblanking_VGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_At
 				GETB(getrawVGADACentry(VGA,GETB(DACcolor))) //Blue channel!
 			); //Translate through DAC!
 		}
-		DACcolor = GA_color2bw(DACcolor, 0); //Apply the finished color!
+		DACcolor = GA_color2bw(DACcolor, ((VGA->precalcs.DACmode & 0x1000)>>12)); //Apply the finished color! Use RGBA instead of RGB when specified!
 	}
 	else //VGA compatibility mode? 8-bit color!
 	{
@@ -1401,7 +1431,7 @@ void VGA_ActiveDisplay_noblanking_VGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_At
 		}
 	}
 
-	DACcolor = RGB(VGA->DACbrightness[GETR(DACcolor)], VGA->DACbrightness[GETG(DACcolor)], VGA->DACbrightness[GETB(DACcolor)]); //Make sure we're active display levels of brightness!
+	DACcolor = RGBA(VGA->DACbrightness[GETR(DACcolor)], VGA->DACbrightness[GETG(DACcolor)], VGA->DACbrightness[GETB(DACcolor)],GETA(DACcolor)); //Make sure we're active display levels of brightness!
 
 	if (VGA->precalcs.turnDACoff) //Turning the DAC off?
 	{

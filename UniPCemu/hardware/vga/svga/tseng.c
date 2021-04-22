@@ -2591,7 +2591,7 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 	byte horizontaltimingsupdated = 0; //Horizontal timings are updated?
 	byte verticaltimingsupdated = 0; //Vertical timings are updated?
 	byte et34k_tempreg;
-	byte DACmode; //Current/new DAC mode!
+	word DACmode; //Current/new DAC mode!
 	byte newcharwidth, newtextwidth; //Change detection!
 	byte newfontwidth; //Change detection!
 	byte pixelboost; //Actual pixel boost!
@@ -3311,6 +3311,25 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 					}
 				}
 				//Otherwise, VGA? Mode 0!
+				//WhatVGA says 32-bit mode?
+				else //Double clocked 16-bit 
+				{
+					DACmode |= 3; //Set bit 0: we're full range, Set bit 1: we're a 16-bit+ mode!
+					DACmode |= 4; //Use two pixel clocks together to latch the two bytes (special exception mode)?
+					DACmode |= 8; //Use (two back-to-back?) four pixel clocks to latch the four bytes?
+					DACmode |= 0x10; //Use the pixel clocks to latch the four bytes instead!
+					//DACmode |= 0x400; //Special: shifting 16-bit at a time into the latch instead of 8-bit!
+					DACmode |= 0x800; //Special: true 32-bit RGBA mode in RGB mode!
+					if ((et34k_tempreg & 1) != 0) //Red is first?
+					{
+						DACmode |= 0x20; //RGB mode is enabled!
+					}
+					if (et34k_tempreg & 0x8) //D3 set? Enable LUT mode!
+					{
+						DACmode |= 0x40; //Enable LUT!
+						DACmode |= ((et34k_tempreg & 0x6) << 6); //Bits 6&7 are to shift in 
+					}
+				}
 				break;
 			case 3: //Mode 2 or 3b?
 				if (et34k(VGA)->SC15025_pixelrepackregister & 1) //Mode 3b?
