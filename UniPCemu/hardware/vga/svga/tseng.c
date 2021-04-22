@@ -3293,54 +3293,41 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 			case 0:
 			case 1: //VGA mode? Mode 0!
 				break;
-			case 2:  //Mode 3a without bit 0 of the pixel repack register! VGA otherwise!
-				if (et34k(VGA)->SC15025_pixelrepackregister & 1) //Mode 3a?
+			case 2:  //Mode 3a always!
+				//Documentation: Hicolor 24 8-8-8. Mode 3a always. Color mode 4/5(Depending on command bit 0).
+				DACmode |= 3; //Set bit 0: we're full range, Set bit 1: we're a 16-bit+ mode!
+				DACmode |= 4; //Use multiple pixel clocks to latch the two bytes?
+				DACmode |= 8; //Use three pixel clocks to latch the three bytes?
+				DACmode |= 0x10; //Use four pixel clocks to latch the three bytes?
+				if (et34k(VGA)->SC15025_pixelrepackregister & 1) //Both edges?
 				{
-					DACmode |= 3; //Set bit 0: we're full range, Set bit 1: we're a 16-bit+ mode!
-					DACmode |= 4; //Use multiple pixel clocks to latch the two bytes?
-					DACmode |= 8; //Use three pixel clocks to latch the three bytes?
-					DACmode |= 0x10; //Use four pixel clocks to latch the three bytes?
-					if ((et34k_tempreg & 1)==0) //RGB mode?
-					{
-						DACmode |= 0x20; //RGB mode is enabled!
-					}
-					if (et34k_tempreg & 0x8) //D3 set? Enable LUT mode!
-					{
-						DACmode |= 0x40; //Enable LUT!
-						DACmode |= ((et34k_tempreg & 0x6) << 6); //Bits 6&7 are to shift in 
-					}
+					DACmode |= 0x400; //Use two pixel clocks to latch the four bytes?
 				}
-				//Otherwise, VGA? Mode 0!
-				//WhatVGA says 32-bit mode?
-				else //Double clocked 16-bit 
+				//Otherwise, Rising edge only (undocumented)?
+				else //Rising edge only (undocumented)
 				{
-					DACmode |= 3; //Set bit 0: we're full range, Set bit 1: we're a 16-bit+ mode!
-					DACmode |= 4; //Use two pixel clocks together to latch the two bytes (special exception mode)?
-					DACmode |= 8; //Use (two back-to-back?) four pixel clocks to latch the four bytes?
-					DACmode |= 0x10; //Use the pixel clocks to latch the four bytes instead!
-					//DACmode |= 0x400; //Special: shifting 16-bit at a time into the latch instead of 8-bit!
-					DACmode |= 0x800; //Special: true 32-bit RGBA mode in RGB mode!
-					if ((et34k_tempreg & 1) == 0) //Red is first?
-					{
-						DACmode |= 0x20; //RGB mode is enabled!
-					}
-					if (et34k_tempreg & 0x8) //D3 set? Enable LUT mode!
-					{
-						DACmode |= 0x40; //Enable LUT!
-						DACmode |= ((et34k_tempreg & 0x6) << 6); //Bits 6&7 are to shift in 
-					}
+					DACmode |= 0x800; //Special: true color RGBA!
+				}
+				if ((et34k_tempreg & 1)==1) //BGR mode?
+				{
+					DACmode |= 0x20; //BGR mode is enabled!
+				}
+				if (et34k_tempreg & 0x8) //D3 set? Enable LUT mode!
+				{
+					DACmode |= 0x40; //Enable LUT!
+					DACmode |= ((et34k_tempreg & 0x6) << 6); //Bits 6&7 are to shift in 
 				}
 				break;
 			case 3: //Mode 2 or 3b?
-				if (et34k(VGA)->SC15025_pixelrepackregister & 1) //Mode 3b?
+				if (et34k(VGA)->SC15025_pixelrepackregister & 1) //Mode 3b? 4-byte mode!
 				{
 					DACmode |= 3; //Set bit 0: we're full range, Set bit 1: we're a 16-bit+ mode!
 					DACmode |= 4; //Use multiple pixel clocks to latch the two bytes?
 					DACmode |= 8; //Use three pixel clocks to latch the three bytes?
 					DACmode |= 0x10; //Use four pixel clocks to latch the three bytes instead!
-					if ((et34k_tempreg & 1)==0) //RGB mode?
+					if ((et34k_tempreg & 1)==1) //BGR mode?
 					{
-						DACmode |= 0x20; //RGB mode is enabled!
+						DACmode |= 0x20; //BGR mode is enabled!
 					}
 					if (et34k_tempreg & 0x8) //D3 set? Enable LUT mode!
 					{

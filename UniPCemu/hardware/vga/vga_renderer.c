@@ -1331,6 +1331,7 @@ void VGA_ActiveDisplay_noblanking_VGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_At
 	}
 
 	//Convert the pixel to a RGB value before drawing any blocks of pixels!
+	//bit 5 of the DAC mode: 0=RGB(A) mode(blue first), 1=BGR(A) mode(red first)
 	if (VGA->precalcs.effectiveDACmode&2) //16-bit/24-bit color?
 	{
 		//Now draw in the selected color depth!
@@ -1338,30 +1339,30 @@ void VGA_ActiveDisplay_noblanking_VGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_At
 		{
 			if (VGA->precalcs.effectiveDACmode & 0x800) //True RGBA?
 			{
-				if ((VGA->precalcs.effectiveDACmode & 0x20)==0) //Not RGBA mode instead of BGRA mode?
+				Sequencer->lastDACcolor &= (getActiveVGA()->precalcs.SC15025_pixelmaskregister|0xFF000000U); //Apply the pixel mask, but with the 3rd byte enabled!
+				if ((VGA->precalcs.effectiveDACmode & 0x20)==0) //Not RGBA mode instead of BGRA mode for output?
 				{
 					Sequencer->lastDACcolor = (((Sequencer->lastDACcolor >> 16) & 0xFF) | (Sequencer->lastDACcolor & 0xFF00FF00)) | ((Sequencer->lastDACcolor & 0xFF) << 16); //Convert RGBA to BGRA!
 				}
-				Sequencer->lastDACcolor &= (getActiveVGA()->precalcs.SC15025_pixelmaskregister|0xFF000000U); //Apply the pixel mask, but with the 3rd byte enabled!
 				DACcolor = RGBA(((Sequencer->lastDACcolor) & 0xFF), ((Sequencer->lastDACcolor >> 8) & 0xFF), ((Sequencer->lastDACcolor >> 16) & 0xFF), ((Sequencer->lastDACcolor >> 24) & 0xFF)); //Draw the 32BPP color pixel!
 			}
 			else //Plain RGBA?
 			{
-				if (VGA->precalcs.effectiveDACmode & 0x20) //RGB mode instead of BGR mode?
+				Sequencer->lastDACcolor &= getActiveVGA()->precalcs.SC15025_pixelmaskregister; //Apply the pixel mask!
+				if ((VGA->precalcs.effectiveDACmode & 0x20)==0) //RGB mode instead of BGR mode?
 				{
 					Sequencer->lastDACcolor = (((Sequencer->lastDACcolor >> 16) & 0xFF) | (Sequencer->lastDACcolor & 0xFF00)) | ((Sequencer->lastDACcolor & 0xFF) << 16); //Convert RGBA to BGRA!
 				}
-				Sequencer->lastDACcolor &= getActiveVGA()->precalcs.SC15025_pixelmaskregister; //Apply the pixel mask!
-				DACcolor = RGBA(((Sequencer->lastDACcolor >> 24) & 0xFF), ((Sequencer->lastDACcolor >> 16) & 0xFF), ((Sequencer->lastDACcolor >> 8) & 0xFF), ((Sequencer->lastDACcolor) & 0xFF)); //Draw the 32BPP color pixel!
+				DACcolor = RGBA((Sequencer->lastDACcolor & 0xFF), ((Sequencer->lastDACcolor >> 8) & 0xFF), ((Sequencer->lastDACcolor >> 16) & 0xFF), 0xFF); //Draw the 32BPP color pixel!
 			}
 		}
 		else if (VGA->precalcs.effectiveDACmode&8) //24-bit color?
 		{
+			Sequencer->lastDACcolor &= getActiveVGA()->precalcs.SC15025_pixelmaskregister; //Apply the pixel mask!
 			if (VGA->precalcs.effectiveDACmode & 0x20) //RGB mode instead of BGR mode?
 			{
 				Sequencer->lastDACcolor = (((Sequencer->lastDACcolor >> 16) & 0xFF) | (Sequencer->lastDACcolor & 0xFF00)) | ((Sequencer->lastDACcolor & 0xFF) << 16); //Convert RGB to BGR!
 			}
-			Sequencer->lastDACcolor &= getActiveVGA()->precalcs.SC15025_pixelmaskregister; //Apply the pixel mask!
 			DACcolor = RGB(((Sequencer->lastDACcolor>>16)&0xFF),((Sequencer->lastDACcolor>>8)&0xFF),(Sequencer->lastDACcolor&0xFF)); //Draw the 24BPP color pixel!
 		}
 		else if (VGA->precalcs.effectiveDACmode&1) //16-bit color?
