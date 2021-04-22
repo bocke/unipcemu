@@ -1178,6 +1178,8 @@ uint_32 Tseng4k_VRAMSize = 0; //Setup VRAM size?
 
 extern BIOS_Settings_TYPE BIOS_Settings; //Current BIOS settings to be updated!
 
+void Tseng4k_checkAcceleratorActivity(); //Prototype! Check for activity when something needs to be done!
+
 void Tseng34k_init()
 {
 	byte *Tseng_VRAM = NULL; //The new VRAM to use with our card!
@@ -1349,6 +1351,7 @@ void Tseng34k_init()
 
 			//Initialize what's needed for the ACL registers to be initialized!
 			et34k(getActiveVGA())->W32_MMUregisters[0][0x32] = 1; //Init register by the reset! Sync enable?
+			Tseng4k_checkAcceleratorActivity(); //Check for any accelerator activity!
 		}
 	}
 }
@@ -1489,11 +1492,13 @@ void Tseng4k_status_startXYblock(byte is_screentoscreen, byte doResume) //Starti
 	et34k(getActiveVGA())->W32_MMUregisters[0][0x36] |= 0x04; //Raise X/Y status!
 	et34k(getActiveVGA())->W32_MMUregisters[0][0x36] &= ~0x08; //To set!
 	et34k(getActiveVGA())->W32_MMUregisters[0][0x36] |= is_screentoscreen ? 0x08 : 0x00; //Screen-to-screen operation?
+	Tseng4k_checkAcceleratorActivity(); //Check for accelerator activity!
 }
 
 void Tseng4k_status_XYblockTerminalCount() //Finished an X/Y block and Terminal Count reached?
 {
 	et34k(getActiveVGA())->W32_MMUregisters[0][0x36] &= ~0x0C; //Finished X/Y block!
+	Tseng4k_checkAcceleratorActivity(); //Check for accelerator activity!
 }
 
 void Tseng4k_queuedRegisterModified()
@@ -1538,6 +1543,7 @@ void Tseng4k_status_queueFilled(byte is_suspendterminate) //Queue has been fille
 	}
 	et34k(getActiveVGA())->W32_MMUregisters[0][0x36] |= 0x01; //Raise status!
 	Tseng4k_status_becomebusy_queuefilled(); //Became busy or queue was filled!
+	Tseng4k_checkAcceleratorActivity(); //Check for activity to be done!
 }
 
 byte Tseng4k_status_multiqueueFilled()
@@ -2393,7 +2399,7 @@ void Tseng4k_processRegisters_finished()
 	et34k(getActiveVGA())->W32_acceleratorwassuspended = 0; //We weren't busy the next time this is tried!
 }
 
-void Tseng4k_tickAccelerator()
+void Tseng4k_tickAccelerator_active()
 {
 	byte terminationrequested;
 	uint_32 effectiveoffset;
@@ -2540,6 +2546,35 @@ void Tseng4k_tickAccelerator()
 			Tseng4k_doBecomeIdle(); //Accelerator becomes idle now!
 			Tseng4k_processRegisters_finished();
 			Tseng4k_encodeAcceleratorRegisters(); //Encode the registers, updating them for the CPU!
+		}
+	}
+	Tseng4k_checkAcceleratorActivity(); //Check for new activity status!
+}
+
+void Tseng4k_tickAccelerator()
+{
+	if (unlikely(getActiveVGA()->precalcs.Tseng4k_accelerator_tickhandler)) //Ticking something?
+	{
+		getActiveVGA()->precalcs.Tseng4k_accelerator_tickhandler(); //Perform the current action of the accelerator!
+	}
+}
+
+void Tseng4k_checkAcceleratorActivity()
+{
+	getActiveVGA()->precalcs.Tseng4k_accelerator_tickhandler = (Handler)NULL; //Default: inactive handler!
+	if (!(et34k(getActiveVGA()) && (getActiveVGA()->enable_SVGA == 1))) return; //Not ET4000/W32? Do nothing!
+	if (unlikely(et34k(getActiveVGA())->W32_MMUsuspendterminatefilled)) goto startTicking; //Force handle suspend/terminate?
+	if (unlikely(Tseng4k_status_multiqueueFilled() == 4)) goto startTicking; //Force handle queued MMU memory mapped registers?
+	if (et34k(getActiveVGA())->W32_ACLregs.ACL_active == 0) //ACL inactive?
+	{
+		if (unlikely(Tseng4k_status_multiqueueFilled() == 1)) //Queue is filled while inactive?
+		{
+			if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x36] & 4) == 0) //Blocked because the XYST is lowered?
+			{
+				return; //Don't parse the queue while it's blocked!
+			}
+		startTicking:
+			getActiveVGA()->precalcs.Tseng4k_accelerator_tickhandler = &Tseng4k_tickAccelerator_active; //Become active!
 		}
 	}
 }
