@@ -1584,11 +1584,14 @@ byte Tseng4k_status_peekMultiQueue_apply()
 
 byte Tseng4k_status_writeMultiQueue(byte type, byte value, uint_32 address, uint_32 bank)
 {
+	byte result; //The result!
 	uint_32 data1, data2;
 	if (!type) return 0; //Invalid type?
 	data1 = (address&0xFFFFFF)|(type<<24); //First data: address and type!
 	data2 = (bank&0xFFFFFF)|(value<<24); //Second data: bank and value!
-	return writefifobuffer32_2u(et34k(getActiveVGA())->W32_MMUqueue,data1,data2); //Write to the queue!
+	result = writefifobuffer32_2u(et34k(getActiveVGA())->W32_MMUqueue,data1,data2); //Write to the queue!
+	Tseng4k_checkAcceleratorActivity(); //Check for activity to be done!
+	return result; //Give the result!
 }
 
 void Tseng4k_status_queueEmptied() //Queue has been emptied by processing?
