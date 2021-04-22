@@ -2560,13 +2560,13 @@ void Tseng4k_tickAccelerator_active()
 
 void Tseng4k_tickAccelerator()
 {
-	if (likely(getActiveVGA()->precalcs.Tseng4k_accelerator_tickhandler == 0)) return; //Not ticking something? Abort!
+	if (likely(!getActiveVGA()->precalcs.Tseng4k_accelerator_tickhandler)) return; //Not ticking something? Abort!
 	getActiveVGA()->precalcs.Tseng4k_accelerator_tickhandler(); //Perform the current action of the accelerator!
 }
 
 void Tseng4k_checkAcceleratorActivity()
 {
-	getActiveVGA()->precalcs.Tseng4k_accelerator_tickhandler = (Handler)NULL; //Default: inactive handler!
+	getActiveVGA()->precalcs.Tseng4k_accelerator_tickhandler = (Handler)0; //Default: inactive handler!
 	if (!(et34k(getActiveVGA()) && (getActiveVGA()->enable_SVGA == 1))) return; //Not ET4000/W32? Do nothing!
 	if (unlikely(et34k(getActiveVGA())->W32_MMUsuspendterminatefilled)) goto startTicking; //Force handle suspend/terminate?
 	if (unlikely(Tseng4k_status_multiqueueFilled() == 4)) goto startTicking; //Force handle queued MMU memory mapped registers?
