@@ -3320,7 +3320,7 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 					DACmode |= 0x10; //Use the pixel clocks to latch the four bytes instead!
 					//DACmode |= 0x400; //Special: shifting 16-bit at a time into the latch instead of 8-bit!
 					DACmode |= 0x800; //Special: true 32-bit RGBA mode in RGB mode!
-					if ((et34k_tempreg & 1) != 0) //Red is first?
+					if ((et34k_tempreg & 1) == 0) //Red is first?
 					{
 						DACmode |= 0x20; //RGB mode is enabled!
 					}

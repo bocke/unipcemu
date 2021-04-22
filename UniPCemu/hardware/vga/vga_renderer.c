@@ -1338,12 +1338,12 @@ void VGA_ActiveDisplay_noblanking_VGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_At
 		{
 			if (VGA->precalcs.effectiveDACmode & 0x800) //True RGBA?
 			{
-				if (VGA->precalcs.effectiveDACmode & 0x20) //RGBA mode instead of BGRA mode?
+				if ((VGA->precalcs.effectiveDACmode & 0x20)==0) //Not RGBA mode instead of BGRA mode?
 				{
 					Sequencer->lastDACcolor = (((Sequencer->lastDACcolor >> 16) & 0xFF) | (Sequencer->lastDACcolor & 0xFF00FF00)) | ((Sequencer->lastDACcolor & 0xFF) << 16); //Convert RGBA to BGRA!
 				}
 				Sequencer->lastDACcolor &= (getActiveVGA()->precalcs.SC15025_pixelmaskregister|0xFF000000U); //Apply the pixel mask, but with the 3rd byte enabled!
-				DACcolor = RGBA(((Sequencer->lastDACcolor >> 24) & 0xFF), ((Sequencer->lastDACcolor >> 16) & 0xFF), ((Sequencer->lastDACcolor >> 8) & 0xFF), ((Sequencer->lastDACcolor) & 0xFF)); //Draw the 32BPP color pixel!
+				DACcolor = RGBA(((Sequencer->lastDACcolor) & 0xFF), ((Sequencer->lastDACcolor >> 8) & 0xFF), ((Sequencer->lastDACcolor >> 16) & 0xFF), ((Sequencer->lastDACcolor >> 24) & 0xFF)); //Draw the 32BPP color pixel!
 			}
 			else //Plain RGBA?
 			{
