@@ -2560,10 +2560,8 @@ void Tseng4k_tickAccelerator_active()
 
 void Tseng4k_tickAccelerator()
 {
-	if (unlikely(getActiveVGA()->precalcs.Tseng4k_accelerator_tickhandler)) //Ticking something?
-	{
-		getActiveVGA()->precalcs.Tseng4k_accelerator_tickhandler(); //Perform the current action of the accelerator!
-	}
+	if (likely(getActiveVGA()->precalcs.Tseng4k_accelerator_tickhandler == 0)) return; //Not ticking something? Abort!
+	getActiveVGA()->precalcs.Tseng4k_accelerator_tickhandler(); //Perform the current action of the accelerator!
 }
 
 void Tseng4k_checkAcceleratorActivity()
