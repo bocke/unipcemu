@@ -3710,7 +3710,7 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 		|| (whereupdated == (WHEREUPDATED_CRTCSPRITE | 0xEA)) //CRTC/Sprite start address high?
 		)
 	{
-		VGA->precalcs.SpriteCRTCstartaddress = ((((((et34kdata->W32_21xA_shadowRegisters[0xEA - 0xE0] & 7) << 8) | et34kdata->W32_21xA_shadowRegisters[0xE9 - 0xE0]) << 8) | et34kdata->W32_21xA_shadowRegisters[0xE8 - 0xE0]) << 2); //Start offset in doublewords!
+		VGA->precalcs.SpriteCRTCstartaddress = ((((((et34kdata->W32_21xA_shadowRegisters[0xEA - 0xE0] & 0xF) << 8) | et34kdata->W32_21xA_shadowRegisters[0xE9 - 0xE0]) << 8) | et34kdata->W32_21xA_shadowRegisters[0xE8 - 0xE0]) << 2); //Start offset in doublewords!
 	}
 
 	if ((whereupdated == WHEREUPDATED_ALL)
