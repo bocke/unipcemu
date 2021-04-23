@@ -3340,6 +3340,10 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 					DACmode |= 3; //Set bit 0: we're full range, Set bit 1: we're a 16-bit+ mode!
 					DACmode |= 4; //Use multiple pixel clocks to latch the two bytes?
 					DACmode |= 8; //Use three pixel clocks to latch the three bytes?
+					if ((et34k_tempreg & 1) == 1) //BGR mode?
+					{
+						DACmode |= 0x20; //BGR mode is enabled!
+					}
 					if (et34k_tempreg & 0x8) //D3 set? Enable LUT mode!
 					{
 						DACmode |= 0x40; //Enable LUT!
