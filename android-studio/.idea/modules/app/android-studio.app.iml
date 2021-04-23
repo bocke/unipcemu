@@ -145,6 +145,12 @@
     <content url="file://$MODULE_DIR$/../../../../android-project/jni/SDL2/src/main/android">
       <sourceFolder url="file://$MODULE_DIR$/../../../../android-project/jni/SDL2/src/main/android" isTestSource="false" />
     </content>
+    <content url="file://$MODULE_DIR$/../../../../android-project/jni/SDL2/src/misc">
+      <sourceFolder url="file://$MODULE_DIR$/../../../../android-project/jni/SDL2/src/misc" isTestSource="false" />
+    </content>
+    <content url="file://$MODULE_DIR$/../../../../android-project/jni/SDL2/src/misc/android">
+      <sourceFolder url="file://$MODULE_DIR$/../../../../android-project/jni/SDL2/src/misc/android" isTestSource="false" />
+    </content>
     <content url="file://$MODULE_DIR$/../../../../android-project/jni/SDL2/src/power">
       <sourceFolder url="file://$MODULE_DIR$/../../../../android-project/jni/SDL2/src/power" isTestSource="false" />
     </content>
