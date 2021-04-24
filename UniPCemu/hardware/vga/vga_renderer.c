@@ -157,7 +157,7 @@ void EGA_checklightpen(word currentlocation, byte is_lightpenlocation, byte is_l
 	{
 		if (((getActiveVGA()->registers->EGA_lightpenstrobeswitch&3)==1) || (is_lightpenlocation && ((getActiveVGA()->registers->EGA_lightpenstrobeswitch&2)==0))) //Light pen preset and strobing? Are we the light pen location?
 		{
-			getActiveVGA()->registers->EGA_lightpenstrobeswitch &= ~1; //Clear the preset: we're not set anymore!
+			getActiveVGA()->registers->EGA_lightpenstrobeswitch &= ~1; //Clear the preset: we're not set anymore! Also, clear the clearing of the strobe to cause the setting to trigger this immediately without clearing.
 			getActiveVGA()->registers->EGA_lightpenstrobeswitch |= 2; //The light pen register is now set!
 			lightpenlocation = currentlocation; //Load the current location for converting to CGA location!
 			//Now set our lightpen location!
