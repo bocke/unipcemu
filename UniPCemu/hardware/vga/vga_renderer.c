@@ -1230,7 +1230,7 @@ void VGA_Blank_CGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_AttributeInfo *attrib
 	{
 		CGALineBuffer[VGA->CRTC.x] = 0; //Take the literal pixel color of the CGA for later NTSC conversion!
 	}
-	video_updateLightPen(VGA,1); //Update the light pen!
+	video_updateLightPen(VGA,0); //Update the light pen!
 	++VGA->CRTC.x; //Next x!
 }
 
@@ -1442,7 +1442,7 @@ void VGA_ActiveDisplay_noblanking_VGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_At
 	do //We always render at least 1 pixel from the DAC!
 	{
 		drawPixel(VGA, DACcolor); //Draw the color pixel(s)!
-		video_updateLightPen(VGA,0); //Update the light pen!
+		video_updateLightPen(VGA,1); //Update the light pen!
 		if (++Sequencer->currentpixelclock >= Sequencer->pixelclockdivider) //Are we to tick the CRTC pixel clock?
 		{
 			Sequencer->currentpixelclock = 0; //Reset clock!
@@ -1527,7 +1527,7 @@ void VGA_Overscan_noblanking_CGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_Attribu
 	{
 		CGALineBuffer[VGA->CRTC.x] = VGA->precalcs.overscancolor; //Take the literal pixel color of the CGA for later NTSC conversion!
 	}
-	video_updateLightPen(VGA,1); //Update the light pen!
+	video_updateLightPen(VGA,0); //Update the light pen!
 	++VGA->CRTC.x; //Next x!
 }
 
