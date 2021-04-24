@@ -756,7 +756,7 @@ void updateLightPenMode(VGA_Type *VGA)
 OPTINLINE void video_updateLightPen(VGA_Type *VGA, byte drawnto)
 {
 	byte lightpen_triggered;
-	lightpen_triggered = ((lightpen_x==VGA->CRTC.x) && (lightpen_y==VGA->CRTC.y)); //Are we at the location specified by the lightpen on the CRT?
+	lightpen_triggered = (((lightpen_x==VGA->CRTC.x) && (lightpen_y==VGA->CRTC.y)) && drawnto); //Are we at the location specified by the lightpen on the CRT?
 	lightpenhandler(lightpen_currentvramlocation,lightpen_triggered,lightpen_pressed); //Check for anything requiring the lightpen on the device!
 }
 
