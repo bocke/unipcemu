@@ -1,0 +1,3 @@
+*.json
+**/build_command.txt
+**/build_output.txt
