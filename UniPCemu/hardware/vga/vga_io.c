@@ -186,7 +186,7 @@ OPTINLINE void PORT_write_CRTC_3B5(byte value)
 	}
 	if ((index>0x2F) && (index<0x40)) //30-3F=Odd->Clear screen early!
 	{
-		if (value&1) //Odd=Set flag!
+		if ((value&1) && (getActiveVGA()->enable_SVGA==0)) //Odd=Set flag! Only on plain VGA!
 		{
 			getActiveVGA()->registers->VerticalDisplayTotalReached = 1; //Force end-of-screen reached!
 		}
