@@ -685,6 +685,15 @@ OPTINLINE byte applyMemoryHoles(uint_64 realaddress, byte isread)
 		return 0; //Found cached!
 	}
 
+	if (unlikely((isread & 4) && ((originaladdress & ~0xFFFFFU) == 0) && is_i430fx)) //DMA in the first MB on the i430fx/i440fx?
+	{
+		if (unlikely((originaladdress >= 0xA0000) && ((originaladdress < 0xE0000) || (originaladdress > 0xEFFFF)))) //Reserved range but out of valid range?
+		{
+			//https://www.uwe-sieber.de/umbpci_e.html "430xX, 440xX ISA-DMA only in E-Segment"
+			return 1; //Not mapped for DMA!
+		}
+	}
+
 	maskedaddress = (originaladdress >> 0x10); //Take the block number we're trying to access!
 	if (unlikely(((memorymapinfo[isread].maskedaddress != maskedaddress)))) //Not matched already? Load the cache with it's information!
 	{
