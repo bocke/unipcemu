@@ -486,8 +486,10 @@ extern sword diagnosticsportoutput_breakpoint; //Breakpoint set?
 extern byte backgroundpolicy; //Background task policy. 0=Full halt of the application, 1=Keep running without video and audio muted, 2=Keep running with audio playback, recording muted, 3=Keep running fully without video.
 extern byte advancedlog; //Advanced log setting
 
-byte VRAMtype[0x10] = { 0,0,0,0,1,2,3,4,5,0,0,0,0,0,0,0 }; //Redetect VTAM size when changing this value for the detected card!
-byte oldVGAMode;
+byte VRAMtype[0x20] = { 0,0,0,0,1,2,3,4,5,0,0,0,0,0,0,0, //ET4000 extension = 0
+						0,0,0,0,1,2,6,4,5,0,0,0,0,0,0,0 //ET4000 extension = 1. Extra memory type for ET4000 extension type!
+						}; //Redetect VTAM size when changing this value for the detected card!
+byte oldVGAMode, oldVGAextensions;
 
 extern byte CDROM_DiskChanged;
 extern IODISK disks[0x100]; //All disks available, up go 256 (drive 0-255) disks!
@@ -536,6 +538,7 @@ byte runBIOS(byte showloadingtext) //Run the BIOS menu (whether in emulation or 
 	BIOS_Menu = 0; //We're opening the main menu!
 
 	oldVGAMode = BIOS_Settings.VGA_Mode; //Our old VGA mode!
+	oldVGAextensions = BIOS_Settings.ET4000_extensions; //Our old VGA extensions!
 
 	reboot_needed = 0; //Do we need to reboot?
 
@@ -634,7 +637,7 @@ byte runBIOS(byte showloadingtext) //Run the BIOS menu (whether in emulation or 
 
 	EMU_update_VGA_Settings(); //Update the VGA Settings to it's default value!
 
-	if ((BIOS_Settings.VGA_Mode!=oldVGAMode) && (VRAMtype[BIOS_Settings.VGA_Mode&0xF]==VRAMtype[oldVGAMode&0xF])) //Mode changed, but not redetecting VRAM?
+	if (((BIOS_Settings.VGA_Mode!=oldVGAMode)||(BIOS_Settings.ET4000_extensions!=oldVGAextensions)) && (VRAMtype[(BIOS_Settings.VGA_Mode&0xF)|((BIOS_Settings.ET4000_extensions&1)<<4)]==VRAMtype[(oldVGAMode&0xF)|((oldVGAextensions&1)<<4)])) //Mode changed, but not redetecting VRAM?
 	{
 		VGA_initIO(); //Initialise/update the VGA if needed!
 	}
@@ -4447,6 +4450,10 @@ void BIOS_ET4000_extensions()
 		{
 			BIOS_Changed = 1; //Changed!
 			reboot_needed |= 1; //Reboot needed to apply!
+			if ((VRAMtype[(BIOS_Settings.VGA_Mode&0xF)|((file&1)<<4)]!=VRAMtype[(BIOS_Settings.VGA_Mode&0xF)|((current&1)<<4)])) //Switching to a differently sized VRAM mode?
+			{
+				BIOS_Settings.VRAM_size = 0; //Autodetect current memory size!
+			}
 			BIOS_Settings.ET4000_extensions = file; //Select Debug Mode!
 		}
 		break;
@@ -5113,7 +5120,7 @@ void BIOS_VGAModeSetting()
 	default: //Changed?
 		if (file!=current) //Not current?
 		{
-			if (VRAMtype[file&0xF]!=VRAMtype[current&0xF]) //Switching to a differently sized VRAM mode?
+			if (VRAMtype[((file&0xF)|((BIOS_Settings.ET4000_extensions&1)<<4))]!=VRAMtype[((current&0xF)|((BIOS_Settings.ET4000_extensions&1)<<4))]) //Switching to a differently sized VRAM mode?
 			{
 				BIOS_Settings.VRAM_size = 0; //Autodetect current memory size!
 			}
