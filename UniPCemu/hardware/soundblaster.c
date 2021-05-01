@@ -1169,12 +1169,23 @@ byte inSoundBlaster(word port, byte *result)
 {
 	byte dummy;
 	if ((port&~0xF)!=SOUNDBLASTER.baseaddr) return 0; //Not our base address?
-	switch (port & 0xF) //What port?
+	switch (port & 0xE) //What port?
 	{
-	case 0x8: //FM Music - Compatible Status port
-		*result = readadlibstatus(); //Read the adlib status!
-		return 1; //Handled!
+	//0/2 floats bus(C/MS chips)
+	//4 floats bus
+	//6 floats bus on reads only
+	case 0x8: //Adlib chip select
+		switch (port & 1) //Adlib chip A0
+		{
+		case 0: //A0=0: FM Music - Compatible Status port
+			*result = readadlibstatus(); //Read the adlib status!
+			return 1; //Handled!
+		case 1: //Floating bus!
+		default: //Otherwise, float bus!
+			return 0; //Not handled!
+		}
 		break;
+	//Effectively: bit 3 set, bit 0 cleared for DSP select(actually ignored for the DSP based on reverse engineering report). Bits 2-3=0 isn't selecting. Then: bit 2 set(DSP Write buffer status when bit 1 not set only), 3(DSP Data Available Status). So bit 2 selects read data/status(selected bit bit 
 	case 0xA: //DSP - Read data
 		*result = readDSPData(0); //Check if there's anything to read, ignore the result!
 		return 1; //Handled!
@@ -1191,6 +1202,7 @@ byte inSoundBlaster(word port, byte *result)
 		}
 		return 1; //Handled!
 	case 0xE: //DSP - Data Available Status, DSP - IRQ Acknowledge, 8-bit
+		//Reverse engineering says that only bit 7 is connected, thus all other bits float the bus?
 		*result = (peekfifobuffer(SOUNDBLASTER.DSPindata,&dummy)<<7)| /*0x7F*/ 0x2A; //Do we have data available? Also check for the Direct DMA on older Sound Blasters! Apparently, 0x2A is set for the bits other than bit 7, according to Dosbox-X.
 		if ((SOUNDBLASTER.IRQ8Pending&3)==3) //Pending and acnowledged(might not have been done)?
 		{
@@ -1209,22 +1221,33 @@ byte inSoundBlaster(word port, byte *result)
 byte outSoundBlaster(word port, byte value)
 {
 	if ((port&~0xF) != SOUNDBLASTER.baseaddr) return 0; //Not our base address?
-	switch (port & 0xF) //What port?
+	switch (port & 0xE) //What port?
 	{
+	//0/2 is connected to the CMS chips. A0 is connected to those chips directly.
+	//0x4: Floats bus!
 	case 0x6: //DSP - Reset?
 		DSP_reset(value); //Reset with this value!
 		return 1; //Handled!
 		break;
-	case 0x8: //FM Music - Compatible Register port
-		writeadlibaddr(value); //Write to the address port!
-		return 1; //Handled!
+	case 0x8: //Adlib chip select
+		switch (port & 1) //A0 select to chip!
+		{
+		default:
+		case 0: //A0=0: FM Music - Compatible Register port
+			writeadlibaddr(value); //Write to the address port!
+			return 1; //Handled!
+			break;
+		case 1: //A0=1: FM Music - Compatible Data register
+			writeadlibdata(value); //Write to the data port!
+			return 1; //Handled!
+			break;
+		}
 		break;
-	case 0x9: //FM Music - Compatible Data register
-		writeadlibdata(value); //Write to the data port!
-		return 1; //Handled!
+	//0xA: Floats bus!
 	case 0xC: //DSP - Write Data or Command
 		DSP_writeDataCommand(value); //Write data or command!
 		return 1; //Handled!
+	//0xE: Floats bus
 	default:
 		break;
 	}
