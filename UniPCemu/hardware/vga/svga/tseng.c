@@ -257,12 +257,14 @@ byte Tseng34K_writeIO(word port, byte val)
 				et34kdata->extensionstep = 0; //Disable steps!
 				et34kdata->extensionsEnabled = 0; //Extensions are now disabled!
 				VGA_calcprecalcs(getActiveVGA(), WHEREUPDATED_ALL); //Update all precalcs!
+				result = 1; //Handled!
 			}
 			else if ((et34kdata->tsengExtensions) && et34kdata->extensionsEnabled && ((val&0xA0)!=0xA0)) //Clearing extensions on W32 and up?
 			{
 				et34kdata->extensionstep = 0; //Stop checking!
 				et34kdata->extensionsEnabled = 0; //Extensions are now disabled!
 				VGA_calcprecalcs(getActiveVGA(), WHEREUPDATED_ALL); //Update all precalcs!
+				result = 1; //Handled!
 			}
 			else if ((et34kdata->extensionstep==1) && ((val==0xA0) || ((et34kdata->tsengExtensions) && ((val&0xA0)==0xA0)))) //Step two of enable extensions? W32 doesn't require 0xA0, but just requires bits 7&5 set.
 			{
@@ -271,6 +273,7 @@ byte Tseng34K_writeIO(word port, byte val)
 				et34kdata->et4k_segmentselectregisterenabled = 1; //Enable the segment select register from now on!
 				updateET34Ksegmentselectregister(et34kdata->segmentselectregister); //Make the segment select register active!
 				VGA_calcprecalcs(getActiveVGA(), WHEREUPDATED_ALL); //Update all precalcs!
+				result = 1; //Handled!
 			}
 			else //Not an extensions trigger?
 			{
