@@ -189,12 +189,12 @@ byte Tseng34K_writeIO(word port, byte val)
 	byte result;
 	SVGA_ET34K_DATA *et34kdata = et34k_data; //The et4k data!
 // Tseng ET4K implementation
-	if (((getActiveVGA()->registers->VGA_enabled & 2) == 0) && (port!=0x46E8) && (port!=0x3C3)) return 0; //Disabled I/O?
+	if (((getActiveVGA()->registers->VGA_enabled) == 0) && (port!=0x46E8) && (port!=0x3C3)) return 0; //Disabled I/O?
 	switch (port) //What port?
 	{
 	case 0x46E8: //Video subsystem enable register?
 		if (((et4k_reg(et34kdata, 3d4, 34) & 8) == 0) && (getActiveVGA()->enable_SVGA == 1)) return 0; //Undefined on ET4000!
-		SETBITS(getActiveVGA()->registers->VGA_enabled, 1, 1,(val & 8) ? 1 : 0); //RAM enabled?
+		SETBITS(getActiveVGA()->registers->VGA_enabled, 0, 1,(val & 8) ? 1 : 0); //RAM enabled?
 		VGA_calcprecalcs(getActiveVGA(), WHEREUPDATED_MISCOUTPUTREGISTER); //Updated index!
 		return 1; //OK
 		break;
@@ -807,16 +807,16 @@ byte Tseng34K_readIO(word port, byte *result)
 {
 	byte switchval;
 	SVGA_ET34K_DATA *et34kdata = et34k_data; //The et4k data!
-	if (((getActiveVGA()->registers->VGA_enabled & 2) == 0) && (port != 0x46E8) && (port != 0x3C3)) return 0; //Disabled I/O?
+	if (((getActiveVGA()->registers->VGA_enabled) == 0) && (port != 0x46E8) && (port != 0x3C3)) return 0; //Disabled I/O?
 	switch (port)
 	{
 	case 0x46E8: //Video subsystem enable register?
-		if ((et4k_reg(et34kdata,3d4,34)&8)==0) return 0; //Undefined!
-		*result = (GETBITS(getActiveVGA()->registers->VGA_enabled, 1, 1)<<3); //Get from the register!
+		if (((et4k_reg(et34kdata,3d4,34)&8)==0) && (getActiveVGA()->enable_SVGA == 1)) return 0; //Undefined!
+		*result = (GETBITS(getActiveVGA()->registers->VGA_enabled, 0, 1)<<3); //Get from the register!
 		return 1; //OK!
 		break;
 	case 0x3C3: //Video subsystem enable register in VGA mode?
-		if (et4k_reg(et34kdata,3d4,34)&8) return 2; //Undefined!
+		if ((et4k_reg(et34kdata,3d4,34)&8) && (getActiveVGA()->enable_SVGA == 1)) return 2; //Undefined!
 		*result = GETBITS(getActiveVGA()->registers->VGA_enabled, 1, 1); //Get from the register!
 		return 1; //OK!
 		break;
@@ -1328,6 +1328,8 @@ void Tseng34k_init()
 					et34k(getActiveVGA())->store_et4k_3d4_32 |= 0x80; //VRAM is interleaved!
 				}
 			}
+
+			et34k(getActiveVGA())->store_et4k_3d4_34 |= 0x8; //We're an external card, so port 46E8 is used by default!
 
 			et34k(getActiveVGA())->extensionsEnabled = 0; //Disable the extensions by default!
 			et34k(getActiveVGA())->oldextensionsEnabled = 1; //Make sure the extensions are updated in status!

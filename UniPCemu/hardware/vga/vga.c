@@ -232,11 +232,18 @@ VGA_Type *VGAalloc(uint_32 custom_vram_size, int update_bios, byte extension, by
 		case 0: //VGA?
 			VGA->registers->ExternalRegisters.MISCOUTPUTREGISTER |= 0x02; //Default misc output set bits: VRAM enabled!
 			VGA->registers->ExternalRegisters.MISCOUTPUTREGISTER |= 1; //We're starting in color mode always!
-			VGA->registers->VGA_enabled = 1; //Always enabled!
+			if (extension != 1) //EGA-compatible?
+			{
+				VGA->registers->VGA_enabled = 2; //Always enabled: 3C3 mode assumed!
+			}
+			else
+			{
+				VGA->registers->VGA_enabled = 1; //Always disabled: 46E8 mode assumed!
+			}
 			break;
 		default: //Non VGA?
 			//Leave it to the hardware defaults!
-			VGA->registers->VGA_enabled = 1; //Always enabled!
+			VGA->registers->VGA_enabled = 3; //Always enabled!
 			break;
 	}
 

@@ -127,7 +127,7 @@ VRAM base offset!
 OPTINLINE byte is_A000VRAM(uint_32 linearoffset) //In VRAM (for CPU), offset=real memory address (linear memory)?
 {
 	INLINEREGISTER uint_32 addr=linearoffset; //The offset to check!
-	if ((getActiveVGA()->registers->VGA_enabled & 2) == 0) return 0; //Disabled MMU?
+	if ((getActiveVGA()->registers->VGA_enabled) == 0) return 0; //Disabled MMU?
 	effectiveVRAMstart = VGA_VRAM_START; //Effective start of VRAM!
 	VGA_linearmemoryaddressed = 0; //Not addressed by default!
 	if (((linearoffset & getActiveVGA()->precalcs.linearmemorymask) == getActiveVGA()->precalcs.linearmemorybase) && getActiveVGA()->precalcs.linearmemorymask) //Linear memory addressed?
