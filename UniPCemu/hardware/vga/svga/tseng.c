@@ -189,7 +189,7 @@ byte Tseng34K_writeIO(word port, byte val)
 	byte result;
 	SVGA_ET34K_DATA *et34kdata = et34k_data; //The et4k data!
 // Tseng ET4K implementation
-	if (((getActiveVGA()->registers->VGA_enabled & 1) == 0) && (port!=0x46E8) && (port!=0x3C3)) return 0; //Disabled I/O?
+	if (((getActiveVGA()->registers->VGA_enabled & 2) == 0) && (port!=0x46E8) && (port!=0x3C3)) return 0; //Disabled I/O?
 	switch (port) //What port?
 	{
 	case 0x46E8: //Video subsystem enable register?
@@ -807,7 +807,7 @@ byte Tseng34K_readIO(word port, byte *result)
 {
 	byte switchval;
 	SVGA_ET34K_DATA *et34kdata = et34k_data; //The et4k data!
-	if (((getActiveVGA()->registers->VGA_enabled & 1) == 0) && (port != 0x46E8) && (port != 0x3C3)) return 0; //Disabled I/O?
+	if (((getActiveVGA()->registers->VGA_enabled & 2) == 0) && (port != 0x46E8) && (port != 0x3C3)) return 0; //Disabled I/O?
 	switch (port)
 	{
 	case 0x46E8: //Video subsystem enable register?

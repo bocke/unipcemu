@@ -327,7 +327,7 @@ byte PORT_readVGA(word port, byte *result) //Read from a port/register!
 	{
 		if ((ok = VGA_readIOExtension(port,result))) goto finishinput; //Finish us! Don't use the VGA registers!
 	}
-	if (((getActiveVGA()->registers->VGA_enabled & 1) == 0) && (port != 0x3C3)) return 0; //Disabled I/O?
+	if (((getActiveVGA()->registers->VGA_enabled & 2) == 0) && (port != 0x3C3)) return 0; //Disabled I/O?
 	switch (port) //What port?
 	{
 	case 0x3B0:
@@ -514,7 +514,7 @@ byte PORT_writeVGA(word port, byte value) //Write to a port/register!
 	{
 		if ((ok = VGA_writeIOExtension(port,value))) goto finishoutput; //Finish us! Don't use the VGA registers!
 	}
-	if (((getActiveVGA()->registers->VGA_enabled & 1) == 0) && (port != 0x3C3)) return 0; //Disabled I/O?
+	if (((getActiveVGA()->registers->VGA_enabled & 2) == 0) && (port != 0x3C3)) return 0; //Disabled I/O?
 	switch (port) //What port?
 	{
 	case 0x3B0:
