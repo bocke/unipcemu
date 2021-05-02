@@ -225,7 +225,7 @@ byte Tseng34K_writeIO(word port, byte val)
 		return 1; //OK!
 		break;
 	case 0x3D8: //CGA mode control?
-		if (!GETBITS(getActiveVGA()->registers->ExternalRegisters.MISCOUTPUTREGISTER,0,1)) goto finishoutput; //Block: we're a mono mode addressing as color!
+		if (!GETBITS(getActiveVGA()->registers->ExternalRegisters.MISCOUTPUTREGISTER,0,1)) goto checkEnableDisable; //Block: we're a mono mode addressing as color!
 		result = 0; //Default result!
 		if (((et4k_reg(et34kdata,3d4,34) & 0xA0) == 0x80) || (getActiveVGA()->enable_SVGA==2)) //Enable emulation and translation disabled?
 		{
