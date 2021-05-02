@@ -227,28 +227,30 @@ byte Tseng34K_writeIO(word port, byte val)
 	case 0x3D8: //CGA mode control?
 		if (!GETBITS(getActiveVGA()->registers->ExternalRegisters.MISCOUTPUTREGISTER,0,1)) goto checkEnableDisable; //Block: we're a mono mode addressing as color!
 		result = 0; //Default result!
-		if (((et4k_reg(et34kdata,3d4,34) & 0xA0) == 0x80) || (getActiveVGA()->enable_SVGA==2)) //Enable emulation and translation disabled?
+		et34kdata->CGAModeRegister = val; //Save the register to be read!
+		if (((et4k_reg(et34kdata, 3d4, 34) & 0xA0) == 0x80) && (((getActiveVGA()->enable_SVGA < 3) && (getActiveVGA()->enable_SVGA > 0)) || (getActiveVGA()->enable_SVGA == 2)) && (et34kdata->tsengExtensions == 0)) //Enable emulation and translation disabled?
 		{
-			et34kdata->CGAModeRegister = val; //Save the register to be read!
 			if (et34kdata->ExtendedFeatureControlRegister & 0x80) //Enable NMI?
 			{
-				return !execNMI(0); //Execute an NMI from Bus!
+				result = !execNMI(0); //Execute an NMI from Bus!
+				goto checkEnableDisable;
 			}
-			result = 1; //Handled!
 		}
+		result = 1; //Handled!
 		goto checkEnableDisable;
 	case 0x3B8: //MDA mode control?
 		if (GETBITS(getActiveVGA()->registers->ExternalRegisters.MISCOUTPUTREGISTER,0,1)) goto finishoutput; //Block: we're a color mode addressing as mono!
 		result = 0; //Default result!
-		if (((et4k_reg(et34kdata, 3d4, 34) & 0xA0) == 0x80) || (getActiveVGA()->enable_SVGA==2)) //Enable emulation and translation disabled?
+		et34kdata->MDAModeRegister = val; //Save the register to be read!
+		if (((et4k_reg(et34kdata, 3d4, 34) & 0xA0) == 0x80) && (((getActiveVGA()->enable_SVGA < 3) && (getActiveVGA()->enable_SVGA > 0)) || (getActiveVGA()->enable_SVGA==2)) && (et34kdata->tsengExtensions == 0)) //Enable emulation and translation disabled?
 		{
-			et34kdata->MDAModeRegister = val; //Save the register to be read!
 			if (et34kdata->ExtendedFeatureControlRegister & 0x80) //Enable NMI?
 			{
-				return !execNMI(0); //Execute an NMI from Bus!
+				result = !execNMI(0); //Execute an NMI from Bus!
+				goto checkEnableDisable; //Check for enable/disable!
 			}
-			result = 1; //Handled!
 		}
+		result = 1; //Handled!
 		checkEnableDisable: //Check enable/disable(port 3D8 too)
 		if (getActiveVGA()->enable_SVGA==1) //Extensions used?
 		{
@@ -828,24 +830,16 @@ byte Tseng34K_readIO(word port, byte *result)
 		break;
 	case 0x3B8: //MDA mode control?
 		if (GETBITS(getActiveVGA()->registers->ExternalRegisters.MISCOUTPUTREGISTER,0,1)) goto finishinput; //Block: we're a color mode addressing as mono!
-		if (((et4k_reg(et34kdata, 3d4, 34) & 0xA0) == 0x80) || (getActiveVGA()->enable_SVGA==2)) //Enable emulation and translation disabled?
-		{
-			*result = et34kdata->MDAModeRegister; //Save the register to be read!
-			SETBITS(*result, 6, 1, GETBITS(et34kdata->herculescompatibilitymode,1,1));
-			//Doesn't do NMIs?
-			return 1; //Handled!
-		}
-		return 0; //Not handled!
+		*result = et34kdata->MDAModeRegister; //Save the register to be read!
+		SETBITS(*result, 6, 1, GETBITS(et34kdata->herculescompatibilitymode, 1, 1));
+		//Doesn't do NMIs?
+		return 1; //Handled!
 	case 0x3D8: //CGA mode control?
 		if (!GETBITS(getActiveVGA()->registers->ExternalRegisters.MISCOUTPUTREGISTER,0,1)) goto finishinput; //Block: we're a mono mode addressing as color!
-		if ((et4k_reg(et34kdata, 3d4, 34) & 0xA0) == 0x80) //Enable emulation and translation disabled?
-		{
-			*result = et34kdata->CGAModeRegister; //Save the register to be read!
-			SETBITS(*result, 6, 1, GETBITS(et34kdata->herculescompatibilitymode, 1, 1));
-			//Doesn't do NMIs?
-			return 1; //Handled!
-		}
-		return 0; //Not handled!
+		*result = et34kdata->CGAModeRegister; //Save the register to be read!
+		SETBITS(*result, 6, 1, GETBITS(et34kdata->herculescompatibilitymode, 1, 1));
+		//Doesn't do NMIs?
+		return 1; //Handled!
 	case 0x3D9: //CGA color control?
 		if ((et4k_reg(et34kdata, 3d4, 34) & 0xA0) == 0x80) //Enable emulation and translation disabled?
 		{
