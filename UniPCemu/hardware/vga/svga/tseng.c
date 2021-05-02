@@ -1329,7 +1329,10 @@ void Tseng34k_init()
 				}
 			}
 
-			et34k(getActiveVGA())->store_et4k_3d4_34 |= 0x8; //We're an external card, so port 46E8 is used by default!
+			if (getActiveVGA()->enable_SVGA == 1) //ET4000?
+			{
+				et34k(getActiveVGA())->store_et4k_3d4_34 |= 0x8; //We're an external card, so port 46E8 is used by default!
+			}
 
 			et34k(getActiveVGA())->extensionsEnabled = 0; //Disable the extensions by default!
 			et34k(getActiveVGA())->oldextensionsEnabled = 1; //Make sure the extensions are updated in status!
