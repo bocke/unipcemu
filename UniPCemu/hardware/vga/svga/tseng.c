@@ -239,7 +239,7 @@ byte Tseng34K_writeIO(word port, byte val)
 		result = 1; //Handled!
 		goto checkEnableDisable;
 	case 0x3B8: //MDA mode control?
-		if (GETBITS(getActiveVGA()->registers->ExternalRegisters.MISCOUTPUTREGISTER,0,1)) goto finishoutput; //Block: we're a color mode addressing as mono!
+		if (GETBITS(getActiveVGA()->registers->ExternalRegisters.MISCOUTPUTREGISTER,0,1)) goto checkEnableDisable; //Block: we're a color mode addressing as mono!
 		result = 0; //Default result!
 		et34kdata->MDAModeRegister = val; //Save the register to be read!
 		if (((et4k_reg(et34kdata, 3d4, 34) & 0xA0) == 0x80) && (((getActiveVGA()->enable_SVGA < 3) && (getActiveVGA()->enable_SVGA > 0)) || (getActiveVGA()->enable_SVGA==2))) //Enable emulation and translation disabled?
