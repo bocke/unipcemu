@@ -1544,6 +1544,11 @@ void Tseng4k_status_queueFilled(byte is_suspendterminate) //Queue has been fille
 	Tseng4k_checkAcceleratorActivity(); //Check for activity to be done!
 }
 
+byte Tseng4k_status_multiqueueNotFull() //Is the multi queue not full?
+{
+	return (fifobuffer_freesize(et34k(getActiveVGA())->W32_MMUqueue) != 0); //Is the multi queue not full?
+}
+
 byte Tseng4k_status_multiqueueFilled()
 {
 	uint_32 data1,data2;
@@ -1972,6 +1977,10 @@ byte Tseng4k_writeMMUaccelerator(byte area, uint_32 address, byte value)
 	handleQueueWaiting:
 		if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x32] & 1) || et34k(getActiveVGA())->W32_waitstateremainderofqueue) //Waitstate to apply for writes?
 		{
+			if (et34k(getActiveVGA())->W32_waitstateremainderofqueue && (Tseng4k_status_multiqueueNotFull())) //Waitstate the remainder and the multi queue isn't filled up yet?
+			{
+				goto fillmultiqueuefurther; //Fill up the multi queue further, as there is room to fill!
+			}
 			MMU_waitstateactive = 1; //Start waitstate to become ready!
 			return 1; //Handled!
 		}
@@ -1979,6 +1988,7 @@ byte Tseng4k_writeMMUaccelerator(byte area, uint_32 address, byte value)
 		Tseng4k_raiseMMUinterrupt(1 << 2); //Report write to a filled queue to the machine!
 		return 1; //Otherwise, the write is ignored!
 	}
+	fillmultiqueuefurther: //Filling the multi queue further?
 	//Handle any storage needed!
 	if (area != 4) //Not to the MMU queue?
 	{
