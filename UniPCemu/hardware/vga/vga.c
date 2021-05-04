@@ -399,6 +399,10 @@ void doneVGA(VGA_Type **VGA) //Cleans up after the VGA operations are done.
 	if (__HW_DISABLED) return; //Abort!
 	VGA_Type *realVGA = *VGA; //The real VGA!
 	if (!realVGA || allcleared) return; //Invalid VGA to deallocate!
+	if (realVGA->SVGAExtension) //Extensions registered?
+	{
+		freez((void**)&realVGA->SVGAExtension, realVGA->SVGAExtension_size, "VGAExtension@DoneVGA"); //Free the extensions!
+	}
 	if (realVGA->VRAM) //Got allocated?
 	{
 		freez((void **)&realVGA->VRAM,realVGA->VRAM_size,"VGA_VRAM@DoneVGA"); //Free the VRAM!

@@ -401,6 +401,7 @@ typedef struct
 	byte WaitState; //Active waitstate on CGA/MDA? Wait the CPU when enabled!
 	byte WaitStateCounter; //What are we counting to?
 	void *SVGAExtension; //The SVGA extension data, if any!
+	uint_32 SVGAExtension_size; //The size of the SVGA extension data, if any!
 	byte enable_SVGA; //Enable SVGA? If >0, a SVGA extension is enabled. Then initialize it as needed!
 	byte DACbrightness[0x100]; //All 256 levels of brightness for active display DAC!
 } VGA_Type; //VGA dataset!
