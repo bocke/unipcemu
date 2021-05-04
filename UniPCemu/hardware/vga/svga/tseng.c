@@ -3841,13 +3841,17 @@ DOUBLE Tseng34k_getClockRate(VGA_Type *VGA)
 }
 
 //Basic Container/wrapper support
-void freeTsengQueue(void** ptr, uint_32 size, SDL_sem* lock) //Free a pointer (used internally only) allocated with nzalloc/zalloc and our internal functions!
+void freeTsengExtensions(void** ptr, uint_32 size, SDL_sem* lock) //Free a pointer (used internally only) allocated with nzalloc/zalloc and our internal functions!
 {
-	FIFOBUFFER* obj = (FIFOBUFFER*)*ptr; //Take the object out of the pointer!
+	SVGA_ET34K_DATA* obj = (SVGA_ET34K_DATA*)*ptr; //Take the object out of the pointer!
 	//Start by freeing the surfaces in the handlers!
-	changedealloc((void *)obj, sizeof(*obj), getdefaultdealloc()); //Change the deallocation function back to it's default!
+	changedealloc((void*)obj, sizeof(*obj), getdefaultdealloc()); //Change the deallocation function back to it's default!
+	if (obj->W32_MMUqueue) //Queue still allocated?
+	{
+		free_fifobuffer(&obj->W32_MMUqueue); //Free the queue!
+	}
 	//We're always allowed to release the container.
-	free_fifobuffer(&obj); //Free normally using the normally used functions!
+	freez(ptr,sizeof(*obj),"SVGA_ET34K_DATA"); //Free normally using the normally used functions!
 }
 
 void SVGA_Setup_TsengET4K(uint_32 VRAMSize, byte ET4000_extensions) {
@@ -3862,9 +3866,16 @@ void SVGA_Setup_TsengET4K(uint_32 VRAMSize, byte ET4000_extensions) {
 	}
 	else //Valid registers?
 	{
+		changedealloc(et34k(getActiveVGA()), sizeof(*et34k(getActiveVGA())), &freeTsengExtensions); //Deallocation support for the extensions!
 		et34k_reg(et34k(getActiveVGA()),3c4,07) = 0x4|(0x8|0x20)|0x80; //Default to VGA mode(bit 7 set) with full memory map (bits 3&5 set), Other bits are set always.
 		et34k(getActiveVGA())->tsengExtensions = ET4000_extensions; //What extension is enabled in the settings!
-		et34k(getActiveVGA())->W32_MMUqueue = allocfifobuffer(0x10000 * sizeof(uint_64), 0); //Basic fifo to use!
-		changedealloc(et34k(getActiveVGA())->W32_MMUqueue, sizeof(*et34k(getActiveVGA())->W32_MMUqueue), &freeTsengQueue); //Deallocation support for the FIFO!
+		if (et34k(getActiveVGA())->tsengExtensions) //Extensions enabled?
+		{
+			et34k(getActiveVGA())->W32_MMUqueue = allocfifobuffer(0x20 * sizeof(uint_64), 0); //Basic fifo to use!
+			if (!et34k(getActiveVGA())->W32_MMUqueue) //Couldn't allocate?
+			{
+				raiseError("ET4000", "Couldn't allocate SVGA card ET4000/W32 queue data! Ran out of memory!");
+			}
+		}
 	}
 }
