@@ -2318,8 +2318,8 @@ byte Tseng4k_tickAccelerator_step(byte autotransfer)
 		//Since we're starting a new block processing, check for address updates!
 		if (
 			(
-				((et34k(getActiveVGA())->W32_ACLregs.W32_newXYblock) && ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 0x30) != 0x10)) || //Load destination address during first write?
-				((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 0x30) == 0x10) //Always reload destination address?
+				((et34k(getActiveVGA())->W32_ACLregs.W32_newXYblock) && ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 0x30) == 0x00)) || //Load destination address during first write?
+				((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 0x30) != 0x00) //Always reload destination address?
 			)
 			&& (operationstart) //Triggered through the MMU address?
 			) //To load the destination address?
