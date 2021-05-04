@@ -1348,7 +1348,7 @@ void Tseng34k_init()
 			SETBITS(et34k(getActiveVGA())->W32_21xA_shadowRegisters[(0xEC - 0xE0) & 0x1F], 4, 0xF, et34k(getActiveVGA())->W32_version); //Set the high 4 bits to indicate ET4000/W32!
 
 			//Initialize what's needed for the ACL registers to be initialized!
-			et34k(getActiveVGA())->W32_MMUregisters[0][0x32] = 1; //Init register by the reset! Sync enable?
+			et34k(getActiveVGA())->W32_MMUregisters[0][0x32] = 0; //Init register by the reset! Sync disable?
 			Tseng4k_checkAcceleratorActivity(); //Check for any accelerator activity!
 		}
 	}
@@ -2534,7 +2534,7 @@ void Tseng4k_tickAccelerator_active()
 					//Leave register 30h bit 4 untouched, this is to be done by software itself?
 					et34k(getActiveVGA())->W32_MMUregisters[0][0x30] &= 0x10; //Cleared register by the reset! Only leave the terminate bit left for the software to clear?
 					et34k(getActiveVGA())->W32_MMUregisters[0][0x31] = 0; //Cleared register by the reset!
-					et34k(getActiveVGA())->W32_MMUregisters[0][0x32] = 1; //Init register by the reset! Sync enable?
+					et34k(getActiveVGA())->W32_MMUregisters[0][0x32] = 0; //Init register by the reset! Sync disable?
 					et34k(getActiveVGA())->W32_MMUregisters[0][0x34] = 0; //Cleared register by the reset! No interrupts enabled!
 					VGA_calcprecalcs(getActiveVGA(), WHEREUPDATED_MEMORYMAPPED | 0x13); //The memory mapped registers has been updated!
 					et4k_emptyqueuedummy = Tseng4k_doEmptyQueue(); //Empty the queue if possible for the new operation to start! Since interrupts are disabled, doesn't trigger an IRQ!
