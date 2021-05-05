@@ -2054,6 +2054,10 @@ byte Tseng4k_blockQueueAccelerator()
 		{
 			return 2; //Blocking the queue, but not termination!
 		}
+		if (et34k(getActiveVGA())->W32_acceleratorleft == 0) //Nothing is processing? We're idling!
+		{
+			et34k(getActiveVGA())->W32_ACLregs.ACL_active = 0; //ACL is inactive because we're not processing! Count any inputs to the queue as a start of a new operation!
+		}
 		return 1; //Always blocking the queue!
 	}
 	//Cases 4 and 5 are always blocked because they keep W32_acceleratorleft set to 1 all the time after receiving their starting byte with the respective X and Y counts!
