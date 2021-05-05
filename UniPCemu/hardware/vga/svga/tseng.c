@@ -1648,6 +1648,7 @@ void Tseng4k_doBecomeIdle() //Accelerator becomes idle!
 	{
 		Tseng4k_status_becameIdleAndQueueisempty(); //Became idle and queue is empty!
 	}
+	et34k(getActiveVGA())->W32_acceleratorleft = 0; //Starting a new operation, so start with new byte data inputs!
 }
 
 void Tseng4k_decodeAcceleratorRegisters()
@@ -2522,7 +2523,6 @@ void Tseng4k_tickAccelerator_active()
 					et4k_emptyqueuedummy = Tseng4k_doEmptyQueue(); //Empty the queue if possible for the new operation to start! Since interrupts are disabled, doesn't trigger an IRQ!
 					Tseng4k_encodeAcceleratorRegisters(); //Encode the registers, updating them for the CPU!
 					et34k(getActiveVGA())->W32_acceleratorwassuspended = 1; //The accelerator was counted as busy! The next queue load will load the internal registers into the reported internal registers!
-					et34k(getActiveVGA())->W32_acceleratorleft = 0; //Starting a new operation, so start with new byte data inputs!
 				}
 				terminationrequested = et34k(getActiveVGA())->W32_MMUsuspendterminatefilled; //Was termination requested?
 				Tseng4k_status_suspendterminatefinished(); //Suspend/terminate finished.
@@ -2549,7 +2549,6 @@ void Tseng4k_tickAccelerator_active()
 					Tseng4k_doBecomeIdle(); //Accelerator becomes idle now!
 					Tseng4k_writeMMUregisterUnqueued(0x35, 0x7); //Clear interrupts from the cause of a write error only? Others are interpreted by the CPU itself for a new operation to start! Since documentation says 'reset of the chip', I assume it clears the other interrupts as well.
 					Tseng4k_encodeAcceleratorRegisters(); //Make sure that we're up-to-date with our internal registers!
-					et34k(getActiveVGA())->W32_acceleratorleft = 0; //Starting a new operation, so start with new byte data inputs!
 				}
 				else //Become idle only!
 				{
