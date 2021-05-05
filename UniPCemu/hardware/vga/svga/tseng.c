@@ -2318,7 +2318,7 @@ byte Tseng4k_tickAccelerator_step(byte autotransfer)
 		//Since we're starting a new block processing, check for address updates!
 		if (
 			(
-				((et34k(getActiveVGA())->W32_ACLregs.W32_newXYblock) && ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 0x30) == 0x00)) || //Load destination address during first write?
+				//((et34k(getActiveVGA())->W32_ACLregs.W32_newXYblock) && ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 0x30) == 0x00)) || //Load destination address during first write?
 				((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 0x30) != 0x00) //Always reload destination address?
 			)
 			&& (operationstart) //Triggered through the MMU address?
@@ -2436,7 +2436,10 @@ void Tseng4k_tickAccelerator_active()
 				}
 				effectiveoffset += et34k(getActiveVGA())->W32_MMUqueueval_bankaddress; //The effective base address for the operation!
 				//Fully update the destination address in both queued, unqueued and active locations!
-				setTsengLE32(&et34k(getActiveVGA())->W32_MMUregisters[0][0xA0], effectiveoffset); //Load the banked address into the queued destination address?
+				//if ((et34k(getActiveVGA())->W32_MMUregisters[0][0x9C] & 0x30) != 0x00) //Load destination address during first write?
+				{
+					setTsengLE32(&et34k(getActiveVGA())->W32_MMUregisters[0][0xA0], effectiveoffset); //Load the banked address into the queued destination address?
+				}
 				et4k_transferQueuedMMURegisters(); //Load the queued MMU registers!
 				Tseng4k_decodeAcceleratorRegisters(); //Make sure our internal state is up-to-date!
 				Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO(), 2); //Starting a transfer! Make the accelerator active as a new transfer!
