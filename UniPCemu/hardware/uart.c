@@ -697,7 +697,7 @@ void updateUART(DOUBLE timepassed)
 					switch (UART_port[UART].sendPhase) //What receive phase?
 					{
 					case 0: //Checking for start of transfer?
-						if (unlikely(UART_port[UART].senddata && ((UART_port[UART].LineStatusRegister & 0x20) == 0))) //Something to transfer?
+						if (unlikely((UART_port[UART].senddata||((UART_port[UART].LineStatusRegister & 0x80)==0x80)) && ((UART_port[UART].LineStatusRegister & 0x20) == 0))) //Something to transfer with connected hardware or loopback?
 						{
 							if ((UART_port[UART].LineStatusRegister & 0x80) == 0) //Not loopback being sent?
 							{
