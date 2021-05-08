@@ -2424,10 +2424,6 @@ void Tseng4k_tickAccelerator_active()
 				Tseng4k_decodeAcceleratorRegisters(); //Make sure our internal state is up-to-date!
 				Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO(), 2); //Starting a transfer! Make the accelerator active as a new transfer!
 				Tseng4k_startAccelerator(1); //Starting the accelerator by MMU trigger!
-				if ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 0) //CPU data isn't used?
-				{
-					result = Tseng4k_doEmptyQueue(); //Acnowledge and empty the queue: it's a start trigger instead!
-				}
 				if (
 					((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 4) || //X count?
 					((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 5) //Y count?
@@ -2562,6 +2558,10 @@ void Tseng4k_tickAccelerator_active()
 		if (unlikely(((et34k(getActiveVGA())->W32_acceleratorbusy & 2) == 0) && et34k(getActiveVGA())->W32_ACLregs.ACL_active)) //Terminated a running tranafer?
 		{
 			et34k(getActiveVGA())->W32_ACLregs.ACL_active = 0; //ACL is inactive!
+			if ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 0) //CPU data isn't used?
+			{
+				result = Tseng4k_doEmptyQueue(); //Acnowledge and empty the queue: it's a start trigger instead!
+			}
 			Tseng4k_status_XYblockTerminalCount(); //Terminal count reached during the tranfer!
 			Tseng4k_doBecomeIdle(); //Accelerator becomes idle now!
 			Tseng4k_processRegisters_finished();
