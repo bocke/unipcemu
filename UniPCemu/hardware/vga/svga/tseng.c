@@ -3776,14 +3776,15 @@ void Tseng34k_calcPrecalcs(void *useVGA, uint_32 whereupdated)
 				et34k_tempreg &= ~0xF; //Default to 0!
 			}
 			VGA->precalcs.SpriteCRTCpixeldepth = (et34k_tempreg & 0xF); //Bit depth in power of 2!
+			VGA->precalcs.SpriteCRTCrowheight = ((et34k_tempreg >> 6)+1); //The height of each row!
+			VGA->precalcs.SpriteCRTCpixelwidth = (((et34k_tempreg >> 4)&3) + 1); //The width of each pixel!
 		}
 		else //Sprite function?
 		{
 			VGA->precalcs.SpriteCRTCpixeldepth = 1; //Bit depth in power of 2! Always 2BPP!
+			VGA->precalcs.SpriteCRTCrowheight = 1; //The height of each row!
+			VGA->precalcs.SpriteCRTCpixelwidth = 1; //The width of each pixel!
 		}
-
-		VGA->precalcs.SpriteCRTCrowheight = ((et34k_tempreg >> 6)+1); //The height of each row!
-		VGA->precalcs.SpriteCRTCpixelwidth = (((et34k_tempreg >> 4)&3) + 1); //The width of each pixel!
 
 		if (VGA->precalcs.SpriteCRTCEnabled == 2) //CRTCB enabled?
 		{
