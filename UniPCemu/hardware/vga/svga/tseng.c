@@ -1642,6 +1642,8 @@ void Tseng4k_status_suspendterminatefinished()
 	Tseng4k_checkAcceleratorActivity(); //Check for accelerator activity!
 }
 
+void Tseng4k_encodeAcceleratorRegisters(); //Prototype for becoming idle!
+
 void Tseng4k_doBecomeIdle() //Accelerator becomes idle!
 {
 	if ((Tseng4k_status_multiqueueFilled()|et34k(getActiveVGA())->W32_MMUsuspendterminatefilled) == 0) //Queue isn't filled anymore while becoming idle?
@@ -1649,6 +1651,7 @@ void Tseng4k_doBecomeIdle() //Accelerator becomes idle!
 		Tseng4k_status_becameIdleAndQueueisempty(); //Became idle and queue is empty!
 	}
 	et34k(getActiveVGA())->W32_acceleratorleft = 0; //Starting a new operation, so start with new byte data inputs!
+	Tseng4k_encodeAcceleratorRegisters(); //Encode the accelerator registers: documentation says they're readable with valid values now!
 }
 
 void Tseng4k_decodeAcceleratorRegisters()
@@ -1676,6 +1679,9 @@ void Tseng4k_decodeAcceleratorRegisters()
 	et34k(getActiveVGA())->W32_ACLregs.BGFG_RasterOperation[0] = et34k(getActiveVGA())->W32_MMUregisters[1][0x9E]; //Index 0=BG, 1=FG
 	et34k(getActiveVGA())->W32_ACLregs.BGFG_RasterOperation[1] = et34k(getActiveVGA())->W32_MMUregisters[1][0x9F]; //Index 0=BG, 1=FG
 	et34k(getActiveVGA())->W32_ACLregs.destinationaddress = (getTsengLE24(&et34k(getActiveVGA())->W32_MMUregisters[1][0xA0]) & 0x3FFFFF); //Destination address
+	//We're now in a waiting state always! Make us waiting!
+	et34k(getActiveVGA())->W32_acceleratorleft = 0; //Starting a new operation, so start with new byte data inputs!
+	et34k(getActiveVGA())->W32_ACLregs.ACL_active = 0; //Starting a new operation, so not started by default yet}
 }
 
 void Tseng4k_encodeAcceleratorRegisters()
@@ -1822,8 +1828,8 @@ byte Tseng4k_writeMMUregisterUnqueued(byte address, byte value)
 			if (value & 0x08) //Resume operation? Can be combined with above restore operation!
 			{
 				et4k_emptyqueuedummy = Tseng4k_doEmptyQueue(); //Empty the queue if possible for the new operation to start!
-				Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO(), 2); //Starting a transfer! Make the accelerator active again!
 				Tseng4k_startAccelerator(0); //Starting the accelerator!
+				Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO(), 2); //Starting a transfer! Make the accelerator active again!
 				et34k(getActiveVGA())->W32_mixmapposition = 0; //Initialize the mix map position to the first bit!
 			}
 		}
@@ -1921,8 +1927,8 @@ byte Tseng4k_writeMMUregisterUnqueued(byte address, byte value)
 			et4k_transferQueuedMMURegisters(); //Load the queued registers to become active!
 			//Start a new operation!
 			et4k_emptyqueuedummy = Tseng4k_doEmptyQueue(); //Empty the queue if possible for the new operation to start!
-			Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO(), 1); //Starting a transfer! Make the accelerator active!
 			Tseng4k_startAccelerator(0); //Starting the accelerator!
+			Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO(), 1); //Starting a transfer! Make the accelerator active!
 			et34k(getActiveVGA())->W32_mixmapposition = 0; //Initialize the mix map position to the first bit!
 			et34k(getActiveVGA())->W32_ACLregs.Xposition = et34k(getActiveVGA())->W32_ACLregs.Yposition = 0; //Initialize the position!
 		}
@@ -2422,8 +2428,8 @@ void Tseng4k_tickAccelerator_active()
 				}
 				et4k_transferQueuedMMURegisters(); //Load the queued MMU registers!
 				Tseng4k_decodeAcceleratorRegisters(); //Make sure our internal state is up-to-date!
-				Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO(), 2); //Starting a transfer! Make the accelerator active as a new transfer!
 				Tseng4k_startAccelerator(1); //Starting the accelerator by MMU trigger!
+				Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO(), 2); //Starting a transfer! Make the accelerator active as a new transfer!
 				if ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 0) //CPU data isn't used?
 				{
 					result = Tseng4k_doEmptyQueue(); //Acnowledge and empty the queue: it's a start trigger instead!
