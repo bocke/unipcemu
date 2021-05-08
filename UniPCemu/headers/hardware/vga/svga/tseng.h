@@ -67,6 +67,7 @@ typedef struct
 	uint_32 sourcewrap_y; //Vertical source wrap
 	byte W32_newXYblock; //Starting a new X/Y block?
 	byte ACL_active; //ACL is actually active and running?
+	byte XCountYCountModeOriginal; //Original byte in the X Count or Y Count register when starting the accelerated mode.
 } ET4000_W32_ACL_PRECALCS;
 
 typedef struct {

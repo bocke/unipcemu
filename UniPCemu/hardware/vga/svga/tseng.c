@@ -2325,13 +2325,16 @@ byte Tseng4k_tickAccelerator_step(byte autotransfer)
 	{
 		mixmap = et34k(getActiveVGA())->W32_ACLregs.latchedmixmap; //The used mixmap instead!
 	}
-	else if (
-		((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7)==1) || //Source is from CPU?
-		((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 4) || //Source is X count?
-		((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 5) //Source is Y count?
-		) //Source is from CPU?
+	else if ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7)==1) //Source is from CPU?
 	{
 		source = et34k(getActiveVGA())->W32_MMUqueueval; //Latch the written value!
+	}
+	else if (
+		((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 4) || //Source is X count?
+		((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 5) //Source is Y count?
+		)
+	{
+		source = et34k(getActiveVGA())->W32_ACLregs.XCountYCountModeOriginal; //Original value in the X/Y Count register when the mode was started!
 	}
 
 	//Now, determine and apply the Raster Operation!
@@ -2441,12 +2444,14 @@ void Tseng4k_tickAccelerator_active()
 				{
 					if ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 4) //X count?
 					{
-						et34k(getActiveVGA())->W32_MMUregisters[1][0x98] = et34k(getActiveVGA())->W32_MMUqueueval; //X count low byte!
+						et34k(getActiveVGA())->W32_ACLregs.XCountYCountModeOriginal = et34k(getActiveVGA())->W32_MMUregisters[1][0x98]; //Original value in the register when starting the mode!
+						et34k(getActiveVGA())->W32_MMUregisters[1][0x98] = et34k(getActiveVGA())->W32_MMUqueueval; //X count low byte (loaded internal as documented)!
 						et34k(getActiveVGA())->W32_ACLregs.Xcount = (getTsengLE16(&et34k(getActiveVGA())->W32_MMUregisters[1][0x98]) & 0xFFF); //X count
 					}
 					else //Y count?
 					{
-						et34k(getActiveVGA())->W32_MMUregisters[1][0x9A] = et34k(getActiveVGA())->W32_MMUqueueval; //Y count low byte!
+						et34k(getActiveVGA())->W32_ACLregs.XCountYCountModeOriginal = et34k(getActiveVGA())->W32_MMUregisters[1][0x9A]; //Original value in the register when starting the mode!
+						et34k(getActiveVGA())->W32_MMUregisters[1][0x9A] = et34k(getActiveVGA())->W32_MMUqueueval; //Y count low byte (loaded internal as documented)!
 						et34k(getActiveVGA())->W32_ACLregs.Ycount = (getTsengLE16(&et34k(getActiveVGA())->W32_MMUregisters[1][0x9A]) & 0xFFF); //Y count
 					}
 					result = Tseng4k_doEmptyQueue(); //Acnowledge and empty the queue: it's a start trigger instead!
