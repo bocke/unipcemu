@@ -1662,7 +1662,7 @@ void Tseng4k_decodeAcceleratorRegisters()
 	et34k(getActiveVGA())->W32_ACLregs.patternYoffset = (getTsengLE16(&et34k(getActiveVGA())->W32_MMUregisters[1][0x88]) & 0xFFF); //Pattern Y offset
 	et34k(getActiveVGA())->W32_ACLregs.sourceYoffset = (getTsengLE16(&et34k(getActiveVGA())->W32_MMUregisters[1][0x8A]) & 0xFFF); //Source Y offset
 	et34k(getActiveVGA())->W32_ACLregs.destinationYoffset = (getTsengLE16(&et34k(getActiveVGA())->W32_MMUregisters[1][0x8C]) & 0xFFF); //Destination Y offset
-	et34k(getActiveVGA())->W32_ACLregs.virtualbussize = (et34k(getActiveVGA())->W32_MMUregisters[1][0x8E]&3); //Virtual bus size, powers of 2! 0=1, 1=2, 2=4, 3=Reserved
+	et34k(getActiveVGA())->W32_ACLregs.virtualbussize = (et34k(getActiveVGA())->W32_MMUregisters[1][0x8E] & 3); //Virtual bus size, powers of 2! 0=1, 1=2, 2=4, 3=Reserved
 	et34k(getActiveVGA())->W32_ACLregs.XYdirection = (et34k(getActiveVGA())->W32_MMUregisters[1][0x8F] & 3); //0=+1,+1; 1=-1,+1; 2=+1,-1; 3=-1,-1. Essentially bit 0=X direction, bit 1=Y direction. Set=Decreasing, Cleared=Increasing
 	et34k(getActiveVGA())->W32_ACLregs.Xpatternwrap = (et34k(getActiveVGA())->W32_MMUregisters[1][0x90] & 7); //Power of 2. more than 64 or less than 4 is none.
 	et34k(getActiveVGA())->W32_ACLregs.Ypatternwrap = ((et34k(getActiveVGA())->W32_MMUregisters[1][0x90] >> 4) & 7); //Power of 2. more than 8 is none.
@@ -1674,14 +1674,14 @@ void Tseng4k_decodeAcceleratorRegisters()
 	et34k(getActiveVGA())->W32_ACLregs.Yposition = (getTsengLE16(&et34k(getActiveVGA())->W32_MMUregisters[1][0x96]) & 0xFFF); //Y position
 	et34k(getActiveVGA())->W32_ACLregs.Xcount = (getTsengLE16(&et34k(getActiveVGA())->W32_MMUregisters[1][0x98]) & 0xFFF); //X count
 	et34k(getActiveVGA())->W32_ACLregs.Ycount = (getTsengLE16(&et34k(getActiveVGA())->W32_MMUregisters[1][0x9A]) & 0xFFF); //Y count
-	et34k(getActiveVGA())->W32_ACLregs.reloadPatternAddress = GETBITS(et34k(getActiveVGA())->W32_MMUregisters[1][0x9D],1,1); //Reload of pattern address. When 1, use the internal pattern address register.
-	et34k(getActiveVGA())->W32_ACLregs.reloadSourceAddress = GETBITS(et34k(getActiveVGA())->W32_MMUregisters[1][0x9D],0,1); //Reload of source address. When 1, use the internal source address register.
+	et34k(getActiveVGA())->W32_ACLregs.reloadPatternAddress = GETBITS(et34k(getActiveVGA())->W32_MMUregisters[1][0x9D], 1, 1); //Reload of pattern address. When 1, use the internal pattern address register.
+	et34k(getActiveVGA())->W32_ACLregs.reloadSourceAddress = GETBITS(et34k(getActiveVGA())->W32_MMUregisters[1][0x9D], 0, 1); //Reload of source address. When 1, use the internal source address register.
 	et34k(getActiveVGA())->W32_ACLregs.BGFG_RasterOperation[0] = et34k(getActiveVGA())->W32_MMUregisters[1][0x9E]; //Index 0=BG, 1=FG
 	et34k(getActiveVGA())->W32_ACLregs.BGFG_RasterOperation[1] = et34k(getActiveVGA())->W32_MMUregisters[1][0x9F]; //Index 0=BG, 1=FG
 	et34k(getActiveVGA())->W32_ACLregs.destinationaddress = (getTsengLE24(&et34k(getActiveVGA())->W32_MMUregisters[1][0xA0]) & 0x3FFFFF); //Destination address
 	//We're now in a waiting state always! Make us waiting!
-	et34k(getActiveVGA())->W32_acceleratorleft = 0; //Starting a new operation, so start with new byte data inputs!
 	et34k(getActiveVGA())->W32_ACLregs.ACL_active = 0; //Starting a new operation, so not started by default yet}
+	Tseng4k_doBecomeIdle(); //Accelerator itself becomes idle, waiting for inputs!
 }
 
 void Tseng4k_encodeAcceleratorRegisters()
