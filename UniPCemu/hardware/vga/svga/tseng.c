@@ -1472,7 +1472,7 @@ void Tseng4k_raiseMMUinterrupt(byte cause) //Cause is 0-2!
 //Set when not using the CPU each clock
 byte Tseng4k_accelerator_calcSSO()
 {
-	return (((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C]&0x07)==0))?1:0;
+	return (((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C]&0x07)==0) || ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 0x07) == 4) || ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 0x07) == 5))?1:0;
 }
 
 //Basic X/Y block start/termination conditions
@@ -2055,6 +2055,10 @@ byte Tseng4k_blockQueueAccelerator()
 		}
 		return 1; //Always blocking the queue!
 	}
+	if (((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 4) || ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 5)) //X/Y Count?
+	{
+		return 1; //Always blocking the queue!
+	}
 	return 0; //Not blocking the queue from being processed (not ready yet)?
 }
 
@@ -2229,7 +2233,7 @@ byte Tseng4k_tickAccelerator_step(byte autotransfer)
 		}
 		break;
 	case 4: //CPU data is X count
-		if (autotransfer) //Autotransferring?
+		if (autotransfer && (et34k(getActiveVGA())->W32_acceleratorleft == 0)) //Autotransferring?
 		{
 			if ((et34k(getActiveVGA())->W32_MMUsuspendterminatefilled & 0x11)) //Suspend or Terminate requested?
 			{
@@ -2240,7 +2244,7 @@ byte Tseng4k_tickAccelerator_step(byte autotransfer)
 		}
 		break;
 	case 5: //CPU data is Y count
-		if (autotransfer) //Autotransferring?
+		if (autotransfer && (et34k(getActiveVGA())->W32_acceleratorleft == 0)) //Autotransferring?
 		{
 			if ((et34k(getActiveVGA())->W32_MMUsuspendterminatefilled & 0x11)) //Suspend or Terminate requested?
 			{
@@ -2277,7 +2281,7 @@ byte Tseng4k_tickAccelerator_step(byte autotransfer)
 		{
 		case 0: //CPU data isn't used!
 			//Handling without CPU data now!
-			et34k(getActiveVGA())->W32_acceleratorleft = 8; //Default: only processing 8!
+			et34k(getActiveVGA())->W32_acceleratorleft = 1; //Default: only processing 1!
 			break;
 		case 1: //CPU data is source data!
 			//Only 1 pixel is processed!
@@ -2329,13 +2333,6 @@ byte Tseng4k_tickAccelerator_step(byte autotransfer)
 	{
 		source = et34k(getActiveVGA())->W32_MMUqueueval; //Latch the written value!
 	}
-	else if (
-		((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 4) || //Source is X count?
-		((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 5) //Source is Y count?
-		)
-	{
-		source = et34k(getActiveVGA())->W32_ACLregs.XCountYCountModeOriginal; //Original value in the X/Y Count register when the mode was started!
-	}
 
 	//Now, determine and apply the Raster Operation!
 	operationx = et34k(getActiveVGA())->W32_mixmapposition++; //X position to work on!
@@ -2380,7 +2377,11 @@ byte Tseng4k_tickAccelerator_step(byte autotransfer)
 		--et34k(getActiveVGA())->W32_acceleratorleft; //Ticked one pixel of the current block!
 	}
 	if (
-		((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 0) //No CPU version?
+		(
+			((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 0) //No CPU version?
+			|| ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 4) //No CPU version?
+			|| ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 5) //No CPU version?
+		)
 		&& (et34k(getActiveVGA())->W32_acceleratorleft==0) //Finished current batch?
 		)
 	{
@@ -2389,7 +2390,7 @@ byte Tseng4k_tickAccelerator_step(byte autotransfer)
 			et34k(getActiveVGA())->W32_acceleratorbusy &= ~3; //Finish operation!
 			return 2; //Finish up: we're suspending/terminating right now!
 		}
-		et34k(getActiveVGA())->W32_acceleratorleft = 8; //Always more left until finishing! This keeps us running until terminal count!
+		et34k(getActiveVGA())->W32_acceleratorleft = 1; //Always more left until finishing! This keeps us running until terminal count!
 	}
 	return 1|2; //Ticking a transfer! Terminated immediately on the same clock!
 }
@@ -2454,6 +2455,7 @@ void Tseng4k_tickAccelerator_active()
 						et34k(getActiveVGA())->W32_MMUregisters[1][0x9A] = et34k(getActiveVGA())->W32_MMUqueueval; //Y count low byte (loaded internal as documented)!
 						et34k(getActiveVGA())->W32_ACLregs.Ycount = (getTsengLE16(&et34k(getActiveVGA())->W32_MMUregisters[1][0x9A]) & 0xFFF); //Y count
 					}
+					et34k(getActiveVGA())->W32_acceleratorleft = 1; //Always more left until finishing! This keeps us running!
 					result = Tseng4k_doEmptyQueue(); //Acnowledge and empty the queue: it's a start trigger instead!
 				}
 				et34k(getActiveVGA())->W32_mixmapposition = 0; //Initialize the mix map position to the first bit!
