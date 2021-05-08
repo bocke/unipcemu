@@ -800,6 +800,11 @@ byte VGA_SpriteCRTCGetPixel(VGA_Type* VGA, SEQ_DATA* Sequencer, VGA_AttributeInf
 			if (Sequencer->SpriteCRTCstep == 4) //1 byte processed?
 			{
 				++Sequencer->SpriteCRTC_pixel_address; //Next pixel address!
+				if ((VGA->precalcs.SpriteCRTCrowoffset<<1)==VGA->precalcs.SpriteCRTChorizontalwindowwidth) //Double the offset of what's documented that should be programmed?
+				{
+					//Weird behaviour on some OSes against documentation (Windows 9x): bytes are located at every even address only?
+					++Sequencer->SpriteCRTC_pixel_address; //Next pixel address!
+				}
 				Sequencer->SpriteCRTCstep = 0; //Reset for the next pixels to be retrieved!
 			}
 		}
