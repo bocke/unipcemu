@@ -3960,6 +3960,10 @@ void freeTsengExtensions(void** ptr, uint_32 size, SDL_sem* lock) //Free a point
 	{
 		free_fifobuffer(&obj->W32_MMUqueue); //Free the queue!
 	}
+	if (obj->W32_virtualbusqueue) //Queue still allocated?
+	{
+		free_fifobuffer(&obj->W32_virtualbusqueue); //Free the queue!
+	}
 	//We're always allowed to release the container.
 	freez(ptr,sizeof(*obj),"SVGA_ET34K_DATA"); //Free normally using the normally used functions!
 }
@@ -3986,6 +3990,11 @@ void SVGA_Setup_TsengET4K(uint_32 VRAMSize, byte ET4000_extensions) {
 			if (!et34k(getActiveVGA())->W32_MMUqueue) //Couldn't allocate?
 			{
 				raiseError("ET4000", "Couldn't allocate SVGA card ET4000/W32 queue data! Ran out of memory!");
+			}
+			et34k(getActiveVGA())->W32_virtualbusqueue = allocfifobuffer(0x4 * sizeof(uint_64), 0); //Basic fifo to use!
+			if (!et34k(getActiveVGA())->W32_virtualbusqueue) //Couldn't allocate?
+			{
+				raiseError("ET4000", "Couldn't allocate SVGA card ET4000/W32 virtual bus queue data! Ran out of memory!");
 			}
 		}
 	}
