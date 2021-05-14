@@ -1732,6 +1732,7 @@ void Tseng4k_decodeAcceleratorRegisters()
 	//Specify the effective virtual bus size to use!
 	et34k(getActiveVGA())->W32_ACLregs.virtualbussizecount = (((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7)==1) || ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 2))?ET4k_effectivevirtualbussize[et34k(getActiveVGA())->W32_ACLregs.virtualbussizecount]:1; //Virtual bus size, powers of 2! 0=1, 1=2, 2=4, 3=Reserved
 	Tseng4k_doBecomeIdle(); //Accelerator itself becomes idle, waiting for inputs!
+	Tseng4k_status_clearvirtualbus(); //Clear the virtual bus to be ready for the operation that can now be started!
 }
 
 void Tseng4k_encodeAcceleratorRegisters()
