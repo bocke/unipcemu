@@ -1573,6 +1573,40 @@ byte Tseng4k_status_readMultiQueue()
 	return 0; //Not filled!
 }
 
+byte Tseng4k_status_readVirtualBusMultiQueue()
+{
+	uint_32 data1, data2;
+	if (readfifobuffer32_2u(et34k(getActiveVGA())->W32_virtualbusqueue, &data1, &data2)) //Filled?
+	{
+		et34k(getActiveVGA())->W32_virtualbusqueueval_bankaddress = (data2 & 0xFFFFFF); //Bank address!
+		et34k(getActiveVGA())->W32_virtualbusqueueval_address = (data1 & 0xFFFFFF); //Address!
+		et34k(getActiveVGA())->W32_virtualbusqueueval = (data2 >> 24) & 0xFF; //The value!
+		Tseng4k_checkAcceleratorActivity(); //Check for accelerator activity!
+		return ((data1 >> 24) & 0xFF); //The queue filled status!
+	}
+	return 0; //Not filled!
+}
+
+void Tseng4k_status_clearvirtualbus()
+{
+	fifobuffer_clear(et34k(getActiveVGA())->W32_virtualbusqueue); //Clear the virtual bus queue!
+	et34k(getActiveVGA())->W32_VirtualBusCountLeft = 0; //No count left on the virtual bus to process!
+}
+
+byte Tseng4k_status_virtualbusfull()
+{
+	if (et34k(getActiveVGA())->W32_VirtualBusCountLeft) //Processing the virtual bus? Count as full?
+	{
+		return 1; //Virtual bus forced as full!
+	}
+	return ((fifobuffer_freesize(et34k(getActiveVGA())->W32_virtualbusqueue) >> 3)==0); //Is the queue full?
+}
+
+byte Tseng4k_status_virtualbusentries()
+{
+	return ((fifobuffer_size(et34k(getActiveVGA())->W32_virtualbusqueue) - fifobuffer_freesize(et34k(getActiveVGA())->W32_virtualbusqueue)) >> 3); //How many entries are filled in the buffer?
+}
+
 byte Tseng4k_status_peekMultiQueue_apply()
 {
 	uint_32 data1, data2;
@@ -1594,6 +1628,18 @@ byte Tseng4k_status_writeMultiQueue(byte type, byte value, uint_32 address, uint
 	data1 = (address&0xFFFFFF)|(type<<24); //First data: address and type!
 	data2 = (bank&0xFFFFFF)|(value<<24); //Second data: bank and value!
 	result = writefifobuffer32_2u(et34k(getActiveVGA())->W32_MMUqueue,data1,data2); //Write to the queue!
+	Tseng4k_checkAcceleratorActivity(); //Check for activity to be done!
+	return result; //Give the result!
+}
+
+byte Tseng4k_status_writeVirtualBusMultiQueue(byte type, byte value, uint_32 address, uint_32 bank)
+{
+	byte result; //The result!
+	uint_32 data1, data2;
+	if (!type) return 0; //Invalid type?
+	data1 = (address & 0xFFFFFF) | (type << 24); //First data: address and type!
+	data2 = (bank & 0xFFFFFF) | (value << 24); //Second data: bank and value!
+	result = writefifobuffer32_2u(et34k(getActiveVGA())->W32_virtualbusqueue, data1, data2); //Write to the queue!
 	Tseng4k_checkAcceleratorActivity(); //Check for activity to be done!
 	return result; //Give the result!
 }
@@ -1654,6 +1700,8 @@ void Tseng4k_doBecomeIdle() //Accelerator becomes idle!
 	Tseng4k_encodeAcceleratorRegisters(); //Encode the accelerator registers: documentation says they're readable with valid values now!
 }
 
+byte ET4k_effectivevirtualbussize[4] = {1,2,4,4}; //The effective virtual bus size specified!
+
 void Tseng4k_decodeAcceleratorRegisters()
 {
 	//TODO: Load and decode all accelerator registers into easy to use variables in the accelerator
@@ -1681,6 +1729,8 @@ void Tseng4k_decodeAcceleratorRegisters()
 	et34k(getActiveVGA())->W32_ACLregs.destinationaddress = (getTsengLE24(&et34k(getActiveVGA())->W32_MMUregisters[1][0xA0]) & 0x3FFFFF); //Destination address
 	//We're now in a waiting state always! Make us waiting!
 	et34k(getActiveVGA())->W32_ACLregs.ACL_active = 0; //Starting a new operation, so not started by default yet}
+	//Specify the effective virtual bus size to use!
+	et34k(getActiveVGA())->W32_ACLregs.virtualbussizecount = (((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7)==1) || ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 2))?ET4k_effectivevirtualbussize[et34k(getActiveVGA())->W32_ACLregs.virtualbussizecount]:1; //Virtual bus size, powers of 2! 0=1, 1=2, 2=4, 3=Reserved
 	Tseng4k_doBecomeIdle(); //Accelerator itself becomes idle, waiting for inputs!
 }
 
@@ -1771,8 +1821,8 @@ void Tseng4k_startAccelerator(byte triggerfromMMU)
 	if ((Tseng4k_status_multiqueueFilled() == 0) && (!et34k(getActiveVGA())->W32_performMMUoperationstart)) //Queue not filled yet and not starting from the accelerator window?
 	{
 		//Make sure that the queue addresses are properly set!
-		et34k(getActiveVGA())->W32_MMUqueueval_bankaddress = 0; //Default: no bank address loaded yet!
-		et34k(getActiveVGA())->W32_MMUqueueval_address = et34k(getActiveVGA())->W32_ACLregs.destinationaddress; //Default: no address loaded yet, so use the specified address!
+		et34k(getActiveVGA())->W32_virtualbusqueueval_bankaddress = 0; //Default: no bank address loaded yet!
+		et34k(getActiveVGA())->W32_virtualbusqueueval_address = et34k(getActiveVGA())->W32_ACLregs.destinationaddress; //Default: no address loaded yet, so use the specified address!
 	}
 }
 
@@ -2276,7 +2326,7 @@ byte Tseng4k_tickAccelerator_step(byte autotransfer)
 			et34k(getActiveVGA())->W32_acceleratorbusy &= ~3; //Finish operation!
 			return 2; //Finish up: we're suspending/terminating right now!
 		}
-		queueaddress = et34k(getActiveVGA())->W32_MMUqueueval_address; //What address was written to?
+		queueaddress = et34k(getActiveVGA())->W32_virtualbusqueueval_address; //What address was written to?
 		switch (et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) //What kind of operation is used?
 		{
 		case 0: //CPU data isn't used!
@@ -2289,7 +2339,7 @@ byte Tseng4k_tickAccelerator_step(byte autotransfer)
 			break;
 		case 2: //CPU data is mix data!
 			et34k(getActiveVGA())->W32_acceleratorleft = 8; //Processing 8 pixels!
-			et34k(getActiveVGA())->W32_ACLregs.latchedmixmap = et34k(getActiveVGA())->W32_MMUqueueval; //Latch the written value!
+			et34k(getActiveVGA())->W32_ACLregs.latchedmixmap = et34k(getActiveVGA())->W32_virtualbusqueueval; //Latch the written value!
 			et34k(getActiveVGA())->W32_mixmapposition = 0; //Initialize the mix map position to the first bit!
 			queueaddress <<= 3; //Multiply the address by 8!
 			break;
@@ -2303,7 +2353,7 @@ byte Tseng4k_tickAccelerator_step(byte autotransfer)
 			return 2; //Not handled yet! Terminate immediately on the same clock!
 			break;
 		}
-		queueaddress += et34k(getActiveVGA())->W32_MMUqueueval_bankaddress; //Apply the bank address for the MMU window accordingly!
+		queueaddress += et34k(getActiveVGA())->W32_virtualbusqueueval_bankaddress; //Apply the bank address for the MMU window accordingly!
 		//Since we're starting a new block processing, check for address updates!
 		if (
 			(
@@ -2331,7 +2381,7 @@ byte Tseng4k_tickAccelerator_step(byte autotransfer)
 	}
 	else if ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7)==1) //Source is from CPU?
 	{
-		source = et34k(getActiveVGA())->W32_MMUqueueval; //Latch the written value!
+		source = et34k(getActiveVGA())->W32_virtualbusqueueval; //Latch the written value!
 	}
 
 	//Now, determine and apply the Raster Operation!
@@ -2406,6 +2456,7 @@ void Tseng4k_processRegisters_finished()
 
 void Tseng4k_tickAccelerator_active()
 {
+	byte allowreadingqueue;
 	byte terminationrequested;
 	uint_32 effectiveoffset;
 	byte result;
@@ -2496,34 +2547,67 @@ void Tseng4k_tickAccelerator_active()
 		}
 		//Otherwise, it's 2, requesting suspend/terminate!
 	}
-	else if (likely((result = Tseng4k_doEmptyQueue())!=0)) //Try and perform an emptying of the queue, if it's filled (act like it's processed into the accelerator)!
+	else //Processing queues?
 	{
-		if (result == 4) //Transfer to the ACL register queue instead?
+		allowreadingqueue = 1; //Default: allow reading the queue!
+		if (Tseng4k_status_multiqueueFilled() == 1) //Filled with data to process?
 		{
-			Tseng4k_writeMMUregisterUnqueued(et34k(getActiveVGA())->W32_MMUqueueval_address, et34k(getActiveVGA())->W32_MMUqueueval); //Writing from the queue to the ACL register!
-			if (!et34k(getActiveVGA())->W32_acceleratorbusy) //Accelerator not busy on anything?
+			if (Tseng4k_status_virtualbusfull()) //Is the virtual bus queue full?
 			{
-				Tseng4k_doBecomeIdle(); //The accelerator becomes idle now (no input anymore)! We're waiting for input!
+				allowreadingqueue = 0; //Don't allow reading the queue: the virtual bus is full (prevent data loss)!
 			}
 		}
-		else //Handling an input on the accelerator?
+		if (allowreadingqueue) //Do we allow reading the queue?
 		{
-			if ((result = Tseng4k_tickAccelerator_step(0))!=0) //Queue version of ticking the accelerator?
+			if (likely((result = Tseng4k_doEmptyQueue()) != 0)) //Try and perform an emptying of the queue, if it's filled (act like it's processed into the accelerator)!
 			{
-				Tseng4k_encodeAcceleratorRegisters(); //Encode the registers, updating them for the CPU!
-				et34k(getActiveVGA())->W32_acceleratorbusy |= (result&1); //Become a busy accelerator!
-				//Tick the accelerator with the specified address and value loaded!
-				//Latch the value written if a valid address that's requested!
-				if ((result & 2) == 0) //Keep ticking?
+				if (result == 4) //Transfer to the ACL register queue instead?
 				{
-					return; //Wait for the next tick to finish the accelerator! Abort!
+					Tseng4k_writeMMUregisterUnqueued(et34k(getActiveVGA())->W32_MMUqueueval_address, et34k(getActiveVGA())->W32_MMUqueueval); //Writing from the queue to the ACL register!
+					if (!et34k(getActiveVGA())->W32_acceleratorbusy) //Accelerator not busy on anything?
+					{
+						Tseng4k_doBecomeIdle(); //The accelerator becomes idle now (no input anymore)! We're waiting for input!
+					}
+				}
+				else //Handling an input on the accelerator?
+				{
+					result = Tseng4k_status_writeVirtualBusMultiQueue(result, et34k(getActiveVGA())->W32_MMUqueueval, et34k(getActiveVGA())->W32_MMUqueueval_address, et34k(getActiveVGA())->W32_MMUqueueval_bankaddress); //Added to the virtual queue?
 				}
 			}
 		}
-	}
-	else //Idle and queue is empty?
-	{
-		Tseng4k_doBecomeIdle(); //The accelerator becomes idle now! We're waiting for input!
+
+		//First, check starting a new fill of the virtual bus count to become active!
+		if (et34k(getActiveVGA())->W32_VirtualBusCountLeft == 0) //Nothing processing?
+		{
+			if (Tseng4k_status_virtualbusentries() >= et34k(getActiveVGA())->W32_ACLregs.virtualbussizecount) //Enough entried filled to clear the virtual bus out?
+			{
+				et34k(getActiveVGA())->W32_VirtualBusCountLeft = et34k(getActiveVGA())->W32_ACLregs.virtualbussizecount; //Start processing the virtual queue into the accelerator!
+			}
+		}
+
+		//Finally, process the virtual bus queue into the active accelerator!
+		if (et34k(getActiveVGA())->W32_VirtualBusCountLeft) //Something left to process on the virtual bus?
+		{
+			--et34k(getActiveVGA())->W32_VirtualBusCountLeft; //One processed!
+			if (Tseng4k_status_readVirtualBusMultiQueue()) //Read the virtual bus multi queue! This should always succeed!
+			{
+				if ((result = Tseng4k_tickAccelerator_step(0)) != 0) //Queue version of ticking the accelerator?
+				{
+					Tseng4k_encodeAcceleratorRegisters(); //Encode the registers, updating them for the CPU!
+					et34k(getActiveVGA())->W32_acceleratorbusy |= (result & 1); //Become a busy accelerator!
+					//Tick the accelerator with the specified address and value loaded!
+					//Latch the value written if a valid address that's requested!
+					if ((result & 2) == 0) //Keep ticking?
+					{
+						return; //Wait for the next tick to finish the accelerator! Abort!
+					}
+				}
+			}
+		}
+		else //Idle and queue is empty?
+		{
+			Tseng4k_doBecomeIdle(); //The accelerator becomes idle now! We're waiting for input!
+		}
 	}
 
 	if (unlikely(((et34k(getActiveVGA())->W32_acceleratorbusy&2)==0) || (et34k(getActiveVGA())->W32_MMUsuspendterminatefilled && ((et34k(getActiveVGA())->W32_acceleratorbusy&3)==0)))) //Accelerator was busy or suspending/terminating while allowed to?
@@ -2536,6 +2620,7 @@ void Tseng4k_tickAccelerator_active()
 				et34k(getActiveVGA())->W32_ACLregs.ACL_active = 0; //ACL is inactive!
 				if ((et34k(getActiveVGA())->W32_MMUsuspendterminatefilled & 0x10) == 0x00) //Suspend requested without terminate?
 				{
+					Tseng4k_status_clearvirtualbus(); //Clear the virtual bus!
 					Tseng4k_status_acceleratorsuspended(); //Accelerator has been suspended!
 					Tseng4k_status_XYblockTerminalCount(); //Terminal count reached during the tranfer!
 					et4k_emptyqueuedummy = Tseng4k_doEmptyQueue(); //Empty the queue if possible for the new operation to start! Since interrupts are disabled, doesn't trigger an IRQ!
@@ -2546,6 +2631,7 @@ void Tseng4k_tickAccelerator_active()
 				Tseng4k_status_suspendterminatefinished(); //Suspend/terminate finished.
 				if ((terminationrequested & 0x10) == 0x10) //Terminate requested?
 				{
+					Tseng4k_status_clearvirtualbus(); //Clear the virtual bus!
 					//Documentation says that all ACL registers are returned to a state they were during the reset of the chip.
 					//All known registers are cleared by this command, returning to power-up state!
 					et34k(getActiveVGA())->W32_acceleratorwassuspended = 0; //The accelerator wasn't counted as busy anymore!
@@ -2578,6 +2664,7 @@ void Tseng4k_tickAccelerator_active()
 		//Abort if still processing! Otherwise, finish up below:
 		if (unlikely(((et34k(getActiveVGA())->W32_acceleratorbusy & 2) == 0) && et34k(getActiveVGA())->W32_ACLregs.ACL_active)) //Terminated a running tranafer?
 		{
+			Tseng4k_status_clearvirtualbus(); //Clear the virtual bus!
 			et34k(getActiveVGA())->W32_ACLregs.ACL_active = 0; //ACL is inactive!
 			Tseng4k_status_XYblockTerminalCount(); //Terminal count reached during the tranfer!
 			Tseng4k_doBecomeIdle(); //Accelerator becomes idle now!

@@ -33,6 +33,7 @@ typedef struct
 	uint_32 sourceYoffset; //Source Y offset
 	uint_32 destinationYoffset; //Destination Y offset
 	byte virtualbussize; //Virtual bus size, powers of 2! 0=1, 1=2, 2=4, 3=Reserved
+	byte virtualbussizecount; //Virtual bus size, powers of 2! 1, 2, 4!
 	byte XYdirection; //0=+1,+1; 1=-1,+1; 2=+1,-1; 3=-1,-1. Essentially bit 0=X direction, bit 1=Y direction. Set=Decreasing, Cleared=Increasing
 	byte Xpatternwrap; //Power of 2. more than 64 or less than 4 is none.
 	byte Ypatternwrap; //Power of 2. more than 8 is none.
@@ -164,10 +165,17 @@ typedef struct {
 	byte W32_MMUregisters[2][0x100]; //All W32 memory mapped registers! First is the queued registers(or non-queued). Second is the processing registers.
 	byte W32_performMMUoperationstart; //Perform a MMU-type operation start?
 	byte W32_MMUsuspendterminatefilled; //Is the suspend/terminate flag filled (alternative to the queue)?
-	FIFOBUFFER* W32_MMUqueue; //The actual queue that's maintained in the background with multiple entries!
+	FIFOBUFFER* W32_MMUqueue, *W32_virtualbusqueue; //The actual queue that's maintained in the background with multiple entries!
+	//Direct MMU queue being emptied below:
 	byte W32_MMUqueueval; //What value is stored inside the queue?
 	uint_32 W32_MMUqueueval_address; //What offset inside the queue is filled!
 	uint_32 W32_MMUqueueval_bankaddress; //Address for any bank, if supplied by an MMU aperture!
+	//Virtual bus queue being emptied below:
+	byte W32_VirtualBusCountLeft; //How much is left on the virtual bus size?
+	byte W32_virtualbusqueueval; //What value is stored inside the queue?
+	uint_32 W32_virtualbusqueueval_address; //What offset inside the queue is filled!
+	uint_32 W32_virtualbusqueueval_bankaddress; //Address for any bank, if supplied by an MMU aperture!
+	//Normal accelerator status:
 	byte W32_acceleratorbusy; //Is the accelerator started up in a processing? bit 0=ticking this clock,  bit 1=operation still in progress
 	byte W32_acceleratorwassuspended; //Were we busy on something?
 	byte W32_acceleratorleft; //How many ticks are left to process!
