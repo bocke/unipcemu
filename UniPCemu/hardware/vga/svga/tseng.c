@@ -2197,6 +2197,7 @@ byte et4k_stepy()
 	et34k(getActiveVGA())->W32_ACLregs.destinationaddress_backup = et34k(getActiveVGA())->W32_ACLregs.destinationaddress; //Save the new line on the destination address to jump back to!
 	if (et34k(getActiveVGA())->W32_ACLregs.Yposition>et34k(getActiveVGA())->W32_ACLregs.Ycount)
 	{
+		Tseng4k_status_clearvirtualbus(); //This clears the virtual bus!
 		//Leave Y position and addresses alone!
 		return 2; //Y count reached!
 	}
@@ -2236,6 +2237,10 @@ byte et4k_stepx()
 		et34k(getActiveVGA())->W32_ACLregs.sourcemap_x = et34k(getActiveVGA())->W32_ACLregs.sourcemap_x_backup; //Restore the backup!
 		et34k(getActiveVGA())->W32_acceleratorleft = 0; //Starting a new operation, so start with new byte data inputs!
 		result = 1 | (et4k_stepy()); //Step Y! X count reached!
+		if ((result & 2) == 0) //X overflow without Y overflow? Clear virtual bus!
+		{
+			Tseng4k_status_clearvirtualbus(); //This clears the virtual bus!
+		}
 		return result; //Give the result!
 	}
 	return 0; //No overflow!
