@@ -1,10 +1,11 @@
 Program ACLtest;
 Uses Dos, Crt;
-procedure setGraphicsMode;
+procedure setGraphicsMode(mode: byte);
 var
   r: registers;
 begin
-  r.ax := $002E;
+  r.ah := 0; (* Set graphics mode *)
+  r.al := mode; (* The mode to set *)
   intr($10, r);
 end;
 procedure setTextMode;
@@ -14,9 +15,10 @@ begin
   r.ax := $0003;
   intr($10, r);
 end;
-procedure enableACL;
+function enableACL: word; (* returns the distance between two scanlines in bytes *)
 var
-  b, x: byte;
+  b, x, offsetreg: byte;
+  result: word; (* the calculated result *)
 begin
   x := port[$3D4];
   port[$3BF] := $03;
@@ -25,9 +27,15 @@ begin
   b := port[$3D5];
   b := b or $28;
   port[$3D5] := b;
+  port[$3D4] := $13; (* offset register *)
+  offsetreg := port[$3D5]; (* retrieve it! *)
   port[$3D4] := x;
   port[$3BF] := $01;
-  port[$3D8] := $00; (* enable extensions *)
+  port[$3D8] := $00; (* disable extensions *)
+  result := offsetreg; (* take the offset register... *)
+  result := (result shl 3); (* times 2 for the MA offset, *)
+  (* times 4 for the VRAM address difference, so times 8. *)
+  enableACL := result; (* give the result *)
 end;
 procedure disableACL;
 var
@@ -125,11 +133,14 @@ begin
   port[$3CD] := b or (b shl 4); (* low bits *)
   port[$3CB] := c or (c shr 4); (* high bits *)
 end;
-procedure performtests;
+procedure performtests(lineoffset: word);
 var
   fontA: array[0..7] of byte;
   i: integer;
+  o: integer;
+  destYoffset: word;
 begin
+  destYoffset := lineoffset - 1; (* The destination Y offset is diff minus one *)
   fontA[0] := $30;
   fontA[1] := $78;
   fontA[2] := $CC;
@@ -153,7 +164,7 @@ begin
   writeACLregqueued24($84, $00, $00, $3f); (* Source address *)
   writeACLregqueued16($88, $00, $00); (* Pattern Y offset *)
   writeACLregqueued16($8A, $00, $00); (* Source Y offset *)
-  writeACLregqueued16($8C, $7F, $02); (* Destination Y offset *)
+  writeACLregqueued16($8C, (destYoffset and $ff), ((destYoffset shr 8) and $ff)); (* Destination Y offset *)
   writeACLregqueued($8E, $01); (* Virtual bus size *)
   writeACLregqueued($8F, $00); (* X/Y direction *)
   writeACLregqueued($90, $02); (* X/Y pattern wrap *)
@@ -177,11 +188,18 @@ begin
   (* Restore registers *)
   writeACLregunqueued($13, $00); (* Writing the text at location 0 in VRAM (start of active display) *)  
 end;
+procedure performtest(mode: byte);
+begin
+  setGraphicsMode(mode); (* Perform tests below using graphics mode requested *)
+  (* Start of the test *)
+  performtests(enableACL); (* Perform the tests using the ACL *)
+  waitforkeypress; (* Wait for a keypress *)
+  disableACL; (* Finish the accelerator to clean up *)
+  setTextMode; (* Return to text mode *)
+  (* End of the test *)
+end;
 Begin
-  setGraphicsMode;
-  enableACL;
-  performtests;
-  waitforkeypress;
-  disableACL;
-  setTextMode;
+  performtest($2E); (* Perform tests below using 256-color graphics mode 2E(640x480) *)
+  performtest($30); (* Perform tests below using 256-color graphics mode 30(800x600) *)
+  performtest($38); (* Perform tests below using 256-color graphics mode 38(1024x768) *)
 end.
