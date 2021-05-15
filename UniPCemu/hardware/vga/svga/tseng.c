@@ -1559,6 +1559,16 @@ byte Tseng4k_status_multiqueueFilled()
 	return 0; //Not filled!
 }
 
+byte Tseng4k_status_virtualbusmultiqueueFilled()
+{
+	uint_32 data1, data2;
+	if (peekfifobuffer32_2u(et34k(getActiveVGA())->W32_virtualbusqueue, &data1, &data2)) //Filled?
+	{
+		return ((data1 >> 24) & 0xFF); //The queue filled status!
+	}
+	return 0; //Not filled!
+}
+
 byte Tseng4k_status_readMultiQueue()
 {
 	uint_32 data1,data2;
@@ -2616,7 +2626,7 @@ void Tseng4k_tickAccelerator_active()
 		}
 	}
 
-	if (unlikely(((et34k(getActiveVGA())->W32_acceleratorbusy&2)==0) || (et34k(getActiveVGA())->W32_MMUsuspendterminatefilled && ((et34k(getActiveVGA())->W32_acceleratorbusy&3)==0)))) //Accelerator was busy or suspending/terminating while allowed to?
+	if (unlikely((((et34k(getActiveVGA())->W32_acceleratorbusy&2)==0) && (Tseng4k_status_virtualbusmultiqueueFilled()==0)) || (et34k(getActiveVGA())->W32_MMUsuspendterminatefilled && ((et34k(getActiveVGA())->W32_acceleratorbusy&3)==0)))) //Accelerator was busy or suspending/terminating while allowed to?
 	{
 		if (unlikely(et34k(getActiveVGA())->W32_MMUsuspendterminatefilled & 0x11)) //Suspend or Terminate requested?
 		{
