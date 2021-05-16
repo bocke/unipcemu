@@ -1700,8 +1700,14 @@ void Tseng4k_status_suspendterminatefinished()
 
 void Tseng4k_encodeAcceleratorRegisters(); //Prototype for becoming idle!
 
+byte Tseng4k_idlequeueresult = 0;
 void Tseng4k_doBecomeIdle() //Accelerator becomes idle!
 {
+	if (et34k(getActiveVGA())->W32_transferstartedbyMMU) //Started transfer by the MMU?
+	{
+		Tseng4k_idlequeueresult = Tseng4k_doEmptyQueue(); //Acnowledge and empty the queue: it's a start trigger instead!
+		et34k(getActiveVGA())->W32_transferstartedbyMMU = 0; //Not started by the MMU anymore!
+	}
 	if ((Tseng4k_status_multiqueueFilled()|et34k(getActiveVGA())->W32_MMUsuspendterminatefilled) == 0) //Queue isn't filled anymore while becoming idle?
 	{
 		Tseng4k_status_becameIdleAndQueueisempty(); //Became idle and queue is empty!
@@ -1892,6 +1898,7 @@ byte Tseng4k_writeMMUregisterUnqueued(byte address, byte value)
 				Tseng4k_startAccelerator(0); //Starting the accelerator!
 				Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO(), 2); //Starting a transfer! Make the accelerator active again!
 				et34k(getActiveVGA())->W32_mixmapposition = 0; //Initialize the mix map position to the first bit!
+				et34k(getActiveVGA())->W32_transferstartedbyMMU = 0; //Not started by the MMU!
 			}
 		}
 		if (address == 0x30) //Suspend operation requested?
@@ -1943,6 +1950,7 @@ byte Tseng4k_writeMMUregisterUnqueued(byte address, byte value)
 			if ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 0) //CPU data isn't used?
 			{
 				et4k_emptyqueuedummy = Tseng4k_doEmptyQueue(); //Acnowledge and empty the queue: it's a start trigger instead!
+				et34k(getActiveVGA())->W32_transferstartedbyMMU = 0; //Not started by the MMU anymore!
 			}
 		}
 		break;
@@ -2503,7 +2511,11 @@ void Tseng4k_tickAccelerator_active()
 				Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO(), 2); //Starting a transfer! Make the accelerator active as a new transfer!
 				if ((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 0) //CPU data isn't used?
 				{
-					result = Tseng4k_doEmptyQueue(); //Acnowledge and empty the queue: it's a start trigger instead!
+					et34k(getActiveVGA())->W32_transferstartedbyMMU = 1; //Started by the MMU!
+				}
+				else
+				{
+					et34k(getActiveVGA())->W32_transferstartedbyMMU = 0; //Not started by the MMU!
 				}
 				if (
 					((et34k(getActiveVGA())->W32_MMUregisters[1][0x9C] & 7) == 4) || //X count?

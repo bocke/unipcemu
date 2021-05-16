@@ -183,6 +183,7 @@ typedef struct {
 	byte W32_version; //What version of the W32 is emulated?
 	byte W32_mixmapposition; //Position in the mix map data currently to be processed!
 	byte W32_waitstateremainderofqueue; //Waitstate the remainder of the queue instead of ignoring or faulting?
+	byte W32_transferstartedbyMMU; //Type 0 transfer started by the MMU?
 } SVGA_ET34K_DATA; //Dosbox ET4000 saved data!
 
 //Retrieve a point to the et4k?
