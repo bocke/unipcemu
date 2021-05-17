@@ -1884,11 +1884,13 @@ byte Tseng4k_writeMMUregisterUnqueued(byte address, byte value)
 			if (value & 0x01) //Restore operation?
 			{
 				//This also discards the reported encoded internal pattern/source address registers!
+				//Report the previous initial pattern/source map address after this!
+				et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress = et34k(getActiveVGA())->W32_ACLregs.patternmapaddress; //Pattern address always reload!
+				et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress = et34k(getActiveVGA())->W32_ACLregs.sourcemapaddress; //Pattern address always reload!
+				//Now, perform the shift!
 				et4k_transferQueuedMMURegisters(); //Load the queued MMU registers!
 				Tseng4k_decodeAcceleratorRegisters(); //Decode the registers now loaded!
 				//This always loads the internal pattern/source registers with their initial values (performing a 3-stage shift twice in effect)!
-				et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress = et34k(getActiveVGA())->W32_ACLregs.patternmapaddress; //Pattern address always reload!
-				et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress = et34k(getActiveVGA())->W32_ACLregs.sourcemapaddress; //Pattern address always reload!
 				Tseng4k_encodeAcceleratorRegisters(); //Encode the registers now changed!
 			}
 			if (value & 0x08) //Resume operation? Can be combined with above restore operation!
