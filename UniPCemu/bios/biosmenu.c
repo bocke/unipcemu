@@ -5415,7 +5415,8 @@ void BIOS_VideoSettingsMenu() //Manage stuff concerning input.
 	case 7:
 	case 8:
 	case 9:
-	case 10: //Valid option?
+	case 10:
+	case 11: //Valid option?
 		switch (optioninfo[menuresult]) //What option has been chosen, since we are dynamic size?
 		{
 		case 0: //Direct plot setting?
