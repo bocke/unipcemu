@@ -1896,6 +1896,7 @@ byte Tseng4k_writeMMUregisterUnqueued(byte address, byte value)
 				Tseng4k_decodeAcceleratorRegisters(); //Decode the registers now loaded!
 				//This always loads the internal pattern/source registers with their initial values (performing a 3-stage shift twice in effect)!
 				Tseng4k_encodeAcceleratorRegisters(); //Encode the registers now changed!
+				Tseng4k_writeMMUregisterUnqueued(0x36, et34k(getActiveVGA())->W32_MMUregisters[0][0x36] & (~4)); //Make sure the XYST is lowered to be raised past this according to the documentation (By a write to XYST by the software).
 			}
 			if (value & 0x08) //Resume operation? Can be combined with above restore operation!
 			{
