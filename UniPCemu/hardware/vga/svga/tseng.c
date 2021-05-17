@@ -1669,10 +1669,10 @@ void Tseng4k_status_queueEmptied() //Queue has been emptied by processing?
 
 void Tseng4k_doBecomeIdle(); //Accelerator becomes idle! PROTOTYPE!
 
-void Tseng4k_status_suspendterminatecleared(byte is_suspendterminate)
+void Tseng4k_status_suspendterminatecleared(byte is_suspendterminate, byte oldsuspendterminate)
 {
 	byte wasfilled;
-	wasfilled = et34k(getActiveVGA())->W32_MMUsuspendterminatefilled; //Was the queue filled with us?
+	wasfilled = oldsuspendterminate; //Was the queue filled with us?
 	et34k(getActiveVGA())->W32_MMUsuspendterminatefilled &= ~is_suspendterminate; //Clear the requested flags!
 	if ((et34k(getActiveVGA())->W32_MMUsuspendterminatefilled == 0) && wasfilled) //Fully cleared now while we were filled?
 	{
@@ -1856,6 +1856,7 @@ byte et4k_emptyqueuedummy = 0;
 
 byte Tseng4k_writeMMUregisterUnqueued(byte address, byte value)
 {
+	byte oldsuspendterminate;
 	byte oldintstatus;
 	//Unhandled!
 	switch (address) //What register to read?
@@ -1936,14 +1937,15 @@ byte Tseng4k_writeMMUregisterUnqueued(byte address, byte value)
 				Tseng4k_status_queueFilled(0x10); //The queue has been filled for suspend/termination!
 			}
 
+			oldsuspendterminate = et34k(getActiveVGA())->W32_MMUsuspendterminatefilled; //Old suspend/terminate status!
 			//Now, check for lowering!
 			if ((value & 0x01) == 0) //Cleared suspend?
 			{
-				Tseng4k_status_suspendterminatecleared(0x01); //The suspend queue has been cleared!
+				Tseng4k_status_suspendterminatecleared(0x01, oldsuspendterminate); //The suspend queue has been cleared!
 			}
 			if ((value & 0x10) == 0) //Cleared terminate?
 			{
-				Tseng4k_status_suspendterminatecleared(0x10); //The terminate queue has been cleared!
+				Tseng4k_status_suspendterminatecleared(0x10, oldsuspendterminate); //The terminate queue has been cleared!
 			}
 		}
 		break;
