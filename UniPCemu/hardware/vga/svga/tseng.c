@@ -186,7 +186,7 @@ void et34k_updateDAC(SVGA_ET34K_DATA* et34kdata, byte val)
 byte Tseng34K_writeIO(word port, byte val)
 {
 	uint_32 memsize;
-	byte result;
+	byte result=0;
 	SVGA_ET34K_DATA *et34kdata = et34k_data; //The et4k data!
 // Tseng ET4K implementation
 	if (((getActiveVGA()->registers->VGA_enabled) == 0) && (port!=0x46E8) && (port!=0x3C3)) return 0; //Disabled I/O?
