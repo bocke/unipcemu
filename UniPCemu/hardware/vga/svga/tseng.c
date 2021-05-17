@@ -1671,13 +1671,18 @@ void Tseng4k_doBecomeIdle(); //Accelerator becomes idle! PROTOTYPE!
 
 void Tseng4k_status_suspendterminatecleared(byte is_suspendterminate)
 {
+	byte wasfilled;
+	wasfilled = et34k(getActiveVGA())->W32_MMUsuspendterminatefilled; //Was the queue filled with us?
 	et34k(getActiveVGA())->W32_MMUsuspendterminatefilled &= ~is_suspendterminate; //Clear the requested flags!
-	Tseng4k_status_queueEmptied(); //Check for emptying of the queue!
-	if ((et34k(getActiveVGA())->W32_acceleratorbusy & 2) == 0) //Fully suspended?
+	if ((et34k(getActiveVGA())->W32_MMUsuspendterminatefilled == 0) && wasfilled) //Fully cleared now while we were filled?
 	{
-		Tseng4k_doBecomeIdle(); //Accelerator became idle!
+		Tseng4k_status_queueEmptied(); //Check for emptying of the queue!
+		if ((et34k(getActiveVGA())->W32_acceleratorbusy & 2) == 0) //Fully suspended?
+		{
+			Tseng4k_doBecomeIdle(); //Accelerator became idle!
+		}
+		Tseng4k_checkAcceleratorActivity(); //Check for accelerator activity!
 	}
-	Tseng4k_checkAcceleratorActivity(); //Check for accelerator activity!
 }
 
 byte Tseng4k_doEmptyQueue() //Try and perform an emptying of the queue! Result: 1=Was filled, 0=Was already empty
@@ -1918,14 +1923,11 @@ byte Tseng4k_writeMMUregisterUnqueued(byte address, byte value)
 		}
 		if (address == 0x30) //Suspend operation requested?
 		{
+			//Check for raising first!
 			if (value & 0x01) //Raised suspend?
 			{
 				//The accelerator should now be suspending operation and become idle!
 				Tseng4k_status_queueFilled(0x01); //The queue has been filled for suspend/termination!
-			}
-			else //Lowered suspend?
-			{
-				Tseng4k_status_suspendterminatecleared(0x01); //The queue has been cleared!
 			}
 
 			if (value & 0x10) //Raised terminate?
@@ -1933,9 +1935,15 @@ byte Tseng4k_writeMMUregisterUnqueued(byte address, byte value)
 				//The accelerator should now be terminating operation and become idle!
 				Tseng4k_status_queueFilled(0x10); //The queue has been filled for suspend/termination!
 			}
-			else //Lowered terminate?
+
+			//Now, check for lowering!
+			if ((value & 0x01) == 0) //Cleared suspend?
 			{
-				Tseng4k_status_suspendterminatecleared(0x10); //The queue has been cleared!
+				Tseng4k_status_suspendterminatecleared(0x01); //The suspend queue has been cleared!
+			}
+			if ((value & 0x10) == 0) //Cleared terminate?
+			{
+				Tseng4k_status_suspendterminatecleared(0x10); //The terminate queue has been cleared!
 			}
 		}
 		break;
