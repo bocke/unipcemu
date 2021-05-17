@@ -1900,6 +1900,13 @@ byte Tseng4k_writeMMUregisterUnqueued(byte address, byte value)
 			if (value & 0x08) //Resume operation? Can be combined with above restore operation!
 			{
 				et4k_emptyqueuedummy = Tseng4k_doEmptyQueue(); //Empty the queue if possible for the new operation to start!
+				if (value & 0x01) //Not Resume without restore (so not the backup/restore handler)? This is the part past the handler as documented in the documentation!
+				{
+					//Modify into a 3-stage shift! Filling the internal map registers!
+					//Report the previous initial pattern/source map address after this!
+					et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress = et34k(getActiveVGA())->W32_ACLregs.patternmapaddress; //Pattern address always reload!
+					et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress = et34k(getActiveVGA())->W32_ACLregs.sourcemapaddress; //Pattern address always reload!
+				}
 				Tseng4k_startAccelerator(0); //Starting the accelerator by Resume trigger!
 				Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO(), 2); //Starting a transfer! Make the accelerator active again!
 				et34k(getActiveVGA())->W32_mixmapposition = 0; //Initialize the mix map position to the first bit!
@@ -1946,8 +1953,10 @@ byte Tseng4k_writeMMUregisterUnqueued(byte address, byte value)
 		SETBITS(et34k(getActiveVGA())->W32_MMUregisters[0][0x36], 5, 0x7, GETBITS(value, 5, 0x7)); //Bits 5-7 are set directly to whatever is written (marked as Reserved)!
 		if ((value & 4) && ((et34k(getActiveVGA())->W32_MMUregisters[0][0x36] & 4) == 0)) //Raised XYST?
 		{
+			Tseng4k_startAccelerator(0); //Starting the accelerator by Resume trigger!
 			Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO(), 1); //Starting a transfer, don't become an active accelerator yet!
-			//Don't start the accelerator again by this write! This is to be done by a resume command!
+			et34k(getActiveVGA())->W32_mixmapposition = 0; //Initialize the mix map position to the first bit!
+			et34k(getActiveVGA())->W32_transferstartedbyMMU = 0; //Not started by the MMU!
 		}
 		else if (((value & 4) == 0) && (et34k(getActiveVGA())->W32_MMUregisters[0][0x36] & 4)) //Lowered XYST?
 		{
