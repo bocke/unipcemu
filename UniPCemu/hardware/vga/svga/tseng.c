@@ -1485,6 +1485,7 @@ void Tseng4k_status_startXYblock(byte is_screentoscreen, byte doResume) //Starti
 			et34k(getActiveVGA())->W32_ACLregs.W32_newXYblock = 1; //Starting a new transfer now!
 		}
 		et34k(getActiveVGA())->W32_ACLregs.ACL_active = 1; //Make the accelerator active!
+		et34k(getActiveVGA())->W32_ACLregs.XYSTtriggersstart = 0; //XYST doesn't trigger a start!
 	}
 	et34k(getActiveVGA())->W32_MMUregisters[0][0x36] |= 0x04; //Raise X/Y status!
 	et34k(getActiveVGA())->W32_MMUregisters[0][0x36] &= ~0x08; //To set!
@@ -1896,7 +1897,7 @@ byte Tseng4k_writeMMUregisterUnqueued(byte address, byte value)
 				Tseng4k_decodeAcceleratorRegisters(); //Decode the registers now loaded!
 				//This always loads the internal pattern/source registers with their initial values (performing a 3-stage shift twice in effect)!
 				Tseng4k_encodeAcceleratorRegisters(); //Encode the registers now changed!
-				Tseng4k_writeMMUregisterUnqueued(0x36, et34k(getActiveVGA())->W32_MMUregisters[0][0x36] & (~4)); //Make sure the XYST is lowered to be raised past this according to the documentation (By a write to XYST by the software).
+				et34k(getActiveVGA())->W32_ACLregs.XYSTtriggersstart = 1; //XYST triggers a start after this!
 			}
 			if (value & 0x08) //Resume operation? Can be combined with above restore operation!
 			{
@@ -1912,6 +1913,7 @@ byte Tseng4k_writeMMUregisterUnqueued(byte address, byte value)
 				Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO(), 2); //Starting a transfer! Make the accelerator active again!
 				et34k(getActiveVGA())->W32_mixmapposition = 0; //Initialize the mix map position to the first bit!
 				et34k(getActiveVGA())->W32_transferstartedbyMMU = 0; //Not started by the MMU!
+				et34k(getActiveVGA())->W32_ACLregs.XYSTtriggersstart = 0; //XYST doesn't trigger a start!
 			}
 		}
 		if (address == 0x30) //Suspend operation requested?
@@ -1952,7 +1954,14 @@ byte Tseng4k_writeMMUregisterUnqueued(byte address, byte value)
 		break;
 	case 0x36: //ACL Accelerator Status Register
 		SETBITS(et34k(getActiveVGA())->W32_MMUregisters[0][0x36], 5, 0x7, GETBITS(value, 5, 0x7)); //Bits 5-7 are set directly to whatever is written (marked as Reserved)!
-		if ((value & 4) && ((et34k(getActiveVGA())->W32_MMUregisters[0][0x36] & 4) == 0)) //Raised XYST?
+		if ((value & 4) && (!et34k(getActiveVGA())->W32_ACLregs.XYSTtriggersstart)) //Raised/SET XYST while not allowing XYST to trigger a start?
+		{
+			Tseng4k_startAccelerator(0); //Starting the accelerator by Resume trigger!
+			Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO(), 0); //Starting a transfer, special active case for triggering by resume! Don't trigger it to start yet (waiting for a resume first)!
+			et34k(getActiveVGA())->W32_mixmapposition = 0; //Initialize the mix map position to the first bit!
+			et34k(getActiveVGA())->W32_transferstartedbyMMU = 0; //Not started by the MMU!
+		}
+		else if ((value & 4) && (et34k(getActiveVGA())->W32_ACLregs.XYSTtriggersstart)) //Raised/SET XYST while allowing XYST to trigger a start?
 		{
 			Tseng4k_startAccelerator(0); //Starting the accelerator by Resume trigger!
 			Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO(), 1); //Starting a transfer, special active case for triggering by resume!
@@ -2124,6 +2133,7 @@ byte Tseng4k_blockQueueAccelerator()
 		if (et34k(getActiveVGA())->W32_acceleratorleft == 0) //Nothing is processing? We're idling!
 		{
 			et34k(getActiveVGA())->W32_ACLregs.ACL_active = 0; //ACL is inactive because we're not processing! Count any inputs to the queue as a start of a new operation!
+			et34k(getActiveVGA())->W32_ACLregs.XYSTtriggersstart = 1; //XYST triggers a start!
 		}
 		return 1; //Always blocking the queue!
 	}
@@ -2652,12 +2662,14 @@ void Tseng4k_tickAccelerator_active()
 				{
 					Tseng4k_status_clearvirtualbus(); //Clear the virtual bus!
 					Tseng4k_status_acceleratorsuspended(); //Accelerator has been suspended!
-					Tseng4k_status_XYblockTerminalCount(); //Terminal count reached during the tranfer!
+					//XYST isn't cleared when already set during a transfer, to properly resume when resumed?
+					//Tseng4k_status_XYblockTerminalCount(); //Terminal count reached during the tranfer!
 					et4k_emptyqueuedummy = Tseng4k_doEmptyQueue(); //Empty the queue if possible for the new operation to start! Since interrupts are disabled, doesn't trigger an IRQ!
 					Tseng4k_encodeAcceleratorRegisters(); //Encode the registers, updating them for the CPU!
 				}
 				terminationrequested = et34k(getActiveVGA())->W32_MMUsuspendterminatefilled; //Was termination requested?
 				Tseng4k_status_suspendterminatefinished(); //Suspend/terminate finished.
+				et34k(getActiveVGA())->W32_ACLregs.XYSTtriggersstart = 0; //XYST doesn't trigger a start!
 				if ((terminationrequested & 0x10) == 0x10) //Terminate requested?
 				{
 					Tseng4k_status_clearvirtualbus(); //Clear the virtual bus!
@@ -2694,6 +2706,7 @@ void Tseng4k_tickAccelerator_active()
 		{
 			Tseng4k_status_clearvirtualbus(); //Clear the virtual bus!
 			et34k(getActiveVGA())->W32_ACLregs.ACL_active = 0; //ACL is inactive!
+			et34k(getActiveVGA())->W32_ACLregs.XYSTtriggersstart = 1; //XYST triggers a start!
 			Tseng4k_status_XYblockTerminalCount(); //Terminal count reached during the tranfer!
 			Tseng4k_doBecomeIdle(); //Accelerator becomes idle now!
 			Tseng4k_processRegisters_finished();
