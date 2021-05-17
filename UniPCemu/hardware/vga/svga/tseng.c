@@ -1954,7 +1954,7 @@ byte Tseng4k_writeMMUregisterUnqueued(byte address, byte value)
 		if ((value & 4) && ((et34k(getActiveVGA())->W32_MMUregisters[0][0x36] & 4) == 0)) //Raised XYST?
 		{
 			Tseng4k_startAccelerator(0); //Starting the accelerator by Resume trigger!
-			Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO(), 1); //Starting a transfer, don't become an active accelerator yet!
+			Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO(), 1); //Starting a transfer, special active case for triggering by resume!
 			et34k(getActiveVGA())->W32_mixmapposition = 0; //Initialize the mix map position to the first bit!
 			et34k(getActiveVGA())->W32_transferstartedbyMMU = 0; //Not started by the MMU!
 		}
