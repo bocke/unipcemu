@@ -1385,6 +1385,7 @@ byte Tseng4k_readMMUregister(byte address, byte *result)
 		*result = et34k(getActiveVGA())->W32_MMUregisters[0][address & 0xFF]; //Get the register!
 		break;
 	case 0x31: //ACL Operation State Register (W/O?)
+		//Floating the bus?
 		break;
 	case 0x32: //ACL Sync Enable Register
 	case 0x34: //ACL Interrupt Mask Register
@@ -1437,6 +1438,9 @@ byte Tseng4k_readMMUregister(byte address, byte *result)
 	case 0xAA:
 	case 0xAB: //ACL Internal Source Address Register (R/O)
 		*result = et34k(getActiveVGA())->W32_MMUregisters[0][address & 0xFF]; //Get the register! Unqueued registers!
+		break;
+	default:
+		//Unmapped! Floating the bus!
 		break;
 	}
 	return 1; //Handled!
