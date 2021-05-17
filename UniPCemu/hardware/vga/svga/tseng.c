@@ -1783,19 +1783,23 @@ void Tseng4k_calcPatternSourceXY(uint_32* patternsourcex, uint_32* patternsource
 	*patternsourcex_backup = *patternsourcex;
 }
 
+//triggerfromMMU: 0=Resume operation, 1=MMU triggered.
 void Tseng4k_startAccelerator(byte triggerfromMMU)
 {
 	//Start the accelerator's function.
 	//Load all internal precalcs required and initialize all local required CPU-readonly variables.
 	Tseng4k_decodeAcceleratorRegisters(); //Load all registers into the accelerator's precalcs!
 	//TODO: Load the read-only variables for the accelerator to start using. Also depends on the reloadPatternAddress and reloadSourceAddress ACL settings.
-	if (et34k(getActiveVGA())->W32_ACLregs.reloadPatternAddress == 0) //To reload the pattern address?
+	if (triggerfromMMU) //Only reload Source/Pattern address when not a resume operation!
 	{
-		et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress = et34k(getActiveVGA())->W32_ACLregs.patternmapaddress; //Pattern address reload!
-	}
-	if (et34k(getActiveVGA())->W32_ACLregs.reloadSourceAddress == 0) //To reload the pattern address?
-	{
-		et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress = et34k(getActiveVGA())->W32_ACLregs.sourcemapaddress; //Pattern address reload!
+		if (et34k(getActiveVGA())->W32_ACLregs.reloadPatternAddress == 0) //To reload the pattern address?
+		{
+			et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress = et34k(getActiveVGA())->W32_ACLregs.patternmapaddress; //Pattern address reload!
+		}
+		if (et34k(getActiveVGA())->W32_ACLregs.reloadSourceAddress == 0) //To reload the pattern address?
+		{
+			et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress = et34k(getActiveVGA())->W32_ACLregs.sourcemapaddress; //Pattern address reload!
+		}
 	}
 	//Perform what wrapping?
 	et34k(getActiveVGA())->W32_ACLregs.patternwrap_x = Tseng4k_wrap_x[et34k(getActiveVGA())->W32_ACLregs.Xpatternwrap]; //What horizontal wrapping to use!
@@ -1896,7 +1900,7 @@ byte Tseng4k_writeMMUregisterUnqueued(byte address, byte value)
 			if (value & 0x08) //Resume operation? Can be combined with above restore operation!
 			{
 				et4k_emptyqueuedummy = Tseng4k_doEmptyQueue(); //Empty the queue if possible for the new operation to start!
-				Tseng4k_startAccelerator(0); //Starting the accelerator!
+				Tseng4k_startAccelerator(0); //Starting the accelerator by Resume trigger!
 				Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO(), 2); //Starting a transfer! Make the accelerator active again!
 				et34k(getActiveVGA())->W32_mixmapposition = 0; //Initialize the mix map position to the first bit!
 				et34k(getActiveVGA())->W32_transferstartedbyMMU = 0; //Not started by the MMU!
@@ -1991,18 +1995,6 @@ byte Tseng4k_writeMMUregisterUnqueued(byte address, byte value)
 	case 0xA3: //ACL Destination Address Register
 		Tseng4k_queuedRegisterModified(); //Modified queue!
 		et34k(getActiveVGA())->W32_MMUregisters[0][address & 0xFF] = value; //Set the register, queued!
-		/*
-		if (address == 0xA3) //Operation state ASEN enabled? and Final byte of the ACL Destination Address Register written?
-		{
-			et4k_transferQueuedMMURegisters(); //Load the queued registers to become active!
-			//Start a new operation!
-			et4k_emptyqueuedummy = Tseng4k_doEmptyQueue(); //Empty the queue if possible for the new operation to start!
-			Tseng4k_startAccelerator(0); //Starting the accelerator!
-			Tseng4k_status_startXYblock(Tseng4k_accelerator_calcSSO(), 1); //Starting a transfer! Make the accelerator active!
-			et34k(getActiveVGA())->W32_mixmapposition = 0; //Initialize the mix map position to the first bit!
-			et34k(getActiveVGA())->W32_ACLregs.Xposition = et34k(getActiveVGA())->W32_ACLregs.Yposition = 0; //Initialize the position!
-		}
-		*/
 		//ET4000/W32i: 2.11.2 Starting an Accelerator Operation says this is caused by writes to the MMU aperture and Accelerator Operation State Register only!
 		break;
 	case 0xA4:
