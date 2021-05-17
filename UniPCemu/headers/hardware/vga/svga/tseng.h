@@ -177,7 +177,6 @@ typedef struct {
 	uint_32 W32_virtualbusqueueval_bankaddress; //Address for any bank, if supplied by an MMU aperture!
 	//Normal accelerator status:
 	byte W32_acceleratorbusy; //Is the accelerator started up in a processing? bit 0=ticking this clock,  bit 1=operation still in progress
-	byte W32_acceleratorwassuspended; //Were we busy on something?
 	byte W32_acceleratorleft; //How many ticks are left to process!
 	ET4000_W32_ACL_PRECALCS W32_ACLregs; //ACL registers used during rendering
 	byte W32_version; //What version of the W32 is emulated?

@@ -1485,7 +1485,6 @@ void Tseng4k_status_startXYblock(byte is_screentoscreen, byte doResume) //Starti
 			et34k(getActiveVGA())->W32_ACLregs.W32_newXYblock = 1; //Starting a new transfer now!
 		}
 		et34k(getActiveVGA())->W32_ACLregs.ACL_active = 1; //Make the accelerator active!
-		et34k(getActiveVGA())->W32_acceleratorwassuspended = 0; //We weren't suspended!
 	}
 	et34k(getActiveVGA())->W32_MMUregisters[0][0x36] |= 0x04; //Raise X/Y status!
 	et34k(getActiveVGA())->W32_MMUregisters[0][0x36] &= ~0x08; //To set!
@@ -1884,13 +1883,11 @@ byte Tseng4k_writeMMUregisterUnqueued(byte address, byte value)
 		{
 			if (value & 0x01) //Restore operation?
 			{
+				//This also discards the reported encoded internal pattern/source address registers!
 				et4k_transferQueuedMMURegisters(); //Load the queued MMU registers!
 				Tseng4k_decodeAcceleratorRegisters(); //Decode the registers now loaded!
-				if (et34k(getActiveVGA())->W32_acceleratorwassuspended) //Were we busy? We're part of the state-save interrupt handler as the ET4000/W32i documentation provides in 2.11.8.1 State-Save Interrupt Handler
-				{
-					Tseng4k_processRegisters_finished(); //Load the internal registers into the reported registers when requested?
-				}
 				Tseng4k_encodeAcceleratorRegisters(); //Encode the registers now changed!
+				//This also loads the Initial pattern/source address registers for the CPU to view by loading them into the reported registers!
 			}
 			if (value & 0x08) //Resume operation? Can be combined with above restore operation!
 			{
@@ -2475,7 +2472,6 @@ void Tseng4k_processRegisters_finished()
 	//Move the internal registers back to the readable ones!
 	et34k(getActiveVGA())->W32_ACLregs.patternmapaddress = (et34k(getActiveVGA())->W32_ACLregs.internalpatternaddress & 0x3FFFFF); //Internal Pattern address
 	et34k(getActiveVGA())->W32_ACLregs.sourcemapaddress = (et34k(getActiveVGA())->W32_ACLregs.internalsourceaddress & 0x3FFFFF); //Internal Pattern address
-	et34k(getActiveVGA())->W32_acceleratorwassuspended = 0; //We weren't busy the next time this is tried!
 }
 
 void Tseng4k_tickAccelerator_active()
@@ -2653,7 +2649,6 @@ void Tseng4k_tickAccelerator_active()
 					Tseng4k_status_XYblockTerminalCount(); //Terminal count reached during the tranfer!
 					et4k_emptyqueuedummy = Tseng4k_doEmptyQueue(); //Empty the queue if possible for the new operation to start! Since interrupts are disabled, doesn't trigger an IRQ!
 					Tseng4k_encodeAcceleratorRegisters(); //Encode the registers, updating them for the CPU!
-					et34k(getActiveVGA())->W32_acceleratorwassuspended = 1; //The accelerator was counted as busy! The next queue load will load the internal registers into the reported internal registers!
 				}
 				terminationrequested = et34k(getActiveVGA())->W32_MMUsuspendterminatefilled; //Was termination requested?
 				Tseng4k_status_suspendterminatefinished(); //Suspend/terminate finished.
@@ -2662,7 +2657,6 @@ void Tseng4k_tickAccelerator_active()
 					Tseng4k_status_clearvirtualbus(); //Clear the virtual bus!
 					//Documentation says that all ACL registers are returned to a state they were during the reset of the chip.
 					//All known registers are cleared by this command, returning to power-up state!
-					et34k(getActiveVGA())->W32_acceleratorwassuspended = 0; //The accelerator wasn't counted as busy anymore!
 					memset(&et34k(getActiveVGA())->W32_MMUregisters[1][0x80], 0, (sizeof(et34k(getActiveVGA())->W32_MMUregisters[1][0]) * 0x80)); //Clear the internal registers!
 					memset(&et34k(getActiveVGA())->W32_MMUregisters[0][0x80], 0, (sizeof(et34k(getActiveVGA())->W32_MMUregisters[0][0]) * 0x80)); //Clear the queue itself!
 					//memset(&et34k(getActiveVGA())->W32_MMUregisters[0][0], 0, 0x14); //Clear the MMU base registers!
