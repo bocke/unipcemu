@@ -853,17 +853,25 @@ void cleanDMA()
 
 void updateDMA(uint_32 MHZ14passed, uint_32 CPUcyclespassed)
 {
+	byte notblocking_DMAticks, kept_SI;
 	uint_32 timingpassed[2]; //Timing passed switch!
 	timingpassed[0] = MHZ14passed; //First option: 14MHz clock base!
 	timingpassed[1] = CPUcyclespassed; //Second option: CPU cycle base!
 	INLINEREGISTER uint_32 timing;
 	timing = DMA_timing; //Load current timing!
 	timing += timingpassed[DMA_halfCPUclock]; //How many ticks have passed?
+	notblocking_DMAticks = 1;
 	if (unlikely((timing>=3) && (DMA_halfCPUclock==0))) //To tick at 14MHz rate?
 	{
 		do //While ticking?
 		{
-			DMA_tick(); //Tick the DMA!
+			if (notblocking_DMAticks) //Not blocking more DMA ticks?
+			{
+				kept_SI = (DMA_S == 0); //SI state?
+				DMA_tick(); //Tick the DMA!
+				kept_SI &= (DMA_S == 0); //Still SI state?
+				notblocking_DMAticks &= !kept_SI; //Stop trying to tick if the SI state didn't change!
+			}
 			timing -= 3; //Tick the DMA at 4.77MHz!
 		} while (likely(timing>=3)); //Continue ticking?
 	}
@@ -871,8 +879,15 @@ void updateDMA(uint_32 MHZ14passed, uint_32 CPUcyclespassed)
 	{
 		do //While ticking?
 		{
-			DMA_tick(); //Tick the DMA!
-		} while (likely(timing-=2)); //Continue ticking?
+			if (notblocking_DMAticks) //Not blocking more DMA ticks?
+			{
+				kept_SI = (DMA_S == 0); //SI state?
+				DMA_tick(); //Tick the DMA!
+				kept_SI &= (DMA_S == 0); //Still SI state?
+				notblocking_DMAticks &= !kept_SI; //Stop trying to tick if the SI state didn't change!
+			}
+			timing -= 2;
+		} while (likely(timing>=2)); //Continue ticking?
 	}
 	DMA_timing = timing; //Save the new timing to use!
 }
