@@ -152,7 +152,7 @@ extern byte allow_debuggerstep; //Disabled by default: needs to be enabled by ou
 #endif
 //Timeout CPU time and instruction interval! 44100Hz or 1ms!
 #define TIMEOUT_INTERVAL 100
-#define TIMEOUT_TIME 1000000
+#define TIMEOUT_TIME 16000000
 
 //Allow GPU rendering (to show graphics)?
 #define ALLOW_GRAPHICS 1
@@ -1146,7 +1146,7 @@ OPTINLINE byte coreHandler()
 	currenttiming += likely(((haswindowactive&2)|backgroundpolicy))?getnspassed(&CPU_timing):0; //Check for any time that has passed to emulate! Don't emulate when not allowed to run, keeping emulation paused!
 	unlock(LOCK_INPUT);
 	uint_64 currentCPUtime = (uint_64)currenttiming; //Current CPU time to update to!
-	uint_64 timeoutCPUtime = currentCPUtime+(currentCPUtime-last_timing); //We're timed out this far in the future (our timing itself)!
+	uint_64 timeoutCPUtime = currentCPUtime+TIMEOUT_TIME; //We're timed out this far in the future (our timing itself)!
 
 	DOUBLE instructiontime,timeexecuted=0.0f,effectiveinstructiontime; //How much time did the instruction last?
 	byte timeout = TIMEOUT_INTERVAL; //Check every 10 instructions for timeout!
