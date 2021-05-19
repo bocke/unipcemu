@@ -4240,6 +4240,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 						switch (TCP_SendData(modem.connectionid, datatotransmit)) //Send the data?
 						{
 						case 0: //Failed to send?
+							break; //Simply keep retrying until we can send it!
 							modem.connected = 0; //Not connected anymore!
 							if (PacketServer_running == 0) //Not running a packet server?
 							{
@@ -4356,6 +4357,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 							switch (TCP_SendData(Packetserver_clients[connectedclient].connectionid, datatotransmit)) //Send the data?
 							{
 							case 0: //Failed to send?
+								break; //Simply keep retrying until we can send it!
 							packetserver_autherror: //Packet server authentication error?
 								if (PacketServer_running == 0) //Not running a packet server?
 								{
