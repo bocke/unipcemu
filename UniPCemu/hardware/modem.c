@@ -1885,6 +1885,11 @@ void modem_executeCommand() //Execute the currently loaded AT command, if it's v
 				safestrcpy((char *)&number[0],sizeof(number),(char *)&modem.ATcommandoriginalcase[pos]); //Set the number to dial, in the original case!
 				if (safestrlen((char *)&number[0],sizeof(number)) < 2 && number[0]) //Maybe a phone book entry? This is for easy compatiblity for quick dial functionality on unsupported software!
 				{
+					if (number[0] == ';') //Dialing ';', which means 0?
+					{
+						number[0] = '0'; //Replace with a proper compatible 0 instead!
+						dialproperties = 0; //Reset dial properties to not use it!
+					}
 					posbackup = pos; //Save the position!
 					if (modemcommand_readNumber(&pos, &n0)) //Read a phonebook entry?
 					{
