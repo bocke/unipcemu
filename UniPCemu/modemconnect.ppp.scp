@@ -133,6 +133,7 @@ do_ready:
 
     ; Note that we fall through to our main loop here,
     ; which will exit if we are successful.
+    goto resume
 
 start:
    waitfor username_prompt then do_username until 10
