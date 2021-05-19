@@ -136,7 +136,9 @@ do_ready:
     goto resume
 
 start:
-   waitfor username_prompt then do_username until 10
+   waitfor username_prompt then do_username,
+               protocol_prompt then do_protocol
+   until 10
    if !$SUCCESS then
    goto do_username
    endif
