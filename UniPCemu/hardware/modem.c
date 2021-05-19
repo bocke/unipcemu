@@ -2039,11 +2039,7 @@ void modem_executeCommand() //Execute the currently loaded AT command, if it's v
 							modem_hangup(); //Hang up, if required!
 						}
 					}
-					else
-					{
-						modem_responseResult(MODEMRESULT_ERROR); //Error!
-						return; //Abort!
-					}
+					//Not connected? Simply report OK!
 				}
 				else
 				{
