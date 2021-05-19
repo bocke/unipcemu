@@ -106,6 +106,7 @@ typedef struct
 	char packetserver_staticIPstr_information[256];
 	DOUBLE packetserver_delay; //Delay for the packet server until doing something!
 	uint_32 packetserver_packetpos; //Current pos of sending said packet!
+	byte lastreceivedCRLFinput; //Last received input for CRLF detection!
 	byte packetserver_packetack;
 	sword connectionid; //The used connection!
 	byte used; //Used client record?
@@ -747,6 +748,7 @@ void initPacketServer(sword client) //Initialize the packet server for use when 
 	fifobuffer_clear(modem.inputdatabuffer[client]); //Nothing is received yet!
 	fifobuffer_clear(modem.outputbuffer[client]); //Nothing is sent yet!
 	Packetserver_clients[client].packetserver_slipprotocol = 0; //Initialize the protocol to the default value, which is unused!
+	Packetserver_clients[client].lastreceivedCRLFinput = 0; //Reset last received input to none of CR and LF!
 }
 
 byte packetserver_authenticate(sword client)
@@ -3079,12 +3081,17 @@ byte authstage_enterfield(DOUBLE timepassed, sword connectedclient, char* field,
 			readfifobuffer(modem.inputdatabuffer[connectedclient], &textinputfield); //Discard the input!
 			if ((textinputfield == '\r') || (textinputfield == '\n')) //Finished?
 			{
-				field[Packetserver_clients[connectedclient].packetserver_stage_byte] = '\0'; //Finish the string!
-				Packetserver_clients[connectedclient].packetserver_credentials_invalid |= Packetserver_clients[connectedclient].packetserver_stage_byte_overflown; //Overflow has occurred?
-				return 1; //Finished!
+				if ((Packetserver_clients[connectedclient].lastreceivedCRLFinput == 0) || (textinputfield == Packetserver_clients[connectedclient].lastreceivedCRLFinput)) //Not received LF of CRLF or CR of LFCR?
+				{
+					field[Packetserver_clients[connectedclient].packetserver_stage_byte] = '\0'; //Finish the string!
+					Packetserver_clients[connectedclient].packetserver_credentials_invalid |= Packetserver_clients[connectedclient].packetserver_stage_byte_overflown; //Overflow has occurred?
+					Packetserver_clients[connectedclient].lastreceivedCRLFinput = textinputfield; //This was what was last received as the CRLF input!
+					return 1; //Finished!
+				}
 			}
 			else
 			{
+				Packetserver_clients[connectedclient].lastreceivedCRLFinput = 0; //Clear the CRLF received flag: the last was neither!
 				if (isbackspace) //Backspace?
 				{
 					field[Packetserver_clients[connectedclient].packetserver_stage_byte] = '\0'; //Ending!
