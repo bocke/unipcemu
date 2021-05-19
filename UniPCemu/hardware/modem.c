@@ -709,6 +709,12 @@ void terminatePacketServer(sword client) //Cleanup the packet server after being
 	if (Packetserver_clients[client].packetserver_transmitbuffer==NULL) Packetserver_clients[client].packetserver_transmitsize = 0; //Clear!
 }
 
+void PacketServer_startNonDataEntryStage(sword connectedclient, byte stage)
+{
+	Packetserver_clients[connectedclient].packetserver_stage_byte = PACKETSTAGE_INITIALIZING; //Prepare for next step!
+	Packetserver_clients[connectedclient].packetserver_stage = stage; //The specified stage that's starting!
+}
+
 void initPacketServer(sword client) //Initialize the packet server for use when connected to!
 {
 #if defined(PACKETSERVER_ENABLED) && !defined(NOPCAP)
@@ -4141,7 +4147,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 								if (packetserver_authenticate(connectedclient)) //Authenticated?
 								{
 									Packetserver_clients[connectedclient].packetserver_slipprotocol = (strcmp(Packetserver_clients[connectedclient].packetserver_protocol, "ppp") == 0)?3:((strcmp(Packetserver_clients[connectedclient].packetserver_protocol, "ipxslip") == 0)?2:((strcmp(Packetserver_clients[connectedclient].packetserver_protocol, "slip") == 0) ? 1 : 0)); //Are we using the slip protocol?
-									Packetserver_clients[connectedclient].packetserver_stage = PACKETSTAGE_INFORMATION; //We're logged in!
+									PacketServer_startNonDataEntryStage(connectedclient, PACKETSTAGE_INFORMATION); //We're logged in!
 									PPPOE_requestdiscovery(connectedclient); //Start the discovery phase of the connected client!
 								}
 								else goto packetserver_autherror; //Authentication error!
@@ -4175,8 +4181,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 								{
 									if (++Packetserver_clients[connectedclient].packetserver_stage_byte == safestrlen(Packetserver_clients[connectedclient].packetserver_stage_str, sizeof(Packetserver_clients[connectedclient].packetserver_stage_str))) //Finished?
 									{
-										Packetserver_clients[connectedclient].packetserver_stage_byte = PACKETSTAGE_INITIALIZING; //Prepare for next step!
-										Packetserver_clients[connectedclient].packetserver_stage = PACKETSTAGE_READY;
+										PacketServer_startNonDataEntryStage(connectedclient,PACKETSTAGE_READY);
 									}
 								}
 							}
@@ -4203,9 +4208,8 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 								{
 									if (++Packetserver_clients[connectedclient].packetserver_stage_byte == safestrlen(Packetserver_clients[connectedclient].packetserver_stage_str, sizeof(Packetserver_clients[connectedclient].packetserver_stage_str))) //Finished?
 									{
-										Packetserver_clients[connectedclient].packetserver_stage = PACKETSTAGE_SLIPDELAY;
 										Packetserver_clients[connectedclient].packetserver_delay = PACKETSERVER_SLIP_DELAY; //Delay this much!
-										Packetserver_clients[connectedclient].packetserver_stage_byte = PACKETSTAGE_INITIALIZING; //Prepare for next step!
+										PacketServer_startNonDataEntryStage(connectedclient, PACKETSTAGE_SLIPDELAY);
 									}
 								}
 							}
@@ -4217,8 +4221,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 							if ((Packetserver_clients[connectedclient].packetserver_delay <= 0.0) || (!Packetserver_clients[connectedclient].packetserver_delay)) //Finished?
 							{
 								Packetserver_clients[connectedclient].packetserver_delay = (DOUBLE)0; //Finish the delay!
-								Packetserver_clients[connectedclient].packetserver_stage_byte = PACKETSTAGE_INITIALIZING; //Prepare for next step!
-								Packetserver_clients[connectedclient].packetserver_stage = PACKETSTAGE_PACKETS; //Start the SLIP service!
+								PacketServer_startNonDataEntryStage(connectedclient, PACKETSTAGE_PACKETS); //Start the SLIP service!
 							}
 						}
 					}
