@@ -709,7 +709,7 @@ void terminatePacketServer(sword client) //Cleanup the packet server after being
 	if (Packetserver_clients[client].packetserver_transmitbuffer==NULL) Packetserver_clients[client].packetserver_transmitsize = 0; //Clear!
 }
 
-void PacketServer_startNonDataEntryStage(sword connectedclient, byte stage)
+void PacketServer_startNextStage(sword connectedclient, byte stage)
 {
 	Packetserver_clients[connectedclient].packetserver_stage_byte = PACKETSTAGE_INITIALIZING; //Prepare for next step!
 	Packetserver_clients[connectedclient].packetserver_stage = stage; //The specified stage that's starting!
@@ -3030,8 +3030,7 @@ void authstage_startrequest(DOUBLE timepassed, sword connectedclient, char *requ
 		{
 			if (++Packetserver_clients[connectedclient].packetserver_stage_byte == safestrlen(Packetserver_clients[connectedclient].packetserver_stage_str, sizeof(Packetserver_clients[connectedclient].packetserver_stage_str))) //Finished?
 			{
-				Packetserver_clients[connectedclient].packetserver_stage_byte = PACKETSTAGE_INITIALIZING; //Prepare for next step!
-				Packetserver_clients[connectedclient].packetserver_stage = nextstage;
+				PacketServer_startNextStage(connectedclient,nextstage); //Prepare for next step!
 			}
 		}
 	}
@@ -3082,7 +3081,6 @@ byte authstage_enterfield(DOUBLE timepassed, sword connectedclient, char* field,
 			{
 				field[Packetserver_clients[connectedclient].packetserver_stage_byte] = '\0'; //Finish the string!
 				Packetserver_clients[connectedclient].packetserver_credentials_invalid |= Packetserver_clients[connectedclient].packetserver_stage_byte_overflown; //Overflow has occurred?
-				Packetserver_clients[connectedclient].packetserver_stage_byte = PACKETSTAGE_INITIALIZING; //Prepare for next step!
 				return 1; //Finished!
 			}
 			else
@@ -4103,7 +4101,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 							case 0: //Do nothing!
 								break;
 							case 1: //Finished stage!
-								Packetserver_clients[connectedclient].packetserver_stage = PACKETSTAGE_REQUESTPASSWORD;
+								PacketServer_startNextStage(connectedclient, PACKETSTAGE_REQUESTPASSWORD); //Next stage: password!
 								break;
 							case 2: //Send the output buffer!
 								goto sendoutputbuffer;
@@ -4123,7 +4121,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 							case 0: //Do nothing!
 								break;
 							case 1: //Finished stage!
-								Packetserver_clients[connectedclient].packetserver_stage = PACKETSTAGE_REQUESTPROTOCOL;
+								PacketServer_startNextStage(connectedclient, PACKETSTAGE_REQUESTPROTOCOL); //Next stage: protocol!
 								break;
 							case 2: //Send the output buffer!
 								goto sendoutputbuffer;
@@ -4147,7 +4145,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 								if (packetserver_authenticate(connectedclient)) //Authenticated?
 								{
 									Packetserver_clients[connectedclient].packetserver_slipprotocol = (strcmp(Packetserver_clients[connectedclient].packetserver_protocol, "ppp") == 0)?3:((strcmp(Packetserver_clients[connectedclient].packetserver_protocol, "ipxslip") == 0)?2:((strcmp(Packetserver_clients[connectedclient].packetserver_protocol, "slip") == 0) ? 1 : 0)); //Are we using the slip protocol?
-									PacketServer_startNonDataEntryStage(connectedclient, PACKETSTAGE_INFORMATION); //We're logged in!
+									PacketServer_startNextStage(connectedclient, PACKETSTAGE_INFORMATION); //We're logged in! Give information stage next!
 									PPPOE_requestdiscovery(connectedclient); //Start the discovery phase of the connected client!
 								}
 								else goto packetserver_autherror; //Authentication error!
@@ -4181,7 +4179,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 								{
 									if (++Packetserver_clients[connectedclient].packetserver_stage_byte == safestrlen(Packetserver_clients[connectedclient].packetserver_stage_str, sizeof(Packetserver_clients[connectedclient].packetserver_stage_str))) //Finished?
 									{
-										PacketServer_startNonDataEntryStage(connectedclient,PACKETSTAGE_READY);
+										PacketServer_startNextStage(connectedclient,PACKETSTAGE_READY); //Start ready stage next!
 									}
 								}
 							}
@@ -4209,7 +4207,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 									if (++Packetserver_clients[connectedclient].packetserver_stage_byte == safestrlen(Packetserver_clients[connectedclient].packetserver_stage_str, sizeof(Packetserver_clients[connectedclient].packetserver_stage_str))) //Finished?
 									{
 										Packetserver_clients[connectedclient].packetserver_delay = PACKETSERVER_SLIP_DELAY; //Delay this much!
-										PacketServer_startNonDataEntryStage(connectedclient, PACKETSTAGE_SLIPDELAY);
+										PacketServer_startNextStage(connectedclient, PACKETSTAGE_SLIPDELAY); //Start delay stage next before starting the server fully!
 									}
 								}
 							}
@@ -4221,7 +4219,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 							if ((Packetserver_clients[connectedclient].packetserver_delay <= 0.0) || (!Packetserver_clients[connectedclient].packetserver_delay)) //Finished?
 							{
 								Packetserver_clients[connectedclient].packetserver_delay = (DOUBLE)0; //Finish the delay!
-								PacketServer_startNonDataEntryStage(connectedclient, PACKETSTAGE_PACKETS); //Start the SLIP service!
+								PacketServer_startNextStage(connectedclient, PACKETSTAGE_PACKETS); //Start the SLIP service!
 							}
 						}
 					}
