@@ -40,9 +40,9 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 //Big enough output buffer for all ranges available!
 #define __SOUNDBLASTER_DSPOUTDATASIZE 0x10000
 
-//IRQ/DMA assignments! Use secondary IRQ8(to prevent collisions with existing hardware!) Bochs says IRQ5? Dosbox says IRQ7?
+//IRQ/DMA assignments! Use secondary IRQ8(to prevent collisions with existing hardware!) Bochs says IRQ5(0x35 in our case)? Dosbox says IRQ7(0x17 in our case)?
 //8-bit IRQ&DMA!
-#define __SOUNDBLASTER_IRQ8 0x35
+#define __SOUNDBLASTER_IRQ8 0x17
 #define __SOUNDBLASTER_DMA8 1
 
 #define ADPCM_FORMAT_NONE 0x00
