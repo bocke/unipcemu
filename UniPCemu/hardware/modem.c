@@ -318,7 +318,8 @@ void initPacketServerClients()
 #define PCAP_OPENFLAG_PROMISCUOUS 1
 #endif
 
-uint8_t ethif=255, pcap_enabled = 0;
+int_64 ethif = 0;
+uint8_t pcap_enabled = 0;
 byte pcap_receiverstate = 0;
 uint8_t dopktrecv = 0;
 uint16_t rcvseg, rcvoff, hdrlen, handpkt;
@@ -329,7 +330,7 @@ pcap_if_t *d;
 pcap_t *adhandle;
 const u_char *pktdata;
 struct pcap_pkthdr *hdr;
-int inum;
+int_64 inum;
 uint16_t curhandle = 0;
 char errbuf[PCAP_ERRBUF_SIZE];
 #endif
@@ -470,7 +471,7 @@ void initPcap() {
 	/* Print the list */
 	for (d= alldevs; d != NULL; d= d->next) {
 			i++;
-			if (ethif==255) {
+			if (ethif==0) {
 					dolog("ethernetcard","%d. %s", i, d->name);
 					if (d->description) {
 							dolog("ethernetcard"," (%s)", d->description);
@@ -486,7 +487,7 @@ void initPcap() {
 			return;
 		}
 
-	if (ethif==255) exit (0); //Failed: no ethernet card to use!
+	if (ethif==0) exit (0); //Failed: no ethernet card to use: only performing detection!
 	else inum = ethif;
 	dolog("ethernetcard","Using network interface %u.", ethif);
 
