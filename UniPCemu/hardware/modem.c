@@ -28,7 +28,19 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 #define HAVE_REMOTE
 //WPCAP is defined by support when using winpcap! Don't define it here anymore!
 #ifndef NOPCAP
+#ifndef WPCAP
+//Temporarily define WPCAP!
+#define WPCAP
+#define WPCAP_WASNTDEFINED
+//Force the DLL version to be used!
+#define PCAP_DLL
+#endif
 #include <pcap.h>
+#ifdef WPCAP_WASNTDEFINED
+//Undefine the temporary WPCAP define!
+#undef WPCAP
+#endif
+#include <tchar.h>
 #endif
 #endif
 
@@ -318,6 +330,7 @@ void initPacketServerClients()
 #define PCAP_OPENFLAG_PROMISCUOUS 1
 #endif
 
+byte dummy;
 int_64 ethif = 0;
 uint8_t pcap_enabled = 0;
 byte pcap_receiverstate = 0;
@@ -337,11 +350,32 @@ char errbuf[PCAP_ERRBUF_SIZE];
 uint8_t maclocal_default[6] = { 0xDE, 0xAD, 0xBE, 0xEF, 0x13, 0x37 }; //The MAC address of the modem we're emulating!
 byte pcap_verbose = 0;
 
+#ifdef WPCAP_WASNTDEFINED
+byte LoadNpcapDlls()
+{
+	_TCHAR npcap_dir[512];
+	UINT len;
+	len = GetSystemDirectory(npcap_dir, 480);
+	if (!len) {
+		return FALSE;
+	}
+	_tcscat_s(npcap_dir, 512, _T("\\Npcap"));
+	if (SetDllDirectory(npcap_dir) == 0) {
+		return FALSE;
+	}
+	return TRUE;
+}
+#endif
+
 void initPcap() {
 	memset(&net,0,sizeof(net)); //Init!
 	int i=0;
 	char *p;
 	byte IPnumbers[4];
+
+#ifdef WPCAP_WASNTDEFINED
+	dummy = LoadNpcapDlls(); //Try and load the npcap DLLs if present!
+#endif
 
 	/*
 
