@@ -455,9 +455,9 @@ void initPcap() {
 #if defined(PACKETSERVER_ENABLED) && !defined(NOPCAP)
 	/* Retrieve the device list from the local machine */
 #if defined(_WIN32)
-	if (pcap_findalldevs (&alldevs, errbuf) == -1)
+	if (pcap_findalldevs (&alldevs, errbuf))
 #else
-	if (pcap_findalldevs (&alldevs, errbuf) == -1)
+	if (pcap_findalldevs (&alldevs, errbuf))
 #endif
 		{
 			dolog("ethernetcard","Error in pcap_findalldevs_ex: %s", errbuf);
