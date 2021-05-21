@@ -18,16 +18,6 @@ You should have received a copy of the GNU General Public License
 along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "headers/hardware/modem.h" //Our basic definitions!
-
-#include "headers/support/zalloc.h" //Allocation support!
-#include "headers/hardware/uart.h" //UART support for the COM port!
-#include "headers/support/fifobuffer.h" //FIFO buffer support!
-#include "headers/support/locks.h" //Locking support!
-#include "headers/bios/bios.h" //BIOS support!
-#include "headers/support/tcphelper.h" //TCP support!
-#include "headers/support/log.h" //Logging support for errors!
-
 //Compile without PCAP support, but with server simulation when NOPCAP and PACKERSERVER_ENABLED is defined(essentially a server without login information and PCap support(thus no packets being sent/received))?
 /*
 #define NOPCAP
@@ -42,6 +32,20 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 #ifndef NOPCAP
 #include <pcap.h>
 #endif
+#endif
+
+//Remaining headers
+#include "headers/hardware/modem.h" //Our basic definitions!
+
+#include "headers/support/zalloc.h" //Allocation support!
+#include "headers/hardware/uart.h" //UART support for the COM port!
+#include "headers/support/fifobuffer.h" //FIFO buffer support!
+#include "headers/support/locks.h" //Locking support!
+#include "headers/bios/bios.h" //BIOS support!
+#include "headers/support/tcphelper.h" //TCP support!
+#include "headers/support/log.h" //Logging support for errors!
+
+#if defined(PACKETSERVER_ENABLED)
 #include <stdint.h>
 #include <stdlib.h>
 #endif
@@ -451,7 +455,7 @@ void initPcap() {
 #if defined(PACKETSERVER_ENABLED) && !defined(NOPCAP)
 	/* Retrieve the device list from the local machine */
 #if defined(_WIN32)
-	if (pcap_findalldevs_ex (PCAP_SRC_IF_STRING, NULL /* auth is not needed */, &alldevs, errbuf) == -1)
+	if (pcap_findalldevs (&alldevs, errbuf) == -1)
 #else
 	if (pcap_findalldevs (&alldevs, errbuf) == -1)
 #endif
@@ -496,7 +500,7 @@ void initPcap() {
 
 	/* Open the device */
 #ifdef _WIN32
-	if ( (adhandle= pcap_open (d->name, 65536, PCAP_OPENFLAG_PROMISCUOUS, -1, NULL, errbuf) ) == NULL)
+	if ((adhandle = pcap_open_live(d->name, 65535, 1, -1, NULL)) == NULL)
 #else
 	if ( (adhandle= pcap_open_live (d->name, 65535, 1, -1, NULL) ) == NULL)
 #endif
