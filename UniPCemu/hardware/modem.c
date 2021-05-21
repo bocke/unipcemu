@@ -26,9 +26,7 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 
 #if defined(PACKETSERVER_ENABLED)
 #define HAVE_REMOTE
-#ifdef IS_WINDOWS
-#define WPCAP
-#endif
+//WPCAP is defined by support when using winpcap! Don't define it here anymore!
 #ifndef NOPCAP
 #include <pcap.h>
 #endif
@@ -455,7 +453,12 @@ void initPcap() {
 #if defined(PACKETSERVER_ENABLED) && !defined(NOPCAP)
 	/* Retrieve the device list from the local machine */
 #if defined(_WIN32)
+#ifdef WPCAP
+	//Winpcap version!
+	if (pcap_findalldevs_ex(PCAP_SRC_IF_STRING, NULL /* auth is not needed */, &alldevs, errbuf) == -1)
+#else
 	if (pcap_findalldevs (&alldevs, errbuf))
+#endif
 #else
 	if (pcap_findalldevs (&alldevs, errbuf))
 #endif
@@ -500,7 +503,12 @@ void initPcap() {
 
 	/* Open the device */
 #ifdef _WIN32
+#ifdef WPCAP
+	//Winpcap version!
+	if ((adhandle = pcap_open(d->name, 65536, PCAP_OPENFLAG_PROMISCUOUS, -1, NULL, errbuf)) == NULL)
+#else
 	if ((adhandle = pcap_open_live(d->name, 65535, 1, -1, NULL)) == NULL)
+#endif
 #else
 	if ( (adhandle= pcap_open_live (d->name, 65535, 1, -1, NULL) ) == NULL)
 #endif
