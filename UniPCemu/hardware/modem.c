@@ -565,12 +565,13 @@ void initPcap() {
 	if ((adhandle = pcap_open_live(d->name, 65535, 1, -1, NULL)) == NULL)
 #endif
 #else
-	if ( (adhandle= pcap_open_live (d->name, 65535, 1, -1, NULL) ) == NULL)
+	if ( (adhandle= pcap_open_live (d->name, 65535, PCAP_OPENFLAG_PROMISCUOUS, -1, errbuf) ) == NULL)
 #endif
 		{
-			dolog("ethernetcard","Unable to open the adapter. %s is not supported by WinPcap", d->name);
+			dolog("ethernetcard","Unable to open the adapter. %s is not supported by WinPcap. Reason: %s", d->name, errbuf);
 			/* Free the device list */
 			pcap_freealldevs (alldevs);
+			exit(1);
 			return;
 		}
 
