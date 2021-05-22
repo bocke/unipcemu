@@ -129,7 +129,7 @@ typedef struct
 	byte packetserver_stage_byte_overflown; //Overflown?
 	char packetserver_stage_str[4096]; //Buffer containing output data for a stage
 	byte packetserver_credentials_invalid; //Marked invalid by username/password/service credentials?
-	char packetserver_staticIPstr_information[256];
+	char packetserver_staticIPstr_information[268];
 	DOUBLE packetserver_delay; //Delay for the packet server until doing something!
 	uint_32 packetserver_packetpos; //Current pos of sending said packet!
 	byte lastreceivedCRLFinput; //Last received input for CRLF detection!
