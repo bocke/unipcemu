@@ -575,11 +575,11 @@ void initPcap() {
 			return;
 		}
 
-	dolog("ethernetcard","Ethernet bridge on %s...", d->description);
+	dolog("ethernetcard","Ethernet bridge on %s (%s)...", d->name, d->description?d->description:"No description available");
 
 	if (pcap_datalink(adhandle)!=DLT_EN10MB) //Invalid link layer?
 	{
-		dolog("ethernetcard","Ethernet card unsupported: Ethernet card is required! %s is unsupported!", d->description);
+		dolog("ethernetcard","Ethernet card unsupported: Ethernet card is required! %s is unsupported!", d->description ? d->description : "No description available");
 		/* Free the device list */
 		pcap_freealldevs (alldevs);
 		pcap_close(adhandle); //Close the handle!
