@@ -18,6 +18,10 @@ You should have received a copy of the GNU General Public License
 along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+#ifndef _WIN32
+//Only when not using Windows, include types first!
+#include "headers/types.h" //Basic types first! Also required for system detection!
+#endif
 //Compile without PCAP support, but with server simulation when NOPCAP and PACKERSERVER_ENABLED is defined(essentially a server without login information and PCap support(thus no packets being sent/received))?
 /*
 #define NOPCAP
@@ -26,6 +30,12 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 
 #if defined(PACKETSERVER_ENABLED)
 #define HAVE_REMOTE
+
+#ifdef IS_LINUX
+typedef byte u_char;
+typedef unsigned int u_int;
+typedef unsigned short u_short;
+#endif
 //WPCAP is defined by support when using winpcap! Don't define it here anymore!
 #ifndef NOPCAP
 #ifndef WPCAP
@@ -40,7 +50,9 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 //Undefine the temporary WPCAP define!
 #undef WPCAP
 #endif
+#ifdef IS_WINDOWS
 #include <tchar.h>
+#endif
 #endif
 #endif
 
@@ -327,7 +339,11 @@ void initPacketServerClients()
 //Supported and enabled the packet setver?
 #if defined(PACKETSERVER_ENABLED)
 #ifndef _WIN32
+#ifndef IS_LINUX
+#ifndef NOPCAP
 #define PCAP_OPENFLAG_PROMISCUOUS 1
+#endif
+#endif
 #endif
 
 byte dummy;
@@ -351,6 +367,7 @@ uint8_t maclocal_default[6] = { 0xDE, 0xAD, 0xBE, 0xEF, 0x13, 0x37 }; //The MAC 
 byte pcap_verbose = 0;
 
 #ifdef WPCAP_WASNTDEFINED
+#ifdef IS_WINDOWS
 byte LoadNpcapDlls()
 {
 	_TCHAR npcap_dir[512];
@@ -366,6 +383,7 @@ byte LoadNpcapDlls()
 	return TRUE;
 }
 #endif
+#endif
 
 void initPcap() {
 	memset(&net,0,sizeof(net)); //Init!
@@ -374,7 +392,9 @@ void initPcap() {
 	byte IPnumbers[4];
 
 #ifdef WPCAP_WASNTDEFINED
+#ifdef IS_WINDOWS
 	dummy = LoadNpcapDlls(); //Try and load the npcap DLLs if present!
+#endif
 #endif
 
 	/*
