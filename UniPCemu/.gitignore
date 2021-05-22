@@ -309,3 +309,4 @@ __pycache__/
 /configure
 /autom4te.cache
 /config.status
+/.gdbinit
