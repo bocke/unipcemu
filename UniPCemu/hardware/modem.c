@@ -18,10 +18,9 @@ You should have received a copy of the GNU General Public License
 along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef _WIN32
 //Only when not using Windows, include types first!
 #include "headers/types.h" //Basic types first! Also required for system detection!
-#endif
+
 //Compile without PCAP support, but with server simulation when NOPCAP and PACKERSERVER_ENABLED is defined(essentially a server without login information and PCap support(thus no packets being sent/received))?
 /*
 #define NOPCAP
@@ -31,11 +30,11 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 #if defined(PACKETSERVER_ENABLED)
 #define HAVE_REMOTE
 
-#ifdef IS_LINUX
+//Missing for various systems?
 typedef byte u_char;
 typedef unsigned int u_int;
 typedef unsigned short u_short;
-#endif
+
 //WPCAP is defined by support when using winpcap! Don't define it here anymore!
 #ifndef NOPCAP
 #ifndef WPCAP
