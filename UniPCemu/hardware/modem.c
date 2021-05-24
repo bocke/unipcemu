@@ -65,6 +65,7 @@ typedef unsigned short u_short;
 #include "headers/bios/bios.h" //BIOS support!
 #include "headers/support/tcphelper.h" //TCP support!
 #include "headers/support/log.h" //Logging support for errors!
+#include "headers/support/highrestimer.h" //High resolution timing support for cleaning up DHCP!
 
 #if defined(PACKETSERVER_ENABLED)
 #include <stdint.h>
@@ -103,7 +104,7 @@ typedef struct
 	byte* buffer;
 	uint_32 size;
 	uint_32 length;
-} PPPOE_PAD_PACKETBUFFER; //Packet buffer for PAD packets!
+} MODEM_PACKETBUFFER; //Packet buffer for PAD packets!
 
 //Authentication data and user-specific data!
 typedef struct
@@ -136,14 +137,20 @@ typedef struct
 	sword connectionid; //The used connection!
 	byte used; //Used client record?
 	//Connection for PPP connections!
-	PPPOE_PAD_PACKETBUFFER pppoe_discovery_PADI; //PADI(Sent)!
-	PPPOE_PAD_PACKETBUFFER pppoe_discovery_PADO; //PADO(Received)!
-	PPPOE_PAD_PACKETBUFFER pppoe_discovery_PADR; //PADR(Sent)!
-	PPPOE_PAD_PACKETBUFFER pppoe_discovery_PADS; //PADS(Received)!
-	PPPOE_PAD_PACKETBUFFER pppoe_discovery_PADT; //PADT(Send final)!
+	MODEM_PACKETBUFFER pppoe_discovery_PADI; //PADI(Sent)!
+	MODEM_PACKETBUFFER pppoe_discovery_PADO; //PADO(Received)!
+	MODEM_PACKETBUFFER pppoe_discovery_PADR; //PADR(Sent)!
+	MODEM_PACKETBUFFER pppoe_discovery_PADS; //PADS(Received)!
+	MODEM_PACKETBUFFER pppoe_discovery_PADT; //PADT(Send final)!
 	//Disconnect clears all of the above packets(frees them if set) when receiving/sending a PADT packet!
 	byte pppoe_lastsentbytewasEND; //Last sent byte was END!
 	byte pppoe_lastrecvbytewasEND; //Last received byte was END!
+	//DHCP data
+	MODEM_PACKETBUFFER DHCP_discoverypacket; //Discovery packet that's sent!
+	MODEM_PACKETBUFFER DHCP_offerpacket; //Offer packet that's received!
+	MODEM_PACKETBUFFER DHCP_requestpacket; //Request packet that's sent!
+	MODEM_PACKETBUFFER DHCP_acknowledgepacket; //Acknowledge packet that's sent!
+	MODEM_PACKETBUFFER DHCP_releasepacket; //Release packet that's sent!
 } PacketServer_client;
 
 PacketServer_client Packetserver_clients[0x100]; //Up to 100 clients!
@@ -152,6 +159,8 @@ word Packetserver_totalClients = 0; //How many clients are available?
 
 //How much to delay before sending a message while authenticating?
 #define PACKETSERVER_MESSAGE_DELAY 10000000.0
+//How much to delay before DHCP timeout?
+#define PACKETSERVER_DHCP_TIMEOUT 5000000000.0
 //How much to delay before starting the SLIP service?
 #define PACKETSERVER_SLIP_DELAY 300000000.0
 
@@ -169,14 +178,15 @@ word Packetserver_totalClients = 0; //How many clients are available?
 #define PACKETSTAGE_REQUESTPROTOCOL 5
 //EnterProtocol: Entering protocol
 #define PACKETSTAGE_ENTERPROTOCOL 6
+#define PACKETSTAGE_DHCP 7
 //Information: IP&MAC autoconfig. Terminates connection when earlier stages invalidate.
-#define PACKETSTAGE_INFORMATION 7
+#define PACKETSTAGE_INFORMATION 8
 //Ready: Sending ready and entering SLIP mode when finished.
-#define PACKETSTAGE_READY 8
+#define PACKETSTAGE_READY 9
 //SLIP: Delaying before starting the SLIP mode!
-#define PACKETSTAGE_SLIPDELAY 9
+#define PACKETSTAGE_SLIPDELAY 10
 //SLIP: Transferring SLIP data
-#define PACKETSTAGE_PACKETS 10
+#define PACKETSTAGE_PACKETS 11
 //Initial packet stage without credentials
 #define PACKETSTAGE_INIT PACKETSTAGE_REQUESTPROTOCOL
 //Initial packet stage with credentials
@@ -638,24 +648,27 @@ void fetchpackets_pcap() { //Handle any packets to process!
 				//Check for TCP packet in the IP packet!
 				detselfrelpos = sizeof(ethernetheader.data); //Start of the IP packet!
 				detselfdataleft = hdr->len - detselfrelpos; //Data left to parse as subpackets!
-				if (detselfdataleft >= 9) //Enough data left to parse?
+				if (detselfdataleft >= 20) //Enough data left to parse?
 				{
 					if (pktdata[detselfrelpos + 9] == 6) //TCP protocol?
 					{
-						IP_useIHL = (((pktdata[detselfrelpos] & 0xF0) >> 4) << 5); //IHL field, in bytes!
-						if ((detselfdataleft > IP_useIHL) && (IP_useIHL)) //Enough left for the subpacket?
+						if ((memcmp(ppktdata[detselfrelpos + 0xC], &packetserver_defaultstaticIP[0], 4) == 0) || (memcmp(ppktdata[detselfrelpos + 0x10], &packetserver_defaultstaticIP[0], 4) == 0)) //Our  own IP in source or destination?
 						{
-							detselfrelpos += IP_useIHL; //TCP Data position!
-							detselfdataleft -= IP_useIHL; //How much data if left!
-							//Now we're at the start of the TCP packet!
-							if (detselfdataleft >= 4) //Valid to filter the port?
+							IP_useIHL = (((pktdata[detselfrelpos] & 0xF0) >> 4) << 5); //IHL field, in bytes!
+							if ((detselfdataleft > IP_useIHL) && (IP_useIHL)) //Enough left for the subpacket?
 							{
-								if ((SDL_SwapBE16(*((word*)&pktdata[detselfrelpos])) == modem.connectionport) || //Own source port?
-									(SDL_SwapBE16(*((word*)&pktdata[detselfrelpos + 2])) == modem.connectionport) //Own destination port?
-									)
+								detselfrelpos += IP_useIHL; //TCP Data position!
+								detselfdataleft -= IP_useIHL; //How much data if left!
+								//Now we're at the start of the TCP packet!
+								if (detselfdataleft >= 4) //Valid to filter the port?
 								{
-									//Discard the received packet, so nobody else handles it too!
-									goto invalidpacket_receivefilter; //Ignore this packet and check for more!
+									if ((SDL_SwapBE16(*((word*)&pktdata[detselfrelpos])) == modem.connectionport) || //Own source port?
+										(SDL_SwapBE16(*((word*)&pktdata[detselfrelpos + 2])) == modem.connectionport) //Own destination port?
+										)
+									{
+										//Discard the received packet, so nobody else handles it too!
+										goto invalidpacket_receivefilter; //Ignore this packet and check for more!
+									}
 								}
 							}
 						}
@@ -770,6 +783,15 @@ byte freePacketserver_client(sword client)
 	return 0; //Failure!
 }
 
+void packetServerFreePacketBufferQueue(MODEM_PACKETBUFFER* buffer); //Prototype for freeing of DHCP when not connected!
+
+void normalFreeDHCP(sword connectedclient)
+{
+	packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].DHCP_discoverypacket); //Free the old one first, if present!
+	packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].DHCP_offerpacket); //Free the old one first, if present!
+	packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].DHCP_requestpacket); //Free the old one first, if present!
+}
+
 void terminatePacketServer(sword client) //Cleanup the packet server after being disconnected!
 {
 	fifobuffer_clear(Packetserver_clients[client].packetserver_receivebuffer); //Clear the receive buffer!
@@ -872,6 +894,13 @@ byte packetserver_authenticate(sword client)
 									}
 								}
 							}
+						}
+					}
+					else if (safestrlen(&BIOS_Settings.ethernetserver_settings.users[c].IPaddress[0], 256) == 4) //Might be DHCP?
+					{
+						if ((strcmp(BIOS_Settings.ethernetserver_settings.users[c].IPaddress, "DHCP") == 0) || (strcmp(BIOS_Settings.ethernetserver_settings.users[0].IPaddress, "DHCP") == 0)) //DHCP used for this user or all users?
+						{
+							//Packetserver_clients[client].packetserver_useStaticIP = 2; //DHCP requested instead of static IP! Not used yet!
 						}
 					}
 					if (!Packetserver_clients[client].packetserver_useStaticIP) //Not specified? Use default!
@@ -2965,7 +2994,48 @@ void PPPOE_finishdiscovery(sword connectedclient); //Prototype for doneModem!
 
 void doneModem() //Finish modem!
 {
+	TicksHolder timing;
 	word i;
+	byte DHCPreleaseleasewaiting;
+	initTicksHolder(&timing); //Initialize the timing!
+	retryReleaseDHCPleasewait:
+	DHCPreleaseleasewaiting = 0; //Default: nothing waiting!
+	for (i = 0; i < NUMITEMS(Packetserver_clients); ++i) //Process all clients!
+	{
+		if (Packetserver_clients[i].used) //Connected?
+		{
+			PPPOE_finishdiscovery((sword)i); //Finish discovery, if needed!
+			TCP_DisconnectClientServer(Packetserver_clients[i].connectionid); //Stop connecting!
+			Packetserver_clients[i].connectionid = -1; //Unused!
+			terminatePacketServer(i); //Stop the packet server, if used!
+			if (Packetserver_clients[i].DHCP_acknowledgepacket.length) //We're still having a lease?
+			{
+				if (Packetserver_clients[i].packetserver_useStaticIP < 6) //Not in release phase yet?
+				{
+					PacketServer_startNextStage(i, PACKETSTAGE_DHCP);
+					Packetserver_clients[i].packetserver_useStaticIP = 6; //Start the release of the lease!
+					Packetserver_clients[i].used = 2; //Special use case: we're in the DHCP release-only state!
+					DHCPreleaseleasewaiting = 1; //Waiting for release!
+				}
+				else //Still releasing?
+				{
+					DHCPreleaseleasewaiting = 1; //Waiting for release!
+				}
+			}
+			else //Normal release?
+			{
+				normalFreeDHCP(i);
+				freePacketserver_client(i); //Free the client!
+			}
+		}
+	}
+	if (DHCPreleaseleasewaiting) //Waiting for release?
+	{
+		delay(1); //Wait a little bit!
+		updateModem(getnspassed(&timing)); //Time the DHCP only!
+		goto retryReleaseDHCPleasewait; //Check again!
+	}
+
 	if (modem.inputbuffer) //Allocated?
 	{
 		free_fifobuffer(&modem.inputbuffer); //Free our buffer!
@@ -2978,17 +3048,7 @@ void doneModem() //Finish modem!
 			free_fifobuffer(&modem.inputdatabuffer[i]); //Free our buffer!
 		}
 	}
-	for (i = 0; i < NUMITEMS(Packetserver_clients); ++i) //Process all clients!
-	{
-		if (Packetserver_clients[i].used) //Connected?
-		{
-			PPPOE_finishdiscovery((sword)i); //Finish discovery, if needed!
-			TCP_DisconnectClientServer(Packetserver_clients[i].connectionid); //Stop connecting!
-			Packetserver_clients[i].connectionid = -1; //Unused!
-			terminatePacketServer(i); //Stop the packet server, if used!
-			freePacketserver_client(i); //Free the client!
-		}
-	}
+
 	if (TCP_DisconnectClientServer(modem.connectionid)) //Disconnect client, if needed!
 	{
 		modem.connectionid = -1; //Not connected!
@@ -3026,7 +3086,7 @@ byte packetServerAddWriteQueue(sword client, byte data) //Try to add something t
 	return 0; //Failed!
 }
 
-byte packetServerAddPPPDiscoveryQueue(PPPOE_PAD_PACKETBUFFER *buffer, byte data) //Try to add something to the discovery queue!
+byte packetServerAddPacketBufferQueue(MODEM_PACKETBUFFER *buffer, byte data) //Try to add something to the discovery queue!
 {
 	byte* newbuffer;
 	if (buffer->length >= buffer->size) //We need to expand the buffer?
@@ -3050,7 +3110,7 @@ byte packetServerAddPPPDiscoveryQueue(PPPOE_PAD_PACKETBUFFER *buffer, byte data)
 	return 0; //Failed!
 }
 
-void packetServerFreePPPDiscoveryQueue(PPPOE_PAD_PACKETBUFFER *buffer)
+void packetServerFreePacketBufferQueue(MODEM_PACKETBUFFER *buffer)
 {
 	freez((void **)&buffer->buffer, buffer->size, "MODEM_SENDPACKET"); //Free it!
 	buffer->size = buffer->length = 0; //No length anymore!
@@ -3203,26 +3263,26 @@ void PPPOE_finishdiscovery(sword connectedclient)
 	memcpy(&packetheader.src, &ethernetheader.dst, sizeof(packetheader.src)); //Make a copy of the ethernet source to use!
 	memcpy(&packetheader.type, &ethernetheader.type, sizeof(packetheader.type)); //Make a copy of the ethernet type to use!
 
-	packetServerFreePPPDiscoveryQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADT); //Clear the packet!
+	packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADT); //Clear the packet!
 
 	//First, the ethernet header!
 	for (pos = 0; pos < sizeof(packetheader.data); ++pos)
 	{
-		packetServerAddPPPDiscoveryQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADT, packetheader.data[pos]); //Send the header!
+		packetServerAddPacketBufferQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADT, packetheader.data[pos]); //Send the header!
 	}
 
 	//Now, the PADT packet!
-	packetServerFreePPPDiscoveryQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADT); //Clear the packet!
-	packetServerAddPPPDiscoveryQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADT, 0x11); //V/T!
-	packetServerAddPPPDiscoveryQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADT, 0xA7); //PADT!
-	packetServerAddPPPDiscoveryQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADR, Packetserver_clients[connectedclient].pppoe_discovery_PADS.buffer[sizeof(ethernetheader.data)+2]); //Session_ID first byte!
-	packetServerAddPPPDiscoveryQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADR, Packetserver_clients[connectedclient].pppoe_discovery_PADS.buffer[sizeof(ethernetheader.data)+3]); //Session_ID second byte!
-	packetServerAddPPPDiscoveryQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADR, 0x00); //Length first byte!
-	packetServerAddPPPDiscoveryQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADR, 0x00); //Length second byte!
+	packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADT); //Clear the packet!
+	packetServerAddPacketBufferQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADT, 0x11); //V/T!
+	packetServerAddPacketBufferQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADT, 0xA7); //PADT!
+	packetServerAddPacketBufferQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADR, Packetserver_clients[connectedclient].pppoe_discovery_PADS.buffer[sizeof(ethernetheader.data)+2]); //Session_ID first byte!
+	packetServerAddPacketBufferQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADR, Packetserver_clients[connectedclient].pppoe_discovery_PADS.buffer[sizeof(ethernetheader.data)+3]); //Session_ID second byte!
+	packetServerAddPacketBufferQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADR, 0x00); //Length first byte!
+	packetServerAddPacketBufferQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADR, 0x00); //Length second byte!
 	//Now, the packet is fully ready!
 	if (Packetserver_clients[connectedclient].pppoe_discovery_PADR.length != 0x14) //Packet length mismatch?
 	{
-		packetServerFreePPPDiscoveryQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADT); //PADR not ready to be sent yet!
+		packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADT); //PADR not ready to be sent yet!
 	}
 	else //Send the PADR packet!
 	{
@@ -3231,11 +3291,11 @@ void PPPOE_finishdiscovery(sword connectedclient)
 	}
 
 	//Since we can't be using the buffers after this anyways, free them all!
-	packetServerFreePPPDiscoveryQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADI); //No PADI anymore!
-	packetServerFreePPPDiscoveryQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADO); //No PADO anymore!
-	packetServerFreePPPDiscoveryQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADR); //No PADR anymore!
-	packetServerFreePPPDiscoveryQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADS); //No PADS anymore!
-	packetServerFreePPPDiscoveryQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADT); //No PADT anymore!
+	packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADI); //No PADI anymore!
+	packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADO); //No PADO anymore!
+	packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADR); //No PADR anymore!
+	packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADS); //No PADS anymore!
+	packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADT); //No PADT anymore!
 }
 
 byte PPPOE_requestdiscovery(sword connectedclient)
@@ -3247,31 +3307,31 @@ byte PPPOE_requestdiscovery(sword connectedclient)
 	memcpy(&packetheader.dst, broadcastmac, sizeof(packetheader.dst)); //Broadcast it!
 	memcpy(&packetheader.src, maclocal, sizeof(packetheader.src)); //Our own MAC address as the source!
 	packetheader.type = SDL_SwapBE16(0x8863); //Type!
-	packetServerFreePPPDiscoveryQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADI); //Clear the packet!
+	packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADI); //Clear the packet!
 	for (pos = 0; pos < sizeof(packetheader.data); ++pos)
 	{
-		packetServerAddPPPDiscoveryQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADI, packetheader.data[pos]); //Send the header!
+		packetServerAddPacketBufferQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADI, packetheader.data[pos]); //Send the header!
 	}
-	packetServerAddPPPDiscoveryQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADI, 0x11); //V/T!
-	packetServerAddPPPDiscoveryQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADI, 0x09); //PADT!
+	packetServerAddPacketBufferQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADI, 0x11); //V/T!
+	packetServerAddPacketBufferQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADI, 0x09); //PADT!
 	//Now, the contents of th packet!
 	NETWORKVALSPLITTER.wval = SDL_SwapBE16(0); //Session ID!
-	packetServerAddPPPDiscoveryQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADI, NETWORKVALSPLITTER.bval[0]); //First byte!
-	packetServerAddPPPDiscoveryQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADI, NETWORKVALSPLITTER.bval[1]); //Second byte!
+	packetServerAddPacketBufferQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADI, NETWORKVALSPLITTER.bval[0]); //First byte!
+	packetServerAddPacketBufferQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADI, NETWORKVALSPLITTER.bval[1]); //Second byte!
 	NETWORKVALSPLITTER.wval = SDL_SwapBE16(0x4); //Length!
-	packetServerAddPPPDiscoveryQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADI, NETWORKVALSPLITTER.bval[0]); //First byte!
-	packetServerAddPPPDiscoveryQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADI, NETWORKVALSPLITTER.bval[1]); //Second byte!
+	packetServerAddPacketBufferQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADI, NETWORKVALSPLITTER.bval[0]); //First byte!
+	packetServerAddPacketBufferQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADI, NETWORKVALSPLITTER.bval[1]); //Second byte!
 	NETWORKVALSPLITTER.wval = SDL_SwapBE16(0x0101); //Tag type: Service-Name!
-	packetServerAddPPPDiscoveryQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADI, NETWORKVALSPLITTER.bval[0]); //First byte!
-	packetServerAddPPPDiscoveryQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADI, NETWORKVALSPLITTER.bval[1]); //Second byte!
+	packetServerAddPacketBufferQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADI, NETWORKVALSPLITTER.bval[0]); //First byte!
+	packetServerAddPacketBufferQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADI, NETWORKVALSPLITTER.bval[1]); //Second byte!
 	NETWORKVALSPLITTER.wval = SDL_SwapBE16(0); //Tag length!
-	packetServerAddPPPDiscoveryQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADI, NETWORKVALSPLITTER.bval[0]); //First byte!
-	packetServerAddPPPDiscoveryQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADI, NETWORKVALSPLITTER.bval[1]); //Second byte!
+	packetServerAddPacketBufferQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADI, NETWORKVALSPLITTER.bval[0]); //First byte!
+	packetServerAddPacketBufferQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADI, NETWORKVALSPLITTER.bval[1]); //Second byte!
 
 	//Now, the packet is fully ready!
 	if (Packetserver_clients[connectedclient].pppoe_discovery_PADI.length != 0x18) //Packet length mismatch?
 	{
-		packetServerFreePPPDiscoveryQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADI); //PADR not ready to be sent yet!
+		packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADI); //PADR not ready to be sent yet!
 		return 0; //Failure!
 	}
 	else //Send the PADR packet!
@@ -3309,7 +3369,7 @@ byte PPPOE_handlePADreceived(sword connectedclient)
 					//Ignore it's contents for now(unused) and accept always!
 					for (pos = 0; pos < Packetserver_clients[connectedclient].pktlen; ++pos) //Add!
 					{
-						packetServerAddPPPDiscoveryQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADO, Packetserver_clients[connectedclient].packet[pos]); //Add to the buffer!
+						packetServerAddPacketBufferQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADO, Packetserver_clients[connectedclient].packet[pos]); //Add to the buffer!
 					}
 					return 1; //Handled!
 				}
@@ -3319,11 +3379,11 @@ byte PPPOE_handlePADreceived(sword connectedclient)
 					if (code != 0xA7) return 0; //Not a PADT packet?
 					if (sessionid != requiredsessionid) return 0; //Not our session ID?
 					//Our session has been terminated. Clear all buffers!
-					packetServerFreePPPDiscoveryQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADI); //No PADI anymore!
-					packetServerFreePPPDiscoveryQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADO); //No PADO anymore!
-					packetServerFreePPPDiscoveryQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADR); //No PADR anymore!
-					packetServerFreePPPDiscoveryQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADS); //No PADS anymore!
-					packetServerFreePPPDiscoveryQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADT); //No PADT anymore!
+					packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADI); //No PADI anymore!
+					packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADO); //No PADO anymore!
+					packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADR); //No PADR anymore!
+					packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADS); //No PADS anymore!
+					packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADT); //No PADT anymore!
 					return 1; //Handled!
 				}
 			}
@@ -3332,7 +3392,7 @@ byte PPPOE_handlePADreceived(sword connectedclient)
 				//Send PADR packet now?
 				//Ignore the received packet, we can't handle any!
 				//Now, the PADR packet again!
-				packetServerFreePPPDiscoveryQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADR); //Clear the packet!
+				packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADR); //Clear the packet!
 				//First, the Ethernet header!
 				memcpy(&ethernetheader, &Packetserver_clients[connectedclient].pppoe_discovery_PADO.buffer,sizeof(ethernetheader.data)); //The ethernet header that was used to send the PADO packet!
 				memcpy(&packetheader.dst, &ethernetheader.src, sizeof(packetheader.dst)); //Make a copy of the ethernet destination to use!
@@ -3340,18 +3400,18 @@ byte PPPOE_handlePADreceived(sword connectedclient)
 				memcpy(&packetheader.type, &ethernetheader.type, sizeof(packetheader.type)); //Make a copy of the ethernet type to use!
 				for (pos = 0; pos < sizeof(packetheader.data); ++pos)
 				{
-					packetServerAddPPPDiscoveryQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADR, packetheader.data[pos]); //Send the header!
+					packetServerAddPacketBufferQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADR, packetheader.data[pos]); //Send the header!
 				}
-				packetServerAddPPPDiscoveryQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADR, 0x11); //V/T!
-				packetServerAddPPPDiscoveryQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADR, 0x19); //PADR!
+				packetServerAddPacketBufferQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADR, 0x11); //V/T!
+				packetServerAddPacketBufferQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADR, 0x19); //PADR!
 				for (pos = sizeof(ethernetheader.data) + 2; pos < Packetserver_clients[connectedclient].pppoe_discovery_PADO.length; ++pos) //Remainder of the PADO packet copied!
 				{
-					packetServerAddPPPDiscoveryQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADR, Packetserver_clients[connectedclient].pppoe_discovery_PADO.buffer[pos]); //Send the remainder of the PADO packet!
+					packetServerAddPacketBufferQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADR, Packetserver_clients[connectedclient].pppoe_discovery_PADO.buffer[pos]); //Send the remainder of the PADO packet!
 				}
 				//Now, the packet is fully ready!
 				if (Packetserver_clients[connectedclient].pppoe_discovery_PADR.length != Packetserver_clients[connectedclient].pppoe_discovery_PADO.length) //Packet length mismatch?
 				{
-					packetServerFreePPPDiscoveryQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADR); //PADR not ready to be sent yet!
+					packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADR); //PADR not ready to be sent yet!
 				}
 				else //Send the PADR packet!
 				{
@@ -3369,7 +3429,7 @@ byte PPPOE_handlePADreceived(sword connectedclient)
 			//Ignore it's contents for now(unused) and accept always!
 			for (pos = 0; pos < Packetserver_clients[connectedclient].pktlen; ++pos) //Add!
 			{
-				packetServerAddPPPDiscoveryQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADO, Packetserver_clients[connectedclient].packet[pos]); //Add to the buffer!
+				packetServerAddPacketBufferQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADO, Packetserver_clients[connectedclient].packet[pos]); //Add to the buffer!
 			}
 			//Send the PADR packet now!
 			memcpy(&packetheader.dst, &ethernetheader.src, sizeof(packetheader.dst)); //Make a copy of the ethernet destination to use!
@@ -3379,21 +3439,21 @@ byte PPPOE_handlePADreceived(sword connectedclient)
 			//First, the ethernet header!
 			for (pos = 0; pos < sizeof(packetheader.data); ++pos)
 			{
-				packetServerAddPPPDiscoveryQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADR, packetheader.data[pos]); //Send the header!
+				packetServerAddPacketBufferQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADR, packetheader.data[pos]); //Send the header!
 			}
 
 			//Now, the PADR packet!
-			packetServerFreePPPDiscoveryQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADR); //Clear the packet!
-			packetServerAddPPPDiscoveryQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADR, 0x11); //V/T!
-			packetServerAddPPPDiscoveryQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADR, 0x19); //PADR!
+			packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADR); //Clear the packet!
+			packetServerAddPacketBufferQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADR, 0x11); //V/T!
+			packetServerAddPacketBufferQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADR, 0x19); //PADR!
 			for (pos = sizeof(ethernetheader.data)+2; pos < Packetserver_clients[connectedclient].pktlen; ++pos) //Remainder of the PADO packet copied!
 			{
-				packetServerAddPPPDiscoveryQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADR, Packetserver_clients[connectedclient].packet[pos]); //Send the remainder of the PADO packet!
+				packetServerAddPacketBufferQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADR, Packetserver_clients[connectedclient].packet[pos]); //Send the remainder of the PADO packet!
 			}
 			//Now, the packet is fully ready!
 			if (Packetserver_clients[connectedclient].pppoe_discovery_PADR.length != Packetserver_clients[connectedclient].pktlen) //Packet length mismatch?
 			{
-				packetServerFreePPPDiscoveryQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADR); //PADR not ready to be sent yet!
+				packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].pppoe_discovery_PADR); //PADR not ready to be sent yet!
 				return 0; //Not handled!
 			}
 			else //Send the PADR packet!
@@ -3444,6 +3504,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 	ETHERNETHEADER ethernetheader, ppptransmitheader;
 	memset(&ppptransmitheader, 0, sizeof(ppptransmitheader));
 	word headertype; //What header type are we?
+	uint_32 currentpos;
 	modem.timer += timepassed; //Add time to the timer!
 	if (modem.escaping) //Escapes buffered and escaping?
 	{
@@ -4219,7 +4280,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 								if (packetserver_authenticate(connectedclient)) //Authenticated?
 								{
 									Packetserver_clients[connectedclient].packetserver_slipprotocol = (strcmp(Packetserver_clients[connectedclient].packetserver_protocol, "ppp") == 0)?3:((strcmp(Packetserver_clients[connectedclient].packetserver_protocol, "ipxslip") == 0)?2:((strcmp(Packetserver_clients[connectedclient].packetserver_protocol, "slip") == 0) ? 1 : 0)); //Are we using the slip protocol?
-									PacketServer_startNextStage(connectedclient, PACKETSTAGE_INFORMATION); //We're logged in! Give information stage next!
+									PacketServer_startNextStage(connectedclient, (Packetserver_clients[connectedclient].packetserver_useStaticIP==2)?PACKETSTAGE_DHCP:PACKETSTAGE_INFORMATION); //We're logged in! Give information stage next!
 									PPPOE_requestdiscovery(connectedclient); //Start the discovery phase of the connected client!
 								}
 								else goto packetserver_autherror; //Authentication error!
@@ -4227,6 +4288,148 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 							case 2: //Send the output buffer!
 								goto sendoutputbuffer;
 								break;
+							}
+						}
+
+						if (Packetserver_clients[connectedclient].packetserver_stage == PACKETSTAGE_DHCP)
+						{
+							if (Packetserver_clients[connectedclient].packetserver_useStaticIP == 2) //Sending discovery packet of DHCP?
+							{
+								//Create and send a discovery packet! Use the packetServerAddPacketBufferQueue to create the packet!
+								packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].DHCP_discoverypacket); //Free the old one first, if present!
+								//Now, create the packet to send using a function!
+								//Send it!
+
+								Packetserver_clients[connectedclient].packetserver_useStaticIP = 3; //Start waiting for the Offer!
+								Packetserver_clients[connectedclient].packetserver_stage_byte = 0; //Init to start of string!
+								Packetserver_clients[connectedclient].packetserver_delay = PACKETSERVER_DHCP_TIMEOUT; //Delay this until we timeout!
+							}
+							if (Packetserver_clients[connectedclient].packetserver_useStaticIP == 3) //Waiting for the DHCP Offer?
+							{
+								Packetserver_clients[connectedclient].packetserver_delay -= timepassed; //Delaying!
+								if ((Packetserver_clients[connectedclient].packetserver_delay <= 0.0) || (!Packetserver_clients[connectedclient].packetserver_delay)) //Finished?
+								{
+									Packetserver_clients[connectedclient].packetserver_delay = (DOUBLE)0; //Finish the delay!
+									//Timeout has occurred! Disconnect!
+									goto packetserver_autherror; //Disconnect the client: we can't help it!
+								}
+								if (net.packet) //Packet has been received before the timeout?
+								{
+									if (0) //Gottten a DHCP packet?
+									{
+										//Check if it's ours?
+										if (0) //It's ours?
+										{
+											//If an Offer packet, do the following:
+											packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].DHCP_offerpacket); //Free the old one first, if present!
+											//Save it in the storage!
+											for (currentpos = 0; currentpos < net.pktlen;) //Parse the entire packet!
+											{
+												if (!packetServerAddPacketBufferQueue(&Packetserver_clients[connectedclient].DHCP_offerpacket, net.packet[currentpos++])) //Failed to save the packet?
+												{
+													goto packetserver_autherror; //Error out: disconnect!
+												}
+											}
+											Packetserver_clients[connectedclient].packetserver_useStaticIP = 4; //Start sending the Request!
+											Packetserver_clients[connectedclient].packetserver_stage_byte = 0; //Init to start of string!
+											Packetserver_clients[connectedclient].packetserver_delay = PACKETSERVER_DHCP_TIMEOUT; //Delay this until we timeout!
+										}
+									}
+								}
+							}
+							if (Packetserver_clients[connectedclient].packetserver_useStaticIP == 4) //Sending discove packet of DHCP?
+							{
+								//Create and send a discovery packet! Use the packetServerAddPacketBufferQueue to create the packet!
+								packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].DHCP_requestpacket); //Free the old one first, if present!
+								//Now, create the packet to send using a function!
+								//Send it!
+
+								Packetserver_clients[connectedclient].packetserver_useStaticIP = 5; //Start waiting for the Acknowledgement!
+								Packetserver_clients[connectedclient].packetserver_stage_byte = 0; //Init to start of string!
+								Packetserver_clients[connectedclient].packetserver_delay = PACKETSERVER_DHCP_TIMEOUT; //Delay this until we timeout!
+							}
+							if (Packetserver_clients[connectedclient].packetserver_useStaticIP == 5) //Waiting for the DHCP Acknoledgement?
+							{
+								Packetserver_clients[connectedclient].packetserver_delay -= timepassed; //Delaying!
+								if ((Packetserver_clients[connectedclient].packetserver_delay <= 0.0) || (!Packetserver_clients[connectedclient].packetserver_delay)) //Finished?
+								{
+									Packetserver_clients[connectedclient].packetserver_delay = (DOUBLE)0; //Finish the delay!
+									//Timeout has occurred! Disconnect!
+									goto packetserver_autherror; //Disconnect the client: we can't help it!
+								}
+								if (net.packet) //Packet has been received before the timeout?
+								{
+									if (0) //Gottten a DHCP packet?
+									{
+										//Check if it's ours?
+										if (0) //It's ours?
+										{
+											//If it's a NACK or Decline, abort!
+											if (0) //NACK or Decline?
+											{
+												goto packetserver_autherror; //Disconnect the client: we can't help it!
+											}
+											//If an Acknowledgement packet, do the following:
+											packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].DHCP_offerpacket); //Free the old one first, if present!
+											//Save it in the storage!
+											for (currentpos = 0; currentpos < net.pktlen;) //Parse the entire packet!
+											{
+												if (!packetServerAddPacketBufferQueue(&Packetserver_clients[connectedclient].DHCP_offerpacket, net.packet[currentpos++])) //Failed to save the packet?
+												{
+													goto packetserver_autherror; //Error out: disconnect!
+												}
+											}
+											Packetserver_clients[connectedclient].packetserver_useStaticIP = 4; //Start sending the Request!
+											Packetserver_clients[connectedclient].packetserver_stage_byte = 0; //Init to start of string!
+											Packetserver_clients[connectedclient].packetserver_delay = PACKETSERVER_DHCP_TIMEOUT; //Delay this until we timeout!
+										}
+									}
+								}
+							}
+							if (Packetserver_clients[connectedclient].packetserver_useStaticIP == 6) //Sending release packet of DHCP?
+							{
+								//Create and send a discovery packet! Use the packetServerAddPacketBufferQueue to create the packet!
+								packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].DHCP_releasepacket); //Free the old one first, if present!
+								//Now, create the packet to send using a function!
+								//Send it!
+
+								Packetserver_clients[connectedclient].packetserver_useStaticIP = 7; //Start waiting for the Acknowledgement!
+								Packetserver_clients[connectedclient].packetserver_stage_byte = 0; //Init to start of string!
+								Packetserver_clients[connectedclient].packetserver_delay = PACKETSERVER_DHCP_TIMEOUT; //Delay this until we timeout!
+							}
+							if (Packetserver_clients[connectedclient].packetserver_useStaticIP == 7) //Waiting for the DHCP Acknoledgement?
+							{
+								Packetserver_clients[connectedclient].packetserver_delay -= timepassed; //Delaying!
+								if ((Packetserver_clients[connectedclient].packetserver_delay <= 0.0) || (!Packetserver_clients[connectedclient].packetserver_delay)) //Finished?
+								{
+									Packetserver_clients[connectedclient].packetserver_delay = (DOUBLE)0; //Finish the delay!
+									//Timeout has occurred! Disconnect!
+									goto packetserver_autherror; //Disconnect the client: we can't help it!
+								}
+								if (net.packet) //Packet has been received before the timeout?
+								{
+									if (0) //Gottten a DHCP packet?
+									{
+										//Check if it's ours?
+										if (0) //It's ours?
+										{
+											//If it's a NACK or Decline, abort!
+											if (0) //NACK or Decline?
+											{
+												goto packetserver_autherror; //Disconnect the client: we can't help it!
+											}
+											//If an Acknowledgement packet, do the following:
+											packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].DHCP_discoverypacket); //Free the old one first, if present!
+											packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].DHCP_offerpacket); //Free the old one first, if present!
+											packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].DHCP_requestpacket); //Free the old one first, if present!
+											packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].DHCP_acknowledgepacket); //Free the old one first, if present!
+											packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].DHCP_releasepacket); //Free the old one first, if present!
+											Packetserver_clients[connectedclient].packetserver_useStaticIP = 4; //Start sending the Request!
+											Packetserver_clients[connectedclient].packetserver_stage_byte = 0; //Init to start of string!
+											Packetserver_clients[connectedclient].packetserver_delay = PACKETSERVER_DHCP_TIMEOUT; //Delay this until we timeout!
+										}
+									}
+								}
 							}
 						}
 
@@ -4444,7 +4647,17 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 									TCP_DisconnectClientServer(Packetserver_clients[connectedclient].connectionid); //Clean up the packet server!
 									Packetserver_clients[connectedclient].connectionid = -1; //Not connected!
 									terminatePacketServer(connectedclient); //Stop the packet server, if used!
-									freePacketserver_client(connectedclient); //Free the client list item!
+									if (Packetserver_clients[connectedclient].DHCP_acknowledgepacket.length) //We're still having a lease?
+									{
+										PacketServer_startNextStage(connectedclient, PACKETSTAGE_DHCP);
+										Packetserver_clients[connectedclient].packetserver_useStaticIP = 6; //Start the release of the lease!
+										Packetserver_clients[connectedclient].used = 2; //Special use case: we're in the DHCP release-only state!
+									}
+									else //Normal release?
+									{
+										normalFreeDHCP(connectedclient);
+										freePacketserver_client(connectedclient); //Free the client list item!
+									}
 									fifobuffer_clear(modem.inputdatabuffer[connectedclient]); //Clear the output buffer for the next client!
 									fifobuffer_clear(modem.outputbuffer[connectedclient]); //Clear the output buffer for the next client!
 									if (Packetserver_availableClients == Packetserver_totalClients) //All cleared?
@@ -4485,7 +4698,17 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 								{
 									PPPOE_finishdiscovery(connectedclient); //Finish discovery, if needed!
 									terminatePacketServer(Packetserver_clients[connectedclient].connectionid); //Clean up the packet server!
-									freePacketserver_client(connectedclient); //Free the client list item!
+									if (Packetserver_clients[connectedclient].DHCP_acknowledgepacket.length) //We're still having a lease?
+									{
+										PacketServer_startNextStage(connectedclient, PACKETSTAGE_DHCP);
+										Packetserver_clients[connectedclient].packetserver_useStaticIP = 6; //Start the release of the lease!
+										Packetserver_clients[connectedclient].used = 2; //Special use case: we're in the DHCP release-only state!
+									}
+									else //Normal release?
+									{
+										normalFreeDHCP(connectedclient);
+										freePacketserver_client(connectedclient); //Free the client list item!
+									}
 									fifobuffer_clear(modem.inputdatabuffer[connectedclient]); //Clear the output buffer for the next client!
 									fifobuffer_clear(modem.outputbuffer[connectedclient]); //Clear the output buffer for the next client!
 									if (Packetserver_availableClients == Packetserver_totalClients) //All cleared?
