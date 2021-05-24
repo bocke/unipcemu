@@ -178,6 +178,7 @@ word Packetserver_totalClients = 0; //How many clients are available?
 #define PACKETSTAGE_REQUESTPROTOCOL 5
 //EnterProtocol: Entering protocol
 #define PACKETSTAGE_ENTERPROTOCOL 6
+//DHCP: DHCP obtaining or release phase.
 #define PACKETSTAGE_DHCP 7
 //Information: IP&MAC autoconfig. Terminates connection when earlier stages invalidate.
 #define PACKETSTAGE_INFORMATION 8
