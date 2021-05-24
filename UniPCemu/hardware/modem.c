@@ -3010,10 +3010,10 @@ void doneModem() //Finish modem!
 			terminatePacketServer(i); //Stop the packet server, if used!
 			if (Packetserver_clients[i].DHCP_acknowledgepacket.length) //We're still having a lease?
 			{
-				if (Packetserver_clients[i].packetserver_useStaticIP < 6) //Not in release phase yet?
+				if (Packetserver_clients[i].packetserver_useStaticIP < 7) //Not in release phase yet?
 				{
 					PacketServer_startNextStage(i, PACKETSTAGE_DHCP);
-					Packetserver_clients[i].packetserver_useStaticIP = 6; //Start the release of the lease!
+					Packetserver_clients[i].packetserver_useStaticIP = 7; //Start the release of the lease!
 					Packetserver_clients[i].used = 2; //Special use case: we're in the DHCP release-only state!
 					DHCPreleaseleasewaiting = 1; //Waiting for release!
 				}
@@ -4304,6 +4304,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 								Packetserver_clients[connectedclient].packetserver_stage_byte = 0; //Init to start of string!
 								Packetserver_clients[connectedclient].packetserver_delay = PACKETSERVER_DHCP_TIMEOUT; //Delay this until we timeout!
 							}
+
 							if (Packetserver_clients[connectedclient].packetserver_useStaticIP == 3) //Waiting for the DHCP Offer?
 							{
 								Packetserver_clients[connectedclient].packetserver_delay -= timepassed; //Delaying!
@@ -4337,7 +4338,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 									}
 								}
 							}
-							if (Packetserver_clients[connectedclient].packetserver_useStaticIP == 4) //Sending discove packet of DHCP?
+							if (Packetserver_clients[connectedclient].packetserver_useStaticIP == 4) //Sending request packet of DHCP?
 							{
 								//Create and send a discovery packet! Use the packetServerAddPacketBufferQueue to create the packet!
 								packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].DHCP_requestpacket); //Free the old one first, if present!
@@ -4348,6 +4349,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 								Packetserver_clients[connectedclient].packetserver_stage_byte = 0; //Init to start of string!
 								Packetserver_clients[connectedclient].packetserver_delay = PACKETSERVER_DHCP_TIMEOUT; //Delay this until we timeout!
 							}
+
 							if (Packetserver_clients[connectedclient].packetserver_useStaticIP == 5) //Waiting for the DHCP Acknoledgement?
 							{
 								Packetserver_clients[connectedclient].packetserver_delay -= timepassed; //Delaying!
@@ -4379,25 +4381,26 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 													goto packetserver_autherror; //Error out: disconnect!
 												}
 											}
-											Packetserver_clients[connectedclient].packetserver_useStaticIP = 4; //Start sending the Request!
+											Packetserver_clients[connectedclient].packetserver_useStaticIP = 6; //Always wait for NACK!
 											Packetserver_clients[connectedclient].packetserver_stage_byte = 0; //Init to start of string!
 											Packetserver_clients[connectedclient].packetserver_delay = PACKETSERVER_DHCP_TIMEOUT; //Delay this until we timeout!
 										}
 									}
 								}
 							}
-							if (Packetserver_clients[connectedclient].packetserver_useStaticIP == 6) //Sending release packet of DHCP?
+
+							if (Packetserver_clients[connectedclient].packetserver_useStaticIP == 7) //Sending release packet of DHCP?
 							{
 								//Create and send a discovery packet! Use the packetServerAddPacketBufferQueue to create the packet!
 								packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].DHCP_releasepacket); //Free the old one first, if present!
 								//Now, create the packet to send using a function!
 								//Send it!
 
-								Packetserver_clients[connectedclient].packetserver_useStaticIP = 7; //Start waiting for the Acknowledgement!
+								Packetserver_clients[connectedclient].packetserver_useStaticIP = 8; //Start waiting for the Acknowledgement!
 								Packetserver_clients[connectedclient].packetserver_stage_byte = 0; //Init to start of string!
 								Packetserver_clients[connectedclient].packetserver_delay = PACKETSERVER_DHCP_TIMEOUT; //Delay this until we timeout!
 							}
-							if (Packetserver_clients[connectedclient].packetserver_useStaticIP == 7) //Waiting for the DHCP Acknoledgement?
+							if (Packetserver_clients[connectedclient].packetserver_useStaticIP == 8) //Waiting for the DHCP Acknoledgement?
 							{
 								Packetserver_clients[connectedclient].packetserver_delay -= timepassed; //Delaying!
 								if ((Packetserver_clients[connectedclient].packetserver_delay <= 0.0) || (!Packetserver_clients[connectedclient].packetserver_delay)) //Finished?
@@ -4424,9 +4427,33 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 											packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].DHCP_requestpacket); //Free the old one first, if present!
 											packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].DHCP_acknowledgepacket); //Free the old one first, if present!
 											packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].DHCP_releasepacket); //Free the old one first, if present!
-											Packetserver_clients[connectedclient].packetserver_useStaticIP = 4; //Start sending the Request!
+											Packetserver_clients[connectedclient].packetserver_useStaticIP = 0; //No request anymore!
 											Packetserver_clients[connectedclient].packetserver_stage_byte = 0; //Init to start of string!
 											Packetserver_clients[connectedclient].packetserver_delay = PACKETSERVER_DHCP_TIMEOUT; //Delay this until we timeout!
+										}
+									}
+								}
+							}
+						}
+
+						//Check for DHCP release requirement always, even when connected!
+						if (Packetserver_clients[connectedclient].packetserver_useStaticIP == 6) //Looking for the DHCP NACK?
+						{
+							if (net.packet) //Packet has been received before the timeout?
+							{
+								if (0) //Gottten a DHCP packet?
+								{
+									//Check if it's ours?
+									if (0) //It's ours?
+									{
+										//If it's a NACK or Decline, abort!
+										if (0) //NACK or Decline?
+										{
+											packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].DHCP_discoverypacket); //Free the old one first, if present!
+											packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].DHCP_offerpacket); //Free the old one first, if present!
+											packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].DHCP_requestpacket); //Free the old one first, if present!
+											packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].DHCP_acknowledgepacket); //Free the old one first, if present!
+											goto packetserver_autherror; //Disconnect the client: we can't help it anymore!
 										}
 									}
 								}
@@ -4650,7 +4677,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 									if (Packetserver_clients[connectedclient].DHCP_acknowledgepacket.length) //We're still having a lease?
 									{
 										PacketServer_startNextStage(connectedclient, PACKETSTAGE_DHCP);
-										Packetserver_clients[connectedclient].packetserver_useStaticIP = 6; //Start the release of the lease!
+										Packetserver_clients[connectedclient].packetserver_useStaticIP = 7; //Start the release of the lease!
 										Packetserver_clients[connectedclient].used = 2; //Special use case: we're in the DHCP release-only state!
 									}
 									else //Normal release?
@@ -4701,7 +4728,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 									if (Packetserver_clients[connectedclient].DHCP_acknowledgepacket.length) //We're still having a lease?
 									{
 										PacketServer_startNextStage(connectedclient, PACKETSTAGE_DHCP);
-										Packetserver_clients[connectedclient].packetserver_useStaticIP = 6; //Start the release of the lease!
+										Packetserver_clients[connectedclient].packetserver_useStaticIP = 7; //Start the release of the lease!
 										Packetserver_clients[connectedclient].used = 2; //Special use case: we're in the DHCP release-only state!
 									}
 									else //Normal release?
