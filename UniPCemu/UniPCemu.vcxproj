@@ -1364,7 +1364,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug - SDL_net winpcap|x64'">
     <ClCompile>
       <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>UNIPCEMU;SDL_NET;PACKETSERVER_ENABLED;WPCAP;_CRT_SECURE_NO_WARNINGS;WIN64;_DEBUG;WIN32</PreprocessorDefinitions>
+      <PreprocessorDefinitions>UNIPCEMU;SDL_NET;PACKETSERVER_ENABLED;WPCAP;_CRT_SECURE_NO_WARNINGS;WIN64;_DEBUG;WIN32;_WIN32;_WIN64</PreprocessorDefinitions>
       <Optimization>Custom</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -1454,7 +1454,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug - SDL2_net winpcap|x64'">
     <ClCompile>
       <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>UNIPCEMU;SDL2;SDL2_NET;PACKETSERVER_ENABLED;WPCAP;_CRT_SECURE_NO_WARNINGS;WIN64;_DEBUG;WIN32</PreprocessorDefinitions>
+      <PreprocessorDefinitions>UNIPCEMU;SDL2;SDL2_NET;PACKETSERVER_ENABLED;WPCAP;_CRT_SECURE_NO_WARNINGS;WIN64;_DEBUG;WIN32;_WIN32;_WIN64</PreprocessorDefinitions>
       <Optimization>Custom</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -1570,7 +1570,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release - SDL_net winpcap|x64'">
     <ClCompile>
       <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>UNIPCEMU;SDL_NET;PACKETSERVER_ENABLED;WPCAP;_CRT_SECURE_NO_WARNINGS;WIN64;WIN32</PreprocessorDefinitions>
+      <PreprocessorDefinitions>UNIPCEMU;SDL_NET;PACKETSERVER_ENABLED;WPCAP;_CRT_SECURE_NO_WARNINGS;WIN64;WIN32;_WIN32;_WIN64</PreprocessorDefinitions>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
@@ -1658,7 +1658,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release - SDL2_net winpcap|x64'">
     <ClCompile>
       <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>UNIPCEMU;SDL2;SDL2_NET;PACKETSERVER_ENABLED;WPCAP;_CRT_SECURE_NO_WARNINGS;WIN64;WIN32</PreprocessorDefinitions>
+      <PreprocessorDefinitions>UNIPCEMU;SDL2;SDL2_NET;PACKETSERVER_ENABLED;WPCAP;_CRT_SECURE_NO_WARNINGS;WIN64;WIN32;_WIN32;_WIN64</PreprocessorDefinitions>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
