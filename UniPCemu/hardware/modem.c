@@ -33,20 +33,25 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 #define HAVE_REMOTE
 
 //Missing for various systems?
-#ifndef _WIN32
-typedef byte u_char;
+#if !defined(_WIN32) || defined(__MINGW32__) || defined(__MINGW64__)
+//On Linux and MinGW!
+typedef unsigned char u_char;
 typedef unsigned int u_int;
 typedef unsigned short u_short;
 #endif
 
 //WPCAP is defined by support when using winpcap! Don't define it here anymore!
 #ifndef NOPCAP
+#ifdef _WIN32
 #ifndef WPCAP
 //Temporarily define WPCAP!
 #define WPCAP
 #define WPCAP_WASNTDEFINED
-//Force the DLL version to be used!
-#define PCAP_DLL
+#endif
+#ifndef WIN32
+//Make sure WIN32 is also defined with _WIN32 for PCAP to successfully be used!
+#define WIN32
+#endif
 #endif
 #include <pcap.h>
 #ifdef WPCAP_WASNTDEFINED
@@ -3895,7 +3900,6 @@ byte setIPv4headerChecksum(byte* data, IPv4header* IPv4_header)
 byte setUDPheaderChecksum(byte* ipheader, byte* udp_header_data, UDPheader *udpheader, byte* UDP_data, word UDP_datalength)
 {
 	word checksum;
-	word headerlength;
 	memcpy(udp_header_data, udpheader, 8); //Set the header directly from the data!
 	if (!doUDP_checksum(ipheader,udp_header_data, UDP_data, UDP_datalength, &checksum)) //Failed checksum?
 	{
