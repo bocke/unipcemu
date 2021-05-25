@@ -9,12 +9,12 @@
       <Configuration>Debug - SDL2 - VLD</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="Debug - SDL2_net noPCAP|Win32">
-      <Configuration>Debug - SDL2_net noPCAP</Configuration>
+    <ProjectConfiguration Include="Debug - SDL2_net winpcap|Win32">
+      <Configuration>Debug - SDL2_net winpcap</Configuration>
       <Platform>Win32</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="Debug - SDL2_net noPCAP|x64">
-      <Configuration>Debug - SDL2_net noPCAP</Configuration>
+    <ProjectConfiguration Include="Debug - SDL2_net winpcap|x64">
+      <Configuration>Debug - SDL2_net winpcap</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
     <ProjectConfiguration Include="Debug - SDL2_net|Win32">
@@ -33,12 +33,12 @@
       <Configuration>Debug - SDL2</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="Debug - SDL_net noPCAP|Win32">
-      <Configuration>Debug - SDL_net noPCAP</Configuration>
+    <ProjectConfiguration Include="Debug - SDL_net winpcap|Win32">
+      <Configuration>Debug - SDL_net winpcap</Configuration>
       <Platform>Win32</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="Debug - SDL_net noPCAP|x64">
-      <Configuration>Debug - SDL_net noPCAP</Configuration>
+    <ProjectConfiguration Include="Debug - SDL_net winpcap|x64">
+      <Configuration>Debug - SDL_net winpcap</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
     <ProjectConfiguration Include="Debug - SDL_net|Win32">
@@ -53,12 +53,12 @@
       <Configuration>Debug</Configuration>
       <Platform>Win32</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="Release - SDL2_net noPCAP|Win32">
-      <Configuration>Release - SDL2_net noPCAP</Configuration>
+    <ProjectConfiguration Include="Release - SDL2_net winpcap|Win32">
+      <Configuration>Release - SDL2_net winpcap</Configuration>
       <Platform>Win32</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="Release - SDL2_net noPCAP|x64">
-      <Configuration>Release - SDL2_net noPCAP</Configuration>
+    <ProjectConfiguration Include="Release - SDL2_net winpcap|x64">
+      <Configuration>Release - SDL2_net winpcap</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
     <ProjectConfiguration Include="Release - SDL2_net|Win32">
@@ -77,12 +77,12 @@
       <Configuration>Release - SDL2</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="Release - SDL_net noPCAP|Win32">
-      <Configuration>Release - SDL_net noPCAP</Configuration>
+    <ProjectConfiguration Include="Release - SDL_net winpcap|Win32">
+      <Configuration>Release - SDL_net winpcap</Configuration>
       <Platform>Win32</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="Release - SDL_net noPCAP|x64">
-      <Configuration>Release - SDL_net noPCAP</Configuration>
+    <ProjectConfiguration Include="Release - SDL_net winpcap|x64">
+      <Configuration>Release - SDL_net winpcap</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
     <ProjectConfiguration Include="Release - SDL_net|Win32">
@@ -441,7 +441,7 @@
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug - SDL_net noPCAP|Win32'" Label="Configuration">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug - SDL_net winpcap|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v142</PlatformToolset>
@@ -456,7 +456,7 @@
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug - SDL2_net noPCAP|Win32'" Label="Configuration">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug - SDL2_net winpcap|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v142</PlatformToolset>
@@ -476,7 +476,7 @@
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release - SDL_net noPCAP|Win32'" Label="Configuration">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release - SDL_net winpcap|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v142</PlatformToolset>
@@ -491,7 +491,7 @@
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release - SDL2_net noPCAP|Win32'" Label="Configuration">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release - SDL2_net winpcap|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v142</PlatformToolset>
@@ -506,7 +506,7 @@
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug - SDL_net noPCAP|x64'" Label="Configuration">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug - SDL_net winpcap|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v142</PlatformToolset>
@@ -521,7 +521,7 @@
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug - SDL2_net noPCAP|x64'" Label="Configuration">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug - SDL2_net winpcap|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v142</PlatformToolset>
@@ -541,7 +541,7 @@
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release - SDL_net noPCAP|x64'" Label="Configuration">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release - SDL_net winpcap|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v142</PlatformToolset>
@@ -556,7 +556,7 @@
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release - SDL2_net noPCAP|x64'" Label="Configuration">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release - SDL2_net winpcap|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v142</PlatformToolset>
@@ -572,7 +572,7 @@
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug - SDL_net|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug - SDL_net noPCAP|Win32'" Label="PropertySheets">
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug - SDL_net winpcap|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug - SDL2|Win32'" Label="PropertySheets">
@@ -581,7 +581,7 @@
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug - SDL2_net|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug - SDL2_net noPCAP|Win32'" Label="PropertySheets">
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug - SDL2_net winpcap|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug - SDL2 - VLD|Win32'" Label="PropertySheets">
@@ -593,7 +593,7 @@
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release - SDL_net|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release - SDL_net noPCAP|Win32'" Label="PropertySheets">
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release - SDL_net winpcap|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release - SDL2|Win32'" Label="PropertySheets">
@@ -602,7 +602,7 @@
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release - SDL2_net|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release - SDL2_net noPCAP|Win32'" Label="PropertySheets">
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release - SDL2_net winpcap|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -611,7 +611,7 @@
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug - SDL_net|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug - SDL_net noPCAP|x64'" Label="PropertySheets">
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug - SDL_net winpcap|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug - SDL2|x64'" Label="PropertySheets">
@@ -620,7 +620,7 @@
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug - SDL2_net|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug - SDL2_net noPCAP|x64'" Label="PropertySheets">
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug - SDL2_net winpcap|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug - SDL2 - VLD|x64'" Label="PropertySheets">
@@ -632,7 +632,7 @@
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release - SDL_net|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release - SDL_net noPCAP|x64'" Label="PropertySheets">
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release - SDL_net winpcap|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release - SDL2|x64'" Label="PropertySheets">
@@ -641,7 +641,7 @@
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release - SDL2_net|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release - SDL2_net noPCAP|x64'" Label="PropertySheets">
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release - SDL2_net winpcap|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
@@ -663,7 +663,7 @@
     <SourcePath>$(VC_SourcePath);$(SolutionDir)</SourcePath>
     <TargetName>$(ProjectName)_x86</TargetName>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug - SDL_net noPCAP|Win32'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug - SDL_net winpcap|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)..\..\projects_build\UniPCemu\</OutDir>
     <IntDir>$(SolutionDir)..\..\projects_build\UniPCemu\$(Configuration)\$(PlatformShortName)\</IntDir>
@@ -690,7 +690,7 @@
     <SourcePath>$(VC_SourcePath);$(SolutionDir)</SourcePath>
     <TargetName>$(ProjectName)_x86</TargetName>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug - SDL2_net noPCAP|Win32'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug - SDL2_net winpcap|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)..\..\projects_build\UniPCemu\</OutDir>
     <IntDir>$(SolutionDir)..\..\projects_build\UniPCemu\$(Configuration)\$(PlatformShortName)\</IntDir>
@@ -726,7 +726,7 @@
     <SourcePath>$(VC_SourcePath);$(SolutionDir)</SourcePath>
     <TargetName>$(ProjectName)_x86</TargetName>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release - SDL_net noPCAP|Win32'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release - SDL_net winpcap|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)..\..\projects_build\UniPCemu\</OutDir>
     <IntDir>$(SolutionDir)..\..\projects_build\UniPCemu\$(Configuration)\$(PlatformShortName)\</IntDir>
@@ -753,7 +753,7 @@
     <SourcePath>$(VC_SourcePath);$(SolutionDir)</SourcePath>
     <TargetName>$(ProjectName)_x86</TargetName>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release - SDL2_net noPCAP|Win32'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release - SDL2_net winpcap|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)..\..\projects_build\UniPCemu\</OutDir>
     <IntDir>$(SolutionDir)..\..\projects_build\UniPCemu\$(Configuration)\$(PlatformShortName)\</IntDir>
@@ -778,7 +778,7 @@
     <SourcePath>$(VC_SourcePath);$(SolutionDir)</SourcePath>
     <TargetName>$(ProjectName)_x64</TargetName>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug - SDL_net noPCAP|x64'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug - SDL_net winpcap|x64'">
     <OutDir>$(SolutionDir)..\..\projects_build\UniPCemu\</OutDir>
     <IntDir>$(SolutionDir)..\..\projects_build\UniPCemu\$(Configuration)\$(PlatformShortName)\</IntDir>
     <IncludePath>C:\SDL\SDL-1.2.15\include;C:\SDL\SDL_net-1.2.8;$(SolutionDir);$(SolutionDir)\..\commonemuframework;$(VC_IncludePath);$(WindowsSDK_IncludePath)</IncludePath>
@@ -802,7 +802,7 @@
     <SourcePath>$(VC_SourcePath);$(SolutionDir)</SourcePath>
     <TargetName>$(ProjectName)_x64</TargetName>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug - SDL2_net noPCAP|x64'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug - SDL2_net winpcap|x64'">
     <OutDir>$(SolutionDir)..\..\projects_build\UniPCemu\</OutDir>
     <IntDir>$(SolutionDir)..\..\projects_build\UniPCemu\$(Configuration)\$(PlatformShortName)\</IntDir>
     <IncludePath>C:\SDL\SDL2\include;C:\SDL\SDL2_net;$(SolutionDir);$(SolutionDir)\..\commonemuframework;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
@@ -834,7 +834,7 @@
     <SourcePath>$(VC_SourcePath);$(SolutionDir)</SourcePath>
     <TargetName>$(ProjectName)_x64</TargetName>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release - SDL_net noPCAP|x64'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release - SDL_net winpcap|x64'">
     <OutDir>$(SolutionDir)..\..\projects_build\UniPCemu\</OutDir>
     <IntDir>$(SolutionDir)..\..\projects_build\UniPCemu\$(Configuration)\$(PlatformShortName)\</IntDir>
     <IncludePath>C:\SDL\SDL-1.2.15\include;C:\SDL\SDL_net-1.2.8;$(SolutionDir);$(SolutionDir)\..\commonemuframework;$(VC_IncludePath);$(WindowsSDK_IncludePath)</IncludePath>
@@ -858,7 +858,7 @@
     <SourcePath>$(VC_SourcePath);$(SolutionDir)</SourcePath>
     <TargetName>$(ProjectName)_x64</TargetName>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release - SDL2_net noPCAP|x64'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release - SDL2_net winpcap|x64'">
     <OutDir>$(SolutionDir)..\..\projects_build\UniPCemu\</OutDir>
     <IntDir>$(SolutionDir)..\..\projects_build\UniPCemu\$(Configuration)\$(PlatformShortName)\</IntDir>
     <IncludePath>C:\SDL\SDL2\include;C:\SDL\SDL2_net;$(SolutionDir);$(SolutionDir)\..\commonemuframework;$(VC_IncludePath);$(WindowsSDK_IncludePath)</IncludePath>
@@ -934,9 +934,9 @@
       <Message>Generating dependencies...</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug - SDL_net noPCAP|Win32'">
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug - SDL_net winpcap|Win32'">
     <ClCompile>
-      <PreprocessorDefinitions>UNIPCEMU;SDL_NET;NOPCAP;PACKETSERVER_ENABLED;_CRT_SECURE_NO_WARNINGS;WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>UNIPCEMU;SDL_NET;PACKETSERVER_ENABLED;WPCAP;_CRT_SECURE_NO_WARNINGS;WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <WarningLevel>Level3</WarningLevel>
@@ -1036,9 +1036,9 @@
       <Message>Generating dependencies...</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug - SDL2_net noPCAP|Win32'">
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug - SDL2_net winpcap|Win32'">
     <ClCompile>
-      <PreprocessorDefinitions>UNIPCEMU;SDL2;SDL2_NET;NOPCAP;PACKETSERVER_ENABLED;_CRT_SECURE_NO_WARNINGS;WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>UNIPCEMU;SDL2;SDL2_NET;PACKETSERVER_ENABLED;WPCAP;_CRT_SECURE_NO_WARNINGS;WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
@@ -1171,9 +1171,9 @@
       <Message>Generating dependencies...</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release - SDL_net noPCAP|Win32'">
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release - SDL_net winpcap|Win32'">
     <ClCompile>
-      <PreprocessorDefinitions>UNIPCEMU;SDL_NET;NOPCAP;PACKETSERVER_ENABLED;_CRT_SECURE_NO_WARNINGS;WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>UNIPCEMU;SDL_NET;PACKETSERVER_ENABLED;WPCAP;_CRT_SECURE_NO_WARNINGS;WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <WarningLevel>Level1</WarningLevel>
@@ -1269,9 +1269,9 @@
       <Message>Generating dependencies...</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release - SDL2_net noPCAP|Win32'">
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release - SDL2_net winpcap|Win32'">
     <ClCompile>
-      <PreprocessorDefinitions>UNIPCEMU;SDL2;SDL2_NET;NOPCAP;PACKETSERVER_ENABLED;_CRT_SECURE_NO_WARNINGS;WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>UNIPCEMU;SDL2;SDL2_NET;PACKETSERVER_ENABLED;WPCAP;_CRT_SECURE_NO_WARNINGS;WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <WarningLevel>Level1</WarningLevel>
@@ -1361,10 +1361,10 @@
       <Message>Generating dependencies...</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug - SDL_net noPCAP|x64'">
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug - SDL_net winpcap|x64'">
     <ClCompile>
       <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>UNIPCEMU;SDL_NET;NOPCAP;PACKETSERVER_ENABLED;_CRT_SECURE_NO_WARNINGS;WIN64;_DEBUG</PreprocessorDefinitions>
+      <PreprocessorDefinitions>UNIPCEMU;SDL_NET;PACKETSERVER_ENABLED;WPCAP;_CRT_SECURE_NO_WARNINGS;WIN64;_DEBUG</PreprocessorDefinitions>
       <Optimization>Custom</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -1451,10 +1451,10 @@
       <Message>Generating dependencies...</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug - SDL2_net noPCAP|x64'">
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug - SDL2_net winpcap|x64'">
     <ClCompile>
       <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>UNIPCEMU;SDL2;SDL2_NET;NOPCAP;PACKETSERVER_ENABLED;_CRT_SECURE_NO_WARNINGS;WIN64;_DEBUG</PreprocessorDefinitions>
+      <PreprocessorDefinitions>UNIPCEMU;SDL2;SDL2_NET;PACKETSERVER_ENABLED;WPCAP;_CRT_SECURE_NO_WARNINGS;WIN64;_DEBUG</PreprocessorDefinitions>
       <Optimization>Custom</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -1567,10 +1567,10 @@
       <Message>Generating dependencies...</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release - SDL_net noPCAP|x64'">
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release - SDL_net winpcap|x64'">
     <ClCompile>
       <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>UNIPCEMU;SDL_NET;NOPCAP;PACKETSERVER_ENABLED;_CRT_SECURE_NO_WARNINGS;WIN64</PreprocessorDefinitions>
+      <PreprocessorDefinitions>UNIPCEMU;SDL_NET;PACKETSERVER_ENABLED;WPCAP;_CRT_SECURE_NO_WARNINGS;WIN64</PreprocessorDefinitions>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
@@ -1655,10 +1655,10 @@
       <Message>Generating dependencies...</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release - SDL2_net noPCAP|x64'">
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release - SDL2_net winpcap|x64'">
     <ClCompile>
       <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>UNIPCEMU;SDL2;SDL2_NET;NOPCAP;PACKETSERVER_ENABLED;_CRT_SECURE_NO_WARNINGS;WIN64</PreprocessorDefinitions>
+      <PreprocessorDefinitions>UNIPCEMU;SDL2;SDL2_NET;PACKETSERVER_ENABLED;WPCAP;_CRT_SECURE_NO_WARNINGS;WIN64</PreprocessorDefinitions>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
