@@ -3628,12 +3628,17 @@ typedef struct PACKED
 	byte mustbezero;
 	byte protocol;
 	word UDPlength;
-	//UDP header
+} UDPpseudoheader;
+#include "headers/endpacked.h"
+
+#include "headers/packed.h"
+typedef struct PACKED
+{
 	word sourceport;
 	word destinationport;
 	word length;
 	word checksum;
-} UDPpseudoheader;
+} UDPheader;
 #include "headers/endpacked.h"
 
 
@@ -3641,7 +3646,7 @@ typedef struct PACKED
 typedef union PACKED
 {
 	UDPpseudoheader header;
-	word data[10];
+	word data[12]; //12 bytes of data!
 } UDPpseudoheadercontainer;
 #include "headers/endpacked.h"
 
@@ -3723,8 +3728,8 @@ word performIPv4checksum(MODEM_PACKETBUFFER* buffer, byte calculatingchecksum)
 	return ~r; //One's complement of the result is the result!
 }
 
-//UDP checksum like IPv4 checksum above, but taking the proper inputs to perform the checksum!
-word doUDP_checksum(IPv4header* ih, byte *UDP_data, word UDP_datalength)
+//UDP checksum like IPv4 checksum above, but taking the proper inputs to perform the checksum! When checksum is non-zero, this must match! Otherwise, no checksum is used!
+byte doUDP_checksum(byte* ih, byte *udp_header, byte *UDP_data, word UDP_datalength, word *checksum)
 {
 	word result;
 	word dataleft;
@@ -3732,47 +3737,67 @@ word doUDP_checksum(IPv4header* ih, byte *UDP_data, word UDP_datalength)
 	UDPpseudoheadercontainer uph;
 	MODEM_PACKETBUFFER buffer; //For the data to checksum!
 	memcpy(&curih, ih, sizeof(curih)); //Make a copy of the header to read!
-
 	memset(&uph, 0x00, sizeof(uph));
-
-	memcpy(&uph.header.srcaddr,&ih->sourceaddr,4); //Source address!
-	memcpy(&uph.header.dstaddr,&ih->destaddr,4); //Destination address!
+	memcpy(&uph.header.srcaddr,&curih.sourceaddr,4); //Source address!
+	memcpy(&uph.header.dstaddr,&curih.destaddr,4); //Destination address!
 	uph.header.mustbezero = 0x00;
-	uph.header.protocol = ih->protocol;
-	uph.header.length = SDL_SwapBE16(UDP_datalength);
+	uph.header.protocol = curih.protocol;
+	uph.header.UDPlength = SDL_SwapBE16(8+UDP_datalength); //UDP header + UDP data size
 
-	memset(&buffer, 0, sizeof(buffer)); //Init!
-
+	memset(&buffer, 0, sizeof(buffer)); //Init checksum buffer!
+	//Pseudo header first!
 	for (dataleft = 0; dataleft < sizeof(uph.data); ++dataleft)
 	{
-		packetServerAddPacketBufferQueue(&buffer, uph.data[dataleft]); //Add the data to checksum!
+		if (!packetServerAddPacketBufferQueue(&buffer, uph.data[dataleft])) //Add the data to checksum!
+		{
+			packetServerFreePacketBufferQueue(&buffer); //Clean up!
+			return 0; //Failure!
+		}
 	}
+	//Followed by UDP header!
+	for (dataleft = 0; dataleft < 8; ++dataleft)
+	{
+		if (!packetServerAddPacketBufferQueue(&buffer, udp_header[dataleft])) //Add the data to checksum!
+		{
+			packetServerFreePacketBufferQueue(&buffer); //Clean up!
+			return 0; //Failure!
+		}
+	}
+	//Followed by UDP data!
 	for (dataleft = 0; dataleft < UDP_datalength; ++dataleft)
 	{
-		packetServerAddPacketBufferQueue(&buffer, UDP_data[dataleft]); //Add the data to checksum!
+		if (!packetServerAddPacketBufferQueue(&buffer, UDP_data[dataleft])) //Add the data to checksum!
+		{
+			packetServerFreePacketBufferQueue(&buffer); //Clean up!
+			return 0; //Failure!
+		}
 	}
 	result = performUDPchecksum(&buffer); //Perform the checksum!
 	packetServerFreePacketBufferQueue(&buffer); //Clean up!
-	return result; //Give the result!
+	*checksum = result; //The checksum!
+	return 1; //Success!
 }
 
 //UDP checksum like IPv4 checksum above, but taking the proper inputs to perform the checksum!
-word doIPv4_checksum(byte* ih, word headerlength, byte calculatingchecksum)
+byte doIPv4_checksum(byte* ih, word headerlength, byte calculatingchecksum, word *checksum)
 {
 	word result;
 	word dataleft;
-	IPv4header curih;
-	UDPpseudoheadercontainer uph;
 	MODEM_PACKETBUFFER buffer; //For the data to checksum!
 	memset(&buffer, 0, sizeof(buffer)); //Init!
 
 	for (dataleft = 0; dataleft < headerlength; ++dataleft)
 	{
-		packetServerAddPacketBufferQueue(&buffer, ih[dataleft]); //Add the data to checksum!
+		if (!packetServerAddPacketBufferQueue(&buffer, ih[dataleft])) //Add the data to checksum!
+		{
+			packetServerFreePacketBufferQueue(&buffer); //Clean up!
+			return 0; //Failure!
+		}
 	}
 	result = performIPv4checksum(&buffer, calculatingchecksum); //Perform the checksum!
 	packetServerFreePacketBufferQueue(&buffer); //Clean up!
-	return result; //Give the result!
+	*checksum = result; //The checksum!
+	return 1; //Success!
 }
 
 void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
