@@ -3619,6 +3619,162 @@ byte modem_passthrough()
 	return (modem.supported >= 2); //In phassthough mode?
 }
 
+#include "headers/packed.h"
+typedef struct PACKED
+{
+	//Pseudo IP header
+	byte srcaddr[4];
+	byte dstaddr[4];
+	byte mustbezero;
+	byte protocol;
+	word UDPlength;
+	//UDP header
+	word sourceport;
+	word destinationport;
+	word length;
+	word checksum;
+} UDPpseudoheader;
+#include "headers/endpacked.h"
+
+
+#include "headers/packed.h"
+typedef union PACKED
+{
+	UDPpseudoheader header;
+	word data[10];
+} UDPpseudoheadercontainer;
+#include "headers/endpacked.h"
+
+#include "headers/packed.h"
+typedef struct PACKED
+{
+	byte version_IHL; //Low 4 bits=Version, High 4 bits is size in 32-bit dwords.
+	byte DSCP_ECN;
+	word totallength;
+	word identification;
+	byte flags0_2_fragmentoffsethigh7_3; //flags 2:0, fragment offset high 7:3(bits 4:0 of the high byte)
+	byte fragmentoffset; //Remainder of fragment offset low byte
+	byte TTL;
+	byte protocol;
+	word headerchecksum;
+	byte sourceaddr[4];
+	byte destaddr[4];
+	//Now come the options, which are optional.
+} IPv4header;
+#include "headers/endpacked.h"
+
+word performUDPchecksum(MODEM_PACKETBUFFER* buffer)
+{
+	word result;
+	uint_32 r;
+	uint_32 len;
+	word* p;
+	r = 0;
+	len = buffer->length;
+	p = (word*)buffer->buffer; //The data to check!
+	for (; len > 1;) //Words left?
+	{
+		r += *p++; //Read and add!
+		len -= 2; //Parsed!
+	}
+	if (len) //Left?
+	{
+		r += *((byte*)p); //Read byte left!
+	}
+	for (; r >> 16;) //Left to wrap?
+	{
+		r = (r & 0xFFFF) + (r >> 16); //Wrap!
+	}
+	result = ~r; //One's complement of the result is the result!
+	if (result == 0) //0 needs to become FFFF?
+	{
+		result = 0xFFFF; //Special case!
+	}
+	return result; //Give the result!
+}
+
+word performIPv4checksum(MODEM_PACKETBUFFER* buffer, byte calculatingchecksum)
+{
+	uint_32 r;
+	uint_32 len;
+	uint_32 pos;
+	word* p;
+	r = 0;
+	len = buffer->length;
+	p = (word*)buffer->buffer; //The data to check!
+	pos = 0; //Init position!
+	for (; len > 1;) //Words left?
+	{
+		if ((pos != 5) || (calculatingchecksum == 0)) //Not the checksum field or not calculating the checksum for sending(validating it)?
+		{
+			r += *p++; //Read and add!
+		}
+		else
+		{
+			++p; //Add only, ignore the data!
+		}
+		len -= 2; //Parsed!
+	}
+	//odd amount of bytes shouldn't happen!
+	for (; r >> 16;) //Left to wrap?
+	{
+		r = (r & 0xFFFF) + (r >> 16); //Wrap!
+	}
+	return ~r; //One's complement of the result is the result!
+}
+
+//UDP checksum like IPv4 checksum above, but taking the proper inputs to perform the checksum!
+word doUDP_checksum(IPv4header* ih, byte *UDP_data, word UDP_datalength)
+{
+	word result;
+	word dataleft;
+	IPv4header curih;
+	UDPpseudoheadercontainer uph;
+	MODEM_PACKETBUFFER buffer; //For the data to checksum!
+	memcpy(&curih, ih, sizeof(curih)); //Make a copy of the header to read!
+
+	memset(&uph, 0x00, sizeof(uph));
+
+	memcpy(&uph.header.srcaddr,&ih->sourceaddr,4); //Source address!
+	memcpy(&uph.header.dstaddr,&ih->destaddr,4); //Destination address!
+	uph.header.mustbezero = 0x00;
+	uph.header.protocol = ih->protocol;
+	uph.header.length = SDL_SwapBE16(UDP_datalength);
+
+	memset(&buffer, 0, sizeof(buffer)); //Init!
+
+	for (dataleft = 0; dataleft < sizeof(uph.data); ++dataleft)
+	{
+		packetServerAddPacketBufferQueue(&buffer, uph.data[dataleft]); //Add the data to checksum!
+	}
+	for (dataleft = 0; dataleft < UDP_datalength; ++dataleft)
+	{
+		packetServerAddPacketBufferQueue(&buffer, UDP_data[dataleft]); //Add the data to checksum!
+	}
+	result = performUDPchecksum(&buffer); //Perform the checksum!
+	packetServerFreePacketBufferQueue(&buffer); //Clean up!
+	return result; //Give the result!
+}
+
+//UDP checksum like IPv4 checksum above, but taking the proper inputs to perform the checksum!
+word doIPv4_checksum(byte* ih, word headerlength, byte calculatingchecksum)
+{
+	word result;
+	word dataleft;
+	IPv4header curih;
+	UDPpseudoheadercontainer uph;
+	MODEM_PACKETBUFFER buffer; //For the data to checksum!
+	memset(&buffer, 0, sizeof(buffer)); //Init!
+
+	for (dataleft = 0; dataleft < headerlength; ++dataleft)
+	{
+		packetServerAddPacketBufferQueue(&buffer, ih[dataleft]); //Add the data to checksum!
+	}
+	result = performIPv4checksum(&buffer, calculatingchecksum); //Perform the checksum!
+	packetServerFreePacketBufferQueue(&buffer); //Clean up!
+	return result; //Give the result!
+}
+
 void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 {
 	sword connectedclient;
