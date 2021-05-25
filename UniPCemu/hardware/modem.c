@@ -530,7 +530,7 @@ void initPcap() {
 	PacketServer_running = 0; //We're not using the packet server emulation, enable normal modem(we don't connect to other systems ourselves)!
 
 #if defined(PACKETSERVER_ENABLED) && !defined(NOPCAP)
-	if ((BIOS_Settings.ethernetserver_settings.ethernetcard==-1) || (BIOS_Settings.ethernetserver_settings.ethernetcard<0) || (BIOS_Settings.ethernetserver_settings.ethernetcard>255)) //No ethernet card to emulate?
+	if ((BIOS_Settings.ethernetserver_settings.ethernetcard==-1) || (BIOS_Settings.ethernetserver_settings.ethernetcard<0)) //No ethernet card to emulate?
 	{
 		return; //Disable ethernet emulation!
 	}
