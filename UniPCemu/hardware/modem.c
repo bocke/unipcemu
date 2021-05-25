@@ -3781,7 +3781,7 @@ byte doUDP_checksum(byte* ih, byte *udp_header, byte *UDP_data, word UDP_datalen
 }
 
 //UDP checksum like IPv4 checksum above, but taking the proper inputs to perform the checksum!
-//calculatingchecksum: 0 for calculating the checksum for sending. 1 for performing the checksum (a resulting checksum value of 0 means that the checksum is correct).
+//checkreceivechecksum: 0 for calculating the checksum for sending. 1 for performing the checksum (a resulting checksum value of 0 means that the checksum is correct).
 byte doIPv4_checksum(byte* ih, word headerlength, byte checkreceivechecksum, word *checksum)
 {
 	word result;
@@ -3801,6 +3801,109 @@ byte doIPv4_checksum(byte* ih, word headerlength, byte checkreceivechecksum, wor
 	packetServerFreePacketBufferQueue(&buffer); //Clean up!
 	*checksum = result; //The checksum!
 	return 1; //Success!
+}
+
+//Retrieves a 8-byte UDP header from data!
+byte getUDPheader(byte* IPv4_header, byte *UDPheader_data, UDPheader* UDP_header, byte dataleft, byte performChecksumForReceive)
+{
+	word checksum;
+	if (dataleft < 8) //Not enough left for a header?
+	{
+		return 0; //Failed: invalid header!
+	}
+	memcpy(UDP_header, UDPheader_data, 8); //Set the header directly from the data!
+	if ((SDL_SwapBE16(UDP_header->length) + 8) < dataleft) //Not enough room left for the data?
+	{
+		return 0; //Failed to perform the checksum: this would overflow the buffer!
+	}
+	if (performChecksumForReceive) //Performing a checksum on it to validate it?
+	{
+		if (UDP_header->checksum) //Zero is no checksum present!
+		{
+			if (!doUDP_checksum(IPv4_header, UDPheader_data, UDPheader_data + 8, SDL_SwapBE16(UDP_header->length), &checksum))
+			{
+				return 0; //Failed to perform the checksum!
+			}
+			if (checksum != SDL_SwapBE16(UDP_header->checksum)) //Checksum failed?
+			{
+				return 0; //Failed: Checksum failed!
+			}
+		}
+	}
+	return 1; //OK: UDP header and data is OK!
+}
+
+//getIPv4header: Retrieves a IPv4 header from a packet and gives it's size. Can also perform checksum check on the input data.
+//Retrieves a n-byte IPv4 header from data!
+byte getIPv4header(byte* data, IPv4header* IPv4_header, word dataleft, byte performChecksumForReceive, word *result_headerlength)
+{
+	word checksum;
+	word currentheaderlength;
+	if (dataleft < 20) //Not enough left for a minimal header?
+	{
+		return 0; //Failed: invalid header!
+	}
+	memcpy(IPv4_header, data, 20); //Set the header directly from the data!
+	currentheaderlength = ((IPv4_header->version_IHL >> 4) << 2); //Header length, in doublewords!
+	if (dataleft < currentheaderlength) //Not enough data for the full header?
+	{
+		return 0; //Failed: invalid header!
+	}
+	if (performChecksumForReceive) //Performing a checksum on it to validate it?
+	{
+		if (!doIPv4_checksum(data, currentheaderlength, 1, &checksum)) //Failed checksum?
+		{
+			return 0; //Failed: couldn't validate checksum!
+		}
+		if (checksum) //Checksum failed?
+		{
+			return 0; //Failed: checksum failed!
+		}
+	}
+	*result_headerlength = currentheaderlength; //The detected header length!
+	return 1; //Gotten packet!
+}
+
+/*
+* setIPv4headerChecksum: Sets and updates the IPv4 header in the packet with checksum.
+* data: points to IPv4 header in the packet!
+* IPv4_header: the header to set.
+*/
+byte setIPv4headerChecksum(byte* data, IPv4header* IPv4_header)
+{
+	word checksum;
+	word headerlength;
+	headerlength = ((IPv4_header->version_IHL >> 4) << 2); //Header length, in doublewords!
+	memcpy(data, IPv4_header, 20); //Update the IP packet as requested!
+	if (!doIPv4_checksum(data, headerlength, 0, &checksum)) //Failed checksum creation?
+	{
+		return 0; //Failed: couldn't validate checksum!
+	}
+	IPv4_header->headerchecksum = SDL_SwapBE16(checksum); //Set or update the checksum as requested!
+	memcpy(data, IPv4_header, 20); //Update the IP header as requested!
+	return 1; //Gotten header and updated!
+}
+
+/*
+* setUDPheaderChecksum: Sets and updates the UDP header in the packet with checksum.
+* ipheader: the IP header in the packet
+* udp_header_data: the UDP header in the packet
+* udpheader: the UDP header to set in the packet
+* UDP_data: the start of UDP data in the packet
+* UDP_datalength: the length of UDP data in the packet
+*/
+byte setUDPheaderChecksum(byte* ipheader, byte* udp_header_data, UDPheader *udpheader, byte* UDP_data, word UDP_datalength)
+{
+	word checksum;
+	word headerlength;
+	memcpy(udp_header_data, udpheader, 8); //Set the header directly from the data!
+	if (!doUDP_checksum(ipheader,udp_header_data, UDP_data, UDP_datalength, &checksum)) //Failed checksum?
+	{
+		return 0; //Failed: couldn't validate checksum!
+	}
+	udpheader->checksum = SDL_SwapBE16(checksum); //Set or update the checksum as requested!
+	memcpy(udp_header_data, udpheader, 8); //Update the UDP header as requested!
+	return 1; //Gotten header and updated!
 }
 
 void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
