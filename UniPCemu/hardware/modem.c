@@ -19,7 +19,9 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 //Only when not using Windows, include types first!
+#ifndef _WIN32
 #include "headers/types.h" //Basic types first! Also required for system detection!
+#endif
 
 //Compile without PCAP support, but with server simulation when NOPCAP and PACKERSERVER_ENABLED is defined(essentially a server without login information and PCap support(thus no packets being sent/received))?
 /*
@@ -31,9 +33,11 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 #define HAVE_REMOTE
 
 //Missing for various systems?
+#ifndef _WIN32
 typedef byte u_char;
 typedef unsigned int u_int;
 typedef unsigned short u_short;
+#endif
 
 //WPCAP is defined by support when using winpcap! Don't define it here anymore!
 #ifndef NOPCAP
@@ -49,11 +53,13 @@ typedef unsigned short u_short;
 //Undefine the temporary WPCAP define!
 #undef WPCAP
 #endif
-#ifdef IS_WINDOWS
+#ifdef _WIN32
 #include <tchar.h>
 #endif
 #endif
 #endif
+
+#include "headers/types.h" //Basic types first! Also required for system detection!
 
 //Remaining headers
 #include "headers/hardware/modem.h" //Our basic definitions!
@@ -74,8 +80,6 @@ typedef unsigned short u_short;
 //Nice little functionality for dynamic loading of the Windows libpcap dll!
 
 #ifdef _WIN32
-
-#include <windows.h>
 
 // DLL loading
 #define pcap_sendpacket(A,B,C)			PacketSendPacket(A,B,C)
