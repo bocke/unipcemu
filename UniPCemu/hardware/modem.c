@@ -653,7 +653,7 @@ void fetchpackets_pcap() { //Handle any packets to process!
 				{
 					if (pktdata[detselfrelpos + 9] == 6) //TCP protocol?
 					{
-						if ((memcmp(ppktdata[detselfrelpos + 0xC], &packetserver_defaultstaticIP[0], 4) == 0) || (memcmp(ppktdata[detselfrelpos + 0x10], &packetserver_defaultstaticIP[0], 4) == 0)) //Our  own IP in source or destination?
+						if ((memcmp(&pktdata[detselfrelpos + 0xC], &packetserver_defaultstaticIP[0], 4) == 0) || (memcmp(&pktdata[detselfrelpos + 0x10], &packetserver_defaultstaticIP[0], 4) == 0)) //Our  own IP in source or destination?
 						{
 							IP_useIHL = (((pktdata[detselfrelpos] & 0xF0) >> 4) << 5); //IHL field, in bytes!
 							if ((detselfdataleft > IP_useIHL) && (IP_useIHL)) //Enough left for the subpacket?
