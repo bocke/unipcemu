@@ -3698,7 +3698,8 @@ word performUDPchecksum(MODEM_PACKETBUFFER* buffer)
 	return result; //Give the result!
 }
 
-word performIPv4checksum(MODEM_PACKETBUFFER* buffer, byte calculatingchecksum)
+//checkreceivechecksum: 0 for calculating the checksum for sending. 1 for performing the checksum (a resulting checksum value of 0 means that the checksum is correct).
+word performIPv4checksum(MODEM_PACKETBUFFER* buffer, byte checkreceivechecksum)
 {
 	uint_32 r;
 	uint_32 len;
@@ -3710,7 +3711,7 @@ word performIPv4checksum(MODEM_PACKETBUFFER* buffer, byte calculatingchecksum)
 	pos = 0; //Init position!
 	for (; len > 1;) //Words left?
 	{
-		if ((pos != 5) || (calculatingchecksum == 0)) //Not the checksum field or not calculating the checksum for sending(validating it)?
+		if ((pos != 5) || checkreceivechecksum) //Not the checksum field or not including the checksum for sending(for validating it)?
 		{
 			r += *p++; //Read and add!
 		}
@@ -3718,6 +3719,7 @@ word performIPv4checksum(MODEM_PACKETBUFFER* buffer, byte calculatingchecksum)
 		{
 			++p; //Add only, ignore the data!
 		}
+		++pos; //Next position!
 		len -= 2; //Parsed!
 	}
 	//odd amount of bytes shouldn't happen!
@@ -3779,7 +3781,8 @@ byte doUDP_checksum(byte* ih, byte *udp_header, byte *UDP_data, word UDP_datalen
 }
 
 //UDP checksum like IPv4 checksum above, but taking the proper inputs to perform the checksum!
-byte doIPv4_checksum(byte* ih, word headerlength, byte calculatingchecksum, word *checksum)
+//calculatingchecksum: 0 for calculating the checksum for sending. 1 for performing the checksum (a resulting checksum value of 0 means that the checksum is correct).
+byte doIPv4_checksum(byte* ih, word headerlength, byte checkreceivechecksum, word *checksum)
 {
 	word result;
 	word dataleft;
@@ -3794,7 +3797,7 @@ byte doIPv4_checksum(byte* ih, word headerlength, byte calculatingchecksum, word
 			return 0; //Failure!
 		}
 	}
-	result = performIPv4checksum(&buffer, calculatingchecksum); //Perform the checksum!
+	result = performIPv4checksum(&buffer, checkreceivechecksum); //Perform the checksum!
 	packetServerFreePacketBufferQueue(&buffer); //Clean up!
 	*checksum = result; //The checksum!
 	return 1; //Success!
