@@ -70,6 +70,110 @@ typedef unsigned short u_short;
 #if defined(PACKETSERVER_ENABLED)
 #include <stdint.h>
 #include <stdlib.h>
+
+//Nice little functionality for dynamic loading of the Windows libpcap dll!
+
+#ifdef _WIN32
+
+#include <windows.h>
+
+// DLL loading
+#define pcap_sendpacket(A,B,C)			PacketSendPacket(A,B,C)
+#define pcap_close(A)					PacketClose(A)
+#define pcap_freealldevs(A)				PacketFreealldevs(A)
+#define pcap_open(A,B,C,D,E,F)			PacketOpen(A,B,C,D,E,F)
+#define pcap_next_ex(A,B,C)				PacketNextEx(A,B,C)
+#define pcap_findalldevs_ex(A,B,C,D)	PacketFindALlDevsEx(A,B,C,D)
+#define pcap_geterr(A)	PacketGetError(A)
+#define pcap_datalink(A) PacketDataLink(A)
+
+int (*PacketSendPacket)(pcap_t*, const u_char*, int) = 0;
+void (*PacketClose)(pcap_t*) = 0;
+void (*PacketFreealldevs)(pcap_if_t*) = 0;
+pcap_t* (*PacketOpen)(char const*, int, int, int, struct pcap_rmtauth*, char*) = 0;
+int (*PacketNextEx)(pcap_t*, struct pcap_pkthdr**, const u_char**) = 0;
+int (*PacketFindALlDevsEx)(char*, struct pcap_rmtauth*, pcap_if_t**, char*) = 0;
+char* (*PacketGetError)(pcap_t*) = 0;
+int	(*PacketDataLink)(pcap_t*) = 0;
+
+char pcap_src_if_string[] = PCAP_SRC_IF_STRING;
+
+byte LoadPcapLibrary() {
+	// remember if we've already initialized the library
+	static HINSTANCE pcapinst = (HINSTANCE)-1;
+	if (pcapinst != (HINSTANCE)-1) {
+		return (pcapinst != NULL);
+	}
+
+	// init the library
+	pcapinst = LoadLibrary("WPCAP.DLL");
+	if (pcapinst == NULL) {
+		return FALSE;
+	}
+	FARPROC psp;
+
+#ifdef __MINGW32__
+	// C++ defines function and data pointers as separate types to reflect
+	// Harvard architecture machines (like the Arduino). As such, casting
+	// between them isn't portable and GCC will helpfully warn us about it.
+	// We're only running this code on Windows which explicitly allows this
+	// behaviour, so silence the warning to avoid confusion.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-function-type"
+#endif
+
+	psp = GetProcAddress(pcapinst, "pcap_sendpacket");
+	if (!PacketSendPacket) PacketSendPacket =
+		(int(__cdecl*)(pcap_t*, const u_char*, int))psp;
+
+	psp = GetProcAddress(pcapinst, "pcap_close");
+	if (!PacketClose) PacketClose =
+		(void(__cdecl*)(pcap_t*)) psp;
+
+	psp = GetProcAddress(pcapinst, "pcap_freealldevs");
+	if (!PacketFreealldevs) PacketFreealldevs =
+		(void(__cdecl*)(pcap_if_t*)) psp;
+
+	psp = GetProcAddress(pcapinst, "pcap_open");
+	if (!PacketOpen) PacketOpen =
+		(pcap_t * (__cdecl*)(char const*, int, int, int, struct pcap_rmtauth*, char*)) psp;
+
+	psp = GetProcAddress(pcapinst, "pcap_next_ex");
+	if (!PacketNextEx) PacketNextEx =
+		(int(__cdecl*)(pcap_t*, struct pcap_pkthdr**, const u_char**)) psp;
+
+	psp = GetProcAddress(pcapinst, "pcap_findalldevs_ex");
+	if (!PacketFindALlDevsEx) PacketFindALlDevsEx =
+		(int(__cdecl*)(char*, struct pcap_rmtauth*, pcap_if_t**, char*)) psp;
+
+	psp = GetProcAddress(pcapinst, "pcap_geterr");
+	if (!PacketGetError) PacketGetError =
+		(char* (__cdecl*)(pcap_t*)) psp;
+
+	psp = GetProcAddress(pcapinst, "pcap_datalink");
+	if (!PacketDataLink) PacketDataLink =
+		(int (__cdecl*)(pcap_t*)) psp;
+
+#ifdef __MINGW32__
+#pragma GCC diagnostic pop
+#endif
+
+	if (PacketFindALlDevsEx == 0 || PacketNextEx == 0 || PacketOpen == 0 ||
+		PacketFreealldevs == 0 || PacketClose == 0 || PacketSendPacket == 0 ||
+
+		PacketGetError == 0) {
+		dolog("ethernetcard","Incorrect or non-functional WinPcap version.");
+		pcapinst = NULL;
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+#endif
+
+//End of the libpcap support for Windows!
+
 #endif
 
 /*
@@ -356,6 +460,7 @@ void initPacketServerClients()
 #endif
 #endif
 
+byte pcap_loaded = 0; //Is WinPCap loaded?
 byte dummy;
 int_64 ethif = 0;
 uint8_t pcap_enabled = 0;
@@ -405,6 +510,10 @@ void initPcap() {
 #ifdef IS_WINDOWS
 	dummy = LoadNpcapDlls(); //Try and load the npcap DLLs if present!
 #endif
+#endif
+
+#ifdef _WIN32
+	pcap_loaded = LoadPcapLibrary(); //Load the PCap library that's to be used!
 #endif
 
 	/*
@@ -512,6 +621,15 @@ void initPcap() {
 	*/
 
 	i = 0; //Init!
+
+	if (!pcap_loaded) //PCap isn't loaded?
+	{
+		dolog("ethernetcard", "The pcap interface and packet server is disabled because the required libraries aren't installed!");
+		pcap_enabled = 0;
+		pcap_receiverstate = 0; //Packet receiver/filter state: ready to receive a packet!
+		PacketServer_running = 0; //We're using the packet server emulation, disable normal modem(we don't connect to other systems ourselves)!
+		return; //Abort!
+	}
 
 	dolog("ethernetcard","Obtaining NIC list via libpcap...");
 
