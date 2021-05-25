@@ -668,7 +668,7 @@
     <OutDir>$(SolutionDir)..\..\projects_build\UniPCemu\</OutDir>
     <IntDir>$(SolutionDir)..\..\projects_build\UniPCemu\$(Configuration)\$(PlatformShortName)\</IntDir>
     <LibraryPath>C:\SDL\SDL-1.2.15\VisualC\Win32\Debug;C:\SDL\SDL-1.2.15\VisualC\SDLmain\Win32\Debug;C:\SDL\SDL_net-1.2.8\VisualC\Win32\Debug;$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86);$(NETFXKitsDir)Lib\um\x86</LibraryPath>
-    <IncludePath>C:\SDL\SDL-1.2.15\include;C:\SDL\SDL_net-1.2.8;$(SolutionDir);$(SolutionDir)\..\commonemuframework;$(VC_IncludePath);$(WindowsSDK_IncludePath)</IncludePath>
+    <IncludePath>C:\SDL\SDL-1.2.15\include;C:\SDL\SDL_net-1.2.8;C:\winpcap\include;$(SolutionDir);$(SolutionDir)\..\commonemuframework;$(VC_IncludePath);$(WindowsSDK_IncludePath)</IncludePath>
     <SourcePath>$(VC_SourcePath);$(SolutionDir)</SourcePath>
     <TargetName>$(ProjectName)_x86</TargetName>
   </PropertyGroup>
@@ -695,7 +695,7 @@
     <OutDir>$(SolutionDir)..\..\projects_build\UniPCemu\</OutDir>
     <IntDir>$(SolutionDir)..\..\projects_build\UniPCemu\$(Configuration)\$(PlatformShortName)\</IntDir>
     <LibraryPath>C:\SDL\SDL2\VisualC\Win32\Release;C:\SDL\SDL2\VisualC\SDLmain\Release;C:\SDL\SDL2_net\VisualC\Win32\Release;$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86);$(NETFXKitsDir)Lib\um\x86</LibraryPath>
-    <IncludePath>C:\SDL\SDL2\include;C:\SDL\SDL2_net;$(SolutionDir);$(SolutionDir)\..\commonemuframework;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
+    <IncludePath>C:\SDL\SDL2\include;C:\SDL\SDL2_net;C:\winpcap\include;$(SolutionDir);$(SolutionDir)\..\commonemuframework;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
     <SourcePath>$(VC_SourcePath);$(SolutionDir)</SourcePath>
     <TargetName>$(ProjectName)_x86</TargetName>
   </PropertyGroup>
@@ -731,7 +731,7 @@
     <OutDir>$(SolutionDir)..\..\projects_build\UniPCemu\</OutDir>
     <IntDir>$(SolutionDir)..\..\projects_build\UniPCemu\$(Configuration)\$(PlatformShortName)\</IntDir>
     <LibraryPath>C:\SDL\SDL-1.2.15\VisualC\Win32\Release;C:\SDL\SDL-1.2.15\VisualC\SDLmain\Win32\Release;C:\SDL\SDL_net-1.2.8\VisualC\Win32\Release;$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86);$(NETFXKitsDir)Lib\um\x86</LibraryPath>
-    <IncludePath>C:\SDL\SDL-1.2.15\include;C:\SDL\SDL_net-1.2.8;$(SolutionDir);$(SolutionDir)\..\commonemuframework;$(VC_IncludePath);$(WindowsSDK_IncludePath)</IncludePath>
+    <IncludePath>C:\SDL\SDL-1.2.15\include;C:\SDL\SDL_net-1.2.8;C:\winpcap\include;$(SolutionDir);$(SolutionDir)\..\commonemuframework;$(VC_IncludePath);$(WindowsSDK_IncludePath)</IncludePath>
     <SourcePath>$(VC_SourcePath);$(SolutionDir)</SourcePath>
     <TargetName>$(ProjectName)_x86</TargetName>
   </PropertyGroup>
@@ -758,7 +758,7 @@
     <OutDir>$(SolutionDir)..\..\projects_build\UniPCemu\</OutDir>
     <IntDir>$(SolutionDir)..\..\projects_build\UniPCemu\$(Configuration)\$(PlatformShortName)\</IntDir>
     <LibraryPath>C:\SDL\SDL2\VisualC\Win32\Release;C:\SDL\SDL2\VisualC\SDLmain\Release;C:\SDL\SDL2_net\VisualC\Win32\Release;$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86);$(NETFXKitsDir)Lib\um\x86</LibraryPath>
-    <IncludePath>C:\SDL\SDL2\include;C:\SDL\SDL2_net;$(SolutionDir);$(SolutionDir)\..\commonemuframework;$(VC_IncludePath);$(WindowsSDK_IncludePath)</IncludePath>
+    <IncludePath>C:\SDL\SDL2\include;C:\SDL\SDL2_net;C:\winpcap\include;$(SolutionDir);$(SolutionDir)\..\commonemuframework;$(VC_IncludePath);$(WindowsSDK_IncludePath)</IncludePath>
     <SourcePath>$(VC_SourcePath);$(SolutionDir)</SourcePath>
     <TargetName>$(ProjectName)_x86</TargetName>
   </PropertyGroup>
@@ -781,7 +781,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug - SDL_net winpcap|x64'">
     <OutDir>$(SolutionDir)..\..\projects_build\UniPCemu\</OutDir>
     <IntDir>$(SolutionDir)..\..\projects_build\UniPCemu\$(Configuration)\$(PlatformShortName)\</IntDir>
-    <IncludePath>C:\SDL\SDL-1.2.15\include;C:\SDL\SDL_net-1.2.8;$(SolutionDir);$(SolutionDir)\..\commonemuframework;$(VC_IncludePath);$(WindowsSDK_IncludePath)</IncludePath>
+    <IncludePath>C:\SDL\SDL-1.2.15\include;C:\SDL\SDL_net-1.2.8;C:\winpcap\include;$(SolutionDir);$(SolutionDir)\..\commonemuframework;$(VC_IncludePath);$(WindowsSDK_IncludePath)</IncludePath>
     <LibraryPath>C:\SDL\SDL-1.2.15\VisualC\x64\Debug;C:\SDL\SDL-1.2.15\VisualC\SDLmain\x64\Debug;C:\SDL\SDL_net-1.2.8\VisualC\x64\Debug;$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);$(NETFXKitsDir)Lib\um\x64</LibraryPath>
     <SourcePath>$(VC_SourcePath);$(SolutionDir)</SourcePath>
     <TargetName>$(ProjectName)_x64</TargetName>
@@ -805,7 +805,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug - SDL2_net winpcap|x64'">
     <OutDir>$(SolutionDir)..\..\projects_build\UniPCemu\</OutDir>
     <IntDir>$(SolutionDir)..\..\projects_build\UniPCemu\$(Configuration)\$(PlatformShortName)\</IntDir>
-    <IncludePath>C:\SDL\SDL2\include;C:\SDL\SDL2_net;$(SolutionDir);$(SolutionDir)\..\commonemuframework;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
+    <IncludePath>C:\SDL\SDL2\include;C:\SDL\SDL2_net;C:\winpcap\include;$(SolutionDir);$(SolutionDir)\..\commonemuframework;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
     <LibraryPath>C:\SDL\SDL2\VisualC\x64\Release;C:\SDL\SDL2_net\VisualC\x64\Release;$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);$(NETFXKitsDir)Lib\um\x64</LibraryPath>
     <SourcePath>$(VC_SourcePath);$(SolutionDir)</SourcePath>
     <TargetName>$(ProjectName)_x64</TargetName>
@@ -837,7 +837,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release - SDL_net winpcap|x64'">
     <OutDir>$(SolutionDir)..\..\projects_build\UniPCemu\</OutDir>
     <IntDir>$(SolutionDir)..\..\projects_build\UniPCemu\$(Configuration)\$(PlatformShortName)\</IntDir>
-    <IncludePath>C:\SDL\SDL-1.2.15\include;C:\SDL\SDL_net-1.2.8;$(SolutionDir);$(SolutionDir)\..\commonemuframework;$(VC_IncludePath);$(WindowsSDK_IncludePath)</IncludePath>
+    <IncludePath>C:\SDL\SDL-1.2.15\include;C:\SDL\SDL_net-1.2.8;C:\winpcap\include;$(SolutionDir);$(SolutionDir)\..\commonemuframework;$(VC_IncludePath);$(WindowsSDK_IncludePath)</IncludePath>
     <LibraryPath>C:\SDL\SDL-1.2.15\VisualC\x64\Release;C:\SDL\SDL-1.2.15\VisualC\SDLmain\x64\Release;C:\SDL\SDL_net-1.2.8\VisualC\x64\Release;$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);$(NETFXKitsDir)Lib\um\x64</LibraryPath>
     <SourcePath>$(VC_SourcePath);$(SolutionDir)</SourcePath>
     <TargetName>$(ProjectName)_x64</TargetName>
@@ -861,7 +861,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release - SDL2_net winpcap|x64'">
     <OutDir>$(SolutionDir)..\..\projects_build\UniPCemu\</OutDir>
     <IntDir>$(SolutionDir)..\..\projects_build\UniPCemu\$(Configuration)\$(PlatformShortName)\</IntDir>
-    <IncludePath>C:\SDL\SDL2\include;C:\SDL\SDL2_net;$(SolutionDir);$(SolutionDir)\..\commonemuframework;$(VC_IncludePath);$(WindowsSDK_IncludePath)</IncludePath>
+    <IncludePath>C:\SDL\SDL2\include;C:\SDL\SDL2_net;C:\winpcap\include;$(SolutionDir);$(SolutionDir)\..\commonemuframework;$(VC_IncludePath);$(WindowsSDK_IncludePath)</IncludePath>
     <LibraryPath>C:\SDL\SDL2\VisualC\x64\Release;C:\SDL\SDL2_net\VisualC\x64\Release;$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);$(NETFXKitsDir)Lib\um\x64</LibraryPath>
     <SourcePath>$(VC_SourcePath);$(SolutionDir)</SourcePath>
     <TargetName>$(ProjectName)_x64</TargetName>
