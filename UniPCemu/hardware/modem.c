@@ -3764,7 +3764,15 @@ byte doUDP_checksum(byte* ih, byte *udp_header, byte *UDP_data, word UDP_datalen
 	//Followed by UDP header!
 	for (dataleft = 0; dataleft < 8; ++dataleft)
 	{
-		if (!packetServerAddPacketBufferQueue(&buffer, udp_header[dataleft])) //Add the data to checksum!
+		if ((dataleft & ~1) == 6) //Word at position 6 is the checksum, skip it!
+		{
+			if (!packetServerAddPacketBufferQueue(&buffer, 0)) //Add the data to checksum, treating it as if it isn't set!
+			{
+				packetServerFreePacketBufferQueue(&buffer); //Clean up!
+				return 0; //Failure!
+			}
+		}
+		else if (!packetServerAddPacketBufferQueue(&buffer, udp_header[dataleft])) //Add the data to checksum!
 		{
 			packetServerFreePacketBufferQueue(&buffer); //Clean up!
 			return 0; //Failure!
