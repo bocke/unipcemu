@@ -4268,7 +4268,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 																ARPresponse.ptype = ARPpacket.ptype;
 																ARPresponse.hlen = ARPpacket.hlen;
 																ARPresponse.plen = ARPpacket.plen;
-																ARPresponse.oper = SDL_SwapBE32(2); //Reply!
+																ARPresponse.oper = SDL_SwapBE16(2); //Reply!
 																memcpy(&ARPresponse.THA,&ARPpacket.SHA,6); //To the originator!
 																memcpy(&ARPresponse.TPA,&ARPpacket.SPA,4); //Destination IP!
 																memcpy(&ARPresponse.SHA,&maclocal,6); //Our MAC address!
