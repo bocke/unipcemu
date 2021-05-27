@@ -761,9 +761,12 @@ void fetchpackets_pcap() { //Handle any packets to process!
 						{
 							if (ethernetheader.type != SDL_SwapBE16(0x8137)) //Not an IPX packet!
 							{
-								//This is an unsupported packet type discard it fully and don't look at it anymore!
-								//Discard the received packet, so nobody else handles it too!
-								goto invalidpacket_receivefilter; //Ignore this packet and check for more!
+								if (ethernetheader.type != SDL_SwapBE16(0x0806)) //Not ARP?
+								{
+									//This is an unsupported packet type discard it fully and don't look at it anymore!
+									//Discard the received packet, so nobody else handles it too!
+									goto invalidpacket_receivefilter; //Ignore this packet and check for more!
+								}
 							}
 						}
 					}
@@ -803,6 +806,14 @@ void fetchpackets_pcap() { //Handle any packets to process!
 					}
 				}
 			}
+			else if (ethernetheader.type == SDL_SwapBE16(0x0806)) //ARP?
+			{
+				if ((hdr->len - sizeof(ethernetheader.data))!=28) //Wrong length?
+				{
+					goto invalidpacket_receivefilter; //Ignore this packet and check for more!
+				}
+			}
+
 			//Packet ready to receive!
 			pcap_receiverstate = 1; //Packet is loaded and ready to parse by the receiver algorithm!
 		}
@@ -3673,6 +3684,21 @@ typedef struct PACKED
 } IPv4header;
 #include "headers/endpacked.h"
 
+#include "headers/packed.h"
+typedef struct PACKED
+{
+	word htype;
+	word ptype;
+	byte hlen;
+	byte plen;
+	word oper;
+	byte SHA[6]; //Sender hardware address
+	uint_32 SPA; //Sender protocol address
+	byte THA[6]; //Target hardware address
+	uint_32 TPA; //Target protocol address
+} ARPpackettype;
+#include "headers/endpacked.h"
+
 word performUDPchecksum(MODEM_PACKETBUFFER* buffer)
 {
 	word result;
@@ -3920,6 +3946,7 @@ byte setUDPheaderChecksum(byte* ipheader, byte* udp_header_data, UDPheader *udph
 
 void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 {
+	ARPpackettype ARPpacket, ARPresponse; //ARP packet to send/receive!
 	sword connectedclient;
 	sword connectionid;
 	byte datatotransmit;
@@ -4224,6 +4251,12 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 													{
 														//Always handle ARP packets, if we're IPv4 type!
 														//TODO: Check if it's a request for us. If so, reply with our IPv4 address!
+														memcpy(&ARPpacket,Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data)],28); //Retrieve the ARP packet!
+														if ((ARPpacket.htype==1) && (ARPpacket.ptype==SDL_SwapBE16(0x0800)) && (ARPpacket.hlen==6) && (ARPpacket.plen==4) && (ARPpacket.oper==1))
+														{
+															//IPv4 ARP request
+															//Check it's IP, send a response if it's us!
+														}
 													}
 												}
 												goto invalidpacket; //Invalid packet!
