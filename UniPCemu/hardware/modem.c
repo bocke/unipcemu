@@ -4218,6 +4218,14 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 											if (Packetserver_clients[connectedclient].packetserver_stage != PACKETSTAGE_PACKETS) goto invalidpacket; //Don't handle SLIP/PPP/IPX yet!
 											if (ethernetheader.type != headertype) //Invalid type?
 											{
+												if (ethernetheader.type == SDL_SwapBE16(0x0806)) //ARP?
+												{
+													if (Packetserver_clients[connectedclient].packetserver_slipprotocol == 1) //IPv4 protocol used?
+													{
+														//Always handle ARP packets, if we're IPv4 type!
+														//TODO: Check if it's a request for us. If so, reply with our IPv4 address!
+													}
+												}
 												goto invalidpacket; //Invalid packet!
 											}
 											//Valid packet! Receive it!
