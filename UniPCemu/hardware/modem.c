@@ -4251,11 +4251,38 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 													{
 														//Always handle ARP packets, if we're IPv4 type!
 														//TODO: Check if it's a request for us. If so, reply with our IPv4 address!
-														memcpy(&ARPpacket,Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data)],28); //Retrieve the ARP packet!
-														if ((ARPpacket.htype==1) && (ARPpacket.ptype==SDL_SwapBE16(0x0800)) && (ARPpacket.hlen==6) && (ARPpacket.plen==4) && (ARPpacket.oper==1))
+														memcpy(&ARPpacket,&Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data)],28); //Retrieve the ARP packet!
+														if ((SDL_SwapBE32(ARPpacket.htype)==1) && (ARPpacket.ptype==SDL_SwapBE16(0x0800)) && (SDL_SwapBE16(ARPpacket.hlen)==6) && (SDL_SwapBE16(ARPpacket.plen)==4) && (SDL_SwapBE32(ARPpacket.oper)==1))
 														{
 															//IPv4 ARP request
-															//Check it's IP, send a response if it's us!
+															//Check it's our IP, send a response if it's us!
+															if (Packetserver_clients[connectedclient].packetserver_useStaticIP) //IP filter is used?
+															{
+																if (memcmp(&ARPpacket.TPA, &Packetserver_clients[connectedclient].packetserver_staticIP, 4) != 0) //Static IP mismatch?
+																{
+																	goto invalidpacket; //Invalid packet!
+																}
+																//It's for us, send a response!
+																//Construct the ARP packet!
+																ARPresponse.htype = ARPpacket.htype;
+																ARPresponse.ptype = ARPpacket.ptype;
+																ARPresponse.hlen = ARPpacket.hlen;
+																ARPresponse.plen = ARPpacket.plen;
+																ARPresponse.oper = SDL_SwapBE32(2); //Reply!
+																memcpy(&ARPresponse.THA,&ARPpacket.SHA,6); //To the originator!
+																memcpy(&ARPresponse.TPA,&ARPpacket.SPA,4); //Destination IP!
+																memcpy(&ARPresponse.SHA,&maclocal,6); //Our MAC address!
+																memcpy(&ARPresponse.SPA,&ARPpacket.TPA,4); //Our IP!
+																//Construct the ethernet header!
+																memcpy(&Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data)],&ARPresponse,28); //Paste the response in the packet we're handling (reuse space)!
+																//Now, construct the ethernet header!
+																memcpy(&ppptransmitheader,&ethernetheader,sizeof(ethernetheader.data)); //Copy the header!
+																memcpy(&ppptransmitheader.src,&maclocal,6); //From us!
+																memcpy(&ppptransmitheader.dst,&ARPpacket.SHA,6); //To the requester!
+																memcpy(&Packetserver_clients[connectedclient].packet[0],ppptransmitheader.data,sizeof(ppptransmitheader.data)); //The ethernet header!
+																//Now, the packet we've stored has become the packet to send back!
+																sendpkt_pcap(Packetserver_clients[connectedclient].packet, (28+sizeof(ethernetheader.data))); //Send the response back to the originator!
+															}
 														}
 													}
 												}
