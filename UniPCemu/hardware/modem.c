@@ -4252,7 +4252,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 														//Always handle ARP packets, if we're IPv4 type!
 														//TODO: Check if it's a request for us. If so, reply with our IPv4 address!
 														memcpy(&ARPpacket,&Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data)],28); //Retrieve the ARP packet!
-														if ((SDL_SwapBE32(ARPpacket.htype)==1) && (ARPpacket.ptype==SDL_SwapBE16(0x0800)) && (SDL_SwapBE16(ARPpacket.hlen)==6) && (SDL_SwapBE16(ARPpacket.plen)==4) && (SDL_SwapBE32(ARPpacket.oper)==1))
+														if ((SDL_SwapBE32(ARPpacket.htype)==1) && (ARPpacket.ptype==SDL_SwapBE16(0x0800)) && (ARPpacket.hlen==6) && (ARPpacket.plen==4) && (SDL_SwapBE16(ARPpacket.oper)==1))
 														{
 															//IPv4 ARP request
 															//Check it's our IP, send a response if it's us!
