@@ -4208,7 +4208,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 												headertype = SDL_SwapBE16(0x0800); //We're an IP packet!
 											}
 											//Now, check the normal receive parameters!
-											if (Packetserver_clients[connectedclient].packetserver_useStaticIP && (headertype == SDL_SwapBE16(0x0800))) //IP filter to apply?
+											if (Packetserver_clients[connectedclient].packetserver_useStaticIP && (headertype == SDL_SwapBE16(0x0800)) && (ethernetheader.type==headertype)) //IP filter to apply?
 											{
 												if ((memcmp(&Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data) + 16], Packetserver_clients[connectedclient].packetserver_staticIP, 4) != 0) && (memcmp(&Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data) + 16], packetserver_broadcastIP, 4) != 0)) //Static IP mismatch?
 												{
