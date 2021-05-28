@@ -4258,10 +4258,15 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 															//Check it's our IP, send a response if it's us!
 															if (Packetserver_clients[connectedclient].packetserver_useStaticIP) //IP filter is used?
 															{
+																if (memcmp(&ARPpacket.TPA, &packetserver_defaultstaticIP, 4) == 0) //Default Static IP route to server?
+																{
+																	goto handleserverARP; //Default server packet!
+																}
 																if (memcmp(&ARPpacket.TPA, &Packetserver_clients[connectedclient].packetserver_staticIP, 4) != 0) //Static IP mismatch?
 																{
 																	goto invalidpacket; //Invalid packet!
 																}
+																handleserverARP: //Server ARP or client ARP?
 																//It's for us, send a response!
 																//Construct the ARP packet!
 																ARPresponse.htype = ARPpacket.htype;
@@ -4282,6 +4287,11 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 																memcpy(&Packetserver_clients[connectedclient].packet[0],ppptransmitheader.data,sizeof(ppptransmitheader.data)); //The ethernet header!
 																//Now, the packet we've stored has become the packet to send back!
 																sendpkt_pcap(Packetserver_clients[connectedclient].packet, (28+sizeof(ethernetheader.data))); //Send the response back to the originator!
+																
+																 //Discard the received packet, so nobody else handles it too!
+																freez((void**)&net.packet, net.pktlen, "MODEM_PACKET");
+																net.packet = NULL; //Discard if failed to deallocate!
+																net.pktlen = 0; //Not allocated!
 															}
 														}
 													}
