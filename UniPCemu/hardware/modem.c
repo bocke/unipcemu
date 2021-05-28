@@ -5223,24 +5223,27 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 								}
 								else //Disconnect from packet server?
 								{
-									PPPOE_finishdiscovery(connectedclient); //Finish discovery, if needed!
-									terminatePacketServer(Packetserver_clients[connectedclient].connectionid); //Clean up the packet server!
-									if (Packetserver_clients[connectedclient].DHCP_acknowledgepacket.length) //We're still having a lease?
+									if (Packetserver_clients[connectedclient].used) //Still an used client? Prevent us from working on a disconnected client!
 									{
-										PacketServer_startNextStage(connectedclient, PACKETSTAGE_DHCP);
-										Packetserver_clients[connectedclient].packetserver_useStaticIP = 7; //Start the release of the lease!
-										Packetserver_clients[connectedclient].used = 2; //Special use case: we're in the DHCP release-only state!
-									}
-									else //Normal release?
-									{
-										normalFreeDHCP(connectedclient);
-										freePacketserver_client(connectedclient); //Free the client list item!
-									}
-									fifobuffer_clear(modem.inputdatabuffer[connectedclient]); //Clear the output buffer for the next client!
-									fifobuffer_clear(modem.outputbuffer[connectedclient]); //Clear the output buffer for the next client!
-									if (Packetserver_availableClients == Packetserver_totalClients) //All cleared?
-									{
-										modem.connected = 0; //Not connected anymore!
+										PPPOE_finishdiscovery(connectedclient); //Finish discovery, if needed!
+										terminatePacketServer(connectedclient); //Clean up the packet server!
+										if (Packetserver_clients[connectedclient].DHCP_acknowledgepacket.length) //We're still having a lease?
+										{
+											PacketServer_startNextStage(connectedclient, PACKETSTAGE_DHCP);
+											Packetserver_clients[connectedclient].packetserver_useStaticIP = 7; //Start the release of the lease!
+											Packetserver_clients[connectedclient].used = 2; //Special use case: we're in the DHCP release-only state!
+										}
+										else //Normal release?
+										{
+											normalFreeDHCP(connectedclient);
+											freePacketserver_client(connectedclient); //Free the client list item!
+										}
+										fifobuffer_clear(modem.inputdatabuffer[connectedclient]); //Clear the output buffer for the next client!
+										fifobuffer_clear(modem.outputbuffer[connectedclient]); //Clear the output buffer for the next client!
+										if (Packetserver_availableClients == Packetserver_totalClients) //All cleared?
+										{
+											modem.connected = 0; //Not connected anymore!
+										}
 									}
 								}
 								break;
