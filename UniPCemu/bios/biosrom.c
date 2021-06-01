@@ -466,7 +466,7 @@ byte BIOS_checkOPTROMS() //Check and load Option ROMs!
 				BIOS_ROM_size[numOPT_ROMS] = 0; //Reset!
 				continue; //We're skipping this ROM: it's too big!
 			}
-			OPT_ROMS[numOPT_ROMS] = (byte *)nzalloc(OPTROM_size[numOPT_ROMS],filename,getLock(LOCK_CPU)); //Simple memory allocation for our ROM!
+			OPT_ROMS[numOPT_ROMS] = (byte *)nzalloc(OPTROM_size[numOPT_ROMS],"OPTROM",getLock(LOCK_CPU)); //Simple memory allocation for our ROM!
 			if (!OPT_ROMS[numOPT_ROMS]) //Failed to allocate?
 			{
 				failedallocationOPTROMshadow: //Failed allocation of the shadow otpion ROM?
@@ -476,7 +476,7 @@ byte BIOS_checkOPTROMS() //Check and load Option ROMs!
 					if (!((sizeof(EMU_VGAROM) + 0xC0000) > BIOSROM_BASE_XT)) //Not more than we can handle?
 					{
 						unlock(LOCK_CPU);
-						freez((void **)&OPT_ROMS[numOPT_ROMS], OPTROM_size[numOPT_ROMS], filename); //Release the ROM!
+						freez((void **)&OPT_ROMS[numOPT_ROMS], OPTROM_size[numOPT_ROMS], "OPTROM"); //Release the ROM!
 						lock(LOCK_CPU);
 						location = sizeof(EMU_VGAROM); //Allocate the Emulator VGA ROM for the first entry instead!
 						BIOS_load_VGAROM(); //Load the BIOS VGA ROM!
@@ -486,7 +486,7 @@ byte BIOS_checkOPTROMS() //Check and load Option ROMs!
 			}
 			if ((ISVGA == 4) && (!i)) //EGA ROM?
 			{
-				OPT_ROMS_shadow[numOPT_ROMS] = (byte*)nzalloc(OPTROM_size[numOPT_ROMS], filename, getLock(LOCK_CPU)); //Simple memory allocation for our ROM!
+				OPT_ROMS_shadow[numOPT_ROMS] = (byte*)nzalloc(OPTROM_size[numOPT_ROMS], "OPTROM", getLock(LOCK_CPU)); //Simple memory allocation for our ROM!
 				if (!OPT_ROMS_shadow[numOPT_ROMS]) //Failed to allocate a shadow ROM?
 				{
 					goto failedallocationOPTROMshadow;
@@ -498,14 +498,14 @@ byte BIOS_checkOPTROMS() //Check and load Option ROMs!
 			}
 			if (emufread64(OPT_ROMS[numOPT_ROMS],1,OPTROM_size[numOPT_ROMS],f)!=OPTROM_size[numOPT_ROMS]) //Not fully read?
 			{
-				freez((void **)&OPT_ROMS[numOPT_ROMS],OPTROM_size[numOPT_ROMS],filename); //Failed to read!
+				freez((void **)&OPT_ROMS[numOPT_ROMS],OPTROM_size[numOPT_ROMS],"OPTROM"); //Failed to read!
 				emufclose64(f); //Close the file!
 				if (!i) //First ROM is reserved by the VGA BIOS ROM. If not found, we're skipping it and using the internal VGA BIOS!
 				{
 					if (!((sizeof(EMU_VGAROM) + 0xC0000) > BIOSROM_BASE_XT)) //Not more than we can handle?
 					{
 						unlock(LOCK_CPU);
-						freez((void **)&OPT_ROMS[numOPT_ROMS], OPTROM_size[numOPT_ROMS], filename); //Release the ROM!
+						freez((void **)&OPT_ROMS[numOPT_ROMS], OPTROM_size[numOPT_ROMS], "OPTROM"); //Release the ROM!
 						lock(LOCK_CPU);
 						location = sizeof(EMU_VGAROM); //Allocate the Emulator VGA ROM for the first entry instead!
 						BIOS_load_VGAROM(); //Load the BIOS VGA ROM!
@@ -538,7 +538,7 @@ byte BIOS_checkOPTROMS() //Check and load Option ROMs!
 				--numOPT_ROMS; //Unused option ROM!
 				location = (OPTROM_location[numOPT_ROMS]&0xFFFFFFFFU); //Reverse to start next ROM(s) at said location again!
 				unlock(LOCK_CPU);
-				freez((void **)&OPT_ROMS[numOPT_ROMS],OPTROM_size[numOPT_ROMS], filename); //Release the ROM!
+				freez((void **)&OPT_ROMS[numOPT_ROMS],OPTROM_size[numOPT_ROMS], "OPTROM"); //Release the ROM!
 				lock(LOCK_CPU);
 			}
 			continue; //Loaded!
@@ -559,10 +559,10 @@ void BIOS_freeOPTROMS()
 			char filename[256];
 			memset(&filename,0,sizeof(filename)); //Clear/init!
 			safestrcpy(filename,sizeof(filename),OPTROM_filename[i]); //Set the filename from the loaded ROM!
-			freez((void **)&OPT_ROMS[i],OPTROM_size[i],filename); //Release the OPT ROM!
+			freez((void **)&OPT_ROMS[i],OPTROM_size[i],"OPTROM"); //Release the OPT ROM!
 			if (OPT_ROMS_shadow[i]) //Shadow also loaded?
 			{
-				freez((void**)&OPT_ROMS_shadow[i], OPTROM_size[i], filename); //Release the OPT ROM shadow!
+				freez((void**)&OPT_ROMS_shadow[i], OPTROM_size[i], "OPTROM"); //Release the OPT ROM shadow!
 			}
 		}
 	}
@@ -730,7 +730,7 @@ retryext:
  	{
 		BIOS_ROM_size[nr] = (uint_32)emuftell64(f); //Save the size!
 		emufseek64(f,0,SEEK_SET); //Goto BOF!
-		BIOS_ROMS[nr] = (byte *)nzalloc(BIOS_ROM_size[nr],filename, getLock(LOCK_CPU)); //Simple memory allocation for our ROM!
+		BIOS_ROMS[nr] = (byte *)nzalloc(BIOS_ROM_size[nr],"BIOSROM", getLock(LOCK_CPU)); //Simple memory allocation for our ROM!
 		if (!BIOS_ROMS[nr]) //Failed to allocate?
 		{
 			emufclose64(f); //Close the file!
@@ -738,7 +738,7 @@ retryext:
 		}
 		if (emufread64(BIOS_ROMS[nr],1,BIOS_ROM_size[nr],f)!=BIOS_ROM_size[nr]) //Not fully read?
 		{
-			freez((void **)&BIOS_ROMS[nr],BIOS_ROM_size[nr],filename); //Failed to read!
+			freez((void **)&BIOS_ROMS[nr],BIOS_ROM_size[nr],"BIOSROM"); //Failed to read!
 			emufclose64(f); //Close the file!
 			return 0; //Failed to read!
 		}
@@ -771,7 +771,7 @@ retryext:
 					BIOS_combinedROM = (byte*)zalloc(ROM_size, "BIOS_combinedROM", getLock(LOCK_CPU));
 					if (!BIOS_combinedROM) //Failed to allocate?
 					{
-						freez((void**)&BIOS_ROMS[nr], BIOS_ROM_size[nr], filename); //Failed to read!
+						freez((void**)&BIOS_ROMS[nr], BIOS_ROM_size[nr], "BIOSROM"); //Failed to read!
 						return 0; //Abort!
 					}
 					BIOS_ROMS_ext[nr] |= 0x10; //Tell we're using an combined ROM!
@@ -802,7 +802,7 @@ retryext:
 					BIOS_combinedROM = (byte*)zalloc(ROM_size, "BIOS_combinedROM", getLock(LOCK_CPU));
 					if (!BIOS_combinedROM) //Failed to allocate?
 					{
-						freez((void**)&BIOS_ROMS[nr], BIOS_ROM_size[nr], filename); //Failed to read!
+						freez((void**)&BIOS_ROMS[nr], BIOS_ROM_size[nr], "BIOSROM"); //Failed to read!
 						return 0; //Abort!
 					}
 					BIOS_ROMS_ext[nr] |= 0x10; //Tell we're using an combined ROM!
@@ -835,7 +835,7 @@ retryext:
 					BIOS_combinedROM = (byte*)zalloc(BIOS_ROM_U13_15_single, "BIOS_combinedROM", getLock(LOCK_CPU));
 					if (!BIOS_combinedROM) //Failed to allocate?
 					{
-						freez((void**)&BIOS_ROMS[nr], BIOS_ROM_size[nr], filename); //Failed to read!
+						freez((void**)&BIOS_ROMS[nr], BIOS_ROM_size[nr], "BIOSROM"); //Failed to read!
 						return 0; //Abort!
 					}
 					BIOS_ROMS_ext[nr] |= 0x10; //Tell we're using an combined ROM!
@@ -904,7 +904,7 @@ int BIOS_load_custom(char *path, char *rom)
  	{
 		BIOS_custom_ROM_size = (uint_32)emuftell64(f); //Save the size!
 		emufseek64(f,0,SEEK_SET); //Goto BOF!
-		BIOS_custom_ROM = (byte *)nzalloc(BIOS_custom_ROM_size,filename, getLock(LOCK_CPU)); //Simple memory allocation for our ROM!
+		BIOS_custom_ROM = (byte *)nzalloc(BIOS_custom_ROM_size,"BIOSROM", getLock(LOCK_CPU)); //Simple memory allocation for our ROM!
 		if (!BIOS_custom_ROM) //Failed to allocate?
 		{
 			emufclose64(f); //Close the file!
@@ -912,7 +912,7 @@ int BIOS_load_custom(char *path, char *rom)
 		}
 		if (emufread64(BIOS_custom_ROM,1,BIOS_custom_ROM_size,f)!=BIOS_custom_ROM_size) //Not fully read?
 		{
-			freez((void **)&BIOS_custom_ROM,BIOS_custom_ROM_size,filename); //Failed to read!
+			freez((void **)&BIOS_custom_ROM,BIOS_custom_ROM_size,"BIOSROM"); //Failed to read!
 			emufclose64(f); //Close the file!
 			return 0; //Failed to read!
 		}
@@ -1013,7 +1013,7 @@ void BIOS_free_ROM(byte nr)
 		{
 			freez((void **)&BIOS_combinedROM,BIOS_combinedROM_size,"BIOS_combinedROM"); //Free the combined ROM!
 		}
-		freez((void **)&BIOS_ROMS[nr],BIOS_ROM_size[nr],filename); //Release the BIOS ROM!
+		freez((void **)&BIOS_ROMS[nr],BIOS_ROM_size[nr],"BIOSROM"); //Release the BIOS ROM!
 	}
 }
 
@@ -1028,7 +1028,7 @@ void BIOS_free_custom(char *rom)
 	safestrcpy(filename,sizeof(filename),rom); //Create the filename for the ROM!
 	if (BIOS_custom_ROM_size) //Has size?
 	{
-		freez((void **)&BIOS_custom_ROM,BIOS_custom_ROM_size,filename); //Release the BIOS ROM!
+		freez((void **)&BIOS_custom_ROM,BIOS_custom_ROM_size,"BIOSROM"); //Release the BIOS ROM!
 	}
 	BIOS_custom_ROM = NULL; //No custom ROM anymore!
 }
@@ -1077,7 +1077,7 @@ void BIOS_free_VGAROM()
 {
 	if (BIOS_custom_VGAROM_size) //Has size?
 	{
-		freez((void **)&BIOS_custom_VGAROM, BIOS_custom_VGAROM_size, &customVGAROMname[0]); //Release the BIOS ROM!
+		freez((void **)&BIOS_custom_VGAROM, BIOS_custom_VGAROM_size, "EMU_VGAROM"); //Release the BIOS ROM!
 	}
 }
 
