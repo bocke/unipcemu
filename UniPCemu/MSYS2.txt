@@ -17,7 +17,7 @@ First: Installing and configuration of the compiler:
 10. It will show another list, ending with the same prompt as before. Type enter again.
 11. The same prompt will show again. Type enter again.
 12. It will show a large list and ask ":: Proceed with installation? [Y/n] ". Type "Y" and press enter.
-13. Mount the correct mingw folder you want to use, or simply mount both to compile for x86(32-bit) and x64(64-bit):
+13. Mount the correct mingw folder you want to use, or simply mount both to compile for x86(32-bit) and x64(64-bit): (this step isn't needed for newer builds of MinGW on Windows)
 13.1. x86 building: Execute: "mount 'PATHTOMSYS2\mingw32' /mingw32". Replace PATHTOMSYS2 with the location of your MSYS2 installation(the path entered during installation of MSYS2, like C:\msys64).
 13.2. x64 building: Execute: "mount 'PATHTOMSYS2\mingw64' /mingw64". See above above step.
 14. Close the MSYS2 prompt.
@@ -29,16 +29,16 @@ Now, either when a new SDL2 version comes out, or when first installing, we need
 15. Download the SDL2 mingw development library from http://libsdl.org/download-2.0.php . The current version is http://libsdl.org/release/SDL2-devel-2.0.7-mingw.tar.gz .
 16. Extract the folders from the archive into your toolchains. The archive contains a .tar file(which is the actual archive itself). Within this tar file is a folder named SDL2-2.0.6. Open this directory.
 16.1. x86 building: Copy the i686-w64-mingw32 directory to the msys2\mingw32 folder, replacing the folder of the same name that's already there.
-16.2. x64 building: Copy the x86_64-mingw32 directory to the msys2\mingw64 folder.
+16.2. x64 building: Copy the x86_64-mingw32 directory to the msys2\mingw64 folder, replacing the folder of the same name that's already there..
 
 SDL2_net(for networking support, optional):
 17. Download the SDL2_net mingw development library from the SDL_net website. The current version is https://www.libsdl.org/projects/SDL_net/release/SDL2_net-devel-2.0.1-mingw.tar.gz .
 18. Extract the folders from the archive into your toolchains. The archive contains a .tar file(which is the actual archive itself). Within this tar file is a folder named SDL2_net-2.0.1. Open this directory.
 18.1. x86 building: Copy the i686-w64-mingw32 directory to the msys2\mingw32 folder, replacing the folder of the same name that's already there.
-18.2. x64 building: Copy the x86_64-mingw32 directory to the msys2\mingw64 as well as the msys2\mingw64 subfolder with the same name.
+18.2. x64 building: Copy the x86_64-mingw32 directory to the msys2\mingw64 folder, replacing the folder of the same name that's already there.
 
 libpcap (for dial-up server support):
-19. Install libpcap-dev using "pacman -S --needed libpcap-dev". Also confirm installation of course with Y and enter when asked to.
+19. Install libpcap-dev using "pacman -S --needed libpcap-dev". Also confirm installation of course with Y and enter when asked to. Custom versions can also be used (using the final developer package from winpcap.org).
 
 20. Make sure to have this repository in a folder in the home directory of msys2(C:\msys64\home\<yourusername>). For example: msys2\home\<yourusername>\unipcemu contains androidprompt.bat when properly set up(the androidprompt.bat that's in the root of the cloned repository).
 
