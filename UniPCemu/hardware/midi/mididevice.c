@@ -2292,26 +2292,26 @@ word MIDIDEVICE_ActiveSenseCounter = 0; //Counter for Active Sense!
 
 void MIDIDEVICE_activeSense_Timer() //Timeout while Active Sensing!
 {
-	WaitSem(activeSenseLock); //Relock!
 	if (MIDIDEVICE_ActiveSensing) //Are we Active Sensing?
 	{
+		PostSem(activeSenseLock) //Unlock!
 		if (shuttingdown()) //Shutting down?
 		{
+			WaitSem(activeSenseLock) //Relock!
 			MIDIDEVICE_ActiveSensing = 0; //Not sensing anymore!
-			PostSem(activeSenseLock); //Release our lock to prevent races on the main thread!
 			return; //Abort!
 		}
+		WaitSem(activeSenseLock) //Relock!
 		if (++MIDIDEVICE_ActiveSenseCounter > 300) //300ms passed?
 		{
 			byte channel, currentchannel;
-			PostSem(activeSenseLock); //Release our lock to prevent races on the main thread!
+			MIDIDEVICE_ActiveSensing = 0; //Not sensing anymore!
+			PostSem(activeSenseLock) //Unlock!
 			lock(LOCK_MAINTHREAD); //Make sure we're the only ones!
 			if (shuttingdown()) //Shutting down?
 			{
 				unlock(LOCK_MAINTHREAD);
-				WaitSem(activeSenseLock); //Relock!
-				MIDIDEVICE_ActiveSensing = 0; //Not sensing anymore!
-				PostSem(activeSenseLock); //Release our lock to prevent races on the main thread!
+				WaitSem(activeSenseLock) //Relock!
 				return; //Abort!
 			}
 			for (currentchannel = 0; currentchannel < 0x10;) //Process all active channels!
@@ -2322,19 +2322,9 @@ void MIDIDEVICE_activeSense_Timer() //Timeout while Active Sensing!
 				}
 				++currentchannel; //Next channel!
 			}
-			WaitSem(activeSenseLock); //Relock!
-			MIDIDEVICE_ActiveSensing = 0; //Reset our flag!
-			PostSem(activeSenseLock); //Release our lock to prevent races on the main thread!
 			unlock(LOCK_MAINTHREAD);
+			WaitSem(activeSenseLock) //Relock!
 		}
-		else
-		{
-			PostSem(activeSenseLock); //Unlock!
-		}
-	}
-	else
-	{
-		PostSem(activeSenseLock); //Unlock!
 	}
 }
 
