@@ -49,11 +49,7 @@ Basic CPU active segment value retrieval.
 //Exceptions, 286+ only!
 
 //Reading of the 16-bit entries within descriptors!
-#ifndef IS_PSP
 #define DESC_16BITS(x) SDL_SwapLE16(x)
-#else
-#define DESC_16BITS(x) (x)
-#endif
 
 extern byte advancedlog; //Advanced log setting
 extern byte MMU_logging; //Are we logging from the MMU?

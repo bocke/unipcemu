@@ -26,11 +26,7 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 #include "headers/cpu/cpu.h" //Emulator cpu support for waitstates!
 #include "headers/hardware/vga/svga/tseng.h" //Tseng support!
 
-#ifndef IS_PSP
 #define LE32(x) SDL_SwapLE32(x)
-#else
-#define LE32(x) (x)
-#endif
 
 //#define ENABLE_SPECIALDEBUGGER
 

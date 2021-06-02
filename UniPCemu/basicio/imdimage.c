@@ -29,7 +29,6 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 //#define MEMORYCONSERVATION
 
 #ifdef IS_PSP
-#define SDL_SwapLE16(x) (x)
 //We don't have much memory to spare, use memory conservation!
 #ifndef MEMORYCONSERVATION
 #define MEMORYCONSERVATION

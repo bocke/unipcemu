@@ -41,10 +41,6 @@ extern BIOS_Settings_TYPE BIOS_Settings; //Settings!
 //What bits to take as a memory block to be translated and used(rounds memory down)?
 #define MMU_BLOCKALIGNMENT 0xF
 
-#ifdef IS_PSP
-#define SDL_SwapLE16(x) (x)
-#endif
-
 //Log invalid memory accesses?
 //#define LOG_INVALID_MEMORY
 
