@@ -2308,9 +2308,10 @@ void MIDIDEVICE_activeSense_Timer() //Timeout while Active Sensing!
 			lock(LOCK_MAINTHREAD); //Make sure we're the only ones!
 			if (shuttingdown()) //Shutting down?
 			{
+				unlock(LOCK_MAINTHREAD);
+				WaitSem(activeSenseLock); //Relock!
 				MIDIDEVICE_ActiveSensing = 0; //Not sensing anymore!
 				PostSem(activeSenseLock); //Release our lock to prevent races on the main thread!
-				unlock(LOCK_MAINTHREAD);
 				return; //Abort!
 			}
 			for (currentchannel = 0; currentchannel < 0x10;) //Process all active channels!
@@ -2323,10 +2324,18 @@ void MIDIDEVICE_activeSense_Timer() //Timeout while Active Sensing!
 			}
 			WaitSem(activeSenseLock); //Relock!
 			MIDIDEVICE_ActiveSensing = 0; //Reset our flag!
+			PostSem(activeSenseLock); //Release our lock to prevent races on the main thread!
 			unlock(LOCK_MAINTHREAD);
 		}
+		else
+		{
+			PostSem(activeSenseLock); //Unlock!
+		}
 	}
-	PostSem(activeSenseLock); //Unlock!
+	else
+	{
+		PostSem(activeSenseLock); //Unlock!
+	}
 }
 
 void MIDIDEVICE_tickActiveSense() //Tick the Active Sense (MIDI) line with any command/data!
