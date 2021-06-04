@@ -5709,10 +5709,13 @@ void BIOS_SoundFont_selection() //SoundFont selection menu!
 
 int Sound_file = 0; //The file selected!
 
-int BIOS_Sound_selection() //Music selection menu, custom for this purpose!
+int BIOS_Sound_selection(byte reload) //Music selection menu, custom for this purpose!
 {
 	BIOS_Title("Select a music file to play");
-	generateFileList(musicpath,"mid|midi|dro", 0, 0,0); //Generate file list for all Sound files!
+	if (reload) //To reload the list?
+	{
+		generateFileList(musicpath, "mid|midi|dro", 0, 0, 0); //Generate file list for all Sound files!
+	}
 	EMU_locktext();
 	EMU_gotoxy(0, 4); //Goto 4th row!
 	EMU_textcolor(BIOS_ATTR_INACTIVE); //We're using inactive color for label!
@@ -5744,10 +5747,12 @@ byte sound_playSoundfile(byte showinfo)
 {
 	char songpath[256];
 	memset(&songpath,0,sizeof(songpath)); //Init our path!
-	Sound_file = 0; //Init selected file!
+	Sound_file = BIOS_Sound_selection(1); //Allow the user to select a Music file! Load the list from disk!
+	goto handle_soundfile;
 	for (;;) //Music selection loop!
 	{
-		Sound_file = BIOS_Sound_selection(); //Allow the user to select a Music file!
+		Sound_file = BIOS_Sound_selection(0); //Allow the user to select a Music file! Don't reload the list!
+		handle_soundfile: //First sound file handling!
 		if (Sound_file < 0) //Not selected?
 		{
 			Sound_file = 0;
