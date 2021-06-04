@@ -54,7 +54,7 @@ void DoDebugFiles() //Do the debug files!
 	cleardata(&succeeddir[0], sizeof(succeeddir));
 	safestrcpy(succeeddir,sizeof(succeeddir), ROMpath); //Root dir!
 	safestrcat(succeeddir,sizeof(succeeddir), "/debugsucceeded"); //Succeed directory!
-	if (!opendirlist(&dir,curdir,&direntry[0],&isfile))
+	if (!opendirlist(&dir,curdir,&direntry[0],&isfile,1))
     {
 		GPU_EMU_printscreen(0,GPU_TEXTSURFACE_HEIGHT-1,"Error: verification directory was not found. (debug)");
 		sleep(); //Wait forever!

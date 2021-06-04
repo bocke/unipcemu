@@ -1017,7 +1017,7 @@ void generateFileList(char *path, char *extensions, int allowms0, int allowdynam
 	char direntry[256];
 	byte isfile;
 	DirListContainer_t dir;
-	if (opendirlist(&dir,path,&direntry[0],&isfile))
+	if (opendirlist(&dir,path,&direntry[0],&isfile,1))
 	{
 		/* print all the files and directories within directory */
 		do //Files left to check?
