@@ -969,12 +969,14 @@ void addList(char *text)
 	}
 }
 
-void addDirList(char *text)
+byte addDirList(char *text)
 {
 	if (numdirlist<ITEMLIST_MAXITEMS) //Maximum not reached yet?
 	{
 		safestrcpy(dirlist[numdirlist++],sizeof(dirlist[0]),text); //Add the item and increase!
+		return 1; //OK!
 	}
+	return 0; //Ran out of room!
 }
 
 void sortDirList() //Sort the directory list!
@@ -1000,8 +1002,9 @@ void sortDirList() //Sort the directory list!
 }
 
 //Generate file list based on extension!
-void generateFileList(char *path, char *extensions, int allowms0, int allowdynamic)
+void generateFileList(char *path, char *extensions, int allowms0, int allowdynamic, byte isdiskimage)
 {
+	byte is_dynamic;
 	uint_32 curdirlist; //Current directory list item!
 	numlist = 0; //Reset amount of files!
 	clearDirList(); //Clear the list!
@@ -1024,15 +1027,27 @@ void generateFileList(char *path, char *extensions, int allowms0, int allowdynam
 				if (isext(direntry, extensions)) //Check extension!
 				{
 					int allowed = 0;
-					allowed = ((allowdynamic && is_dynamicimage(direntry)) || (!is_dynamicimage(direntry))); //Allowed when not dynamic or dynamic is allowed!
+					if (isdiskimage) //Is it a disk image? Then check for dynamic types!
+					{
+						is_dynamic = is_dynamicimage(direntry); //Is it a dynamic image?
+						allowed = ((allowdynamic && is_dynamic) || (!is_dynamic)); //Allowed when not dynamic or dynamic is allowed!
+					}
+					else
+					{
+						allowed = 1; //Always allowed for non-disk images!
+					}
 					if (allowed) //Allowed?
 					{
-						addDirList(direntry); //Set filename!
+						if (!addDirList(direntry)) //Set filename!
+						{
+							goto nodirlistroom;
+						}
 					}
 				}
 			}
 		}
 		while (readdirlist(&dir,&direntry[0],&isfile)); //Files left to check?)
+		nodirlistroom: //No more room left in the directory list?
 		clearList(); //Clear the list!
 		sortDirList(); //Sort the directory list!
 		for (curdirlist=0;curdirlist<numdirlist;++curdirlist) //Add all to our final list!
@@ -1306,7 +1321,7 @@ void BIOS_disk_nofiles()
 void BIOS_floppy0_selection() //FLOPPY0 selection menu!
 {
 	BIOS_Title("Mount FLOPPY A");
-	generateFileList(diskpath,"img|ima|dsk|imd",0,0); //Generate file list for all .img files!
+	generateFileList(diskpath,"img|ima|dsk|imd",0,0,1); //Generate file list for all .img files!
 	EMU_locktext();
 	EMU_gotoxy(0,4); //Goto 4th row!
 	EMU_textcolor(BIOS_ATTR_INACTIVE); //We're using inactive color for label!
@@ -1338,7 +1353,7 @@ void BIOS_floppy0_selection() //FLOPPY0 selection menu!
 void BIOS_floppy1_selection() //FLOPPY1 selection menu!
 {
 	BIOS_Title("Mount FLOPPY B");
-	generateFileList(diskpath,"img|ima|dsk|imd",0,0); //Generate file list for all .img files!
+	generateFileList(diskpath,"img|ima|dsk|imd",0,0,1); //Generate file list for all .img files!
 	EMU_locktext();
 	EMU_gotoxy(0,4); //Goto 4th row!
 	EMU_textcolor(BIOS_ATTR_INACTIVE); //We're using inactive color for label!
@@ -1376,7 +1391,7 @@ void BIOS_hdd0_selection() //HDD0 selection menu!
 	}
 	//HDD is never allowed to change during running emulation!
 	BIOS_Title("Mount First HDD");
-	generateFileList(diskpath,"img|sfdimg",1,1); //Generate file list for all .img files!
+	generateFileList(diskpath,"img|sfdimg",1,1,1); //Generate file list for all .img files!
 	EMU_locktext();
 	EMU_gotoxy(0,4); //Goto 4th row!
 	EMU_textcolor(BIOS_ATTR_INACTIVE); //We're using inactive color for label!
@@ -1416,7 +1431,7 @@ void BIOS_hdd1_selection() //HDD1 selection menu!
 	}
 	//HDD is never allowed to change during running emulation!
 	BIOS_Title("Mount Second HDD");
-	generateFileList(diskpath,"img|sfdimg",1,1); //Generate file list for all .img files!
+	generateFileList(diskpath,"img|sfdimg",1,1,1); //Generate file list for all .img files!
 	EMU_locktext();
 	EMU_gotoxy(0,4); //Goto 4th row!
 	EMU_textcolor(BIOS_ATTR_INACTIVE); //We're using inactive color for label!
@@ -1532,7 +1547,7 @@ void BIOS_cdrom0_selection() //CDROM0 selection menu!
 	if (ATA_allowDiskChange(CDROM0,1)) //Allowed to change? Double as the eject button!
 	{
 		BIOS_Title("Mount First CD-ROM");
-		generateFileList(diskpath,"iso|cue",0,0); //Generate file list for all .img files!
+		generateFileList(diskpath,"iso|cue",0,0,1); //Generate file list for all .img files!
 		EMU_locktext();
 		EMU_gotoxy(0, 4); //Goto 4th row!
 		EMU_textcolor(BIOS_ATTR_INACTIVE); //We're using inactive color for label!
@@ -1615,7 +1630,7 @@ void BIOS_cdrom1_selection() //CDROM1 selection menu!
 	if (ATA_allowDiskChange(CDROM1,1)) //Allowed to change? Double as the eject button!
 	{
 		BIOS_Title("Mount Second CD-ROM");
-		generateFileList(diskpath,"iso|cue",0,0); //Generate file list for all .img files!
+		generateFileList(diskpath,"iso|cue",0,0,1); //Generate file list for all .img files!
 		EMU_locktext();
 		EMU_gotoxy(0,4); //Goto 4th row!
 		EMU_textcolor(BIOS_ATTR_INACTIVE); //We're using inactive color for label!
@@ -3045,7 +3060,7 @@ void BIOS_ConvertStaticDynamicHDD() //Generate Dynamic HDD Image from a static o
 	cleardata(&filename[0], sizeof(filename)); //Init!
 	FILEPOS size = 0;
 	BIOS_Title("Convert static to dynamic HDD Image"); //Full clear!
-	generateFileList(diskpath,"img", 0, 0); //Generate file list for all .img files!
+	generateFileList(diskpath,"img", 0, 0,1); //Generate file list for all .img files!
 	EMU_locktext();
 	EMU_gotoxy(0, 4); //Goto 4th row!
 	EMU_textcolor(BIOS_ATTR_INACTIVE); //We're using inactive color for label!
@@ -3257,7 +3272,7 @@ void BIOS_ConvertDynamicStaticHDD() //Generate Static HDD Image from a dynamic o
 	cleardata(&filename[0], sizeof(filename)); //Init!
 	FILEPOS size = 0;
 	BIOS_Title("Convert dynamic to static HDD Image"); //Full clear!
-	generateFileList(diskpath,"sfdimg", 0, 1); //Generate file list for all .img files!
+	generateFileList(diskpath,"sfdimg", 0, 1,1); //Generate file list for all .img files!
 	EMU_locktext();
 	EMU_gotoxy(0, 4); //Goto 4th row!
 	EMU_textcolor(BIOS_ATTR_INACTIVE); //We're using inactive color for label!
@@ -3488,7 +3503,7 @@ void BIOS_DefragmentDynamicHDD() //Defragment a dynamic HDD Image!
 	cleardata(&filename[0], sizeof(filename)); //Init!
 	FILEPOS size = 0, sectorposition=0;
 	BIOS_Title("Defragment a dynamic HDD Image"); //Full clear!
-	generateFileList(diskpath,"sfdimg", 0, 1); //Generate file list for all .img files!
+	generateFileList(diskpath,"sfdimg", 0, 1,1); //Generate file list for all .img files!
 	EMU_locktext();
 	EMU_gotoxy(0, 4); //Goto 4th row!
 	EMU_textcolor(BIOS_ATTR_INACTIVE); //We're using inactive color for label!
@@ -5657,7 +5672,7 @@ void BIOS_SoundMenu() //Manage stuff concerning input.
 void BIOS_SoundFont_selection() //SoundFont selection menu!
 {
 	BIOS_Title("Mount Soundfont");
-	generateFileList(soundfontpath,"sf2", 0, 0); //Generate file list for all .sf2 files!
+	generateFileList(soundfontpath,"sf2", 0, 0,0); //Generate file list for all .sf2 files!
 	EMU_locktext();
 	EMU_gotoxy(0, 4); //Goto 4th row!
 	EMU_textcolor(BIOS_ATTR_INACTIVE); //We're using inactive color for label!
@@ -5697,7 +5712,7 @@ int Sound_file = 0; //The file selected!
 int BIOS_Sound_selection() //Music selection menu, custom for this purpose!
 {
 	BIOS_Title("Select a music file to play");
-	generateFileList(musicpath,"mid|midi|dro", 0, 0); //Generate file list for all Sound files!
+	generateFileList(musicpath,"mid|midi|dro", 0, 0,0); //Generate file list for all Sound files!
 	EMU_locktext();
 	EMU_gotoxy(0, 4); //Goto 4th row!
 	EMU_textcolor(BIOS_ATTR_INACTIVE); //We're using inactive color for label!
