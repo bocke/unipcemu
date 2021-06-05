@@ -964,15 +964,18 @@ void updateSpeedLimit()
 						setCPUCycles(2750); //Supported so far! Default cycles!
 						break;
 					case CPU_80386: //80386 33MHz?
-						setCPUCycles(7800); //Supported so far! Default cycles!
+						setCPUCycles(3000); //Supported so far! Default cycles!
+						//setCPUCycles(7800); //Supported so far! Default cycles!
 						break;
 					case CPU_80486: //80486 66MHz?
-						setCPUCycles(10000); //Supported so far! Default cycles! Originally 26.8MIPS!
+						setCPUCycles(3000); //Supported so far! Default cycles!
+						//setCPUCycles(10000); //Supported so far! Default cycles! Originally 26.8MIPS!
 						break;
 					case CPU_PENTIUM: //Pentium 100MHz?
 					case CPU_PENTIUMPRO: //Pentium Pro 100MHz?
 					case CPU_PENTIUM2: //Pentium II 100MHz?
-						setCPUCycles(10000); //Supported so far! Default cycles! Original 77MIPS. Now 10MIPs!
+						setCPUCycles(3000); //Supported so far! Default cycles!
+						//setCPUCycles(10000); //Supported so far! Default cycles! Original 77MIPS. Now 10MIPs!
 						break;
 					default: //Unknown?
 						setCPUCycles(3000); //Unsupported so far! Default to 3000 cycles!
