@@ -1400,7 +1400,7 @@ OPTINLINE byte coreHandler()
 		} while (++activeCPU<numemulatedcpus); //More CPUs left to handle?
 
 		//Seperate timing for the TSC and APIC to keep them in sync!
-		if (unlikely(EMULATED_CPU >= CPU_PENTIUM)) //Pentium has a time stamp counter?
+		if (unlikely((EMULATED_CPU >= CPU_PENTIUM) && (effectiveinstructiontime>0.0))) //Pentium has a time stamp counter?
 		{
 			activeCPU = 0;
 			do
