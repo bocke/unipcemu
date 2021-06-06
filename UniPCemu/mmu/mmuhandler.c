@@ -929,9 +929,7 @@ specialreadcycledebugger:
 
 byte MMU_directrb_hwdebugger(uint_64 realaddress, word index, uint_32* result) //Direct read from real memory (with real data direct)!
 {
-	uint_64 originaladdress = realaddress; //Original address!
 	byte precalcval;
-	byte nonexistant = 0;
 	if (unlikely(emulateCompaqMMURegisters && (realaddress == 0x80C00000))) //Compaq special register?
 	{
 		*result = readCompaqMMURegister(); //Read the Compaq MMU register!

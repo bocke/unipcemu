@@ -435,13 +435,11 @@ byte CPU_paging_translateaddr(uint_32 address, byte CPL, uint_64 *physaddr) //Do
 {
 	TLBEntry curentry;
 	word DIR, TABLE;
-	byte PTEUPDATED = 0, PDEUPDATED = 0; //Not update!
 	uint_64 PDE, PTE = 0, PDPT = 0; //PDE/PTE entries currently used!
 	uint_64 PXEsize = PXE_ADDRESSMASK; //The mask to use for the PDE/PTE entries!
 	uint_64 PDEbase;
 	byte PDEsize = 2, PTEsize = 2; //Size of an entry in the PDE/PTE, in shifts(2^n)!
 	byte isPAE; //PAE is enabled?
-	uint_32 passthroughmask;
 	*physaddr = address; //Default: untranslated (special case for this address translation)!
 	if (!CPU[activeCPU].registers) return 0; //No registers available!
 	DIR = (address >> 22) & 0x3FF; //The directory entry!
@@ -461,7 +459,6 @@ byte CPU_paging_translateaddr(uint_32 address, byte CPL, uint_64 *physaddr) //Do
 	effectiveUS = getUserLevel(CPL); //Our effective user level!
 	isG = 0; //Default: no Global enabled!
 	useG = ((EMULATED_CPU >= CPU_PENTIUMPRO) & ((CPU[activeCPU].registers->CR4 & 0x80) >> 7)); //Global emulated and enabled?
-	uint_32 tag;
 
 	if ((CPU[activeCPU].registers->CR4 & 0x20) && (EMULATED_CPU >= CPU_PENTIUMPRO)) //PAE enabled?
 	{
@@ -971,12 +968,9 @@ void Paging_writeTLB(sbyte TLB_way, uint_32 logicaladdress, byte W, byte U, byte
 
 void Paging_debuggerTLB(sbyte TLB_way, uint_32 logicaladdress, byte W, byte U, byte D, byte S, byte G, uint_32 passthroughmask, byte is2M, uint_64 result, TLBEntry *curentry)
 {
-	INLINEREGISTER TLB_ptr* effectiveentry;
 	INLINEREGISTER uint_32 TAG, TAGMASKED;
 	uint_32 addrmask, searchmask;
 	sbyte TLB_set;
-	byte indexsize;
-	byte whichentry;
 	byte entry;
 	TLB_set = Paging_TLBSet(logicaladdress, S); //Auto set?
 	//Calculate and store the address mask for matching!

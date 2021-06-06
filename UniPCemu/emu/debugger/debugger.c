@@ -1225,7 +1225,6 @@ void debugger_screen() //Show debugger info on-screen!
 		uint_32 currentbackcoloractive; //Current selected back color!
 		uint_32 currentfontcolor; //Current unselected font color!
 		uint_32 currentbackcolor; //Current unselected back color!
-		byte disabledheader; //Header is disabled?
 		if (debugger_memoryviewer.enabled) //Memory viewer instead>
 		{
  			GPU_textclearscreen(frameratesurface); //Clear the screen!
@@ -1761,7 +1760,6 @@ byte debugger_memoryviewerPL(char *breakpointstr)
 	EMU_gotoxy(0, 4); //Goto position for info!
 	GPU_EMU_printscreen(0, 4, "Kernel privilege: Cross=No, Square=Yes, Circle=Cancel"); //Show the filename!
 	EMU_unlocktext();
-	word maxoffsetsize = 8;
 	result = 0; //Default: not handled!
 memoryviewerPLinputloop:
 	if (shuttingdown()) return 0; //Stop debugging when shutting down!
