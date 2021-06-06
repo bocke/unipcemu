@@ -1344,7 +1344,7 @@ void BIOS_floppy0_selection() //FLOPPY0 selection menu!
 		break;
 	default: //File?
 		BIOS_Changed = 1; //Changed!
-		if (strcmp(BIOS_Settings.floppy0,itemlist[file])!=0) BIOS_Settings.floppy0_readonly = 0; //Different resets readonly flag!
+		//if (strcmp(BIOS_Settings.floppy0,itemlist[file])!=0) BIOS_Settings.floppy0_readonly = 0; //Different resets readonly flag!
 		safestrcpy(BIOS_Settings.floppy0,sizeof(BIOS_Settings.floppy0),itemlist[file]); //Use this file!
 	}
 	BIOS_Menu = 1; //Return to image menu!
@@ -1375,7 +1375,7 @@ void BIOS_floppy1_selection() //FLOPPY1 selection menu!
 		break; //Just calmly return!
 	default: //File?
 		BIOS_Changed = 1; //Changed!
-		if (strcmp(BIOS_Settings.floppy1, itemlist[file]) != 0) BIOS_Settings.floppy1_readonly = 0; //Different resets readonly flag!
+		//if (strcmp(BIOS_Settings.floppy1, itemlist[file]) != 0) BIOS_Settings.floppy1_readonly = 0; //Different resets readonly flag!
 		safestrcpy(BIOS_Settings.floppy1,sizeof(BIOS_Settings.floppy1),itemlist[file]); //Use this file!
 	}
 	BIOS_Menu = 1; //Return to image menu!
@@ -1415,7 +1415,7 @@ void BIOS_hdd0_selection() //HDD0 selection menu!
 	default: //File?
 		BIOS_Changed = 1; //Changed!
 		reboot_needed |= 1; //We need to reboot to apply the ATA changes!
-		if (strcmp(BIOS_Settings.hdd0, itemlist[file]) != 0) BIOS_Settings.hdd0_readonly = 0; //Different resets readonly flag!
+		//if (strcmp(BIOS_Settings.hdd0, itemlist[file]) != 0) BIOS_Settings.hdd0_readonly = 0; //Different resets readonly flag!
 		safestrcpy(BIOS_Settings.hdd0,sizeof(BIOS_Settings.hdd0),itemlist[file]); //Use this file!
 	}
 	BIOS_Menu = 1; //Return to image menu!
@@ -1455,7 +1455,7 @@ void BIOS_hdd1_selection() //HDD1 selection menu!
 	default: //File?
 		BIOS_Changed = 1; //Changed!
 		reboot_needed |= 1; //We need to reboot to apply the ATA changes!
-		if (strcmp(BIOS_Settings.hdd1, itemlist[file]) != 0) BIOS_Settings.hdd1_readonly = 0; //Different resets readonly flag!
+		//if (strcmp(BIOS_Settings.hdd1, itemlist[file]) != 0) BIOS_Settings.hdd1_readonly = 0; //Different resets readonly flag!
 		safestrcpy(BIOS_Settings.hdd1,sizeof(BIOS_Settings.hdd1),itemlist[file]); //Use this file!
 	}
 	BIOS_Menu = 1; //Return to image menu!
