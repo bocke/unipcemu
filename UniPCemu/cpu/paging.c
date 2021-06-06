@@ -431,7 +431,7 @@ byte isvalidpage(uint_32 address, byte iswrite, byte CPL, byte isPrefetch) //Do 
 }
 
 void Paging_debuggerTLB(sbyte TLB_way, uint_32 logicaladdress, byte W, byte U, byte D, byte S, byte G, uint_32 passthroughmask, byte is2M, uint_64 result, TLBEntry* curentry); //Special for address translation!
-byte CPU_paging_translateaddr(uint_32 address, uint_64 *physaddr) //Do we have paging without error? userlevel=CPL usually.
+byte CPU_paging_translateaddr(uint_32 address, byte CPL, uint_64 *physaddr) //Do we have paging without error? userlevel=CPL usually.
 {
 	TLBEntry curentry;
 	word DIR, TABLE;
@@ -458,7 +458,7 @@ byte CPU_paging_translateaddr(uint_32 address, uint_64 *physaddr) //Do we have p
 	byte isG; //G set in any entry?
 	byte useG; //G enabled in processor and used?
 	RW = 0; //Are we trying to write?
-	effectiveUS = getCPL(); //Our effective user level!
+	effectiveUS = getUserLevel(CPL); //Our effective user level!
 	isG = 0; //Default: no Global enabled!
 	useG = ((EMULATED_CPU >= CPU_PENTIUMPRO) & ((CPU[activeCPU].registers->CR4 & 0x80) >> 7)); //Global emulated and enabled?
 	uint_32 tag;

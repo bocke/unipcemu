@@ -62,7 +62,7 @@ void Paging_Invalidate(uint_32 logicaladdress); //Invalidate a single address!
 void Paging_TestRegisterWritten(byte TR); //A Test Register has been written to?
 
 //Special: address translation for CPL program debugger.
-byte CPU_paging_translateaddr(uint_32 address, uint_64* physaddr); //Do we have paging without error? userlevel=CPL usually.
+byte CPU_paging_translateaddr(uint_32 address, byte CPL, uint_64* physaddr); //Do we have paging without error? userlevel=CPL usually.
 
 typedef uint_64(*mappageHandler)(uint_32 address, byte iswrite, byte CPL); //Maps a page to real memory when needed!
 

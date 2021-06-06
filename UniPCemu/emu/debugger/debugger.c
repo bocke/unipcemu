@@ -85,6 +85,7 @@ byte lastHLTstatus = 0; //Last halt status for debugger! 1=Was halting, 0=Not ha
 CPU_registers debuggerregisters; //Backup of the CPU's register states before the CPU starts changing them!
 SEGMENT_DESCRIPTOR debuggersegmentregistercache[8]; //All segment descriptors
 byte debuggerHLT = 0;
+byte debuggerCPL = 0; //CPL of the executing process that's debugged!
 byte debuggerReset = 0; //Are we a reset CPU?
 
 extern uint_32 MMU_lastwaddr; //What address is last addresses in actual memory?
@@ -505,6 +506,7 @@ void debugger_beforeCPU() //Action before the CPU changes it's registers!
 		debugger_instructionexecuting = 0; //Not yet executing!
 		debuggerHLT = CPU[activeCPU].halt; //Are we halted?
 		debuggerReset = CPU[activeCPU].is_reset|(CPU[activeCPU].permanentreset<<1); //Are we reset?
+		debuggerCPL = CPU[activeCPU].CPL; //Current CPL for the debugger to use!
 
 		if (verifyfile) //Verification file exists?
 		{
@@ -1197,6 +1199,7 @@ struct
 	byte x; //X coordinate to select!
 	byte y; //Y coordinate to select!
 	byte virtualmemory; //Use virtual memory instead of physical memory?
+	byte virtualmemoryCPL; //CPL to use for virtual memory!
 } debugger_memoryviewer; //Memory viewer enabled on the debugger screen?
 
 void debugger_screen() //Show debugger info on-screen!
@@ -1263,7 +1266,7 @@ void debugger_screen() //Show debugger info on-screen!
 						currentbackcolor = backcolor; //Default: normally active!
 						if (debugger_memoryviewer.virtualmemory) //Using virtual memory?
 						{
-							if (!CPU_paging_translateaddr(debugger_memoryviewer.address + (debugger_memoryviewer.y * 0x10) + debugger_memoryviewer.x, &physicaladdress)) //Invalid address?
+							if (!CPU_paging_translateaddr(debugger_memoryviewer.address + (debugger_memoryviewer.y * 0x10) + debugger_memoryviewer.x, debugger_memoryviewer.virtualmemoryCPL, &physicaladdress)) //Invalid address?
 							{
 								currentfontcoloractive = fontcoloractive_blocked; //Blocked color!
 								currentbackcoloractive = backcoloractive_blocked; //Blocked color!
@@ -1306,7 +1309,7 @@ void debugger_screen() //Show debugger info on-screen!
 						currentbackcolor = backcolor; //Default: normally active!
 						if (debugger_memoryviewer.virtualmemory) //Using virtual memory?
 						{
-							if (!CPU_paging_translateaddr(debugger_memoryviewer.address + (debugger_memoryviewer.y * 0x10) + debugger_memoryviewer.x, &physicaladdress)) //Invalid address?
+							if (!CPU_paging_translateaddr(debugger_memoryviewer.address + (debugger_memoryviewer.y * 0x10) + debugger_memoryviewer.x, debugger_memoryviewer.virtualmemoryCPL, &physicaladdress)) //Invalid address?
 							{
 								currentfontcoloractive = fontcoloractive_blocked; //Blocked color!
 								currentbackcoloractive = backcoloractive_blocked; //Blocked color!
@@ -1350,7 +1353,7 @@ void debugger_screen() //Show debugger info on-screen!
 						currentbackcolor = backcolor; //Default: normally active!
 						if (debugger_memoryviewer.virtualmemory) //Using virtual memory?
 						{
-							if (CPU_paging_translateaddr(effectiveaddress, &physicaladdress)) //Valid address?
+							if (CPU_paging_translateaddr(effectiveaddress, debugger_memoryviewer.virtualmemoryCPL, &physicaladdress)) //Valid address?
 							{
 								if (MMU_directrb_hwdebugger(physicaladdress, 3, &effectivememorydata)) //Floating bus at this address?
 								{
@@ -1685,19 +1688,22 @@ byte debugger_updatememoryviewer()
 extern byte Settings_request; //Settings requested to be executed?
 extern byte reset; //To reset the emulator?
 
-void debugger_startmemoryviewer(char* breakpointstr, byte enabled, byte virtualmemory)
+void debugger_startmemoryviewer(char* breakpointstr, byte enabled, byte virtualmemory, byte virtualmemoryCPL)
 {
 	uint_32 offset;
 	offset = converthex2int(&breakpointstr[0]); //Convert the number to our usable format!
 
 	//Apply the new viewer!
 	debugger_memoryviewer.virtualmemory = virtualmemory; //Use virtual memory instead?
+	debugger_memoryviewer.virtualmemoryCPL = virtualmemoryCPL; //The CPL to use for the virtual memory!
 	debugger_memoryviewer.enabled = enabled; //Enabled?
 	debugger_memoryviewer.address = (uint_64)(offset & 0xFFFFFFFFULL); //Set the new breakpoint!
 	debugger_memoryviewer.x = 0; //Init!
 	debugger_memoryviewer.y = 0; //Init!
 }
 
+
+byte debugger_memoryviewerPL(char* breakpointstr); //Prototype for debugger_memoryvieweraddress as a second input step.
 byte debugger_memoryvieweraddress(byte virtualmemory)
 {
 	byte result;
@@ -1728,12 +1734,79 @@ byte debugger_memoryvieweraddress(byte virtualmemory)
 			//This won't compile on the PSP for some unknown reason, crashing the compiler!
 			if (((safe_strlen(&breakpointstr[0], sizeof(breakpointstr))) - 1) <= maxoffsetsize) //Offset OK?
 			{
-				debugger_startmemoryviewer(&breakpointstr[0], 1, virtualmemory); //Start the memory viewer interface!
-				result = 1; //Started!
+				if (virtualmemory) //Starting the virtual memory after a second step!
+				{
+					result = debugger_memoryviewerPL(&breakpointstr[0]); //Take input from the second step: the privilege level choice!
+				}
+				else //Start the viewer!
+				{
+					debugger_startmemoryviewer(&breakpointstr[0], 1, 0, 0); //Start the physical memory viewer interface!
+					result = 1; //Started!
+				}
 			}
 		}
 	}
 	lock(LOCK_INPUT); //Relock!
+	BIOSDoneScreen(); //Clear the screen after we're done with it!
+	return result; //Give the result!
+}
+
+byte debugger_memoryviewerPL(char *breakpointstr)
+{
+	byte result;
+	//First, convert the current breakpoint to a string format!
+	BIOSClearScreen(); //Clear the screen!
+	BIOS_Title("Virtual Memory Breakpoint"); //Full clear!
+	EMU_locktext();
+	EMU_gotoxy(0, 4); //Goto position for info!
+	GPU_EMU_printscreen(0, 4, "Kernel privilege: Cross=No, Square=Yes, Circle=Cancel"); //Show the filename!
+	EMU_unlocktext();
+	word maxoffsetsize = 8;
+	result = 0; //Default: not handled!
+memoryviewerPLinputloop:
+	if (shuttingdown()) return 0; //Stop debugging when shutting down!
+	lock(LOCK_INPUT);
+	if (psp_keypressed(BUTTON_SQUARE)) //Square pressed?
+	{
+		while (psp_keypressed(BUTTON_SQUARE)) //Wait for release!
+		{
+			unlock(LOCK_INPUT);
+			delay(0);
+			lock(LOCK_INPUT);
+		}
+		unlock(LOCK_INPUT); //Unlock!
+		debugger_startmemoryviewer(&breakpointstr[0], 1, 1, 0); //Start the virtual memory viewer interface with kernel privilege!
+		result = 1; //Started!
+		goto loopfinished; //Finish the loop!
+	}
+	else if (psp_keypressed(BUTTON_CROSS)) //Cross pressed?
+	{
+		while (psp_keypressed(BUTTON_CROSS)) //Wait for release!
+		{
+			unlock(LOCK_INPUT);
+			delay(0);
+			lock(LOCK_INPUT);
+		}
+		unlock(LOCK_INPUT); //Unlock!
+		debugger_startmemoryviewer(&breakpointstr[0], 1, 1, debuggerCPL); //Start the virtual memory viewer interface with debugged instruction privilege!
+		result = 1; //Started!
+		goto loopfinished; //Finish the loop!
+	}
+	else if (psp_keypressed(BUTTON_CIRCLE)) //Cross pressed?
+	{
+		while (psp_keypressed(BUTTON_CIRCLE)) //Wait for release!
+		{
+			unlock(LOCK_INPUT);
+			delay(0);
+			lock(LOCK_INPUT);
+		}
+		unlock(LOCK_INPUT); //Unlock!
+		result = 0; //Aborted!
+		goto loopfinished; //Finish the loop!
+	}
+	unlock(LOCK_INPUT); //Unlock!
+	goto memoryviewerPLinputloop; //Check again until receiving input!
+	loopfinished:
 	BIOSDoneScreen(); //Clear the screen after we're done with it!
 	return result; //Give the result!
 }
