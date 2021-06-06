@@ -43,6 +43,7 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 #include "headers/mmu/mmuhandler.h" //Memory direct read support!
 #include "headers/emu/gpu/gpu_emu.h" //GPU printing support for the BIOS screen printing functions.
 #include "headers/emu/emu_misc.h" //converthex2int support!
+#include "headers/cpu/paging.h" //Virtual memory support for the virtual memory viewer!
 
 //Log flags only?
 //#define LOGFLAGSONLY
@@ -1195,6 +1196,7 @@ struct
 	uint_64 address; //Address to start viewing!
 	byte x; //X coordinate to select!
 	byte y; //Y coordinate to select!
+	byte virtualmemory; //Use virtual memory instead of physical memory?
 } debugger_memoryviewer; //Memory viewer enabled on the debugger screen?
 
 void debugger_screen() //Show debugger info on-screen!
@@ -1203,18 +1205,31 @@ void debugger_screen() //Show debugger info on-screen!
 	int tablebasex, tablebasey;
 	uint_32 effectiveaddress;
 	uint_32 effectivememorydata;
+	uint_64 physicaladdress;
+	byte blocked;
 	if (frameratesurface) //We can show?
 	{
 		GPU_text_locksurface(frameratesurface); //Lock!
 		uint_32 fontcolor = RGB(0xFF, 0xFF, 0xFF); //Font color!
 		uint_32 backcolor = RGB(0x00, 0x00, 0x00); //Back color!
+		uint_32 fontcoloractive_blocked = RGB(0xAA, 0x55, 0x00); //Font color unmapped!
 		uint_32 fontcoloractive = RGB(0x00, 0xFF, 0x00); //Font color!
+		uint_32 backcoloractive_blocked = RGB(0x00, 0x00, 0x00); //Back color unmapped!
 		uint_32 backcoloractive = RGB(0x00, 0x00, 0x00); //Back color!
+		uint_32 currentfontcoloractive; //Current selected font color!
+		uint_32 currentbackcoloractive; //Current selected back color!
 		if (debugger_memoryviewer.enabled) //Memory viewer instead>
 		{
  			GPU_textclearscreen(frameratesurface); //Clear the screen!
 			GPU_textgotoxy(frameratesurface, 0, 0); //Goto start of the screen!
-			GPU_textprintf(frameratesurface, fontcolor, backcolor, "Memory viewer");
+			if (debugger_memoryviewer.virtualmemory) //Virtual memory?
+			{
+				GPU_textprintf(frameratesurface, fontcolor, backcolor, "Virtual Memory viewer");
+			}
+			else
+			{
+				GPU_textprintf(frameratesurface, fontcolor, backcolor, "Memory viewer");
+			}
 
 			effectiveaddress = debugger_memoryviewer.address + (debugger_memoryviewer.y * 0x10) + debugger_memoryviewer.x; //What address!
 
@@ -1236,10 +1251,24 @@ void debugger_screen() //Show debugger info on-screen!
 					}
 					else if (memoryx == 0) //Vertical header?
 					{
+						//First, check for the correct active color!
+						currentfontcoloractive = fontcoloractive; //Default: normally active!
+						currentbackcoloractive = backcoloractive; //Default: normally active!
+						if (debugger_memoryviewer.virtualmemory) //Using virtual memory?
+						{
+							if (!CPU_paging_translateaddr(debugger_memoryviewer.address + (debugger_memoryviewer.y * 0x10) + debugger_memoryviewer.x, &physicaladdress)) //Invalid address?
+							{
+								effectivememorydata = 0xFF; //Unmapped!
+								currentfontcoloractive = fontcoloractive_blocked; //Blocked color!
+								currentbackcoloractive = backcoloractive_blocked; //Blocked color!
+							}
+						}
+
+						//Now, render the vertical header!
 						effectiveaddress = debugger_memoryviewer.address + ((memoryy - 1) * 0x10); //What address!
 						if ((memoryy - 1) == debugger_memoryviewer.y) //Selected row?
 						{
-							GPU_textprintf(frameratesurface, fontcoloractive, backcoloractive, "%02X", ((effectiveaddress>>4) & 0xF));
+							GPU_textprintf(frameratesurface, currentfontcoloractive, currentbackcoloractive, "%02X", ((effectiveaddress>>4) & 0xF));
 						}
 						else //Inactive?
 						{
@@ -1248,10 +1277,23 @@ void debugger_screen() //Show debugger info on-screen!
 					}
 					else if (memoryy == 0) //Horizontal header?
 					{
+						//First, check for the correct active color!
+						currentfontcoloractive = fontcoloractive; //Default: normally active!
+						currentbackcoloractive = backcoloractive; //Default: normally active!
+						if (debugger_memoryviewer.virtualmemory) //Using virtual memory?
+						{
+							if (!CPU_paging_translateaddr(debugger_memoryviewer.address + (debugger_memoryviewer.y * 0x10) + debugger_memoryviewer.x, &physicaladdress)) //Invalid address?
+							{
+								currentfontcoloractive = fontcoloractive_blocked; //Blocked color!
+								currentbackcoloractive = backcoloractive_blocked; //Blocked color!
+							}
+						}
+
+						//Now, render the horizontal header!
 						effectiveaddress = debugger_memoryviewer.address + (memoryx - 1); //What address!
 						if ((memoryx - 1) == debugger_memoryviewer.x) //Selected row?
 						{
-							GPU_textprintf(frameratesurface, fontcoloractive, backcoloractive, "%02X", (effectiveaddress & 0xF));
+							GPU_textprintf(frameratesurface, currentfontcoloractive, currentbackcoloractive, "%02X", (effectiveaddress & 0xF));
 						}
 						else //Inactive?
 						{
@@ -1261,16 +1303,38 @@ void debugger_screen() //Show debugger info on-screen!
 					else //Memory data?
 					{
 						effectiveaddress = debugger_memoryviewer.address + ((memoryy - 1) * 0x10) + (memoryx - 1); //What address!
-						if (MMU_directrb_hwdebugger(effectiveaddress, 3, &effectivememorydata)) //Floating bus at this address?
+						blocked = 0; //Default: not blocked!
+						currentfontcoloractive = fontcoloractive; //Default: normally active!
+						currentbackcoloractive = backcoloractive; //Default: normally active!
+						if (debugger_memoryviewer.virtualmemory) //Using virtual memory?
 						{
-							effectivememorydata = 0xFF; //Floating bus!
+							if (CPU_paging_translateaddr(effectiveaddress, &physicaladdress)) //Valid address?
+							{
+								if (MMU_directrb_hwdebugger(physicaladdress, 3, &effectivememorydata)) //Floating bus at this address?
+								{
+									effectivememorydata = 0xFF; //Floating bus!
+								}
+							}
+							else //Invalid address?
+							{
+								effectivememorydata = 0xFF; //Unmapped, so display a floating bus!
+								currentfontcoloractive = fontcoloractive_blocked; //Blocked color!
+								currentbackcoloractive = backcoloractive_blocked; //Blocked color!
+							}
+						}
+						else //Physical memory?
+						{
+							if (MMU_directrb_hwdebugger(effectiveaddress, 3, &effectivememorydata)) //Floating bus at this address?
+							{
+								effectivememorydata = 0xFF; //Floating bus!
+							}
 						}
 						if (
 							((memoryx - 1) == debugger_memoryviewer.x) && //Selected column?
 							((memoryy - 1) == debugger_memoryviewer.y) //Selected row?
 							)
 						{
-							GPU_textprintf(frameratesurface, fontcoloractive, backcoloractive, "%02X", (effectivememorydata&0xFF));
+							GPU_textprintf(frameratesurface, currentfontcoloractive, currentbackcoloractive, "%02X", (effectivememorydata&0xFF));
 						}
 						else
 						{
@@ -1569,26 +1633,34 @@ byte debugger_updatememoryviewer()
 extern byte Settings_request; //Settings requested to be executed?
 extern byte reset; //To reset the emulator?
 
-void debugger_startmemoryviewer(char* breakpointstr, byte enabled)
+void debugger_startmemoryviewer(char* breakpointstr, byte enabled, byte virtualmemory)
 {
 	uint_32 offset;
 	offset = converthex2int(&breakpointstr[0]); //Convert the number to our usable format!
 
 	//Apply the new viewer!
+	debugger_memoryviewer.virtualmemory = virtualmemory; //Use virtual memory instead?
 	debugger_memoryviewer.enabled = enabled; //Enabled?
 	debugger_memoryviewer.address = (uint_64)(offset & 0xFFFFFFFFULL); //Set the new breakpoint!
 	debugger_memoryviewer.x = 0; //Init!
 	debugger_memoryviewer.y = 0; //Init!
 }
 
-byte debugger_memoryvieweraddress()
+byte debugger_memoryvieweraddress(byte virtualmemory)
 {
 	byte result;
 	char breakpointstr[256]; //32-bits offset, colon, 16-bits segment, mode if required(Protected/Virtual 8086), Ignore EIP/CS/Whole address(mode only) and final character(always zero)!
 	cleardata(&breakpointstr[0], sizeof(breakpointstr));
 	//First, convert the current breakpoint to a string format!
 	BIOSClearScreen(); //Clear the screen!
-	BIOS_Title("Memory Breakpoint"); //Full clear!
+	if (virtualmemory)
+	{
+		BIOS_Title("Virtual Memory Breakpoint"); //Full clear!
+	}
+	else
+	{
+		BIOS_Title("Memory Breakpoint"); //Full clear!
+	}
 	EMU_locktext();
 	EMU_gotoxy(0, 4); //Goto position for info!
 	GPU_EMU_printscreen(0, 4, "Address: "); //Show the filename!
@@ -1604,7 +1676,7 @@ byte debugger_memoryvieweraddress()
 			//This won't compile on the PSP for some unknown reason, crashing the compiler!
 			if (((safe_strlen(&breakpointstr[0], sizeof(breakpointstr))) - 1) <= maxoffsetsize) //Offset OK?
 			{
-				debugger_startmemoryviewer(&breakpointstr[0], 1); //Start the memory viewer interface!
+				debugger_startmemoryviewer(&breakpointstr[0], 1, virtualmemory); //Start the memory viewer interface!
 				result = 1; //Started!
 			}
 		}
@@ -1683,7 +1755,26 @@ void debuggerThread()
 						delay(0);
 						lock(LOCK_INPUT);
 					}
-					if (debugger_memoryvieweraddress()) //Input the address for use with the memory viewer!
+					if (debugger_memoryvieweraddress(0)) //Input the address for use with the memory viewer!
+					{
+						//Viewer has been started!
+						unlock(LOCK_INPUT);
+						displayed = 0; //Not displayed yet!
+						goto restartdebugger; //Update us!
+					}
+					unlock(LOCK_INPUT);
+					displayed = 0; //Not displayed yet!
+					goto restartdebugger; //Update us!
+				}
+				else if (psp_keypressed(BUTTON_CROSS)) //Virtual memory viewer?
+				{
+					while (psp_keypressed(BUTTON_CROSS)) //Wait for release!
+					{
+						unlock(LOCK_INPUT);
+						delay(0);
+						lock(LOCK_INPUT);
+					}
+					if (debugger_memoryvieweraddress(1)) //Input the address for use with the memory viewer!
 					{
 						//Viewer has been started!
 						unlock(LOCK_INPUT);
@@ -1794,6 +1885,7 @@ void debuggerThread()
 	if (displayed) //Are we to clean up?
 	{
 		lock(LOCK_MAINTHREAD); //Make sure we aren't cleaning up!
+		debugger_is_logging = debugger_logging(); //Are we logging?
 		GPU_text_locksurface(frameratesurface); //Lock!
 		for (i = GPU_TEXT_DEBUGGERROW;i < debuggerrow;i++) GPU_textclearrow(frameratesurface, i); //Clear our debugger rows!
 		GPU_text_releasesurface(frameratesurface); //Unlock!
@@ -1868,6 +1960,7 @@ void debugger_step() //Processes the debugging step!
 				{
 					if ((BIOSMenuThread==NULL) && (reset==0)) //These are mutually exclusive to run!
 					{
+						debugger_is_logging = 0; //Disable logging from now on!
 						debugger_thread = startThread(debuggerThread, "UniPCemu_debugger", NULL); //Start the debugger!
 					}
 				}
