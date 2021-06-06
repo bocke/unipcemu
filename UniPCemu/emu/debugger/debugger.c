@@ -1697,7 +1697,7 @@ void debuggerThread()
 
 	restartdebugger: //Restart the debugger during debugging!
 	done = 0; //Init: not done yet!
-
+	if (shuttingdown()) return; //Stop debugging when shutting down!
 	if ((!(done || skipopcodes || (skipstep&&CPU[activeCPU].repeating)) || (BPsinglestep==1)) || (displayed==0)) //Are we to show the (new) debugger screen?
 	{
 		displayed = 1; //We're displayed!
