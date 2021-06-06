@@ -430,6 +430,145 @@ byte isvalidpage(uint_32 address, byte iswrite, byte CPL, byte isPrefetch) //Do 
 	return 1; //Valid!
 }
 
+void Paging_debuggerTLB(sbyte TLB_way, uint_32 logicaladdress, byte W, byte U, byte D, byte S, byte G, uint_32 passthroughmask, byte is2M, uint_64 result, TLBEntry* curentry); //Special for address translation!
+byte CPU_paging_translateaddr(uint_32 address, uint_64 *physaddr) //Do we have paging without error? userlevel=CPL usually.
+{
+	TLBEntry curentry;
+	word DIR, TABLE;
+	byte PTEUPDATED = 0, PDEUPDATED = 0; //Not update!
+	uint_64 PDE, PTE = 0, PDPT = 0; //PDE/PTE entries currently used!
+	uint_64 PXEsize = PXE_ADDRESSMASK; //The mask to use for the PDE/PTE entries!
+	uint_64 PDEbase;
+	byte PDEsize = 2, PTEsize = 2; //Size of an entry in the PDE/PTE, in shifts(2^n)!
+	byte isPAE; //PAE is enabled?
+	uint_32 passthroughmask;
+	*physaddr = address; //Default: untranslated (special case for this address translation)!
+	if (!CPU[activeCPU].registers) return 0; //No registers available!
+	DIR = (address >> 22) & 0x3FF; //The directory entry!
+	TABLE = (address >> 12) & 0x3FF; //The table entry!
+
+	byte effectiveUS;
+	byte RW;
+	byte isS;
+	byte isG; //G set in any entry?
+	byte useG; //G enabled in processor and used?
+	RW = 0; //Are we trying to write?
+	effectiveUS = getCPL(); //Our effective user level!
+	isG = 0; //Default: no Global enabled!
+	useG = ((EMULATED_CPU >= CPU_PENTIUMPRO) & ((CPU[activeCPU].registers->CR4 & 0x80) >> 7)); //Global emulated and enabled?
+	uint_32 tag;
+
+	if ((CPU[activeCPU].registers->CR4 & 0x20) && (EMULATED_CPU >= CPU_PENTIUMPRO)) //PAE enabled?
+	{
+		PDPT = (uint_64)memory_BIUdirectrdw(CR3_PAEPDBR + ((DIR >> 8) << 3)); //Read the page directory entry low!
+		PDPT |= ((uint_64)memory_BIUdirectrdw(CR3_PAEPDBR + (((DIR >> 8) << 3) | 4))) << 32; //Read the page directory entry high!
+		PDEsize = PTEsize = 3; //Double the size of the entries to be 64-bits!
+		PXEsize = PXE_PAEADDRESSMASK; //Large address mask!
+		//Check present only!
+		if (!(PDPT & PXE_P)) //Not present?
+		{
+			//CPU[activeCPU].PageFault_PDPT = PDPT; //Save!
+			//CPU[activeCPU].PageFault_PDE = 0; //Save!
+			//CPU[activeCPU].PageFault_PTE = 0; //Save!
+			return 0; //We have an error, abort!
+		}
+
+		//The PDPT has no protection bits?
+
+		DIR = (address >> 21) & 0x1FF; //The directory entry has half the entries!
+		TABLE = (address >> 12) & 0x1FF; //The table entry has half the entries!
+
+		//Check PDE
+		PDEbase = (PDPT & PXEsize); //What is the PDE base address!
+		PDE = (uint_64)memory_BIUdirectrdw((PDPT & PXEsize) + (DIR << 3)); //Read the page directory entry low!
+		PDE |= ((uint_64)memory_BIUdirectrdw((PDPT & PXEsize) + ((DIR << 3) | 4))) << 32; //Read the page directory entry high!
+		if (!(PDE & PXE_P)) //Not present?
+		{
+			//CPU[activeCPU].PageFault_PDPT = PDPT; //Save!
+			//CPU[activeCPU].PageFault_PDE = PDE; //Save!
+			//CPU[activeCPU].PageFault_PTE = 0; //Save!
+			return 0; //We have an error, abort!
+		}
+		isS = ((PDE & PDE_S) >> 7); //Large page of 2M? Is mandatory to be supported! CR4's PSE bit is ignored!
+		isPAE = 1; //Enforce reserved bits!
+	}
+	else //PAE disabled?
+	{
+		PDEbase = CR3_PDBR; //What is the PDE base address!
+		//Check PDE
+		PDE = (uint_64)memory_BIUdirectrdw(PDEbase + (DIR << 2)); //Read the page directory entry!
+		if (!(PDE & PXE_P)) //Not present?
+		{
+			//CPU[activeCPU].PageFault_PDPT = 0; //Save!
+			//CPU[activeCPU].PageFault_PDE = PDE; //Save!
+			//CPU[activeCPU].PageFault_PTE = 0; //Save!
+			return 0; //We have an error, abort!
+		}
+		isS = ((((PDE & PDE_S) >> 7) & ((CPU[activeCPU].registers->CR4 & 0x10) >> 4) & (EMULATED_CPU >= CPU_PENTIUM)) & 1); //Effective size!
+		isPAE = 0; //Don't enforce reserved bits!
+	}
+
+	//Check PTE
+	if (likely(isS == 0)) //Not 4MB?
+	{
+		PTE = (uint_64)memory_BIUdirectrdw(((PDE & PXEsize) >> PXE_ADDRESSSHIFT) + (TABLE << PTEsize)); //Read the page table entry!
+		if (PTEsize == 3) //Needs high half too?
+		{
+			PTE |= (((uint_64)memory_BIUdirectrdw(((PDE & PXEsize) >> PXE_ADDRESSSHIFT) + ((TABLE << PTEsize) | 4))) << 32); //Read the page table entry!
+		}
+		if (!(PTE & PXE_P)) //Not present?
+		{
+			//CPU[activeCPU].PageFault_PDPT = PDPT; //Save!
+			//CPU[activeCPU].PageFault_PDE = PDE; //Save!
+			//CPU[activeCPU].PageFault_PTE = PTE; //Save!
+			return 0; //We have an error, abort!
+		}
+	}
+
+	if (unlikely(isS)) //4MB? Only check the PDE, not the PTE!
+	{
+		if ((PDE & (0x3FF000 ^ (isPAE << 21))) && ((((CPU[activeCPU].registers->CR4 & 0x10) >> 4) & (EMULATED_CPU >= CPU_PENTIUM)) | isPAE)) //Reserved bit in PDE?
+		{
+			//CPU[activeCPU].PageFault_PDPT = PDPT; //Save!
+			//CPU[activeCPU].PageFault_PDE = PDE; //Save!
+			//CPU[activeCPU].PageFault_PTE = 0; //Save!
+			return 0; //We have an error, abort!
+		}
+		if (!verifyCPL(RW, effectiveUS, ((PDE & PXE_RW) >> 1), ((PDE & PXE_US) >> 2), ((PDE & PXE_RW) >> 1), ((PDE & PXE_US) >> 2), &RW)) //Protection fault on combined flags?
+		{
+			//CPU[activeCPU].PageFault_PDPT = PDPT; //Save!
+			//CPU[activeCPU].PageFault_PDE = PDE; //Save!
+			//CPU[activeCPU].PageFault_PTE = 0; //Save!
+			return 0; //We have an error, abort!		
+		}
+		isG = ((PDE >> 8) & 1); //Bit 8=Global!
+	}
+	else //4KB?
+	{
+		if (!verifyCPL(RW, effectiveUS, ((PDE & PXE_RW) >> 1), ((PDE & PXE_US) >> 2), ((PTE & PXE_RW) >> 1), ((PTE & PXE_US) >> 2), &RW)) //Protection fault on combined flags?
+		{
+			//CPU[activeCPU].PageFault_PDPT = PDPT; //Save!
+			//CPU[activeCPU].PageFault_PDE = PDE; //Save!
+			//CPU[activeCPU].PageFault_PTE = PTE; //Save!
+			return 0; //We have an error, abort!		
+		}
+		isG = ((PTE >> 8) & 1); //Bit 8=Global!
+	}
+
+	//RW=Are we writable?
+	//Use the debugging TLB creation to create a proper TLB entry to translate with!
+	Paging_debuggerTLB(-1, address, RW, effectiveUS, (isS == 0) ? ((PTE & PTE_D) ? 1 : 0) : ((PDE & PDE_Dirty) ? 1 : 0), isS, (isG & useG), (((isS == 0) ? (PXE_ACTIVEMASK) : (isPAE ? PDE_PAELARGEACTIVEMASK : PDE_LARGEACTIVEMASK))), (((isS == 0) ? (0) : (isPAE ? 1 : 0))), (((isS == 0) ? (PTE & (isPAE ? PXE_PAEADDRESSMASK : PXE_ADDRESSMASK)) : (PDE & (isPAE ? PDE_PAELARGEADDRESSMASK : PDE_LARGEADDRESSMASK)))),&curentry); //'Save' the PTE 32-bit address in the unsaving TLB! PDE is always dirty when using 2MB/4MB pages!
+	if (isS) //Large one?
+	{
+		*physaddr = (curentry.data | (address & curentry.passthroughmask)); //Give the actual address from the TLB!
+	}
+	else //Small one?
+	{
+		*physaddr = (curentry.data | (address & PXE_ACTIVEMASK)); //Give the actual address from the TLB!
+	}
+	return 1; //Valid!
+}
+
 byte CPU_Paging_checkPage(uint_32 address, byte readflags, byte CPL)
 {
 	byte result;
@@ -823,6 +962,38 @@ void Paging_writeTLB(sbyte TLB_way, uint_32 logicaladdress, byte W, byte U, byte
 	curentry->isglobal = G; //Global or not!
 	CPU[activeCPU].mostrecentTAGvalid = 0; //Invalidate to be sure!
 	BIU_recheckmemory(); //Recheck anything that's fetching from now on!
+}
+
+void Paging_debuggerTLB(sbyte TLB_way, uint_32 logicaladdress, byte W, byte U, byte D, byte S, byte G, uint_32 passthroughmask, byte is2M, uint_64 result, TLBEntry *curentry)
+{
+	INLINEREGISTER TLB_ptr* effectiveentry;
+	INLINEREGISTER uint_32 TAG, TAGMASKED;
+	uint_32 addrmask, searchmask;
+	sbyte TLB_set;
+	byte indexsize;
+	byte whichentry;
+	byte entry;
+	TLB_set = Paging_TLBSet(logicaladdress, S); //Auto set?
+	//Calculate and store the address mask for matching!
+	addrmask = (~S) & 1; //Mask to 1 bit only. Become 0 when using 4MB(don't clear the high 10 bits), 1 for 4KB(clear the high 10 bits)!
+	addrmask = 0x3FF >> ((addrmask << 3) | (addrmask << 1)); //Shift off the 4MB bits when using 4KB pages!
+	addrmask >>= is2M; //2MB pages instead of 4MB pages?
+	addrmask <<= 12; //Shift to page size addition of bits(12 bits)!
+	addrmask |= 0xFFF; //Fill with the 4KB page mask to get a 4KB or 4MB page mask!
+	addrmask = ~addrmask; //Negate the frame mask for a page mask!
+	TAG = Paging_generateTAG(logicaladdress, W, U, D, S); //Generate a TAG!
+	searchmask = (0x11 | addrmask); //Search mask is S-bit, P-bit and linear address bits!
+	TAGMASKED = (TAG & searchmask); //Masked tag for fast lookup! Match P/U/W/S/address only! Thus dirty updates the existing entry, while other bit changing create a new entry!
+	entry = 0; //Init for entry search not found!
+
+	//We reach here from the loop when nothing is found in the allocated list!
+	//Fill the found entry with our (new) data!
+	curentry->data = result; //The result for the lookup!
+	curentry->TAG = TAG; //The TAG to find it by!
+	curentry->addrmask = addrmask; //Save the address mask for matching a TLB entry after it's stored!
+	curentry->addrmaskset = (addrmask | 0xFFF); //Save the address mask for matching a TLB entry after it's stored!
+	curentry->passthroughmask = passthroughmask; //Save the passthrough mask for giving a physical address!
+	curentry->isglobal = G; //Global or not!
 }
 
 //RWDirtyMask: mask for ignoring set bits in the tag, use them otherwise!
