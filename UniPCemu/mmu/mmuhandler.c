@@ -940,7 +940,6 @@ byte MMU_directrb_hwdebugger(uint_64 realaddress, word index, uint_32* result) /
 	precalcval = index_readprecalcs[index]; //Lookup the precalc val!
 	if (unlikely(applyMemoryHoles(realaddress, precalcval))) //Overflow/invalid location?
 	{
-		MMU_INTERNAL_INVMEM(originaladdress, realaddress, 0, 0, (byte)index, nonexistant); //Invalid memory accessed!
 		*result = 0xFF; //Float!
 		return 1; //Invalid memory, no response!
 	}
