@@ -1228,7 +1228,7 @@ void debugger_screen() //Show debugger info on-screen!
 			}
 			else
 			{
-				GPU_textprintf(frameratesurface, fontcolor, backcolor, "Memory viewer");
+				GPU_textprintf(frameratesurface, fontcolor, backcolor, "Physical Memory viewer");
 			}
 
 			effectiveaddress = debugger_memoryviewer.address + (debugger_memoryviewer.y * 0x10) + debugger_memoryviewer.x; //What address!
@@ -1659,7 +1659,7 @@ byte debugger_memoryvieweraddress(byte virtualmemory)
 	}
 	else
 	{
-		BIOS_Title("Memory Breakpoint"); //Full clear!
+		BIOS_Title("Physical Memory Breakpoint"); //Full clear!
 	}
 	EMU_locktext();
 	EMU_gotoxy(0, 4); //Goto position for info!
