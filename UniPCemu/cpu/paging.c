@@ -447,6 +447,11 @@ byte CPU_paging_translateaddr(uint_32 address, uint_64 *physaddr) //Do we have p
 	DIR = (address >> 22) & 0x3FF; //The directory entry!
 	TABLE = (address >> 12) & 0x3FF; //The table entry!
 
+	if (CPU[activeCPU].is_paging == 0) //Not paging?
+	{
+		return 1; //Always map to physical!
+	}
+
 	byte effectiveUS;
 	byte RW;
 	byte isS;
