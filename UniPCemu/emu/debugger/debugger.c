@@ -1222,6 +1222,7 @@ void debugger_screen() //Show debugger info on-screen!
 		uint_32 currentbackcoloractive; //Current selected back color!
 		uint_32 currentfontcolor; //Current unselected font color!
 		uint_32 currentbackcolor; //Current unselected back color!
+		byte disabledheader; //Header is disabled?
 		if (debugger_memoryviewer.enabled) //Memory viewer instead>
 		{
  			GPU_textclearscreen(frameratesurface); //Clear the screen!
@@ -1258,9 +1259,27 @@ void debugger_screen() //Show debugger info on-screen!
 						//First, check for the correct active color!
 						currentfontcoloractive = fontcoloractive; //Default: normally active!
 						currentbackcoloractive = backcoloractive; //Default: normally active!
+						currentfontcolor = fontcolor; //Default: normally active!
+						currentbackcolor = backcolor; //Default: normally active!
 						if (debugger_memoryviewer.virtualmemory) //Using virtual memory?
 						{
 							if (!CPU_paging_translateaddr(debugger_memoryviewer.address + (debugger_memoryviewer.y * 0x10) + debugger_memoryviewer.x, &physicaladdress)) //Invalid address?
+							{
+								currentfontcoloractive = fontcoloractive_blocked; //Blocked color!
+								currentbackcoloractive = backcoloractive_blocked; //Blocked color!
+							}
+							else //Mapped to physical memory?
+							{
+								if (MMU_directrb_hwdebugger(physicaladdress, 3, &effectivememorydata)) //Floating bus at this address?
+								{
+									currentfontcoloractive = fontcoloractive_blocked; //Blocked color!
+									currentbackcoloractive = backcoloractive_blocked; //Blocked color!
+								}
+							}
+						}
+						else //Mapped to physical memory?
+						{
+							if (MMU_directrb_hwdebugger(debugger_memoryviewer.address + (debugger_memoryviewer.y * 0x10) + debugger_memoryviewer.x, 3, &effectivememorydata)) //Floating bus at this address?
 							{
 								currentfontcoloractive = fontcoloractive_blocked; //Blocked color!
 								currentbackcoloractive = backcoloractive_blocked; //Blocked color!
@@ -1275,7 +1294,7 @@ void debugger_screen() //Show debugger info on-screen!
 						}
 						else //Inactive?
 						{
-							GPU_textprintf(frameratesurface, fontcolor, backcolor, "%02X", ((effectiveaddress>>4) & 0xF));
+							GPU_textprintf(frameratesurface, currentfontcolor, currentbackcolor, "%02X", ((effectiveaddress>>4) & 0xF));
 						}
 					}
 					else if (memoryy == 0) //Horizontal header?
@@ -1283,9 +1302,27 @@ void debugger_screen() //Show debugger info on-screen!
 						//First, check for the correct active color!
 						currentfontcoloractive = fontcoloractive; //Default: normally active!
 						currentbackcoloractive = backcoloractive; //Default: normally active!
+						currentfontcolor = fontcolor; //Default: normally active!
+						currentbackcolor = backcolor; //Default: normally active!
 						if (debugger_memoryviewer.virtualmemory) //Using virtual memory?
 						{
 							if (!CPU_paging_translateaddr(debugger_memoryviewer.address + (debugger_memoryviewer.y * 0x10) + debugger_memoryviewer.x, &physicaladdress)) //Invalid address?
+							{
+								currentfontcoloractive = fontcoloractive_blocked; //Blocked color!
+								currentbackcoloractive = backcoloractive_blocked; //Blocked color!
+							}
+							else //Mapped to physical memory?
+							{
+								if (MMU_directrb_hwdebugger(physicaladdress, 3, &effectivememorydata)) //Floating bus at this address?
+								{
+									currentfontcoloractive = fontcoloractive_blocked; //Blocked color!
+									currentbackcoloractive = backcoloractive_blocked; //Blocked color!
+								}
+							}
+						}
+						else //Mapped to physical memory?
+						{
+							if (MMU_directrb_hwdebugger(debugger_memoryviewer.address + (debugger_memoryviewer.y * 0x10) + debugger_memoryviewer.x, 3, &effectivememorydata)) //Floating bus at this address?
 							{
 								currentfontcoloractive = fontcoloractive_blocked; //Blocked color!
 								currentbackcoloractive = backcoloractive_blocked; //Blocked color!
@@ -1300,7 +1337,7 @@ void debugger_screen() //Show debugger info on-screen!
 						}
 						else //Inactive?
 						{
-							GPU_textprintf(frameratesurface, fontcolor, backcolor, "%02X", (effectiveaddress & 0xF));
+							GPU_textprintf(frameratesurface, currentfontcolor, currentbackcolor, "%02X", (effectiveaddress & 0xF));
 						}
 					}
 					else //Memory data?
@@ -1318,6 +1355,8 @@ void debugger_screen() //Show debugger info on-screen!
 								if (MMU_directrb_hwdebugger(physicaladdress, 3, &effectivememorydata)) //Floating bus at this address?
 								{
 									effectivememorydata = 0xFF; //Floating bus!
+									currentfontcoloractive = fontcoloractive_blocked; //Blocked color!
+									currentbackcoloractive = backcoloractive_blocked; //Blocked color!
 									currentfontcolor = fontcolor_blocked; //Blocked color!
 									currentbackcolor = backcolor_blocked; //Blocked color!
 								}
@@ -1351,7 +1390,7 @@ void debugger_screen() //Show debugger info on-screen!
 						}
 						else
 						{
-							GPU_textprintf(frameratesurface, fontcolor, backcolor, "%02X", (effectivememorydata&0xFF));
+							GPU_textprintf(frameratesurface, currentfontcolor, currentbackcolor, "%02X", (effectivememorydata&0xFF));
 						}
 					}
 				}
