@@ -1702,22 +1702,15 @@ void debugger_startmemoryviewer(char* breakpointstr, byte enabled, byte virtualm
 }
 
 
-byte debugger_memoryviewerPL(char* breakpointstr); //Prototype for debugger_memoryvieweraddress as a second input step.
-byte debugger_memoryvieweraddress(byte virtualmemory)
+byte debugger_memoryviewerMode(char* breakpointstr); //Prototype for debugger_memoryvieweraddress as a second input step.
+byte debugger_memoryvieweraddress()
 {
 	byte result;
 	char breakpointstr[256]; //32-bits offset, colon, 16-bits segment, mode if required(Protected/Virtual 8086), Ignore EIP/CS/Whole address(mode only) and final character(always zero)!
 	cleardata(&breakpointstr[0], sizeof(breakpointstr));
 	//First, convert the current breakpoint to a string format!
 	BIOSClearScreen(); //Clear the screen!
-	if (virtualmemory)
-	{
-		BIOS_Title("Virtual Memory Breakpoint"); //Full clear!
-	}
-	else
-	{
-		BIOS_Title("Physical Memory Breakpoint"); //Full clear!
-	}
+	BIOS_Title("Memory Breakpoint"); //Full clear!
 	EMU_locktext();
 	EMU_gotoxy(0, 4); //Goto position for info!
 	GPU_EMU_printscreen(0, 4, "Address: "); //Show the filename!
@@ -1733,15 +1726,7 @@ byte debugger_memoryvieweraddress(byte virtualmemory)
 			//This won't compile on the PSP for some unknown reason, crashing the compiler!
 			if (((safe_strlen(&breakpointstr[0], sizeof(breakpointstr))) - 1) <= maxoffsetsize) //Offset OK?
 			{
-				if (virtualmemory) //Starting the virtual memory after a second step!
-				{
-					result = debugger_memoryviewerPL(&breakpointstr[0]); //Take input from the second step: the privilege level choice!
-				}
-				else //Start the viewer!
-				{
-					debugger_startmemoryviewer(&breakpointstr[0], 1, 0, 0); //Start the physical memory viewer interface!
-					result = 1; //Started!
-				}
+				result = debugger_memoryviewerMode(&breakpointstr[0]); //Take input from the second step: the privilege level choice!
 			}
 		}
 	}
@@ -1750,18 +1735,18 @@ byte debugger_memoryvieweraddress(byte virtualmemory)
 	return result; //Give the result!
 }
 
-byte debugger_memoryviewerPL(char *breakpointstr)
+byte debugger_memoryviewerMode(char *breakpointstr)
 {
 	byte result;
 	//First, convert the current breakpoint to a string format!
 	BIOSClearScreen(); //Clear the screen!
-	BIOS_Title("Virtual Memory Breakpoint"); //Full clear!
+	BIOS_Title("Memory Breakpoint"); //Full clear!
 	EMU_locktext();
 	EMU_gotoxy(0, 4); //Goto position for info!
-	GPU_EMU_printscreen(0, 4, "Kernel privilege: Cross=No, Square=Yes, Circle=Cancel"); //Show the filename!
+	GPU_EMU_printscreen(0, 4, "Cross=Virtual memory (instr), Square=Virtual memory (kernel)\nTriangle=Physical, Circle=Cancel"); //Show the filename!
 	EMU_unlocktext();
 	result = 0; //Default: not handled!
-memoryviewerPLinputloop:
+memoryviewerModeinputloop:
 	if (shuttingdown()) return 0; //Stop debugging when shutting down!
 	lock(LOCK_INPUT);
 	if (psp_keypressed(BUTTON_SQUARE)) //Square pressed?
@@ -1790,6 +1775,19 @@ memoryviewerPLinputloop:
 		result = 1; //Started!
 		goto loopfinished; //Finish the loop!
 	}
+	else if (psp_keypressed(BUTTON_TRIANGLE)) //Cross pressed?
+	{
+		while (psp_keypressed(BUTTON_TRIANGLE)) //Wait for release!
+		{
+			unlock(LOCK_INPUT);
+			delay(0);
+			lock(LOCK_INPUT);
+		}
+		unlock(LOCK_INPUT); //Unlock!
+		debugger_startmemoryviewer(&breakpointstr[0], 1, 0, 0); //Start the physical memory viewer interface!
+		result = 1; //Started!
+		goto loopfinished; //Finish the loop!
+	}
 	else if (psp_keypressed(BUTTON_CIRCLE)) //Cross pressed?
 	{
 		while (psp_keypressed(BUTTON_CIRCLE)) //Wait for release!
@@ -1802,8 +1800,9 @@ memoryviewerPLinputloop:
 		result = 0; //Aborted!
 		goto loopfinished; //Finish the loop!
 	}
+
 	unlock(LOCK_INPUT); //Unlock!
-	goto memoryviewerPLinputloop; //Check again until receiving input!
+	goto memoryviewerModeinputloop; //Check again until receiving input!
 	loopfinished:
 	BIOSDoneScreen(); //Clear the screen after we're done with it!
 	return result; //Give the result!
@@ -1878,26 +1877,7 @@ void debuggerThread()
 						delay(0);
 						lock(LOCK_INPUT);
 					}
-					if (debugger_memoryvieweraddress(0)) //Input the address for use with the memory viewer!
-					{
-						//Viewer has been started!
-						unlock(LOCK_INPUT);
-						displayed = 0; //Not displayed yet!
-						goto restartdebugger; //Update us!
-					}
-					unlock(LOCK_INPUT);
-					displayed = 0; //Not displayed yet!
-					goto restartdebugger; //Update us!
-				}
-				else if (psp_keypressed(BUTTON_CROSS)) //Virtual memory viewer?
-				{
-					while (psp_keypressed(BUTTON_CROSS)) //Wait for release!
-					{
-						unlock(LOCK_INPUT);
-						delay(0);
-						lock(LOCK_INPUT);
-					}
-					if (debugger_memoryvieweraddress(1)) //Input the address for use with the memory viewer!
+					if (debugger_memoryvieweraddress()) //Input the address for use with the memory viewer!
 					{
 						//Viewer has been started!
 						unlock(LOCK_INPUT);
