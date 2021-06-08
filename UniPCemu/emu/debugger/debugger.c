@@ -746,6 +746,40 @@ void debugger_logdescriptors(char* filename)
 	}
 }
 
+extern GPU_TEXTSURFACE* frameratesurface; //The framerate surface!
+
+void debugger_printdescriptors()
+{
+	byte whatdesc;
+	byte descnr;
+	char* textseg;
+	uint_32 fontcolor = RGB(0xFF, 0xFF, 0xFF);
+	uint_32 backcolor = RGB(0x00, 0x00, 0x00);
+	//Descriptors themselves!
+	byte desccounter;
+	byte descnrs;
+	desccounter = 0; //Init counter!
+	descnrs = NUMITEMS(debuggersegmentregistercache); //Number of items to display!
+	if (EMULATED_CPU >= CPU_80286) //Having descriptors on this CPU?
+	{
+		if (EMULATED_CPU < CPU_80386) //No FS/GS descriptors?
+		{
+			descnrs -= 2; //2 descriptors less!
+		}
+		for (descnr = 0; descnr < NUMITEMS(debuggersegmentregistercache); ++descnr) //Process all segment descriptors!
+		{
+			whatdesc = descordering[descnr]; //The processing descriptor, ordered!
+			textseg = CPU_segmentname(whatdesc); //Get the text value of the segment!
+			if (((whatdesc == CPU_SEGMENT_FS) || (whatdesc == CPU_SEGMENT_GS)) && (EMULATED_CPU < CPU_80386)) continue; //Skip non-present 386+ descriptors!
+			if (likely(textseg && (whatdesc < NUMITEMS(debuggersegmentregistercache)))) //Valid name/entry?
+			{
+				GPU_textgotoxy(frameratesurface, 0, (GPU_TEXTSURFACE_HEIGHT-descnrs)+desccounter++); //Nth row below bottom!
+				GPU_textprintf(frameratesurface, fontcolor, backcolor,"%s BASE:%08X LIMIT:%08X AR:%02X U:%02X  ", textseg, debuggersegmentregistercache[whatdesc].PRECALCS.base, debuggersegmentregistercache[whatdesc].PRECALCS.limit, debuggersegmentregistercache[whatdesc].desc.AccessRights, debuggersegmentregistercache[whatdesc].desc.noncallgate_info); //Display the descriptor's cache!
+			}
+		}
+	}
+}
+
 void debugger_logregisters(char *filename, CPU_registers *registers, byte halted, byte isreset)
 {
 	if (likely(DEBUGGER_LOGREGISTERS==0)) //Disable register loggimg?
@@ -1189,8 +1223,6 @@ OPTINLINE void debugger_autolog()
 	} //Allow logging?
 }
 
-extern GPU_TEXTSURFACE *frameratesurface; //The framerate surface!
-
 word debuggerrow; //Debugger row after the final row!
 struct
 {
@@ -1579,6 +1611,9 @@ void debugger_screen() //Show debugger info on-screen!
 			GPU_textgotoxy(frameratesurface,GPU_TEXTSURFACE_WIDTH-52,debuggerrow++); //CRT status!
 			GPU_textprintf(frameratesurface,fontcolor,backcolor,"VGA@%05i,%05i(CRT:%05i,%05i) Display=%05i,%05i",((SEQ_DATA *)getActiveVGA()->Sequencer)->x,((SEQ_DATA *)getActiveVGA()->Sequencer)->Scanline,getActiveVGA()->CRTC.x,getActiveVGA()->CRTC.y,GPU.xres, GPU.yres);
 		}
+
+		debugger_printdescriptors(); //Print the segment descriptors on the screen!
+
 		GPU_text_releasesurface(frameratesurface); //Unlock!
 	}
 }
