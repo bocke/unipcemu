@@ -723,7 +723,7 @@ OPTINLINE char decodeHLTreset(byte halted,byte isreset)
 	return ' '; //Nothing to report, give empty!
 }
 
-byte descordering[8] = { CPU_SEGMENT_CS,CPU_SEGMENT_DS,CPU_SEGMENT_ES,CPU_SEGMENT_FS,CPU_SEGMENT_GS,CPU_SEGMENT_SS,CPU_SEGMENT_TR,CPU_SEGMENT_LDTR };
+byte descordering[8] = { CPU_SEGMENT_CS,CPU_SEGMENT_SS,CPU_SEGMENT_DS,CPU_SEGMENT_ES,CPU_SEGMENT_FS,CPU_SEGMENT_GS,CPU_SEGMENT_TR,CPU_SEGMENT_LDTR };
 
 void debugger_logdescriptors(char* filename)
 {
