@@ -969,7 +969,7 @@ void Paging_writeTLB(sbyte TLB_way, uint_32 logicaladdress, byte W, byte U, byte
 void Paging_debuggerTLB(sbyte TLB_way, uint_32 logicaladdress, byte W, byte U, byte D, byte S, byte G, uint_32 passthroughmask, byte is2M, uint_64 result, TLBEntry *curentry)
 {
 	INLINEREGISTER uint_32 TAG;
-	uint_32 addrmask, searchmask;
+	uint_32 addrmask;
 	//Calculate and store the address mask for matching!
 	addrmask = (~S) & 1; //Mask to 1 bit only. Become 0 when using 4MB(don't clear the high 10 bits), 1 for 4KB(clear the high 10 bits)!
 	addrmask = 0x3FF >> ((addrmask << 3) | (addrmask << 1)); //Shift off the 4MB bits when using 4KB pages!
@@ -978,7 +978,6 @@ void Paging_debuggerTLB(sbyte TLB_way, uint_32 logicaladdress, byte W, byte U, b
 	addrmask |= 0xFFF; //Fill with the 4KB page mask to get a 4KB or 4MB page mask!
 	addrmask = ~addrmask; //Negate the frame mask for a page mask!
 	TAG = Paging_generateTAG(logicaladdress, W, U, D, S); //Generate a TAG!
-	searchmask = (0x11 | addrmask); //Search mask is S-bit, P-bit and linear address bits!
 
 	//We reach here from the loop when nothing is found in the allocated list!
 	//Fill the found entry with our (new) data!

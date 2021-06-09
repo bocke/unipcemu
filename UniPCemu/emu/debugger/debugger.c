@@ -1241,7 +1241,6 @@ void debugger_screen() //Show debugger info on-screen!
 	uint_32 effectiveaddress;
 	uint_32 effectivememorydata;
 	uint_64 physicaladdress;
-	byte blocked;
 	if (frameratesurface) //We can show?
 	{
 		GPU_text_locksurface(frameratesurface); //Lock!
@@ -1377,7 +1376,6 @@ void debugger_screen() //Show debugger info on-screen!
 					else //Memory data?
 					{
 						effectiveaddress = debugger_memoryviewer.address + ((memoryy - 1) * 0x10) + (memoryx - 1); //What address!
-						blocked = 0; //Default: not blocked!
 						currentfontcoloractive = fontcoloractive; //Default: normally active!
 						currentbackcoloractive = backcoloractive; //Default: normally active!
 						currentfontcolor = fontcolor; //Default: normally active!
