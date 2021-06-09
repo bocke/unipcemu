@@ -1844,7 +1844,6 @@ memoryviewerModeinputloop:
 void debuggerThread()
 {
 	byte openBIOS = 0;
-	int i;
 	int done = 0;
 	byte displayed = 0; //Are we displayed?
 	pauseEMU(); //Pause it!
