@@ -1378,7 +1378,8 @@ void resetCPU(word isInit) //Initialises the currently selected CPU!
 	//Default: not blocked!
 	//Continue interrupt call (hardware)?
 	CPU[activeCPU].running = 1; //We're running!
-	
+	CPU[activeCPU].halt = 0; //Not halting anymore!
+
 	CPU[activeCPU].currentopcode = CPU[activeCPU].currentopcode0F = CPU[activeCPU].currentmodrm = CPU[activeCPU].previousopcode = CPU[activeCPU].previousopcode0F = CPU[activeCPU].previousmodrm = 0; //Last opcode, default to 0 and unknown?
 	generate_opcode_jmptbl(); //Generate the opcode jmptbl for the current CPU!
 	generate_opcode0F_jmptbl(); //Generate the opcode 0F jmptbl for the current CPU!
