@@ -438,7 +438,7 @@ byte CPU_paging_translateaddr(uint_32 address, byte CPL, uint_64 *physaddr) //Do
 	uint_64 PDE, PTE = 0, PDPT = 0; //PDE/PTE entries currently used!
 	uint_64 PXEsize = PXE_ADDRESSMASK; //The mask to use for the PDE/PTE entries!
 	uint_64 PDEbase;
-	byte PDEsize = 2, PTEsize = 2; //Size of an entry in the PDE/PTE, in shifts(2^n)!
+	byte PTEsize = 2; //Size of an entry in the PDE/PTE, in shifts(2^n)!
 	byte isPAE; //PAE is enabled?
 	*physaddr = address; //Default: untranslated (special case for this address translation)!
 	if (!CPU[activeCPU].registers) return 0; //No registers available!
@@ -464,7 +464,7 @@ byte CPU_paging_translateaddr(uint_32 address, byte CPL, uint_64 *physaddr) //Do
 	{
 		PDPT = (uint_64)memory_BIUdirectrdw(CR3_PAEPDBR + ((DIR >> 8) << 3)); //Read the page directory entry low!
 		PDPT |= ((uint_64)memory_BIUdirectrdw(CR3_PAEPDBR + (((DIR >> 8) << 3) | 4))) << 32; //Read the page directory entry high!
-		PDEsize = PTEsize = 3; //Double the size of the entries to be 64-bits!
+		PTEsize = 3; //Double the size of the entries to be 64-bits!
 		PXEsize = PXE_PAEADDRESSMASK; //Large address mask!
 		//Check present only!
 		if (!(PDPT & PXE_P)) //Not present?
@@ -968,11 +968,8 @@ void Paging_writeTLB(sbyte TLB_way, uint_32 logicaladdress, byte W, byte U, byte
 
 void Paging_debuggerTLB(sbyte TLB_way, uint_32 logicaladdress, byte W, byte U, byte D, byte S, byte G, uint_32 passthroughmask, byte is2M, uint_64 result, TLBEntry *curentry)
 {
-	INLINEREGISTER uint_32 TAG, TAGMASKED;
+	INLINEREGISTER uint_32 TAG;
 	uint_32 addrmask, searchmask;
-	sbyte TLB_set;
-	byte entry;
-	TLB_set = Paging_TLBSet(logicaladdress, S); //Auto set?
 	//Calculate and store the address mask for matching!
 	addrmask = (~S) & 1; //Mask to 1 bit only. Become 0 when using 4MB(don't clear the high 10 bits), 1 for 4KB(clear the high 10 bits)!
 	addrmask = 0x3FF >> ((addrmask << 3) | (addrmask << 1)); //Shift off the 4MB bits when using 4KB pages!
@@ -982,8 +979,6 @@ void Paging_debuggerTLB(sbyte TLB_way, uint_32 logicaladdress, byte W, byte U, b
 	addrmask = ~addrmask; //Negate the frame mask for a page mask!
 	TAG = Paging_generateTAG(logicaladdress, W, U, D, S); //Generate a TAG!
 	searchmask = (0x11 | addrmask); //Search mask is S-bit, P-bit and linear address bits!
-	TAGMASKED = (TAG & searchmask); //Masked tag for fast lookup! Match P/U/W/S/address only! Thus dirty updates the existing entry, while other bit changing create a new entry!
-	entry = 0; //Init for entry search not found!
 
 	//We reach here from the loop when nothing is found in the allocated list!
 	//Fill the found entry with our (new) data!
