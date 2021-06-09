@@ -2023,7 +2023,8 @@ void debuggerThread()
 		lock(LOCK_MAINTHREAD); //Make sure we aren't cleaning up!
 		debugger_is_logging = debugger_logging(); //Are we logging?
 		GPU_text_locksurface(frameratesurface); //Lock!
-		for (i = GPU_TEXT_DEBUGGERROW;i < debuggerrow;i++) GPU_textclearrow(frameratesurface, i); //Clear our debugger rows!
+		//for (i = GPU_TEXT_DEBUGGERROW;i < debuggerrow;i++) GPU_textclearrow(frameratesurface, i); //Clear our debugger rows!
+		GPU_textclearscreen(frameratesurface); //Clear the screen!
 		GPU_text_releasesurface(frameratesurface); //Unlock!
 		unlock(LOCK_MAINTHREAD); //Finished!
 	}
