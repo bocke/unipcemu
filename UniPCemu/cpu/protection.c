@@ -2011,8 +2011,11 @@ byte CPU_handleInterruptGate(byte EXT, byte table,uint_32 descriptorbase, RAWSEG
 
 	if ((is_interrupt&1) && /*((is_interrupt&0x10)==0) &&*/ (IDTENTRY_DPL(idtentry) < getCPL()) && (errorcode!=-5)) //Not enough rights on software interrupt? Don't fault on a pseudo-interrupt!
 	{
-		THROWDESCGP(base, ((errorcode >= 0) && CPU[activeCPU].faultraised)?1:EXT, table); //#GP!
-		return 0;
+		if ((errorcode != -2) || (getcpumode()!=CPU_MODE_8086)) //Not a instruction-induced interrupt in V86 mode? This doesn't check CPL vs DPL of the interrupt vector!
+		{
+			THROWDESCGP(base, ((errorcode >= 0) && CPU[activeCPU].faultraised) ? 1 : EXT, table); //#GP!
+			return 0;
+		}
 	}
 	//Now, the (gate) descriptor to use is loaded!
 	switch (IDTENTRY_TYPE(idtentry)) //What type are we?
