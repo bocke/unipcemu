@@ -3396,7 +3396,18 @@ void updateFloppy(DOUBLE timepassed)
 					}
 					else switch (FLOPPY.activecommand[drive]) //What command is processing?
 					{
+						case READ_TRACK: //Read track
+						case READ_DATA: //Read sector
+						case SCAN_EQUAL:
+						case SCAN_LOW_OR_EQUAL:
+						case SCAN_HIGH_OR_EQUAL:
+							if (FLOPPY_MSR_BUSYINPOSITIONINGMODER(drive)) //To handle implied seek?
+							{
+								goto handleimpliedseek;
+							}
+							goto normalreadwritetrack:
 						case SEEK: //Seek/park head
+							handleimpliedseek:
 							if ((drive>=2) || (!FLOPPY.geometries[drive])) //Floppy not inserted?
 							{
 								FLOPPY.readID_lastsectornumber = 0; //New track has been selected, search again!
@@ -3450,6 +3461,29 @@ void updateFloppy(DOUBLE timepassed)
 							if ((drive<2) && (((FLOPPY.currentcylinder[drive]==FLOPPY.seekdestination[drive]) && (FLOPPY.currentcylinder[drive] < FLOPPY.geometries[drive]->tracks) && (FLOPPY.seekrel[drive]==0)) || (FLOPPY.seekrel[drive] && (FLOPPY.seekdestination[drive]==0)))) //Found and existant?
 							{
 								FLOPPY_finishseek(drive,1); //Finish!
+								if (FLOPPY.activecommand[drive]!=SEEK) //Not a seek command? Implied seek!
+								{
+									switch (FLOPPY.activecommand[drive]) //Where to pick up?
+									{
+										case VERIFY: goto seekedverify;
+										case FORMAT_TRACK: goto seekedformat;
+										case READ_TRACK: //Read track
+										case READ_DATA: //Read sector
+										case READ_DELETED_DATA: //Read deleted sector
+										case SCAN_EQUAL:
+										case SCAN_LOW_OR_EQUAL:
+										case SCAN_HIGH_OR_EQUAL:
+											floppy_readsector(); //Perform read sector again!
+											goto finishdrive; //Finish up!
+											break;
+										case WRITE_DATA: //Write sector
+										case WRITE_DELETED_DATA: //Write deleted sector
+											break;
+										default: //Unknown implied seek?
+											goto finishdrive; //Give an error!
+											break;
+									}
+								}
 								goto finishdrive; //Give an error!
 							}
 							else if (movedcylinder==0) //Reached no destination?
@@ -3490,6 +3524,11 @@ void updateFloppy(DOUBLE timepassed)
 							}
 							break;
 						case VERIFY: //Executing verify validation of data?
+							if (FLOPPY_MSR_BUSYINPOSITIONINGMODER(drive)) //To handle implied seek?
+							{
+								goto handleimpliedseek;
+							}
+							seekedverify:
 							++FLOPPY.databufferposition; //Read data!
 							if (FLOPPY.databufferposition==FLOPPY.databuffersize) //Finished?
 							{
@@ -3534,6 +3573,11 @@ void updateFloppy(DOUBLE timepassed)
 							}
 							else break; //Still processing?
 						case FORMAT_TRACK: //Formatting track?
+							if (FLOPPY_MSR_BUSYINPOSITIONINGMODER(drive)) //To handle implied seek?
+							{
+								goto handleimpliedseek;
+							}
+							seekedformat:
 							if (FLOPPY.activecommand[drive] == FORMAT_TRACK) //Our command is timed(needed because of the above code)?
 							{
 								if (FLOPPY.commandstep != 2) //Not execute phase? We're not timing yet!
@@ -3549,6 +3593,7 @@ void updateFloppy(DOUBLE timepassed)
 								}
 							}
 						default: //Unsupported command?
+							normalreadwritetrack:
 							if ((FLOPPY.commandstep==2) && FLOPPY_useDMA() && (FLOPPY.DMAPending&2) && (drive==FLOPPY_DOR_DRIVENUMBERR)) //DMA transfer busy on this channel?
 							{
 								FLOPPY.DMAPending &= ~2; //Start up DMA again!
