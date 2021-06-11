@@ -1947,7 +1947,7 @@ byte CPU_ProtectedModeInterrupt(byte intnr, word returnsegment, uint_32 returnof
 
 	if ((base|0x7) > CPU[activeCPU].registers->IDTR.limit) //Limit exceeded?
 	{
-		THROWDESCGP(base,isEXT,EXCEPTION_TABLE_IDT); //#GP!
+		THROWDESCGP(base, ((errorcode >= 0) && CPU[activeCPU].faultraised) ? 1 : isEXT,EXCEPTION_TABLE_IDT); //#GP!
 		return 0; //Abort!
 	}
 
@@ -2011,7 +2011,7 @@ byte CPU_handleInterruptGate(byte EXT, byte table,uint_32 descriptorbase, RAWSEG
 
 	if ((is_interrupt&1) && /*((is_interrupt&0x10)==0) &&*/ (IDTENTRY_DPL(idtentry) < getCPL()) && (errorcode!=-5)) //Not enough rights on software interrupt? Don't fault on a pseudo-interrupt!
 	{
-		THROWDESCGP(base,EXT,table); //#GP!
+		THROWDESCGP(base, ((errorcode >= 0) && CPU[activeCPU].faultraised)?1:EXT, table); //#GP!
 		return 0;
 	}
 	//Now, the (gate) descriptor to use is loaded!
@@ -2025,13 +2025,13 @@ byte CPU_handleInterruptGate(byte EXT, byte table,uint_32 descriptorbase, RAWSEG
 	case IDTENTRY_TRAPGATE|IDTENTRY_32BIT_GATEEXTENSIONFLAG: //32-bit trap gate?
 		if (EMULATED_CPU>=CPU_80386) break; //OK on 80386+ only!
 	default:
-		THROWDESCGP(base,EXT,table); //#NP isn't triggered with IDT entries! #GP is triggered instead!
+		THROWDESCGP(base, ((errorcode >= 0) && CPU[activeCPU].faultraised) ? 1 : EXT,table); //#NP isn't triggered with IDT entries! #GP is triggered instead!
 		return 0;
 	}
 
 	if (IDTENTRY_P(idtentry)==0) //Not present?
 	{
-		THROWDESCNP(base,EXT,table); //#NP isn't triggered with IDT entries! #GP is triggered instead?
+		THROWDESCNP(base, ((errorcode >= 0) && CPU[activeCPU].faultraised) ? 1 : EXT,table); //#NP isn't triggered with IDT entries! #GP is triggered instead?
 		return 0;
 	}
 
@@ -2044,11 +2044,11 @@ byte CPU_handleInterruptGate(byte EXT, byte table,uint_32 descriptorbase, RAWSEG
 		{
 			if (loadresult >= 0) //Not faulted already?
 			{
-				THROWDESCGP(desttask, EXT, (desttask & 4) ? EXCEPTION_TABLE_LDT : EXCEPTION_TABLE_GDT); //Throw #GP error!
+				THROWDESCGP(desttask, ((errorcode >= 0) && CPU[activeCPU].faultraised) ? 1 : EXT, (desttask & 4) ? EXCEPTION_TABLE_LDT : EXCEPTION_TABLE_GDT); //Throw #GP error!
 			}
 			return 0; //Error, by specified reason!
 		}
-		CPU_executionphase_starttaskswitch(CPU_SEGMENT_TR, &newdescriptor, &REG_TR, desttask, ((2|0x80)|(EXT<<10)),1,errorcode); //Execute a task switch to the new task! We're switching tasks like a CALL instruction(https://xem.github.io/minix86/manual/intel-x86-and-64-manual-vol3/o_fe12b1e2a880e0ce-250.html)! We're a call based on an interrupt!
+		CPU_executionphase_starttaskswitch(CPU_SEGMENT_TR, &newdescriptor, &REG_TR, desttask, ((2|0x80)|((((errorcode >= 0) && CPU[activeCPU].faultraised)?1:EXT)<<10)),1,errorcode); //Execute a task switch to the new task! We're switching tasks like a CALL instruction(https://xem.github.io/minix86/manual/intel-x86-and-64-manual-vol3/o_fe12b1e2a880e0ce-250.html)! We're a call based on an interrupt!
 		break;
 	default: //All other cases?
 		is32bit = ((IDTENTRY_TYPE(idtentry)&IDTENTRY_32BIT_GATEEXTENSIONFLAG)>>IDTENTRY_32BIT_GATEEXTENSIONFLAG_SHIFT); //Enable 32-bit gate?
@@ -2064,7 +2064,7 @@ byte CPU_handleInterruptGate(byte EXT, byte table,uint_32 descriptorbase, RAWSEG
 			{
 				if (loadresult==0) //Not faulted already?
 				{
-					THROWDESCGP(idtentry.selector,EXT,(idtentry.selector&4)?EXCEPTION_TABLE_LDT:EXCEPTION_TABLE_GDT); //Throw error!
+					THROWDESCGP(idtentry.selector, ((errorcode >= 0) && CPU[activeCPU].faultraised) ? 1 : EXT,(idtentry.selector&4)?EXCEPTION_TABLE_LDT:EXCEPTION_TABLE_GDT); //Throw error!
 				}
 				return 0; //Error, by specified reason!
 			}
@@ -2075,13 +2075,13 @@ byte CPU_handleInterruptGate(byte EXT, byte table,uint_32 descriptorbase, RAWSEG
 				(getLoadedTYPE(&newdescriptor) != 1) //Not an executable segment?
 					) //NULL descriptor loaded? Invalid too(done by the above present check too)!
 			{
-				THROWDESCGP(idtentry.selector,EXT,(idtentry.selector&4)?EXCEPTION_TABLE_LDT:EXCEPTION_TABLE_GDT); //Throw error!
+				THROWDESCGP(idtentry.selector, ((errorcode >= 0) && CPU[activeCPU].faultraised) ? 1 : EXT,(idtentry.selector&4)?EXCEPTION_TABLE_LDT:EXCEPTION_TABLE_GDT); //Throw error!
 				return 0; //Not present: limit exceeded!	
 			}
 
 			if (!GENERALSEGMENT_P(newdescriptor)) //Not present?
 			{
-				THROWDESCNP(idtentry.selector,EXT,(idtentry.selector&4)?EXCEPTION_TABLE_LDT:EXCEPTION_TABLE_GDT); //Throw #GP!
+				THROWDESCNP(idtentry.selector, ((errorcode >= 0) && CPU[activeCPU].faultraised) ? 1 : EXT,(idtentry.selector&4)?EXCEPTION_TABLE_LDT:EXCEPTION_TABLE_GDT); //Throw #GP!
 				return 0;
 			}
 
@@ -2099,7 +2099,7 @@ byte CPU_handleInterruptGate(byte EXT, byte table,uint_32 descriptorbase, RAWSEG
 				}
 				else
 				{
-					THROWDESCGP(idtentry.selector,EXT,(idtentry.selector&4)?EXCEPTION_TABLE_LDT:EXCEPTION_TABLE_GDT); //Throw #GP!
+					THROWDESCGP(idtentry.selector, ((errorcode >= 0) && CPU[activeCPU].faultraised) ? 1 : EXT,(idtentry.selector&4)?EXCEPTION_TABLE_LDT:EXCEPTION_TABLE_GDT); //Throw #GP!
 					return 0;
 				}
 			}
@@ -2124,7 +2124,7 @@ byte CPU_handleInterruptGate(byte EXT, byte table,uint_32 descriptorbase, RAWSEG
 				#endif
 				if (newCPL!=0) //Not switching to PL0?
 				{
-					THROWDESCGP(idtentry.selector,EXT,EXCEPTION_TABLE_GDT); //Exception!
+					THROWDESCGP(idtentry.selector, ((errorcode >= 0) && CPU[activeCPU].faultraised) ? 1 : EXT,EXCEPTION_TABLE_GDT); //Exception!
 					return 0; //Abort on fault!
 				}
 
@@ -2137,7 +2137,7 @@ byte CPU_handleInterruptGate(byte EXT, byte table,uint_32 descriptorbase, RAWSEG
 				//Switch Stack segment first!
 				if ((stackresult = switchStacks(newCPL|(EXT<<2)))!=0) return (stackresult!=2)?1:0; //Abort failing switching stacks!
 				//Verify that the new stack is available!
-				if ((stackresult = checkStackAccess(9+((errorcode>=0)?1:0),1|0x100|0x200|((EXT&1)<<10),is32bit?1:0))!=0) return 0; //Abort on fault! Different privileges throws #SS(SS) instead of #SS(0)!
+				if ((stackresult = checkStackAccess(9+((errorcode>=0)?1:0),1|0x100|0x200|(((((errorcode >= 0) && CPU[activeCPU].faultraised) ? 1 : EXT)&1)<<10),is32bit?1:0))!=0) return 0; //Abort on fault! Different privileges throws #SS(SS) instead of #SS(0)!
 
 				//Calculate and check the limit!
 
@@ -2181,10 +2181,10 @@ byte CPU_handleInterruptGate(byte EXT, byte table,uint_32 descriptorbase, RAWSEG
 				//Other registers are the normal variants!
 
 				//Load all Segment registers with zeroes!
-				if (segmentWritten(CPU_SEGMENT_DS,0,(EXT<<10))) return 0; //Clear DS! Abort on fault!
-				if (segmentWritten(CPU_SEGMENT_ES,0,(EXT<<10))) return 0; //Clear ES! Abort on fault!
-				if (segmentWritten(CPU_SEGMENT_FS,0,(EXT<<10))) return 0; //Clear FS! Abort on fault!
-				if (segmentWritten(CPU_SEGMENT_GS,0,(EXT<<10))) return 0; //Clear GS! Abort on fault!
+				if (segmentWritten(CPU_SEGMENT_DS,0,((((errorcode >= 0) && CPU[activeCPU].faultraised) ? 1 : EXT)<<10))) return 0; //Clear DS! Abort on fault!
+				if (segmentWritten(CPU_SEGMENT_ES,0,((((errorcode >= 0) && CPU[activeCPU].faultraised) ? 1 : EXT)<<10))) return 0; //Clear ES! Abort on fault!
+				if (segmentWritten(CPU_SEGMENT_FS,0,((((errorcode >= 0) && CPU[activeCPU].faultraised) ? 1 : EXT)<<10))) return 0; //Clear FS! Abort on fault!
+				if (segmentWritten(CPU_SEGMENT_GS,0,((((errorcode >= 0) && CPU[activeCPU].faultraised) ? 1 : EXT)<<10))) return 0; //Clear GS! Abort on fault!
 			}
 			else if (FLAG_V8) 
 			{
@@ -2197,10 +2197,10 @@ byte CPU_handleInterruptGate(byte EXT, byte table,uint_32 descriptorbase, RAWSEG
 				//We're back in protected mode now!
 
 				//Switch Stack segment first!
-				if ((stackresult = switchStacks(newCPL|(EXT<<2)))!=0) return (stackresult!=2)?1:0; //Abort failing switching stacks!
+				if ((stackresult = switchStacks(newCPL|((((errorcode >= 0) && CPU[activeCPU].faultraised) ? 1 : EXT)<<2)))!=0) return (stackresult!=2)?1:0; //Abort failing switching stacks!
 
 				//Verify that the new stack is available!
-				if ((stackresult = checkStackAccess(5+((errorcode>=0)?1:0),1|0x100|0x200|((EXT&1)<<10),is32bit?1:0))!=0) return 0; //Abort on fault! Different privileges throws #SS(SS) instead of #SS(0)!
+				if ((stackresult = checkStackAccess(5+((errorcode>=0)?1:0),1|0x100|0x200|(((((errorcode >= 0) && CPU[activeCPU].faultraised) ? 1 : EXT)&1)<<10),is32bit?1:0))!=0) return 0; //Abort on fault! Different privileges throws #SS(SS) instead of #SS(0)!
 
 				//Calculate and check the limit!
 
@@ -2227,7 +2227,7 @@ byte CPU_handleInterruptGate(byte EXT, byte table,uint_32 descriptorbase, RAWSEG
 			}
 			else //No privilege level change?
 			{
-				if ((stackresult = checkStackAccess(3+((errorcode>=0)?1:0),1|0x200|((EXT&1)<<10),is32bit?1:0))!=0) return 0; //Abort on fault!
+				if ((stackresult = checkStackAccess(3+((errorcode>=0)?1:0),1|0x200|(((((errorcode >= 0) && CPU[activeCPU].faultraised) ? 1 : EXT)&1)<<10),is32bit?1:0))!=0) return 0; //Abort on fault!
 				//Calculate and check the limit!
 
 				if (invalidLimit(&newdescriptor,((idtentry.offsetlow | (idtentry.offsethigh << 16))&(0xFFFFFFFFU>>((is32bit^1)<<4))))) //Limit exceeded?
@@ -2303,7 +2303,7 @@ byte CPU_handleInterruptGate(byte EXT, byte table,uint_32 descriptorbase, RAWSEG
 					}
 					else //Plain #GP?
 					{
-						THROWDESCGP(idtentry.selector,((idtentry.selector&0x400)>>10),(idtentry.selector&4)?EXCEPTION_TABLE_LDT:EXCEPTION_TABLE_GDT); //Throw error!
+						THROWDESCGP(idtentry.selector,((idtentry.selector&0x400)>>10)| (((errorcode >= 0) && CPU[activeCPU].faultraised) ? 1 : 0),(idtentry.selector&4)?EXCEPTION_TABLE_LDT:EXCEPTION_TABLE_GDT); //Throw error!
 					}
 				}
 				if (loadresult == -1) //Errored out?
@@ -2320,7 +2320,7 @@ byte CPU_handleInterruptGate(byte EXT, byte table,uint_32 descriptorbase, RAWSEG
 			return 1; //OK!
 			break;
 		default: //Unknown descriptor type?
-			THROWDESCGP(base,EXT,table); //#GP! We're always from the IDT!
+			THROWDESCGP(base, (((errorcode >= 0) && CPU[activeCPU].faultraised) ? 1 : EXT),table); //#GP! We're always from the IDT!
 			return 0; //Errored out!
 			break;
 		}
