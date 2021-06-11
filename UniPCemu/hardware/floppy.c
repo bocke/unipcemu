@@ -3435,7 +3435,7 @@ void updateFloppy(DOUBLE timepassed)
 							{
 								goto handleimpliedseek;
 							}
-							goto normalreadwritetrack:
+							goto normalreadwritetrack;
 						case SEEK: //Seek/park head
 							handleimpliedseek:
 							if ((drive>=2) || (!FLOPPY.geometries[drive])) //Floppy not inserted?
