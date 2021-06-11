@@ -2009,7 +2009,7 @@ byte CPU_handleInterruptGate(byte EXT, byte table,uint_32 descriptorbase, RAWSEG
 	RAWSEGMENTDESCRIPTOR idtentry; //The loaded IVT entry!
 	memcpy(&idtentry,theidtentry,sizeof(idtentry)); //Make a copy for our own use!
 
-	if ((is_interrupt&1) && /*((is_interrupt&0x10)==0) &&*/ (IDTENTRY_DPL(idtentry) < getCPL()) && (errorcode!=-5)) //Not enough rights on software interrupt? Don't fault on a pseudo-interrupt!
+	if ((is_interrupt&1) && /*((is_interrupt&0x10)==0) &&*/ (IDTENTRY_DPL(idtentry) < getCPL()) && (errorcode!=-5) && (errorcode!=-6)) //Not enough rights on software interrupt? Don't fault on a pseudo-interrupt! -6 means normal hanlding, except ignore CPL vs DPL of the IDT descriptor!
 	{
 		THROWDESCGP(base, ((errorcode >= 0) && CPU[activeCPU].faultraised)?1:EXT, table); //#GP!
 		return 0;

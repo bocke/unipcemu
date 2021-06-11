@@ -863,7 +863,7 @@ void CPU286_OPF1() //Undefined opcode, Don't throw any exception!
 	if (CPU_faultraised(EXCEPTION_DEBUG))
 	{
 		if (EMULATED_CPU >= CPU_80386) FLAGW_RF(1); //Automatically set the resume flag on a debugger fault!
-		CPU_executionphase_startinterrupt(EXCEPTION_DEBUG, 0, -1); //ICEBP!
+		CPU_executionphase_startinterrupt(EXCEPTION_DEBUG, 0, -6); //ICEBP! Don't ever fault on CPL (thus -6)!
 	}
 }
 
