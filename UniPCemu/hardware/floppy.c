@@ -3513,7 +3513,7 @@ void updateFloppy(DOUBLE timepassed)
 							//Check if we're there!
 							if ((drive<2) && (((FLOPPY.currentcylinder[drive]==FLOPPY.seekdestination[drive]) && (FLOPPY.currentcylinder[drive] < FLOPPY.geometries[drive]->tracks) && (FLOPPY.seekrel[drive]==0)) || (FLOPPY.seekrel[drive] && (FLOPPY.seekdestination[drive]==0)))) //Found and existant?
 							{
-								FLOPPY_finishseek(drive,1); //Finish!
+								FLOPPY_finishseek(drive,(FLOPPY.activecommand[drive]==SEEK)?1:0); //Finish up as needed, with IRQ if a SEEK command!
 								if (FLOPPY.activecommand[drive]!=SEEK) //Not a seek command? Implied seek!
 								{
 									switch (FLOPPY.activecommand[drive]) //Where to pick up?
