@@ -1814,7 +1814,6 @@ void FLOPPY_formatsector(byte nodata) //Request a read sector command!
 
 void floppy_writesector() //Request a write sector command!
 {
-	retry_writesector_cylinderseeked: //Cylinder has been seeked using an implied seek?
 	FLOPPY.databuffersize = translateSectorSize(FLOPPY.commandbuffer[5]); //Sector size into data buffer!
 	if (!FLOPPY.commandbuffer[5]) //Special case? Use given info!
 	{
