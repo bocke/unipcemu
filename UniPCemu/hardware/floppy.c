@@ -3478,6 +3478,7 @@ void updateFloppy(DOUBLE timepassed)
 											break;
 										case WRITE_DATA: //Write sector
 										case WRITE_DELETED_DATA: //Write deleted sector
+											floppy_writesector(); //Perform write sector again!
 											break;
 										default: //Unknown implied seek?
 											goto finishdrive; //Give an error!
