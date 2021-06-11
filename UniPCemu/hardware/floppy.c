@@ -1198,6 +1198,36 @@ void floppy_performimplicitseek(byte destinationtrack)
 	}
 }
 
+void floppy_readsector_failresult() //Failed implicit seeking?
+{
+	FLOPPY.floppy_scanningforSectorID = 0; //Not scanning anymore!
+	//Plain error reading the sector!
+	//ENTER RESULT PHASE
+	FLOPPY_LOGD("FLOPPY: Finished transfer of data (%u sector(s)).", FLOPPY.sectorstransferred) //Log the completion of the sectors written!
+	FLOPPY.resultposition = 0;
+	FLOPPY_fillST0(FLOPPY_DOR_DRIVENUMBERR); //Setup ST0!
+	//FLOPPY.resultbuffer[0] = FLOPPY.ST0 = 0x40 | ((FLOPPY.ST0 & 0x3B) | FLOPPY_DOR_DRIVENUMBERR) | ((FLOPPY.currentphysicalhead[FLOPPY_DOR_DRIVENUMBERR] & 1) << 2); //Abnormal termination! ST0!
+	FLOPPY.resultbuffer[1] = FLOPPY.ST1;
+	FLOPPY.resultbuffer[2] = FLOPPY.ST2;
+	FLOPPY.resultbuffer[3] = FLOPPY.currentcylinder[FLOPPY_DOR_DRIVENUMBERR]; //Error cylinder!
+	FLOPPY.resultbuffer[4] = FLOPPY.currenthead[FLOPPY_DOR_DRIVENUMBERR]; //Error head!
+	FLOPPY.resultbuffer[5] = FLOPPY.currentsector[FLOPPY_DOR_DRIVENUMBERR]; //Error sector!
+	FLOPPY.resultbuffer[6] = FLOPPY.commandbuffer[2]; //Sector size from the command buffer!
+	if ((FLOPPY.erroringtiming & (1<<FLOPPY_DOR_DRIVENUMBERR))==0) //Not timing?
+	{
+		FLOPPY.commandstep = 3; //Move to result phrase and give the result!
+		FLOPPY_raiseIRQ(); //Entering result phase!
+	}
+	else //Timing 0.5 second?
+	{
+		FLOPPY.commandstep = 2; //Simulating no transfer!
+		floppytime[FLOPPY_DOR_DRIVENUMBERR] = (DOUBLE)0.0; //Start in full delay!
+		floppytimer[FLOPPY_DOR_DRIVENUMBERR] = (DOUBLE)(500000000.0); //Time the timeout for floppy!
+		floppytiming |= (1<<FLOPPY_DOR_DRIVENUMBERR); //Make sure we're timing on the specified disk channel!
+		FLOPPY.DMAPending = 0; //Not pending DMA!
+	}
+}
+
 void floppy_readsector() //Request a read sector command!
 {
 	char *DSKImageFile = NULL; //DSK image file to use?
@@ -1811,6 +1841,36 @@ void FLOPPY_formatsector(byte nodata) //Request a read sector command!
 	FLOPPY_raiseIRQ(); //Raise the IRQ!
 	return; //Finished!
 }
+
+void floppy_writesector_failresult() //Failed implicit seeking?
+{
+	//FLOPPY_ST0_INTERRUPTCODEW(1); //Clear unit check and Interrupt code: we're OK. Also clear SE flag: we're still busy!
+	FLOPPY_LOGD("FLOPPY: Finished transfer of data (%u sector(s)).", FLOPPY.sectorstransferred) //Log the completion of the sectors written!
+	FLOPPY.resultposition = 0;
+	FLOPPY_fillST0(FLOPPY_DOR_DRIVENUMBERR); //Setup ST0!
+	FLOPPY.resultbuffer[0] = FLOPPY.ST0; //ST0!
+	FLOPPY.resultbuffer[1] = FLOPPY.ST1; //ST1!
+	FLOPPY.resultbuffer[2] = FLOPPY.ST2; //ST2!
+	//The cylinder is set by floppy_increasesector!
+	//The head is set by floppy_increasesector!
+	FLOPPY.resultbuffer[5] = FLOPPY.currentsector[FLOPPY_DOR_DRIVENUMBERR];
+	FLOPPY.resultbuffer[6] = FLOPPY.commandbuffer[5]; //Sector size from the command buffer!
+	FLOPPY.erroringtiming |= (1<<FLOPPY_DOR_DRIVENUMBERR); //Erroring!
+	if ((FLOPPY.erroringtiming & (1<<FLOPPY_DOR_DRIVENUMBERR))==0) //Not timing?
+	{
+		FLOPPY.commandstep = 3; //Move to result phrase and give the result!
+		FLOPPY_raiseIRQ(); //Entering result phase!
+	}
+	else //Timing 0.5s!
+	{
+		FLOPPY.commandstep = 2; //Simulating no transfer!
+		floppytime[FLOPPY_DOR_DRIVENUMBERR] = (DOUBLE)0.0; //Start in full delay!
+		floppytimer[FLOPPY_DOR_DRIVENUMBERR] = (DOUBLE)(500000000.0); //Time the timeout for floppy!
+		floppytiming |= (1<<FLOPPY_DOR_DRIVENUMBERR); //Make sure we're timing on the specified disk channel!
+		FLOPPY.DMAPending = 0; //Not pending DMA!
+	}
+}
+
 
 void floppy_writesector() //Request a write sector command!
 {
@@ -3383,11 +3443,34 @@ void updateFloppy(DOUBLE timepassed)
 								FLOPPY.readID_lastsectornumber = 0; //New track has been selected, search again!
 								FLOPPY.ST0 = 0x20 | (FLOPPY.currentphysicalhead[drive]<<2) | drive; //Error: drive not ready!
 								clearDiskChanged(drive); //Clear the disk changed flag for the new command!
-								FLOPPY_raiseIRQ(); //Finished executing phase!
 								FLOPPY.IRQPending = 2; //Force pending!
 								floppytimer[drive] = 0.0; //Don't time anymore!
 								FLOPPY_MSR_BUSYINPOSITIONINGMODEW(drive,0); //Not seeking anymore!
-								goto finishdrive; //Abort!
+
+								switch (FLOPPY.activecommand[drive]) //Where to pick up?
+								{
+									case VERIFY: goto seekedverify;
+									case FORMAT_TRACK: goto seekedformat;
+									case READ_TRACK: //Read track
+									case READ_DATA: //Read sector
+									case READ_DELETED_DATA: //Read deleted sector
+									case SCAN_EQUAL:
+									case SCAN_LOW_OR_EQUAL:
+									case SCAN_HIGH_OR_EQUAL:
+										floppy_readsector_failresult(); //Fail read sector!
+										goto finishdrive;
+										break;
+									case WRITE_DATA: //Write sector
+									case WRITE_DELETED_DATA: //Write deleted sector
+										floppy_writesector_failresult(); //Fail write sector!
+										goto finishdrive;
+										break;
+									default: //Unknown or non-implied seek?
+										//NOP!
+										break;
+								}
+								FLOPPY_raiseIRQ(); //Finished executing phase!
+								goto finishdrive;
 							}
 						
 							if ((FLOPPY.currentcylinder[drive]>FLOPPY.seekdestination[drive] && (FLOPPY.seekrel[drive]==0)) || (FLOPPY.seekrel[drive] && (FLOPPY.seekrelup[drive]==0) && FLOPPY.seekdestination[drive])) //Step out towards smaller cylinder numbers?
@@ -3463,9 +3546,32 @@ void updateFloppy(DOUBLE timepassed)
 								FLOPPY.ST0 = (FLOPPY.ST0 & 0x30) | 0x00 | drive | (FLOPPY.currentphysicalhead[drive]<<2); //Valid command! Just don't report completion(invalid track to seek to)!
 								FLOPPY.ST2 = 0x00; //Nothing to report! We're not completed!
 								FLOPPY.IRQPending = 2; //Force pending!
-								FLOPPY_raiseIRQ(); //Finished executing phase!
 								floppytimer[drive] = 0.0; //Don't time anymore!
 								FLOPPY_MSR_BUSYINPOSITIONINGMODEW(drive,0); //Not seeking anymore!
+
+								switch (FLOPPY.activecommand[drive]) //Where to pick up?
+								{
+									case VERIFY: goto seekedverify;
+									case FORMAT_TRACK: goto seekedformat;
+									case READ_TRACK: //Read track
+									case READ_DATA: //Read sector
+									case READ_DELETED_DATA: //Read deleted sector
+									case SCAN_EQUAL:
+									case SCAN_LOW_OR_EQUAL:
+									case SCAN_HIGH_OR_EQUAL:
+										floppy_readsector_failresult(); //Fail read sector!
+										goto finishdrive;
+										break;
+									case WRITE_DATA: //Write sector
+									case WRITE_DELETED_DATA: //Write deleted sector
+										floppy_writesector_failresult(); //Fail write sector!
+										goto finishdrive;
+										break;
+									default: //Unknown implied seek?
+										//NOP!
+										break;
+								}
+								FLOPPY_raiseIRQ(); //Finished executing phase!
 								goto finishdrive;
 							}
 							break;
