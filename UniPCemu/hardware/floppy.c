@@ -1192,10 +1192,6 @@ void floppy_performimplicitseek(byte destinationtrack)
 		FLOPPY_finishseek(FLOPPY.commandbuffer[1] & 3,1); //Finish the recalibration automatically(we're eating up the command)!
 		FLOPPY_checkfinishtiming(FLOPPY.commandbuffer[1] & 3); //Finish if required!
 	}
-	else
-	{
-		clearDiskChanged(FLOPPY.commandbuffer[1] & 3); //Clear the disk changed flag for the new command!
-	}
 }
 
 void floppy_readsector_failresult() //Failed implicit seeking?
@@ -3442,7 +3438,6 @@ void updateFloppy(DOUBLE timepassed)
 							{
 								FLOPPY.readID_lastsectornumber = 0; //New track has been selected, search again!
 								FLOPPY.ST0 = 0x20 | (FLOPPY.currentphysicalhead[drive]<<2) | drive; //Error: drive not ready!
-								clearDiskChanged(drive); //Clear the disk changed flag for the new command!
 								FLOPPY.IRQPending = 2; //Force pending!
 								floppytimer[drive] = 0.0; //Don't time anymore!
 								FLOPPY_MSR_BUSYINPOSITIONINGMODEW(drive,0); //Not seeking anymore!
