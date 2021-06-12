@@ -1315,6 +1315,12 @@ void floppy_readsector() //Request a read sector command!
 	FLOPPY.ST2 = 0x01; //Data address mark not found!
 	if (readdata(FLOPPY_DOR_DRIVENUMBERR ? FLOPPY1 : FLOPPY0, &FLOPPY.databuffer, FLOPPY.disk_startpos, FLOPPY.databuffersize)) //Read the data into memory?
 	{
+		if (FLOPPY.diskchanged[FLOPPY_DOR_DRIVENUMBERR]) //Disk changed?
+		{
+			FLOPPY.ST1 = 0x04; //Couldn't find any sector!
+			FLOPPY.ST2 = 0x01; //Data address mark not found!
+			goto floppy_errorread; //Error out!
+		}
 		if (FLOPPY.RWRequestedCylinder != FLOPPY.physicalcylinder[FLOPPY_DOR_DRIVENUMBERR]) //Wrong cylinder to access?
 		{
 			FLOPPY.ST1 = 0x04; //Couldn't find any sector!
@@ -1336,6 +1342,12 @@ void floppy_readsector() //Request a read sector command!
 	{
 		if ((DSKImageFile = getDSKimage((FLOPPY_DOR_DRIVENUMBERR) ? FLOPPY1 : FLOPPY0)) || (IMDImageFile = getIMDimage((FLOPPY_DOR_DRIVENUMBERR) ? FLOPPY1 : FLOPPY0))) //Are we a DSK/IMD image file?
 		{
+			if (FLOPPY.diskchanged[FLOPPY_DOR_DRIVENUMBERR]) //Disk changed?
+			{
+				FLOPPY.ST1 = 0x04; //Couldn't find any sector!
+				FLOPPY.ST2 = 0x01; //Data address mark not found!
+				goto floppy_errorread;
+			}
 			if (DSKImageFile) //DSK image?
 			{
 				if (readDSKTrackInfo(DSKImageFile, FLOPPY.currentphysicalhead[FLOPPY_DOR_DRIVENUMBERR], FLOPPY.physicalcylinder[FLOPPY_DOR_DRIVENUMBERR], &trackinfo) == 0) //Read?
@@ -1647,6 +1659,8 @@ void FLOPPY_formatsector(byte nodata) //Request a read sector command!
 			{
 				if (!readDSKSectorInfo(DSKImageFile, FLOPPY.currentphysicalhead[FLOPPY_DOR_DRIVENUMBERR], FLOPPY.physicalcylinder[FLOPPY_DOR_DRIVENUMBERR], (FLOPPY.currentsector[FLOPPY_DOR_DRIVENUMBERR] - 1), &sectorinfo)) //Failed to read sector information block?
 				{
+					FLOPPY.ST1 = 0x01 | 0x04; //Couldn't find any sector!
+					FLOPPY.ST2 = 0x01; //Data address mark not found!
 					goto floppy_errorformat;
 				}
 			}
@@ -1670,6 +1684,8 @@ void FLOPPY_formatsector(byte nodata) //Request a read sector command!
 					(sectorinfo.side != FLOPPY.databuffer[1]) ||
 					(sectorinfo.SectorID != FLOPPY.databuffer[2])) //Sector ID mismatch?
 				{
+					FLOPPY.ST1 = 0x01 | 0x04; //Couldn't find any sector!
+					FLOPPY.ST2 = 0x01; //Data address mark not found!
 					goto floppy_errorformat;
 				}
 			}
@@ -1689,10 +1705,14 @@ void FLOPPY_formatsector(byte nodata) //Request a read sector command!
 			{
 				if (sectorinfo.SectorSize != FLOPPY.databuffer[3]) //Invalid sector size?
 				{
+					FLOPPY.ST1 = 0x01 | 0x04; //Couldn't find any sector!
+					FLOPPY.ST2 = 0x01; //Data address mark not found!
 					goto floppy_errorformat;
 				}
 				if (FLOPPY.commandbuffer[2] != FLOPPY.databuffer[3]) //Not supported for this format?
 				{
+					FLOPPY.ST1 = 0x01 | 0x04; //Couldn't find any sector!
+					FLOPPY.ST2 = 0x01; //Data address mark not found!
 					goto floppy_errorformat;
 				}
 			}
@@ -1700,10 +1720,25 @@ void FLOPPY_formatsector(byte nodata) //Request a read sector command!
 			//Fill the sector buffer and write it!
 			if (DSKImageFile) //DSK image?
 			{
+				if (drivereadonly(FLOPPY_DOR_DRIVENUMBERR ? FLOPPY1 : FLOPPY0)) //Read-only?
+				{
+					updateFloppyWriteProtected(1, FLOPPY_DOR_DRIVENUMBERR); //Tried to write!
+					FLOPPY.ST1 = 0x01 | 0x04; //Couldn't find any sector!
+					FLOPPY.ST2 = 0x01; //Data address mark not found!
+					goto format_readonlydrive; //Read-only drive formatting!
+				}
+				if (FLOPPY.diskchanged[FLOPPY_DOR_DRIVENUMBERR]) //Disk changed?
+				{
+					FLOPPY.ST1 = 0x01 | 0x04; //Couldn't find any sector!
+					FLOPPY.ST2 = 0x01; //Data address mark not found!
+					goto floppy_errorformat; //Error out!
+				}
 				memset(&FLOPPY.databuffer, FLOPPY.commandbuffer[5], MIN(((size_t)1 << sectorinfo.SectorSize), sizeof(FLOPPY.databuffer))); //Clear our buffer with the fill byte!
 				if (!writeDSKSectorData(DSKImageFile, FLOPPY.currentphysicalhead[FLOPPY_DOR_DRIVENUMBERR], FLOPPY.physicalcylinder[FLOPPY_DOR_DRIVENUMBERR], (FLOPPY.currentsector[FLOPPY_DOR_DRIVENUMBERR] - 1), sectorinfo.SectorSize, &FLOPPY.databuffer)) //Failed writing the formatted sector?
 				{
 					updateFloppyWriteProtected(1, FLOPPY_DOR_DRIVENUMBERR); //Tried to write!
+					FLOPPY.ST1 = 0x01 | 0x04; //Couldn't find any sector!
+					FLOPPY.ST2 = 0x01; //Data address mark not found!
 					goto floppy_errorformat;
 				}
 			}
@@ -1712,7 +1747,9 @@ void FLOPPY_formatsector(byte nodata) //Request a read sector command!
 				if (drivereadonly(FLOPPY_DOR_DRIVENUMBERR ? FLOPPY1 : FLOPPY0)) //Read-only?
 				{
 					updateFloppyWriteProtected(1, FLOPPY_DOR_DRIVENUMBERR); //Tried to write!
-					goto floppy_errorformat;
+					FLOPPY.ST1 = 0x01 | 0x04; //Couldn't find any sector!
+					FLOPPY.ST2 = 0x01; //Data address mark not found!
+					goto format_readonlydrive; //Read-only drive formatting!
 				}
 				//Formatting is performed at the end of the track, having collected all sector information!
 			}
@@ -1722,6 +1759,8 @@ void FLOPPY_formatsector(byte nodata) //Request a read sector command!
 		{
 			if (FLOPPY.RWRequestedCylinder != FLOPPY.physicalcylinder[FLOPPY_DOR_DRIVENUMBERR]) //Wrong cylinder to access?
 			{
+				FLOPPY.ST1 = 0x01 | 0x04; //Couldn't find any sector!
+				FLOPPY.ST2 = 0x01; //Data address mark not found!
 				goto floppy_errorformat; //Error out!
 			}
 			FLOPPY.readID_lastsectornumber = FLOPPY.currentsector[FLOPPY_DOR_DRIVENUMBERR]; //This was the last sector we've accessed!
@@ -1759,22 +1798,43 @@ void FLOPPY_formatsector(byte nodata) //Request a read sector command!
 			}
 			if (FLOPPY.databuffer[1] != FLOPPY.currentphysicalhead[FLOPPY_DOR_DRIVENUMBERR]) //Not current head?
 			{
+				FLOPPY.ST1 = 0x01 | 0x04; //Couldn't find any sector!
+				FLOPPY.ST2 = 0x01; //Data address mark not found!
 				goto floppy_errorformat;
 			}
 			if (FLOPPY.databuffer[2] != FLOPPY.currentsector[FLOPPY_DOR_DRIVENUMBERR]) //Not current sector?
 			{
+				FLOPPY.ST1 = 0x01 | 0x04; //Couldn't find any sector!
+				FLOPPY.ST2 = 0x01; //Data address mark not found!
 				goto floppy_errorformat;
 			}
 
 			if (FLOPPY.databuffer[3] != 0x2) //Not 512 bytes/sector?
 			{
+				FLOPPY.ST1 = 0x01 | 0x04; //Couldn't find any sector!
+				FLOPPY.ST2 = 0x01; //Data address mark not found!
 				goto floppy_errorformat;
 			}
 			if (FLOPPY.commandbuffer[2] != 0x2) //Not supported for this format?
 			{
+				FLOPPY.ST1 = 0x01 | 0x04; //Couldn't find any sector!
+				FLOPPY.ST2 = 0x01; //Data address mark not found!
 				goto floppy_errorformat;
 			}
 			memset(&FLOPPY.databuffer, FLOPPY.commandbuffer[5], 512); //Clear our buffer with the fill byte!
+			if (FLOPPY.diskchanged[FLOPPY_DOR_DRIVENUMBERR]) //Disk changed?
+			{
+				FLOPPY.ST1 = 0x01 | 0x04; //Couldn't find any sector!
+				FLOPPY.ST2 = 0x01; //Data address mark not found!
+				goto floppy_errorformat; //Error out!
+			}
+			if (drivereadonly(FLOPPY_DOR_DRIVENUMBERR ? FLOPPY1 : FLOPPY0)) //Read-only?
+			{
+				updateFloppyWriteProtected(1, FLOPPY_DOR_DRIVENUMBERR); //Tried to write!
+				FLOPPY.ST1 = 0x01 | 0x04; //Couldn't find any sector!
+				FLOPPY.ST2 = 0x01; //Data address mark not found!
+				goto format_readonlydrive; //Read-only drive formatting!
+			}
 			if (!writedata(FLOPPY_DOR_DRIVENUMBERR ? FLOPPY1 : FLOPPY0, &FLOPPY.databuffer, (floppy_LBA(FLOPPY_DOR_DRIVENUMBERR, FLOPPY.currentphysicalhead[FLOPPY_DOR_DRIVENUMBERR], FLOPPY.physicalcylinder[FLOPPY_DOR_DRIVENUMBERR], FLOPPY.currentsector[FLOPPY_DOR_DRIVENUMBERR])<<9),512)) //Failed writing the formatted sector?
 			{
 				updateFloppyWriteProtected(1, FLOPPY_DOR_DRIVENUMBERR); //Tried to write!
@@ -1782,6 +1842,8 @@ void FLOPPY_formatsector(byte nodata) //Request a read sector command!
 				{
 					goto format_readonlydrive; //Read-only drive formatting!
 				}
+				FLOPPY.ST1 = 0x01 | 0x04; //Couldn't find any sector!
+				FLOPPY.ST2 = 0x01; //Data address mark not found!
 				goto floppy_errorformat;
 			}
 		}
@@ -1807,9 +1869,24 @@ void FLOPPY_formatsector(byte nodata) //Request a read sector command!
 	case 0: //OK? Finished correctly?
 		if (IMDImageFile) //IMD image?
 		{
+			if (FLOPPY.diskchanged[FLOPPY_DOR_DRIVENUMBERR]) //Disk changed?
+			{
+				FLOPPY.ST1 = 0x01 | 0x04; //Couldn't find any sector!
+				FLOPPY.ST2 = 0x01; //Data address mark not found!
+				goto floppy_errorformat; //Error out!
+			}
+			if (drivereadonly(FLOPPY_DOR_DRIVENUMBERR ? FLOPPY1 : FLOPPY0)) //Read-only?
+			{
+				updateFloppyWriteProtected(1, FLOPPY_DOR_DRIVENUMBERR); //Tried to write!
+				FLOPPY.ST1 = 0x01 | 0x04; //Couldn't find any sector!
+				FLOPPY.ST2 = 0x01; //Data address mark not found!
+				goto format_readonlydrive; //Read-only drive formatting!
+			}
 			if (formatIMDTrack(IMDImageFile, FLOPPY.physicalcylinder[FLOPPY_DOR_DRIVENUMBERR], FLOPPY.currentphysicalhead[FLOPPY_DOR_DRIVENUMBERR], (FLOPPY.MFM ? FORMATTING_MFM : FORMATTING_FM), ((FLOPPY_CCR_RATER == 0) ? FORMAT_SPEED_500 : ((FLOPPY_CCR_RATER == 1) ? FORMAT_SPEED_300 : ((FLOPPY_CCR_RATER == 2) ? FORMAT_SPEED_250 : FORMAT_SPEED_1M))), FLOPPY.commandbuffer[5], FLOPPY.commandbuffer[2], FLOPPY.currentformatsector[FLOPPY_DOR_DRIVENUMBERR], &FLOPPY.formatbuffer[0]) == 0) //Error formatting the track in IMD formatting mode?
 			{
 				updateFloppyWriteProtected(1, FLOPPY_DOR_DRIVENUMBERR); //Tried to write!
+				FLOPPY.ST1 = 0x01 | 0x04; //Couldn't find any sector!
+				FLOPPY.ST2 = 0x01; //Data address mark not found!
 				goto floppy_errorformat;
 			}
 		}
@@ -1960,6 +2037,13 @@ void floppy_writesector() //Request a write sector command!
 		goto floppy_errorwritesector; //Error out!
 	}
 
+	if (FLOPPY.diskchanged[FLOPPY_DOR_DRIVENUMBERR]) //Disk changed?
+	{
+		FLOPPY.ST1 = 0x04; //Couldn't find any sector!
+		FLOPPY.ST2 = 0x01; //Data address mark not found!
+		goto floppy_errorwritesector; //Error out!
+	}
+
 	if (FLOPPY_IMPLIEDSEEKENABLER) //Implied seek?
 	{
 		if (FLOPPY.RWRequestedCylinder != FLOPPY.currentcylinder[FLOPPY_DOR_DRIVENUMBERR]) //Wrong idea of a cylinder?
@@ -2015,6 +2099,12 @@ void floppy_executeWriteData()
 		goto floppy_errorwrite; //Error out!
 	}
 
+	if (FLOPPY.diskchanged[FLOPPY_DOR_DRIVENUMBERR]) //Disk changed?
+	{
+		FLOPPY.ST1 = 0x04; //Couldn't find any sector!
+		FLOPPY.ST2 = 0x01; //Data address mark not found!
+		goto floppy_errorwrite; //Error out!
+	}
 	if (writedata(FLOPPY_DOR_DRIVENUMBERR ? FLOPPY1 : FLOPPY0, &FLOPPY.databuffer, FLOPPY.disk_startpos, FLOPPY.databuffersize)) //Written the data to disk?
 	{
 		if (FLOPPY.RWRequestedCylinder != FLOPPY.physicalcylinder[FLOPPY_DOR_DRIVENUMBERR]) //Wrong cylinder to access?
