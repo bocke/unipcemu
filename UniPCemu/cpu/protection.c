@@ -91,6 +91,7 @@ byte CPU_faultraised(byte type)
 	}
 	if (CPU[activeCPU].faultlevel) //Double/triple fault might have been raised?
 	{
+		CPU[activeCPU].faultraised_external = 1; //Set the external status of any future raised faults until reset again by a valid cause!
 		if (CPU[activeCPU].faultlevel == 2) //Triple fault?
 		{
 			CPU_triplefault(); //Triple faulting!
@@ -238,6 +239,7 @@ void CPU_commitState() //Prepare for a fault by saving all required data!
 	//Backup the descriptors themselves!
 	//TR is only to be restored during a section of the task switching process, so we don't save it right here(as it's unmodified, except during task switches)!
 	CPU[activeCPU].have_oldSegReg = 0; //Commit the segment registers!
+	CPU[activeCPU].faultraised_external = 0; //Reset the external status of any future raised faults!
 }
 
 void CPU_commitStateESP()
@@ -252,11 +254,13 @@ void CPU_commitStateESP()
 //General Protection fault.
 void CPU_GP(int_64 errorcode)
 {
+	byte EXT;
+	EXT = CPU[activeCPU].faultraised_external; //External type to use!
 	if ((MMU_logging == 1) && advancedlog) //Are we logging?
 	{
 		if (errorcode>=0)
 		{
-			dolog("debugger","#GP fault(%08X)!",errorcode);
+			dolog("debugger","#GP fault(%08X)!",errorcode|EXT);
 		}
 		else
 		{
@@ -267,18 +271,20 @@ void CPU_GP(int_64 errorcode)
 	{
 		CPU_resetOP(); //Point to the faulting instruction!
 		CPU_onResettingFault(0); //Apply reset to fault!
-		CPU_executionphase_startinterrupt(EXCEPTION_GENERALPROTECTIONFAULT,2|8,errorcode); //Call IVT entry #13 decimal!
+		CPU_executionphase_startinterrupt(EXCEPTION_GENERALPROTECTIONFAULT,2|8,errorcode|EXT); //Call IVT entry #13 decimal!
 		//Execute the interrupt!
 	}
 }
 
 void CPU_AC(int_64 errorcode)
 {
+	byte EXT;
+	EXT = CPU[activeCPU].faultraised_external; //External type to use!
 	if ((MMU_logging == 1) && advancedlog) //Are we logging?
 	{
 		if (errorcode>=0)
 		{
-			dolog("debugger","#AC fault(%08X)!",errorcode);
+			dolog("debugger","#AC fault(%08X)!",errorcode|EXT);
 		}
 		else
 		{
@@ -289,18 +295,20 @@ void CPU_AC(int_64 errorcode)
 	{
 		CPU_resetOP(); //Point to the faulting instruction!
 		CPU_onResettingFault(0); //Apply reset to fault!
-		CPU_executionphase_startinterrupt(EXCEPTION_ALIGNMENTCHECK,2|8,errorcode); //Call IVT entry #13 decimal!
+		CPU_executionphase_startinterrupt(EXCEPTION_ALIGNMENTCHECK,2|8,errorcode|EXT); //Call IVT entry #13 decimal!
 		//Execute the interrupt!
 	}
 }
 
 void CPU_SegNotPresent(int_64 errorcode)
 {
+	byte EXT;
+	EXT = CPU[activeCPU].faultraised_external; //External type to use!
 	if ((MMU_logging == 1) && advancedlog) //Are we logging?
 	{
 		if (errorcode>=0)
 		{
-			dolog("debugger","#NP fault(%08X)!",errorcode);
+			dolog("debugger","#NP fault(%08X)!",errorcode|EXT);
 		}
 		else
 		{
@@ -311,18 +319,20 @@ void CPU_SegNotPresent(int_64 errorcode)
 	{
 		CPU_resetOP(); //Point to the faulting instruction!
 		CPU_onResettingFault(0); //Apply reset to fault!
-		CPU_executionphase_startinterrupt(EXCEPTION_SEGMENTNOTPRESENT,2|8,errorcode); //Call IVT entry #11 decimal!
+		CPU_executionphase_startinterrupt(EXCEPTION_SEGMENTNOTPRESENT,2|8,errorcode|EXT); //Call IVT entry #11 decimal!
 		//Execute the interrupt!
 	}
 }
 
 void CPU_StackFault(int_64 errorcode)
 {
+	byte EXT;
+	EXT = CPU[activeCPU].faultraised_external; //External type to use!
 	if ((MMU_logging == 1) && advancedlog) //Are we logging?
 	{
 		if (errorcode>=0)
 		{
-			dolog("debugger","#SS fault(%08X)!",errorcode);
+			dolog("debugger","#SS fault(%08X)!",errorcode|EXT);
 		}
 		else
 		{
@@ -334,7 +344,7 @@ void CPU_StackFault(int_64 errorcode)
 	{
 		CPU_resetOP(); //Point to the faulting instruction!
 		CPU_onResettingFault(0); //Apply reset to fault!
-		CPU_executionphase_startinterrupt(EXCEPTION_STACKFAULT,2|8,errorcode); //Call IVT entry #12 decimal!
+		CPU_executionphase_startinterrupt(EXCEPTION_STACKFAULT,2|8,errorcode|EXT); //Call IVT entry #12 decimal!
 		//Execute the interrupt!
 	}
 }

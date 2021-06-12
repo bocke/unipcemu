@@ -1047,17 +1047,18 @@ byte CPU_switchtask(int whatsegment, SEGMENT_DESCRIPTOR *LOADEDDESCRIPTOR, word 
 
 void CPU_TSSFault(word segmentval, byte is_external, byte tbl)
 {
+	byte EXT;
 	uint_32 errorcode;
 	errorcode = (segmentval&0xFFF8)|(is_external&1)|((tbl&3)<<1);
+	EXT = CPU[activeCPU].faultraised_external; //External type to use!
 	if ((MMU_logging == 1) && advancedlog) //Are we logging?
 	{
-		dolog("debugger","#TS fault(%08X)!",errorcode);
+		dolog("debugger","#TS fault(%08X)!",errorcode|EXT);
 	}
-	
 	if (CPU_faultraised(EXCEPTION_INVALIDTSSSEGMENT)) //We're raising a fault!
 	{
 		CPU_resetOP(); //Point to the faulting instruction!
 		CPU_onResettingFault(0); //Apply reset to fault!
-		CPU_executionphase_startinterrupt(EXCEPTION_INVALIDTSSSEGMENT,2|8,errorcode); //Call IVT entry #13 decimal!
+		CPU_executionphase_startinterrupt(EXCEPTION_INVALIDTSSSEGMENT,2|8,errorcode|EXT); //Call IVT entry #13 decimal!
 	}
 }
