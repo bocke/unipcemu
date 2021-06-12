@@ -33,6 +33,7 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 #include "headers/hardware/vga/vga.h" //Video memory support!
 #include "headers/hardware/i430fx.h" //i430fx motherboard support!
 #include "headers/hardware/pic.h" //APIC support!
+#include "headers/cpu/cpu.h" //Emulated CPU support!
 
 extern BIOS_Settings_TYPE BIOS_Settings; //Settings!
 
@@ -345,6 +346,11 @@ OPTINLINE byte MMU_IO_readhandler(uint_64 offset, word index)
 		}
 		else if (likely(offset < (uint_64)MMU.maxsize)) //Probably mapped to memory?
 		{
+			if (unlikely(((offset&0xFFFFFFFFFFF00000ULL)==0xF00000ULL) && (EMULATED_CPU==CPU_80286))) //Special case for 80286 on i430fx?
+			{
+				//80286 needs the BIOS ROM here?
+				goto forceROMaccess; //Enforcing ROM access to succeed and properly use!
+			}
 			if (likely(extVGA_isnotVRAM(offset))) //Not VRAM?
 			{
 				if (likely((checkMemoryHoles(offset, index_readprecalcs[index])) == 0)) //Not a memory hole?
@@ -354,6 +360,7 @@ OPTINLINE byte MMU_IO_readhandler(uint_64 offset, word index)
 			}
 		}
 	}
+	forceROMaccess:
 	if (likely((offset & 0xFFFFFFFF00000000ULL) == 0))
 	{
 		if (VGAmemIO_rb((uint_32)offset)) return 0; //Video responded!

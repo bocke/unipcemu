@@ -60,6 +60,7 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 #define CPU_SAVELAST
 
 byte activeCPU = 0; //What CPU is currently active?
+byte emulated_CPUtype = 0; //The emulated CPU!
 
 CPU_type CPU[MAXCPUS]; //The CPU data itself!
 

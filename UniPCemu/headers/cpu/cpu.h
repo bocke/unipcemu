@@ -52,7 +52,7 @@ extern BIOS_Settings_TYPE BIOS_Settings; //BIOS Settings (required for determini
 #define CPU_MODES 2
 
 //Currently emulating CPU (values see above, formula later)?
-#define EMULATED_CPU *(getarchemulated_CPU())
+#define EMULATED_CPU emulated_CPUtype
 //Since we're comparing to Bochs, emulate a Pentium PC!
 //#define EMULATED_CPU CPU_PENTIUM
 
@@ -1286,6 +1286,7 @@ typedef struct
 
 #ifndef IS_CPU
 extern byte activeCPU; //That currently active CPU!
+extern byte emulated_CPUtype; //The emulated CPU processor type!
 extern CPU_type CPU[MAXCPUS]; //All CPUs itself!
 #endif
 

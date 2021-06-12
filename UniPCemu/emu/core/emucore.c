@@ -447,6 +447,8 @@ void initEMU(int full) //Init!
 
 	autoDetectArchitecture(); //Detect the architecture to use!
 
+	emulated_CPUtype = *(getarchemulated_CPU()); //Read the emulated CPU type and store it!
+
 	//Check for memory requirements of the system!
 	if ((*(getarchmemory()) & 0xFFFF) && (EMULATED_CPU >= CPU_80286)) //IBM PC/AT has specific memory requirements? Needs to be 64K aligned!
 	{
