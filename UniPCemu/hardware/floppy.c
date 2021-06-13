@@ -149,6 +149,7 @@ struct
 	byte floppy_abort; //Abort the command after finishing the data phase?
 	byte floppy_scanningforSectorID; //Scanning for an exact match on the sector ID from index?
 	byte erroringtiming; //Are we erroring for this drive?
+	byte ejectingpending[4]; //Eject any of these drives pending?
 } FLOPPY; //Our floppy drive data!
 
 //DOR
@@ -259,6 +260,10 @@ struct
 #define FLOPPY_ST3_DRIVEREADYW(val) FLOPPY.ST3=((FLOPPY.ST3&~0x20)|(((val)&1)<<5))
 #define FLOPPY_ST3_WRITEPROTECTIONW(val) FLOPPY.ST3=((FLOPPY.ST3&~0x40)|(((val)&1)<<6))
 #define FLOPPY_ST3_ERRORSIGNATUREW(val) FLOPPY.ST3=((FLOPPY.ST3&~0x80)|(((val)&1)<<7))
+
+//Values loaded in ST1/2 when a disk is ejected mid-transfer
+#define ST1_MEDIAEJECTED 0x24
+#define ST2_MEDIAEJECTED 0x01
 
 //Start normal data!
 
@@ -678,9 +683,11 @@ void FLOPPY_notifyDiskChanged(int disk)
 	{
 	case FLOPPY0:
 		FLOPPY.diskchanged[0] = 1; //Changed!
+		FLOPPY.ejectingpending[0] = 1; //Ejecting pending!
 		break;
 	case FLOPPY1:
 		FLOPPY.diskchanged[1] = 1; //Changed!
+		FLOPPY.ejectingpending[1] = 1; //Ejecting pending!
 		break;
 	default:
 		break;
@@ -970,6 +977,7 @@ OPTINLINE void clearDiskChanged(byte drive)
 {
 	//Reset state for all drives!
 	FLOPPY.diskchanged[drive] = 0; //Reset!
+	FLOPPY.ejectingpending[drive] = 0; //No ejecting pending!
 }
 
 OPTINLINE void updateFloppyWriteProtected(byte iswrite, byte drivenumber)
@@ -2365,6 +2373,20 @@ void floppy_executeData() //Execute a floppy command. Data is fully filled!
 		case WRITE_DATA: //Write sector
 		case WRITE_DELETED_DATA: //Write deleted sector
 			//Write sector to disk!
+			if (FLOPPY.ejectingpending[FLOPPY_DOR_DRIVENUMBERR) //Ejected while transferring?
+			{
+				FLOPPY.resultposition = 0;
+				FLOPPY.resultbuffer[0] = FLOPPY.ST0 = 0x40|0x10|((FLOPPY.ST0 & 0x3B) | FLOPPY_DOR_DRIVENUMBERR) | ((FLOPPY.currentphysicalhead[FLOPPY_DOR_DRIVENUMBERR] & 1) << 2); //Abnormal termination! ST0!
+				FLOPPY.resultbuffer[1] = FLOPPY.ST1 = ST1_MEDIAEJECTED; //Drive write-protected! ST1!
+				FLOPPY.resultbuffer[2] = FLOPPY.ST2 = ST2_MEDIAEJECTED; //ST2!
+				FLOPPY.resultbuffer[3] = FLOPPY.currentcylinder[FLOPPY_DOR_DRIVENUMBERR];
+				FLOPPY.resultbuffer[4] = FLOPPY.currenthead[FLOPPY_DOR_DRIVENUMBERR];
+				FLOPPY.resultbuffer[5] = FLOPPY.currentsector[FLOPPY_DOR_DRIVENUMBERR];
+				FLOPPY.resultbuffer[6] = FLOPPY.commandbuffer[5]; //Sector size from the command buffer!
+				FLOPPY.commandstep = 3; //Move to result phase!
+				FLOPPY_raiseIRQ(); //Entering result phase!
+				return;
+			}
 			if (FLOPPY.databufferposition == FLOPPY.databuffersize) //Fully buffered?
 			{
 				floppy_executeWriteData(); //Execute us for now!
@@ -2390,6 +2412,21 @@ void floppy_executeData() //Execute a floppy command. Data is fully filled!
 		case SCAN_LOW_OR_EQUAL:
 		case SCAN_HIGH_OR_EQUAL:
 		case VERIFY: //Verify doesn't transfer data directly!
+			if (FLOPPY.ejectingpending[FLOPPY_DOR_DRIVENUMBERR) //Ejected while transferring?
+			{
+				//TODO: ST1/2?
+				FLOPPY.resultposition = 0;
+				FLOPPY.resultbuffer[0] = FLOPPY.ST0 = 0x40|0x10|((FLOPPY.ST0 & 0x3B) | FLOPPY_DOR_DRIVENUMBERR) | ((FLOPPY.currentphysicalhead[FLOPPY_DOR_DRIVENUMBERR] & 1) << 2); //Abnormal termination! ST0!
+				FLOPPY.resultbuffer[1] = FLOPPY.ST1 = ST1_MEDIAEJECTED; //Drive write-protected! ST1!
+				FLOPPY.resultbuffer[2] = FLOPPY.ST2 = ST2_MEDIAEJECTED; //ST2!
+				FLOPPY.resultbuffer[3] = FLOPPY.currentcylinder[FLOPPY_DOR_DRIVENUMBERR];
+				FLOPPY.resultbuffer[4] = FLOPPY.currenthead[FLOPPY_DOR_DRIVENUMBERR];
+				FLOPPY.resultbuffer[5] = FLOPPY.currentsector[FLOPPY_DOR_DRIVENUMBERR];
+				FLOPPY.resultbuffer[6] = FLOPPY.commandbuffer[5]; //Sector size!
+				FLOPPY.commandstep = 3; //Move to result phase!
+				FLOPPY_raiseIRQ(); //Entering result phase!
+				return;
+			}
 			//We've finished reading the read data!
 			if (FLOPPY.databufferposition == FLOPPY.databuffersize) //Fully processed?
 			{
@@ -2410,6 +2447,35 @@ void floppy_executeData() //Execute a floppy command. Data is fully filled!
 			}
 			break;
 		case FORMAT_TRACK: //Format sector
+			if (FLOPPY.ejectingpending[FLOPPY_DOR_DRIVENUMBERR) //Ejected while transferring?
+			{
+				FLOPPY.resultposition = 0;
+				FLOPPY_fillST0(FLOPPY_DOR_DRIVENUMBERR); //Setup ST0!
+				FLOPPY.resultbuffer[0] = FLOPPY.ST0 = 0x40|0x10| ((FLOPPY.ST0 & 0x3B) | FLOPPY_DOR_DRIVENUMBERR) | 0x10 | ((FLOPPY.currentphysicalhead[FLOPPY_DOR_DRIVENUMBERR] & 1) << 2); //Abnormal termination! ST0!
+				FLOPPY.resultbuffer[1] = FLOPPY.ST1 = ST1_MEDIAEJECTED; //Drive write-protected! ST1!
+				FLOPPY.resultbuffer[2] = FLOPPY.ST2 = ST2_MEDIAEJECTED; //ST2!
+				FLOPPY.resultbuffer[0] = FLOPPY.ST0;
+				FLOPPY.resultbuffer[1] = FLOPPY.ST1;
+				FLOPPY.resultbuffer[2] = FLOPPY.ST2;
+				FLOPPY.resultbuffer[3] = FLOPPY.currentcylinder[FLOPPY_DOR_DRIVENUMBERR];
+				FLOPPY.resultbuffer[4] = FLOPPY.currenthead[FLOPPY_DOR_DRIVENUMBERR];
+				FLOPPY.resultbuffer[5] = FLOPPY.currentsector[FLOPPY_DOR_DRIVENUMBERR];
+				FLOPPY.resultbuffer[6] = FLOPPY.commandbuffer[2]; //Sector size from the command buffer!
+				if ((FLOPPY.erroringtiming & (1<<FLOPPY_DOR_DRIVENUMBERR))==0) //Not timing?
+				{
+					FLOPPY.commandstep = 3; //Move to result phrase and give the result!
+					FLOPPY_raiseIRQ(); //Entering result phase!
+				}
+				else //Timing 0.5 second!
+				{
+					FLOPPY.commandstep = 2; //Simulating no transfer!
+					floppytime[FLOPPY_DOR_DRIVENUMBERR] = (DOUBLE)0.0; //Start in full delay!
+					floppytimer[FLOPPY_DOR_DRIVENUMBERR] = (DOUBLE)(500000000.0); //Time the timeout for floppy!
+					floppytiming |= (1<<FLOPPY_DOR_DRIVENUMBERR); //Make sure we're timing on the specified disk channel!
+					FLOPPY.DMAPending = 0; //Not pending DMA!
+				}
+				return;
+			}
 			updateFloppyWriteProtected(1,FLOPPY_DOR_DRIVENUMBERR); //Try to write with(out) protection!
 			FLOPPY_formatsector(0); //Execute a format sector command!
 			break;
@@ -2441,6 +2507,7 @@ void floppy_executeCommand() //Execute a floppy command. Buffers are fully fille
 	FLOPPY_LOGD("FLOPPY: executing command: %02X", FLOPPY.commandbuffer[0]) //Executing this command!
 	updateFloppyGeometries(FLOPPY_DOR_DRIVENUMBERR, FLOPPY.currentphysicalhead[FLOPPY_DOR_DRIVENUMBERR], FLOPPY.physicalcylinder[FLOPPY_DOR_DRIVENUMBERR]); //Update the floppy geometries!
 	FLOPPY.erroringtiming &= ~(1<<FLOPPY_DOR_DRIVENUMBERR); //Default: not erroring!
+	FLOPPY.ejectingpending[FLOPPY_DOR_DRIVENUMBERR] = 0; //No ejecting pending!
 	switch (FLOPPY.commandbuffer[0]) //What command!
 	{
 		case WRITE_DELETED_DATA: //Write deleted sector
