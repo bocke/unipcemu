@@ -185,8 +185,8 @@ struct
 //MSR
 
 //1 if busy in seek mode.
-#define FLOPPY_MSR_BUSYINPOSITIONINGMODEW(drive,val) FLOPPY.MSR=((FLOPPY.MSR&~(1<<drive))|((val&1)<<drive))
-#define FLOPPY_MSR_BUSYINPOSITIONINGMODER(drive) ((FLOPPY.MSR&(1<<drive))>>drive)
+#define FLOPPY_MSR_BUSYINPOSITIONINGMODEW(drive,val) FLOPPY.MSR=((FLOPPY.MSR&~(1<<(drive)))|(((val)&1)<<(drive)))
+#define FLOPPY_MSR_BUSYINPOSITIONINGMODER(drive) ((FLOPPY.MSR&(1<<(drive)))>>(drive))
 //Busy: read/write command of FDC in progress. Set when received command byte, cleared at end of result phase
 #define FLOPPY_MSR_COMMANDBUSYW(val) FLOPPY.MSR=((FLOPPY.MSR&~0x10)|(((val)&1)<<4))
 //1 when not in DMA mode, else DMA mode, during execution phase.
