@@ -1323,7 +1323,7 @@ void floppy_readsector() //Request a read sector command!
 	FLOPPY.ST2 = 0x01; //Data address mark not found!
 	if (readdata(FLOPPY_DOR_DRIVENUMBERR ? FLOPPY1 : FLOPPY0, &FLOPPY.databuffer, FLOPPY.disk_startpos, FLOPPY.databuffersize)) //Read the data into memory?
 	{
-		if (FLOPPY.diskchanged[FLOPPY_DOR_DRIVENUMBERR]) //Disk changed?
+		if (FLOPPY.ejectingpending[FLOPPY_DOR_DRIVENUMBERR]) //Disk changed?
 		{
 			FLOPPY.ST1 = 0x04; //Couldn't find any sector!
 			FLOPPY.ST2 = 0x01; //Data address mark not found!
@@ -1350,7 +1350,7 @@ void floppy_readsector() //Request a read sector command!
 	{
 		if ((DSKImageFile = getDSKimage((FLOPPY_DOR_DRIVENUMBERR) ? FLOPPY1 : FLOPPY0)) || (IMDImageFile = getIMDimage((FLOPPY_DOR_DRIVENUMBERR) ? FLOPPY1 : FLOPPY0))) //Are we a DSK/IMD image file?
 		{
-			if (FLOPPY.diskchanged[FLOPPY_DOR_DRIVENUMBERR]) //Disk changed?
+			if (FLOPPY.ejectingpending[FLOPPY_DOR_DRIVENUMBERR]) //Disk changed?
 			{
 				FLOPPY.ST1 = 0x04; //Couldn't find any sector!
 				FLOPPY.ST2 = 0x01; //Data address mark not found!
@@ -1735,7 +1735,7 @@ void FLOPPY_formatsector(byte nodata) //Request a read sector command!
 					FLOPPY.ST2 = 0x01; //Data address mark not found!
 					goto format_readonlydrive; //Read-only drive formatting!
 				}
-				if (FLOPPY.diskchanged[FLOPPY_DOR_DRIVENUMBERR]) //Disk changed?
+				if (FLOPPY.ejectingpending[FLOPPY_DOR_DRIVENUMBERR]) //Disk changed?
 				{
 					FLOPPY.ST1 = 0x01 | 0x04; //Couldn't find any sector!
 					FLOPPY.ST2 = 0x01; //Data address mark not found!
@@ -1830,7 +1830,7 @@ void FLOPPY_formatsector(byte nodata) //Request a read sector command!
 				goto floppy_errorformat;
 			}
 			memset(&FLOPPY.databuffer, FLOPPY.commandbuffer[5], 512); //Clear our buffer with the fill byte!
-			if (FLOPPY.diskchanged[FLOPPY_DOR_DRIVENUMBERR]) //Disk changed?
+			if (FLOPPY.ejectingpending[FLOPPY_DOR_DRIVENUMBERR]) //Disk changed?
 			{
 				FLOPPY.ST1 = 0x01 | 0x04; //Couldn't find any sector!
 				FLOPPY.ST2 = 0x01; //Data address mark not found!
@@ -1877,7 +1877,7 @@ void FLOPPY_formatsector(byte nodata) //Request a read sector command!
 	case 0: //OK? Finished correctly?
 		if (IMDImageFile) //IMD image?
 		{
-			if (FLOPPY.diskchanged[FLOPPY_DOR_DRIVENUMBERR]) //Disk changed?
+			if (FLOPPY.ejectingpending[FLOPPY_DOR_DRIVENUMBERR]) //Disk changed?
 			{
 				FLOPPY.ST1 = 0x01 | 0x04; //Couldn't find any sector!
 				FLOPPY.ST2 = 0x01; //Data address mark not found!
@@ -2045,7 +2045,7 @@ void floppy_writesector() //Request a write sector command!
 		goto floppy_errorwritesector; //Error out!
 	}
 
-	if (FLOPPY.diskchanged[FLOPPY_DOR_DRIVENUMBERR]) //Disk changed?
+	if (FLOPPY.ejectingpending[FLOPPY_DOR_DRIVENUMBERR]) //Disk changed?
 	{
 		FLOPPY.ST1 = 0x04; //Couldn't find any sector!
 		FLOPPY.ST2 = 0x01; //Data address mark not found!
@@ -2107,7 +2107,7 @@ void floppy_executeWriteData()
 		goto floppy_errorwrite; //Error out!
 	}
 
-	if (FLOPPY.diskchanged[FLOPPY_DOR_DRIVENUMBERR]) //Disk changed?
+	if (FLOPPY.ejectingpending[FLOPPY_DOR_DRIVENUMBERR]) //Disk changed?
 	{
 		FLOPPY.ST1 = 0x04; //Couldn't find any sector!
 		FLOPPY.ST2 = 0x01; //Data address mark not found!
@@ -2373,7 +2373,7 @@ void floppy_executeData() //Execute a floppy command. Data is fully filled!
 		case WRITE_DATA: //Write sector
 		case WRITE_DELETED_DATA: //Write deleted sector
 			//Write sector to disk!
-			if (FLOPPY.ejectingpending[FLOPPY_DOR_DRIVENUMBERR) //Ejected while transferring?
+			if (FLOPPY.ejectingpending[FLOPPY_DOR_DRIVENUMBERR]) //Ejected while transferring?
 			{
 				FLOPPY.resultposition = 0;
 				FLOPPY.resultbuffer[0] = FLOPPY.ST0 = 0x40|0x10|((FLOPPY.ST0 & 0x3B) | FLOPPY_DOR_DRIVENUMBERR) | ((FLOPPY.currentphysicalhead[FLOPPY_DOR_DRIVENUMBERR] & 1) << 2); //Abnormal termination! ST0!
@@ -2412,7 +2412,7 @@ void floppy_executeData() //Execute a floppy command. Data is fully filled!
 		case SCAN_LOW_OR_EQUAL:
 		case SCAN_HIGH_OR_EQUAL:
 		case VERIFY: //Verify doesn't transfer data directly!
-			if (FLOPPY.ejectingpending[FLOPPY_DOR_DRIVENUMBERR) //Ejected while transferring?
+			if (FLOPPY.ejectingpending[FLOPPY_DOR_DRIVENUMBERR]) //Ejected while transferring?
 			{
 				//TODO: ST1/2?
 				FLOPPY.resultposition = 0;
@@ -2447,7 +2447,7 @@ void floppy_executeData() //Execute a floppy command. Data is fully filled!
 			}
 			break;
 		case FORMAT_TRACK: //Format sector
-			if (FLOPPY.ejectingpending[FLOPPY_DOR_DRIVENUMBERR) //Ejected while transferring?
+			if (FLOPPY.ejectingpending[FLOPPY_DOR_DRIVENUMBERR]) //Ejected while transferring?
 			{
 				FLOPPY.resultposition = 0;
 				FLOPPY_fillST0(FLOPPY_DOR_DRIVENUMBERR); //Setup ST0!
