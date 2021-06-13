@@ -1177,7 +1177,7 @@ void floppy_performimplicitseek(byte destinationtrack)
 	floppytime[FLOPPY.commandbuffer[1] & 3] = 0.0;
 	floppytiming |= (1<<(FLOPPY.commandbuffer[1] & 3)); //Timing!
 	floppytimer[FLOPPY.commandbuffer[1] & 3] = FLOPPY.DriveData[FLOPPY.commandbuffer[1] & 3].steprate; //Step rate!
-	FLOPPY_MSR_BUSYINPOSITIONINGMODEW(FLOPPY.commandbuffer[1] & 3,1); //Seeking!
+	FLOPPY_MSR_BUSYINPOSITIONINGMODEW((FLOPPY.commandbuffer[1] & 3),1); //Seeking!
 	if (((FLOPPY.commandbuffer[1] & 3)<2) && (((FLOPPY.currentcylinder[FLOPPY.commandbuffer[1] & 3]==FLOPPY.seekdestination[FLOPPY.commandbuffer[1] & 3]) && (FLOPPY.currentcylinder[FLOPPY.commandbuffer[1] & 3] < FLOPPY.geometries[FLOPPY.commandbuffer[1] & 3]->tracks) && (FLOPPY.seekrel[FLOPPY.commandbuffer[1] & 3]==0)) || (FLOPPY.seekrel[FLOPPY.commandbuffer[1] & 3] && (FLOPPY.seekdestination[FLOPPY.commandbuffer[1] & 3]==0)))) //Found and existant?
 	{
 		updateFloppyGeometries((FLOPPY.commandbuffer[1]&3), FLOPPY.currentphysicalhead[FLOPPY.commandbuffer[1] & 3], FLOPPY.physicalcylinder[FLOPPY.commandbuffer[1] & 3]); //Up
@@ -2579,7 +2579,7 @@ void floppy_executeCommand() //Execute a floppy command. Buffers are fully fille
 			floppytime[FLOPPY.commandbuffer[1] & 3] = 0.0;
 			floppytiming |= (1<<(FLOPPY.commandbuffer[1] & 3)); //Timing!
 			floppytimer[FLOPPY.commandbuffer[1] & 3] = FLOPPY.DriveData[FLOPPY.commandbuffer[1] & 3].steprate; //Step rate!
-			FLOPPY_MSR_BUSYINPOSITIONINGMODEW(FLOPPY.commandbuffer[1] & 3,1); //Seeking!
+			FLOPPY_MSR_BUSYINPOSITIONINGMODEW((FLOPPY.commandbuffer[1] & 3),1); //Seeking!
 			if (((FLOPPY.commandbuffer[1] & 3)<2) && (((FLOPPY.currentcylinder[FLOPPY.commandbuffer[1] & 3]==FLOPPY.seekdestination[FLOPPY.commandbuffer[1] & 3]) && (FLOPPY.currentcylinder[FLOPPY.commandbuffer[1] & 3] < FLOPPY.geometries[FLOPPY.commandbuffer[1] & 3]->tracks) && (FLOPPY.seekrel[FLOPPY.commandbuffer[1] & 3]==0)) || (FLOPPY.seekrel[FLOPPY.commandbuffer[1] & 3] && (FLOPPY.seekdestination[FLOPPY.commandbuffer[1] & 3]==0)))) //Found and existant?
 			{
 				updateFloppyGeometries((FLOPPY.commandbuffer[1]&3), FLOPPY.currentphysicalhead[FLOPPY.commandbuffer[1] & 3], FLOPPY.physicalcylinder[FLOPPY.commandbuffer[1] & 3]); //Up
