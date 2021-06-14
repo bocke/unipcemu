@@ -89,9 +89,9 @@ byte CPU_faultraised(byte type)
 	{
 		CPU_apply286cycles(); //Apply any cycles that need to be applied for the current interrupt to happen!
 	}
+	CPU[activeCPU].faultraised_external = 1; //Set the external status of any future raised faults until reset again by a valid cause!
 	if (CPU[activeCPU].faultlevel) //Double/triple fault might have been raised?
 	{
-		CPU[activeCPU].faultraised_external = 1; //Set the external status of any future raised faults until reset again by a valid cause!
 		if (CPU[activeCPU].faultlevel == 2) //Triple fault?
 		{
 			CPU_triplefault(); //Triple faulting!
