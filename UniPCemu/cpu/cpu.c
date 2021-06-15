@@ -1089,7 +1089,7 @@ void call_hard_inthandler(byte intnr) //Hardware interrupt handler (FROM hardwar
 //Now call handler!
 	//CPU[activeCPU].cycles_HWOP += 61; /* Normal interrupt as hardware interrupt */
 	CPU[activeCPU].calledinterruptnumber = intnr; //Save called interrupt number!
-	CPU_executionphase_startinterrupt(intnr,2,-1); //Start the interrupt handler!
+	CPU_executionphase_startinterrupt(intnr, 2|8, -1); //Start the interrupt handler! EXT is set for faults!
 }
 
 void CPU_8086_RETI() //Not from CPU!
