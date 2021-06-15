@@ -181,6 +181,7 @@ void BIOS_DefragmentDynamicHDD(); //Defragment a dynamic HDD Image!
 void BIOS_BWMonitor(); //Switch b/w monitor vs color monitor!
 void BIOS_inputMenu(); //Manage stuff concerning input.
 void BIOS_gamingModeButtonsMenu(); //Manage stuff concerning input.
+void BIOS_gamingModeButtonsFaceButtonMenu(); //Manage stuff concerning face button input.
 void BIOS_gamingKeyboardColorsMenu(); //Manage stuff concerning input.
 void BIOS_gamingKeyboardColor(); //Select a gaming keyboard color!
 void BIOSMenu_LoadDefaults(); //Load the defaults option!
@@ -341,6 +342,7 @@ Handler BIOS_Menus[] =
 	,BIOS_SVGA_DACMode //SVGA DAC mode is #87!
 	,BIOS_ET4000_extensions //ET4000 extensions is #88!
 	,BIOS_video_blackpedestal //Black pedestal is #89!
+	,BIOS_gamingModeButtonsFaceButtonMenu //Gaming Mode Face Button menu is #90!
 };
 
 //Not implemented?
@@ -4664,7 +4666,7 @@ void BIOS_inputMenu() //Manage stuff concerning input.
 		switch (optioninfo[menuresult]) //What option has been chosen, since we are dynamic size?
 		{
 		case 0: //Gaming mode buttons?
-			BIOS_Menu = 26; //Map gaming mode buttons Menu!
+			BIOS_Menu = 90; //Map gaming mode face buttons Menu!
 			break;
 		case 1: //Keyboard colors?
 			BIOS_Menu = 27; //Assign keyboard colors Menu!
@@ -4697,6 +4699,7 @@ void BIOS_inputMenu() //Manage stuff concerning input.
 	}
 }
 
+byte BIOS_gamingmodefacebuttonsselection = 0; //What face button is selected?
 void BIOS_addInputText(char *s, byte inputnumber, uint_32 size)
 {
 	int input_key;
@@ -4704,11 +4707,11 @@ void BIOS_addInputText(char *s, byte inputnumber, uint_32 size)
 	byte mousestatus;	
 
 	char name[256]; //A little buffer for a name!
-	if ((BIOS_Settings.input_settings.keyboard_gamemodemappings[inputnumber] != -1) || (BIOS_Settings.input_settings.keyboard_gamemodemappings_alt[inputnumber]) || (BIOS_Settings.input_settings.mouse_gamemodemappings[inputnumber])) //Got anything?
+	if ((BIOS_Settings.input_settings.keyboard_gamemodemappings[BIOS_gamingmodefacebuttonsselection][inputnumber] != -1) || (BIOS_Settings.input_settings.keyboard_gamemodemappings_alt[BIOS_gamingmodefacebuttonsselection][inputnumber]) || (BIOS_Settings.input_settings.mouse_gamemodemappings[BIOS_gamingmodefacebuttonsselection][inputnumber])) //Got anything?
 	{
-		shiftstatus = BIOS_Settings.input_settings.keyboard_gamemodemappings_alt[inputnumber]; //Load shift status!
-		input_key = BIOS_Settings.input_settings.keyboard_gamemodemappings[inputnumber]; //Load shift status!
-		mousestatus = BIOS_Settings.input_settings.mouse_gamemodemappings[inputnumber]; //Load mouse status!
+		shiftstatus = BIOS_Settings.input_settings.keyboard_gamemodemappings_alt[BIOS_gamingmodefacebuttonsselection][inputnumber]; //Load shift status!
+		input_key = BIOS_Settings.input_settings.keyboard_gamemodemappings[BIOS_gamingmodefacebuttonsselection][inputnumber]; //Load shift status!
+		mousestatus = BIOS_Settings.input_settings.mouse_gamemodemappings[BIOS_gamingmodefacebuttonsselection][inputnumber]; //Load mouse status!
 		if (shiftstatus) //Gotten alt status?
 		{
 			if (shiftstatus&SHIFTSTATUS_CTRL)
@@ -4858,15 +4861,20 @@ void BIOS_InitGamingModeButtonsText()
 	}
 }
 
+extern char gamingmodebuttonsfacebuttonname[5][256]; //Face button names!
+
 void BIOS_gamingModeButtonsMenu() //Manage stuff concerning input.
 {
-	BIOS_Title("Map gaming mode buttons");
+	char title[256];
+	memset(&title, 0, sizeof(title)); //Init title!
+	safescatnprintf(title,sizeof(title), "Map gaming mode buttons (%s)", gamingmodebuttonsfacebuttonname[BIOS_gamingmodefacebuttonsselection]);
+	BIOS_Title(&title[0]);
 	BIOS_InitGamingModeButtonsText(); //Init text!
 	int menuresult = ExecuteMenu(advancedoptions, 4, BIOSMENU_SPEC_RETURN|BIOSMENU_SPEC_SQUAREOPTION, &Menu_Stat); //Show the menu options!
 	switch (menuresult)
 	{
 	case BIOSMENU_SPEC_CANCEL: //Return?
-		BIOS_Menu = 25; //Goto Input Menu!
+		BIOS_Menu = 90; //Goto Gaming Mode Face Buttons Menu!
 		break;
 	case GAMEMODE_START:
 	case GAMEMODE_LEFT:
@@ -4885,10 +4893,10 @@ void BIOS_gamingModeButtonsMenu() //Manage stuff concerning input.
 	case GAMEMODE_ANALOGDOWN:
 		if (Menu_Stat == BIOSMENU_STAT_SQUARE) //Square pressed on an item?
 		{
-			BIOS_Changed |= ((BIOS_Settings.input_settings.keyboard_gamemodemappings[menuresult] != -1) || (BIOS_Settings.input_settings.keyboard_gamemodemappings_alt[menuresult]) || (BIOS_Settings.input_settings.mouse_gamemodemappings[menuresult])); //Did we change?
-			BIOS_Settings.input_settings.keyboard_gamemodemappings[menuresult] = -1; //Set the new key!
-			BIOS_Settings.input_settings.keyboard_gamemodemappings_alt[menuresult] = 0; //Set the shift status!
-			BIOS_Settings.input_settings.mouse_gamemodemappings[menuresult] = 0; //Set the mouse status!
+			BIOS_Changed |= ((BIOS_Settings.input_settings.keyboard_gamemodemappings[BIOS_gamingmodefacebuttonsselection][menuresult] != -1) || (BIOS_Settings.input_settings.keyboard_gamemodemappings_alt[BIOS_gamingmodefacebuttonsselection][menuresult]) || (BIOS_Settings.input_settings.mouse_gamemodemappings[BIOS_gamingmodefacebuttonsselection][menuresult])); //Did we change?
+			BIOS_Settings.input_settings.keyboard_gamemodemappings[BIOS_gamingmodefacebuttonsselection][menuresult] = -1; //Set the new key!
+			BIOS_Settings.input_settings.keyboard_gamemodemappings_alt[BIOS_gamingmodefacebuttonsselection][menuresult] = 0; //Set the shift status!
+			BIOS_Settings.input_settings.mouse_gamemodemappings[BIOS_gamingmodefacebuttonsselection][menuresult] = 0; //Set the mouse status!
 		}
 		else //Normal option selected?
 		{
@@ -4904,10 +4912,10 @@ void BIOS_gamingModeButtonsMenu() //Manage stuff concerning input.
 				lock(LOCK_INPUT);
 				if ((input_buffer!=-1) || (input_buffer_shift) || (input_buffer_mouse)) //Given input yet?
 				{
-					BIOS_Changed |= ((BIOS_Settings.input_settings.keyboard_gamemodemappings[menuresult] != input_buffer) || (BIOS_Settings.input_settings.keyboard_gamemodemappings_alt[menuresult] != input_buffer_shift) || (BIOS_Settings.input_settings.mouse_gamemodemappings[menuresult] != input_buffer_mouse)); //Did we change?
-					BIOS_Settings.input_settings.keyboard_gamemodemappings[menuresult] = input_buffer; //Set the new key!
-					BIOS_Settings.input_settings.keyboard_gamemodemappings_alt[menuresult] = input_buffer_shift; //Set the shift status!
-					BIOS_Settings.input_settings.mouse_gamemodemappings[menuresult] = input_buffer_mouse; //Set the shift status!
+					BIOS_Changed |= ((BIOS_Settings.input_settings.keyboard_gamemodemappings[BIOS_gamingmodefacebuttonsselection][menuresult] != input_buffer) || (BIOS_Settings.input_settings.keyboard_gamemodemappings_alt[BIOS_gamingmodefacebuttonsselection][menuresult] != input_buffer_shift) || (BIOS_Settings.input_settings.mouse_gamemodemappings[BIOS_gamingmodefacebuttonsselection][menuresult] != input_buffer_mouse)); //Did we change?
+					BIOS_Settings.input_settings.keyboard_gamemodemappings[BIOS_gamingmodefacebuttonsselection][menuresult] = input_buffer; //Set the new key!
+					BIOS_Settings.input_settings.keyboard_gamemodemappings_alt[BIOS_gamingmodefacebuttonsselection][menuresult] = input_buffer_shift; //Set the shift status!
+					BIOS_Settings.input_settings.mouse_gamemodemappings[BIOS_gamingmodefacebuttonsselection][menuresult] = input_buffer_mouse; //Set the shift status!
 					unlock(LOCK_INPUT); //We're done with input: release our lock!
 					disableKeyboard(); //Disable the keyboard!
 					break; //Break out of the loop: we're done!
@@ -4916,6 +4924,77 @@ void BIOS_gamingModeButtonsMenu() //Manage stuff concerning input.
 				delay(0); //Wait for the key input!
 			}
 			//Keep in our own menu: we're not changing after a choise has been made, but simply allowing to select another button!
+		}
+		break;
+	default: //Unknown option?
+		BIOS_Menu = NOTIMPLEMENTED; //Not implemented yet!
+		break;
+	}
+}
+
+void BIOS_InitGamingModeButtonsFaceButtonText()
+{
+	advancedoptions = 0; //Init!
+	int i;
+	byte mapping[5] = { 0,2,4,3,1 }; //Translates below order to: (0)down, (1)square, (2)triangle, (3)cross, (4)circle
+	for (i = 0; i < 5; i++) //Set all possibilities!
+	{
+		cleardata(&menuoptions[advancedoptions][0], sizeof(menuoptions[i])); //Init!
+		optioninfo[advancedoptions] = mapping[i]; //The face button it's mapped to!
+		switch (i) //What face button?
+		{
+		case 0:
+			safestrcpy(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Down"); //Gaming mode buttons!
+			break;
+		case 1:
+			safestrcpy(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Triangle"); //Gaming mode buttons!
+			break;
+		case 2:
+			safestrcpy(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Circle"); //Gaming mode buttons!
+			break;
+		case 3:
+			safestrcpy(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Cross"); //Gaming mode buttons!
+			break;
+		case 4:
+			safestrcpy(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Square"); //Gaming mode buttons!
+			break;
+		default: //Unknown? Don't handle unknown cases!
+			break;
+		}
+	}
+}
+
+void BIOS_gamingModeButtonsFaceButtonMenu() //Manage stuff concerning input.
+{
+	byte button;
+	BIOS_Title("Map gaming mode buttons (Face Button)");
+	BIOS_InitGamingModeButtonsFaceButtonText(); //Initialize our text!
+	int menuresult = ExecuteMenu(advancedoptions, 4, BIOSMENU_SPEC_RETURN | BIOSMENU_SPEC_SQUAREOPTION, &Menu_Stat); //Show the menu options!
+	switch (menuresult)
+	{
+	case BIOSMENU_SPEC_CANCEL: //Return?
+		BIOS_Menu = 25; //Goto Input Menu!
+		break;
+	case 0:
+	case 1:
+	case 2:
+	case 3:
+	case 4:
+		BIOS_gamingmodefacebuttonsselection = (byte)optioninfo[menuresult]; //The selected face button to change!
+		if (Menu_Stat == BIOSMENU_STAT_SQUARE) //Square pressed on an item?
+		{
+			for (button = 0; button < NUMITEMS(BIOS_Settings.input_settings.keyboard_gamemodemappings[BIOS_gamingmodefacebuttonsselection]); ++button)
+			{
+				BIOS_Changed |= ((BIOS_Settings.input_settings.keyboard_gamemodemappings[BIOS_gamingmodefacebuttonsselection][button] != -1) || (BIOS_Settings.input_settings.keyboard_gamemodemappings_alt[BIOS_gamingmodefacebuttonsselection][button]) || (BIOS_Settings.input_settings.mouse_gamemodemappings[BIOS_gamingmodefacebuttonsselection][button])); //Did we change?
+				BIOS_Settings.input_settings.keyboard_gamemodemappings[BIOS_gamingmodefacebuttonsselection][button] = -1; //Set the new key!
+				BIOS_Settings.input_settings.keyboard_gamemodemappings_alt[BIOS_gamingmodefacebuttonsselection][button] = 0; //Set the shift status!
+				BIOS_Settings.input_settings.mouse_gamemodemappings[BIOS_gamingmodefacebuttonsselection][button] = 0; //Set the mouse status!
+			}
+		}
+		else //Normal option selected?
+		{
+			//Change to the face button menu!
+			BIOS_Menu = 26; //Map gaming mode buttons Menu!
 		}
 		break;
 	default: //Unknown option?

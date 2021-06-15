@@ -1422,18 +1422,22 @@ void BIOS_LoadData() //Load BIOS settings!
 	}
 
 	//Gamingmode
+	byte modefields[16][256] = {"","_triangle","_square","_cross","_circle"};
 	char buttons[15][256] = {"start","left","up","right","down","ltrigger","rtrigger","triangle","circle","cross","square","analogleft","analogup","analogright","analogdown"}; //The names of all mappable buttons!
-	byte button;
+	byte button, modefield;
 	char buttonstr[256];
 	memset(&buttonstr,0,sizeof(buttonstr)); //Init button string!
-	for (button=0;button<15;++button) //Process all buttons!
+	for (modefield = 0; modefield < 5; ++modefield)
 	{
-		snprintf(buttonstr,sizeof(buttonstr),"gamingmode_map_%s_key",buttons[button]);
-		BIOS_Settings.input_settings.keyboard_gamemodemappings[button] = (sword)get_private_profile_int64("gamingmode",buttonstr,-1,inifile);
-		snprintf(buttonstr,sizeof(buttonstr),"gamingmode_map_%s_shiftstate",buttons[button]);
-		BIOS_Settings.input_settings.keyboard_gamemodemappings_alt[button] = (byte)get_private_profile_uint64("gamingmode",buttonstr,0,inifile);
-		snprintf(buttonstr,sizeof(buttonstr),"gamingmode_map_%s_mousebuttons",buttons[button]);
-		BIOS_Settings.input_settings.mouse_gamemodemappings[button] = (byte)get_private_profile_uint64("gamingmode",buttonstr,0,inifile);
+		for (button = 0; button < 15; ++button) //Process all buttons!
+		{
+			snprintf(buttonstr, sizeof(buttonstr), "gamingmode_map_%s_key%s", buttons[button],modefields[modefield]);
+			BIOS_Settings.input_settings.keyboard_gamemodemappings[modefield][button] = (sword)get_private_profile_int64("gamingmode", buttonstr, -1, inifile);
+			snprintf(buttonstr, sizeof(buttonstr), "gamingmode_map_%s_shiftstate%s", buttons[button], modefields[modefield]);
+			BIOS_Settings.input_settings.keyboard_gamemodemappings_alt[modefield][button] = (byte)get_private_profile_uint64("gamingmode", buttonstr, 0, inifile);
+			snprintf(buttonstr, sizeof(buttonstr), "gamingmode_map_%s_mousebuttons%s", buttons[button], modefields[modefield]);
+			BIOS_Settings.input_settings.mouse_gamemodemappings[modefield][button] = (byte)get_private_profile_uint64("gamingmode", buttonstr, 0, inifile);
+		}
 	}
 
 	BIOS_Settings.input_settings.gamingmode_joystick = (byte)get_private_profile_uint64("gamingmode","joystick",0,inifile); //Use the joystick input instead of mapped input during gaming mode?
@@ -1560,6 +1564,7 @@ char input_comment[4096] = ""; //Input comment!
 char gamingmode_comment[4096] = ""; //Gamingmode comment!
 char bioscomment_currentkey[4096] = "";
 char buttons[15][256] = {"start","left","up","right","down","ltrigger","rtrigger","triangle","circle","cross","square","analogleft","analogup","analogright","analogdown"}; //The names of all mappable buttons!
+byte modefields[16][256] = { "","_triangle","_square","_cross","_circle" };
 char cmos_comment[4096] = ""; //PrimaryCMOS comment!
 
 #ifdef PACKETSERVER_ENABLED
@@ -1847,17 +1852,20 @@ int BIOS_SaveData() //Save BIOS settings!
 	safestrcat(gamingmode_comment,sizeof(gamingmode_comment),"joystick: 0=Normal gaming mode mapped input, 1=Joystick, Cross=Button 1, Circle=Button 2, 2=Joystick, Cross=Button 2, Circle=Button 1, 3=Joystick, Gravis Gamepad, 4=Joystick, Gravis Analog Pro, 5=Joystick, Logitech WingMan Extreme Digital");
 	char *gamingmode_commentused=NULL;
 	if (gamingmode_comment[0]) gamingmode_commentused = &gamingmode_comment[0];
-	byte button;
+	byte button,modefield;
 	char buttonstr[256];
 	memset(&buttonstr,0,sizeof(buttonstr)); //Init button string!
-	for (button=0;button<15;++button) //Process all buttons!
+	for (modefield = 0; modefield < 5; ++modefield)
 	{
-		snprintf(buttonstr,sizeof(buttonstr),"gamingmode_map_%s_key",buttons[button]);
-		if (!write_private_profile_int64("gamingmode",gamingmode_commentused,buttonstr,BIOS_Settings.input_settings.keyboard_gamemodemappings[button],inifile)) ABORT_SAVEDATA
-		snprintf(buttonstr,sizeof(buttonstr),"gamingmode_map_%s_shiftstate",buttons[button]);
-		if (!write_private_profile_uint64("gamingmode",gamingmode_commentused,buttonstr,BIOS_Settings.input_settings.keyboard_gamemodemappings_alt[button],inifile)) ABORT_SAVEDATA
-		snprintf(buttonstr,sizeof(buttonstr),"gamingmode_map_%s_mousebuttons",buttons[button]);
-		if (!write_private_profile_uint64("gamingmode",gamingmode_commentused,buttonstr,BIOS_Settings.input_settings.mouse_gamemodemappings[button],inifile)) ABORT_SAVEDATA
+		for (button = 0; button < 15; ++button) //Process all buttons!
+		{
+			snprintf(buttonstr, sizeof(buttonstr), "gamingmode_map_%s_key%s", buttons[button],modefields[modefield]);
+			if (!write_private_profile_int64("gamingmode", gamingmode_commentused, buttonstr, BIOS_Settings.input_settings.keyboard_gamemodemappings[modefield][button], inifile)) ABORT_SAVEDATA
+				snprintf(buttonstr, sizeof(buttonstr), "gamingmode_map_%s_shiftstate%s", buttons[button],modefields[modefield]);
+			if (!write_private_profile_uint64("gamingmode", gamingmode_commentused, buttonstr, BIOS_Settings.input_settings.keyboard_gamemodemappings_alt[modefield][button], inifile)) ABORT_SAVEDATA
+				snprintf(buttonstr, sizeof(buttonstr), "gamingmode_map_%s_mousebuttons%s", buttons[button],modefields[modefield]);
+			if (!write_private_profile_uint64("gamingmode", gamingmode_commentused, buttonstr, BIOS_Settings.input_settings.mouse_gamemodemappings[modefield][button], inifile)) ABORT_SAVEDATA
+		}
 	}
 
 	if (!write_private_profile_uint64("gamingmode",gamingmode_commentused,"joystick",BIOS_Settings.input_settings.gamingmode_joystick,inifile)) ABORT_SAVEDATA //Use the joystick input instead of mapped input during gaming mode?
