@@ -170,7 +170,8 @@ typedef struct
 	struct
 	{
 		byte multipletransferred; //How many sectors were transferred in multiple mode this block?
-		byte multiplemode; //Use multiple mode transfer?
+		byte multiplemode; //Enable multiple mode transfer transfers to be used? 0=Disabled(according to the ATA-1 documentation)!
+		byte multiplesectors; //How many sectors to currently transfer in multiple mode for the current command?
 		byte longop; //Long operation instead of a normal one?
 		uint_32 datapos; //Data position?
 		uint_32 datablock; //How large is a data block to be transferred?
@@ -178,7 +179,6 @@ typedef struct
 		byte data[0x20000]; //Full sector data, large enough to buffer anything we throw at it (normal buffering)! Up to 10000 
 		byte command;
 		byte commandstatus; //Do we have a command?
-		byte multiplesectors; //How many sectors to transfer in multiple mode? 0=Disabled(according to the ATA-1 documentation)!
 		byte ATAPI_processingPACKET; //Are we processing a packet or data for the ATAPI device?
 		DOUBLE ATAPI_PendingExecuteCommand; //How much time is left pending?
 		DOUBLE ATAPI_PendingExecuteTransfer; //How much time is left pending for transfer timing?
@@ -2037,7 +2037,7 @@ OPTINLINE byte ATA_readsector(byte channel, byte command) //Read the current sec
 	uint_32 disk_size = ((ATA[channel].Drive[ATA_activeDrive(channel)].driveparams[61] << 16) | ATA[channel].Drive[ATA_activeDrive(channel)].driveparams[60]); //The size of the disk in sectors!
 	if (ATA[channel].Drive[ATA_activeDrive(channel)].commandstatus == 1) //We're reading already?
 	{
-		if (ATA[channel].Drive[ATA_activeDrive(channel)].readmultipleerror && ATA[channel].Drive[ATA_activeDrive(channel)].multiplemode) //Error during the previous part of the read multiple command?)
+		if (ATA[channel].Drive[ATA_activeDrive(channel)].readmultipleerror && ATA[channel].Drive[ATA_activeDrive(channel)].multiplesectors) //Error during the previous part of the read multiple command?)
 		{
 			ATA[channel].Drive[ATA_activeDrive(channel)].datasize -= ATA[channel].Drive[ATA_activeDrive(channel)].readmultiple_partialtransfer; //How much was actually transferred!
 			goto handleReadSectorRangeError;
@@ -2062,8 +2062,8 @@ OPTINLINE byte ATA_readsector(byte channel, byte command) //Read the current sec
 	}
 	if ((ATA[channel].Drive[ATA_activeDrive(channel)].current_LBA_address > disk_size) && //Past the end of the disk?
 		(
-			(ATA[channel].Drive[ATA_activeDrive(channel)].readmultipleerror && ATA[channel].Drive[ATA_activeDrive(channel)].multiplemode) //During the previous part of the read multiple command?
-			|| (ATA[channel].Drive[ATA_activeDrive(channel)].multiplemode==0) //Not in multiple mode?
+			(ATA[channel].Drive[ATA_activeDrive(channel)].readmultipleerror && ATA[channel].Drive[ATA_activeDrive(channel)].multiplesectors) //During the previous part of the read multiple command?
+			|| (ATA[channel].Drive[ATA_activeDrive(channel)].multiplesectors==0) //Not in multiple mode?
 		)
 		)
 	{
@@ -2079,9 +2079,9 @@ OPTINLINE byte ATA_readsector(byte channel, byte command) //Read the current sec
 		return 1; //Stop! Error interrupt!
 	}
 
-	if (ATA[channel].Drive[ATA_activeDrive(channel)].multiplemode) //Enabled multiple mode?
+	if (ATA[channel].Drive[ATA_activeDrive(channel)].multiplesectors) //Enabled multiple mode?
 	{
-		multiple = ATA[channel].Drive[ATA_activeDrive(channel)].multiplemode; //Multiple sectors instead!
+		multiple = ATA[channel].Drive[ATA_activeDrive(channel)].multiplesectors; //Multiple sectors instead!
 	}
 
 	if (multiple>ATA[channel].Drive[ATA_activeDrive(channel)].datasize) //More than requested left?
@@ -2199,9 +2199,9 @@ OPTINLINE byte ATA_writesector(byte channel, byte command)
 		dolog("ATA", "Process next sector...");
 #endif
 		//Process next sector!
-		if (ATA[channel].Drive[ATA_activeDrive(channel)].multiplemode) //Enabled multiple mode?
+		if (ATA[channel].Drive[ATA_activeDrive(channel)].multiplesectors) //Enabled multiple mode?
 		{
-			multiple = ATA[channel].Drive[ATA_activeDrive(channel)].multiplemode; //Multiple sectors instead!
+			multiple = ATA[channel].Drive[ATA_activeDrive(channel)].multiplesectors; //Multiple sectors instead!
 		}
 		if (multiple>ATA[channel].Drive[ATA_activeDrive(channel)].datasize) //More than requested left?
 		{
@@ -4752,7 +4752,7 @@ void ATA_reset(byte channel, byte slave)
 	ATA[channel].Drive[slave].resetTiming = ATA_RESET_TIMEOUT; //How long to wait in reset!
 	if (ATA[channel].Drive[slave].resetSetsDefaults && (!(((fullslaveinfo & 0x80) == 0) && ATA_Drives[channel][slave]>=CDROM0))) //Allow resetting to defaults except SRST for CD-ROM drives?
 	{
-		ATA[channel].Drive[slave].multiplesectors = 0; //Disable multiple mode!
+		ATA[channel].Drive[slave].multiplemode = 0; //Disable multiple mode!
 		ATA[channel].Drive[slave].Enable8BitTransfers = 0; //Disable 8-bit transfers only!
 		if (ATA_Drives[channel][slave] >= CDROM0) //ATAPI drive?
 		{
@@ -4777,7 +4777,7 @@ OPTINLINE void ATA_executeCommand(byte channel, byte command) //Execute a comman
 	dolog("ATA", "ExecuteCommand: %02X", command); //Execute this command!
 #endif
 	ATA[channel].Drive[ATA_activeDrive(channel)].longop = 0; //Default: no long operation!
-	ATA[channel].Drive[ATA_activeDrive(channel)].multiplemode = 0; //Multiple operation!
+	ATA[channel].Drive[ATA_activeDrive(channel)].multiplesectors = 0; //Multiple operation!
 	int drive;
 	byte temp;
 	uint_32 disk_size; //For checking against boundaries!
@@ -4911,11 +4911,11 @@ OPTINLINE void ATA_executeCommand(byte channel, byte command) //Execute a comman
 		else goto invalidcommand; //Error out!
 		break;
 	case 0xC4: //Read multiple?
-		if (ATA[channel].Drive[ATA_activeDrive(channel)].multiplesectors==0) //Disabled?
+		if (ATA[channel].Drive[ATA_activeDrive(channel)].multiplemode==0) //Disabled?
 		{
 			goto invalidcommand; //Invalid command!
 		}
-		ATA[channel].Drive[ATA_activeDrive(channel)].multiplemode = ATA[channel].Drive[ATA_activeDrive(channel)].multiplesectors; //Multiple operation!
+		ATA[channel].Drive[ATA_activeDrive(channel)].multiplesectors = ATA[channel].Drive[ATA_activeDrive(channel)].multiplemode; //Multiple operation!
 		goto readsectors; //Start the write sector command normally!
 	case 0x22: //Read long (w/retry, ATAPI Mandatory)?
 	case 0x23: //Read long (w/o retry, ATAPI Mandatory)?
@@ -4986,11 +4986,11 @@ OPTINLINE void ATA_executeCommand(byte channel, byte command) //Execute a comman
 		}
 		break;
 	case 0xC5: //Write multiple?
-		if (ATA[channel].Drive[ATA_activeDrive(channel)].multiplesectors==0) //Disabled?
+		if (ATA[channel].Drive[ATA_activeDrive(channel)].multiplemode==0) //Disabled?
 		{
 			goto invalidcommand; //Invalid command!
 		}
-		ATA[channel].Drive[ATA_activeDrive(channel)].multiplemode = ATA[channel].Drive[ATA_activeDrive(channel)].multiplesectors; //Multiple operation!
+		ATA[channel].Drive[ATA_activeDrive(channel)].multiplesectors = ATA[channel].Drive[ATA_activeDrive(channel)].multiplemode; //Multiple operation!
 		goto writesectors; //Start the write sector command normally!
 	case 0x32: //Write long (w/retry)?
 	case 0x33: //Write long (w/o retry)?
@@ -5007,9 +5007,9 @@ OPTINLINE void ATA_executeCommand(byte channel, byte command) //Execute a comman
 		ATA_readLBACHS(channel);
 		ATA_IRQ(channel, ATA_activeDrive(channel),ATA_FINISHREADYTIMING(200.0),2); //Give our requesting IRQ! Just keep busy a bit then start the transfer phase!
 
-		if (ATA[channel].Drive[ATA_activeDrive(channel)].multiplemode) //Enabled multiple mode?
+		if (ATA[channel].Drive[ATA_activeDrive(channel)].multiplesectors) //Enabled multiple mode?
 		{
-			multiple = ATA[channel].Drive[ATA_activeDrive(channel)].multiplemode; //Multiple sectors instead!
+			multiple = ATA[channel].Drive[ATA_activeDrive(channel)].multiplesectors; //Multiple sectors instead!
 		}
 
 		if (multiple>ATA[channel].Drive[ATA_activeDrive(channel)].datasize) //More than requested left?
@@ -5209,12 +5209,12 @@ OPTINLINE void ATA_executeCommand(byte channel, byte command) //Execute a comman
 		}
 		if ((((uint_64)ATA[channel].Drive[ATA_activeDrive(channel)].PARAMETERS.sectorcount)<<9)>sizeof(ATA[channel].Drive[ATA_activeDrive(channel)].data)) //Not enough space to store the sectors? We're executing an invalid command result(invalid parameter)!
 		{
-			ATA[channel].Drive[ATA_activeDrive(channel)].multiplesectors = 0; //Disable multiple mode, according to ATA-1!
+			ATA[channel].Drive[ATA_activeDrive(channel)].multiplemode = 0; //Disable multiple mode, according to ATA-1!
 			goto invalidcommand;
 		}
-		ATA[channel].Drive[ATA_activeDrive(channel)].multiplesectors = ATA[channel].Drive[ATA_activeDrive(channel)].PARAMETERS.sectorcount; //Sector count register is used!
+		ATA[channel].Drive[ATA_activeDrive(channel)].multiplemode = ATA[channel].Drive[ATA_activeDrive(channel)].PARAMETERS.sectorcount; //Sector count register is used!
 
-		ATA[channel].Drive[ATA_activeDrive(channel)].driveparams[59] = (ATA[channel].Drive[ATA_activeDrive(channel)].multiplesectors?0x100:0)|(ATA[channel].Drive[ATA_activeDrive(channel)].multiplesectors); //Current multiple sectors setting! Bit 8 is set when updated!
+		ATA[channel].Drive[ATA_activeDrive(channel)].driveparams[59] = (ATA[channel].Drive[ATA_activeDrive(channel)].multiplemode?0x100:0)|(ATA[channel].Drive[ATA_activeDrive(channel)].multiplemode); //Current multiple sectors setting! Bit 8 is set when updated!
 		ATA[channel].Drive[ATA_activeDrive(channel)].commandstatus = 0; //Reset command status!
 		ATA[channel].Drive[ATA_activeDrive(channel)].STATUSREGISTER &= 0x10; //Reset data register!
 		ATA_IRQ(channel, ATA_activeDrive(channel), ATA_FINISHREADYTIMING(1.0), 1); //Raise IRQ!
@@ -6150,7 +6150,7 @@ void ATA_DiskChanged(int disk)
 		if (IS_CDROM==0) //HDD only!
 		{
 			ATA[disk_channel].Drive[disk_drive].driveparams[53] = 1; //The data at 54-58 are valid on ATA-1!
-			ATA[disk_channel].Drive[disk_drive].driveparams[59] = (ATA[disk_channel].Drive[disk_drive].multiplesectors?0x100:0)|(ATA[disk_channel].Drive[disk_drive].multiplesectors); //Current multiple sectors setting! Bit 8 is set when updated!
+			ATA[disk_channel].Drive[disk_drive].driveparams[59] = (ATA[disk_channel].Drive[disk_drive].multiplemode?0x100:0)|(ATA[disk_channel].Drive[disk_drive].multiplemode); //Current multiple sectors setting! Bit 8 is set when updated!
 			ATA[disk_channel].Drive[disk_drive].driveparams[60] = (word)(disk_size & 0xFFFF); //Number of addressable LBA sectors, low word!
 			ATA[disk_channel].Drive[disk_drive].driveparams[61] = (word)(disk_size >> 16); //Number of addressable LBA sectors, high word!
 		}
