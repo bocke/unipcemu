@@ -1429,6 +1429,8 @@ void BIOS_LoadData() //Load BIOS settings!
 	memset(&buttonstr,0,sizeof(buttonstr)); //Init button string!
 	for (modefield = 0; modefield < 5; ++modefield)
 	{
+		snprintf(buttonstr, sizeof(buttonstr), "gamingmode_map_joystick%s", modefields[modefield]);
+		BIOS_Settings.input_settings.usegamingmode_joystick[modefield] = (sword)get_private_profile_int64("gamingmode", buttonstr, (modefield?0:1), inifile);
 		for (button = 0; button < 15; ++button) //Process all buttons!
 		{
 			snprintf(buttonstr, sizeof(buttonstr), "gamingmode_map_%s_key%s", buttons[button],modefields[modefield]);
@@ -1845,10 +1847,11 @@ int BIOS_SaveData() //Save BIOS settings!
 			safestrcat(gamingmode_comment,sizeof(gamingmode_comment),currentstr); //Add the key to the list!
 		}
 	}
-	safestrcat(gamingmode_comment,sizeof(gamingmode_comment),"gamingmode_map_[key]_key: The key to be mapped. -1 for unmapped. Otherwise, the key number(0-103)\n");
-	snprintf(currentstr,sizeof(currentstr),"gamingmode_map_[key]_shiftstate: The summed state of ctrl/alt/shift keys to be pressed. %u=Ctrl, %u=Alt, %u=Shift. 0/empty=None.\n",SHIFTSTATUS_CTRL,SHIFTSTATUS_ALT,SHIFTSTATUS_SHIFT);
+	safestrcat(gamingmode_comment,sizeof(gamingmode_comment),"gamingmode_map_[key]_key[facebutton]: The key to be mapped. -1 for unmapped. Otherwise, the key number(0-103)\n");
+	snprintf(currentstr,sizeof(currentstr),"gamingmode_map_[key]_shiftstate[facebutton]: The summed state of ctrl/alt/shift keys to be pressed. %u=Ctrl, %u=Alt, %u=Shift. 0/empty=None.\n",SHIFTSTATUS_CTRL,SHIFTSTATUS_ALT,SHIFTSTATUS_SHIFT);
 	safestrcat(gamingmode_comment,sizeof(gamingmode_comment),currentstr);
-	safestrcat(gamingmode_comment,sizeof(gamingmode_comment),"gamingmode_map_[key]_mousebuttons: The summed state of mouse buttons to be pressed(0=None pressed, 1=Left, 2=Right, 4=Middle).\n");
+	safestrcat(gamingmode_comment,sizeof(gamingmode_comment),"gamingmode_map_[key]_mousebuttons[facebutton]: The summed state of mouse buttons to be pressed(0=None pressed, 1=Left, 2=Right, 4=Middle).\n");
+	safestrcat(gamingmode_comment, sizeof(gamingmode_comment), "gamingmode_map_joystick[facebutton]: 0=Normal gaming mode mapped input, 1=Enable joystick input");
 	safestrcat(gamingmode_comment,sizeof(gamingmode_comment),"joystick: 0=Normal gaming mode mapped input, 1=Joystick, Cross=Button 1, Circle=Button 2, 2=Joystick, Cross=Button 2, Circle=Button 1, 3=Joystick, Gravis Gamepad, 4=Joystick, Gravis Analog Pro, 5=Joystick, Logitech WingMan Extreme Digital");
 	char *gamingmode_commentused=NULL;
 	if (gamingmode_comment[0]) gamingmode_commentused = &gamingmode_comment[0];
@@ -1857,13 +1860,15 @@ int BIOS_SaveData() //Save BIOS settings!
 	memset(&buttonstr,0,sizeof(buttonstr)); //Init button string!
 	for (modefield = 0; modefield < 5; ++modefield)
 	{
+		snprintf(buttonstr, sizeof(buttonstr), "gamingmode_map_joystick%s", modefields[modefield]);
+		if (!write_private_profile_int64("gamingmode", gamingmode_commentused, buttonstr, BIOS_Settings.input_settings.usegamingmode_joystick[modefield], inifile)) ABORT_SAVEDATA
 		for (button = 0; button < 15; ++button) //Process all buttons!
 		{
 			snprintf(buttonstr, sizeof(buttonstr), "gamingmode_map_%s_key%s", buttons[button],modefields[modefield]);
 			if (!write_private_profile_int64("gamingmode", gamingmode_commentused, buttonstr, BIOS_Settings.input_settings.keyboard_gamemodemappings[modefield][button], inifile)) ABORT_SAVEDATA
-				snprintf(buttonstr, sizeof(buttonstr), "gamingmode_map_%s_shiftstate%s", buttons[button],modefields[modefield]);
+			snprintf(buttonstr, sizeof(buttonstr), "gamingmode_map_%s_shiftstate%s", buttons[button],modefields[modefield]);
 			if (!write_private_profile_uint64("gamingmode", gamingmode_commentused, buttonstr, BIOS_Settings.input_settings.keyboard_gamemodemappings_alt[modefield][button], inifile)) ABORT_SAVEDATA
-				snprintf(buttonstr, sizeof(buttonstr), "gamingmode_map_%s_mousebuttons%s", buttons[button],modefields[modefield]);
+			snprintf(buttonstr, sizeof(buttonstr), "gamingmode_map_%s_mousebuttons%s", buttons[button],modefields[modefield]);
 			if (!write_private_profile_uint64("gamingmode", gamingmode_commentused, buttonstr, BIOS_Settings.input_settings.mouse_gamemodemappings[modefield][button], inifile)) ABORT_SAVEDATA
 		}
 	}

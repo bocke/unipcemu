@@ -248,6 +248,7 @@ void BIOS_BWMonitor_LuminanceMode(); //Luminance mode
 void BIOS_SVGA_DACMode(); //DAC mode
 void BIOS_ET4000_extensions(); //ET4000 extensions
 void BIOS_video_blackpedestal(); //Black pedestal
+void BIOS_gamingModeButtonsJoystickEnable(); //Gaming Mode Joystick Enable
 
 //First, global handler!
 Handler BIOS_Menus[] =
@@ -343,6 +344,7 @@ Handler BIOS_Menus[] =
 	,BIOS_ET4000_extensions //ET4000 extensions is #88!
 	,BIOS_video_blackpedestal //Black pedestal is #89!
 	,BIOS_gamingModeButtonsFaceButtonMenu //Gaming Mode Face Button menu is #90!
+	,BIOS_gamingModeButtonsJoystickEnable //Gaming Mode Joystick Enable is #91!
 };
 
 //Not implemented?
@@ -4789,7 +4791,7 @@ void BIOS_InitGamingModeButtonsText()
 {
 	advancedoptions = 0; //Init!
 	int i;
-	for (i = 0; i<15; i++) //Set all possibilities!
+	for (i = 0; i<16; i++) //Set all possibilities!
 	{
 		cleardata(&menuoptions[i][0], sizeof(menuoptions[i])); //Init!
 		optioninfo[advancedoptions] = i; //The key!
@@ -4855,6 +4857,24 @@ void BIOS_InitGamingModeButtonsText()
 				safestrcpy(menuoptions[advancedoptions],sizeof(menuoptions[0]), "Analog down:  "); //Assign keyboard colors!
 				BIOS_addInputText(&menuoptions[advancedoptions++][0], i,sizeof(menuoptions[0]));
 				break;
+			case 15: //Joystick enable?
+				safestrcpy(menuoptions[advancedoptions],sizeof(menuoptions[0]), "Joystick:     "); //Assign keyboard colors!
+				setGamingModeJoysticktext:
+				switch (BIOS_Settings.input_settings.usegamingmode_joystick[BIOS_gamingmodefacebuttonsselection])
+				{
+				case 0: //Disabled?
+					safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Normal gaming mode mapped input");
+					break;
+				case 1: //Enabled?
+					safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Enable joystick input");
+					break;
+				default: //Error: fix it!
+					BIOS_Settings.input_settings.usegamingmode_joystick[BIOS_gamingmodefacebuttonsselection] = 0; //Reset/Fix!
+					BIOS_Changed = 1; //We've changed!
+					goto setGamingModeJoysticktext; //Goto!
+					break;
+				}
+				break;
 			default: //Unknown? Don't handle unknown cases!
 				break;
 		}
@@ -4891,45 +4911,68 @@ void BIOS_gamingModeButtonsMenu() //Manage stuff concerning input.
 	case GAMEMODE_ANALOGUP:
 	case GAMEMODE_ANALOGRIGHT:
 	case GAMEMODE_ANALOGDOWN:
+	case 15:
 		if (Menu_Stat == BIOSMENU_STAT_SQUARE) //Square pressed on an item?
 		{
-			BIOS_Changed |= ((BIOS_Settings.input_settings.keyboard_gamemodemappings[BIOS_gamingmodefacebuttonsselection][menuresult] != -1) || (BIOS_Settings.input_settings.keyboard_gamemodemappings_alt[BIOS_gamingmodefacebuttonsselection][menuresult]) || (BIOS_Settings.input_settings.mouse_gamemodemappings[BIOS_gamingmodefacebuttonsselection][menuresult])); //Did we change?
-			BIOS_Settings.input_settings.keyboard_gamemodemappings[BIOS_gamingmodefacebuttonsselection][menuresult] = -1; //Set the new key!
-			BIOS_Settings.input_settings.keyboard_gamemodemappings_alt[BIOS_gamingmodefacebuttonsselection][menuresult] = 0; //Set the shift status!
-			BIOS_Settings.input_settings.mouse_gamemodemappings[BIOS_gamingmodefacebuttonsselection][menuresult] = 0; //Set the mouse status!
+			if (optioninfo[menuresult] != 15) //A normal button?
+			{
+				BIOS_Changed |= ((BIOS_Settings.input_settings.keyboard_gamemodemappings[BIOS_gamingmodefacebuttonsselection][menuresult] != -1) || (BIOS_Settings.input_settings.keyboard_gamemodemappings_alt[BIOS_gamingmodefacebuttonsselection][menuresult]) || (BIOS_Settings.input_settings.mouse_gamemodemappings[BIOS_gamingmodefacebuttonsselection][menuresult])); //Did we change?
+				BIOS_Settings.input_settings.keyboard_gamemodemappings[BIOS_gamingmodefacebuttonsselection][menuresult] = -1; //Set the new key!
+				BIOS_Settings.input_settings.keyboard_gamemodemappings_alt[BIOS_gamingmodefacebuttonsselection][menuresult] = 0; //Set the shift status!
+				BIOS_Settings.input_settings.mouse_gamemodemappings[BIOS_gamingmodefacebuttonsselection][menuresult] = 0; //Set the mouse status!
+			}
+			else //Joystick enable?
+			{
+				BIOS_Changed |= BIOS_Settings.input_settings.usegamingmode_joystick[BIOS_gamingmodefacebuttonsselection] = (BIOS_gamingmodefacebuttonsselection?0:1); //Did we change?
+				BIOS_Settings.input_settings.usegamingmode_joystick[BIOS_gamingmodefacebuttonsselection] = (BIOS_gamingmodefacebuttonsselection?0:1); //Set the joystick status!
+			}
 		}
 		else //Normal option selected?
 		{
 			//Valid option?
-			delay(100000); //Wait a bit!
-			enableKeyboard(1); //Buffer input!
-			TicksHolder ticks;
-			initTicksHolder(&ticks); //Initialise!
-			getnspassed(&ticks); //Initialise counter!
-			for (;;)
+			if (optioninfo[menuresult] != 15) //A normal button?
 			{
-				updateKeyboard(getnspassed(&ticks)); //Update the OSK keyboard!
-				lock(LOCK_INPUT);
-				if ((input_buffer!=-1) || (input_buffer_shift) || (input_buffer_mouse)) //Given input yet?
+				delay(100000); //Wait a bit!
+				enableKeyboard(1); //Buffer input!
+				TicksHolder ticks;
+				initTicksHolder(&ticks); //Initialise!
+				getnspassed(&ticks); //Initialise counter!
+				for (;;)
 				{
-					BIOS_Changed |= ((BIOS_Settings.input_settings.keyboard_gamemodemappings[BIOS_gamingmodefacebuttonsselection][menuresult] != input_buffer) || (BIOS_Settings.input_settings.keyboard_gamemodemappings_alt[BIOS_gamingmodefacebuttonsselection][menuresult] != input_buffer_shift) || (BIOS_Settings.input_settings.mouse_gamemodemappings[BIOS_gamingmodefacebuttonsselection][menuresult] != input_buffer_mouse)); //Did we change?
-					BIOS_Settings.input_settings.keyboard_gamemodemappings[BIOS_gamingmodefacebuttonsselection][menuresult] = input_buffer; //Set the new key!
-					BIOS_Settings.input_settings.keyboard_gamemodemappings_alt[BIOS_gamingmodefacebuttonsselection][menuresult] = input_buffer_shift; //Set the shift status!
-					BIOS_Settings.input_settings.mouse_gamemodemappings[BIOS_gamingmodefacebuttonsselection][menuresult] = input_buffer_mouse; //Set the shift status!
-					unlock(LOCK_INPUT); //We're done with input: release our lock!
-					disableKeyboard(); //Disable the keyboard!
-					break; //Break out of the loop: we're done!
+					updateKeyboard(getnspassed(&ticks)); //Update the OSK keyboard!
+					lock(LOCK_INPUT);
+					if ((input_buffer != -1) || (input_buffer_shift) || (input_buffer_mouse)) //Given input yet?
+					{
+						BIOS_Changed |= ((BIOS_Settings.input_settings.keyboard_gamemodemappings[BIOS_gamingmodefacebuttonsselection][menuresult] != input_buffer) || (BIOS_Settings.input_settings.keyboard_gamemodemappings_alt[BIOS_gamingmodefacebuttonsselection][menuresult] != input_buffer_shift) || (BIOS_Settings.input_settings.mouse_gamemodemappings[BIOS_gamingmodefacebuttonsselection][menuresult] != input_buffer_mouse)); //Did we change?
+						BIOS_Settings.input_settings.keyboard_gamemodemappings[BIOS_gamingmodefacebuttonsselection][menuresult] = input_buffer; //Set the new key!
+						BIOS_Settings.input_settings.keyboard_gamemodemappings_alt[BIOS_gamingmodefacebuttonsselection][menuresult] = input_buffer_shift; //Set the shift status!
+						BIOS_Settings.input_settings.mouse_gamemodemappings[BIOS_gamingmodefacebuttonsselection][menuresult] = input_buffer_mouse; //Set the shift status!
+						unlock(LOCK_INPUT); //We're done with input: release our lock!
+						disableKeyboard(); //Disable the keyboard!
+						break; //Break out of the loop: we're done!
+					}
+					unlock(LOCK_INPUT);
+					delay(0); //Wait for the key input!
 				}
-				unlock(LOCK_INPUT);
-				delay(0); //Wait for the key input!
+				//Keep in our own menu: we're not changing after a choise has been made, but simply allowing to select another button!
 			}
-			//Keep in our own menu: we're not changing after a choise has been made, but simply allowing to select another button!
+			else //Joystick enable?
+			{
+				BIOS_Menu = 91; //Joystick enable option!
+			}
 		}
 		break;
 	default: //Unknown option?
 		BIOS_Menu = NOTIMPLEMENTED; //Not implemented yet!
 		break;
 	}
+}
+
+void BIOS_gamingModeButtonsJoystickEnable()
+{
+	BIOS_Changed |= 1; //Did we change?
+	BIOS_Settings.input_settings.usegamingmode_joystick[BIOS_gamingmodefacebuttonsselection] = !BIOS_Settings.input_settings.usegamingmode_joystick[BIOS_gamingmodefacebuttonsselection]; //Set the joystick status!
+	BIOS_Menu = 26; //Map gaming mode buttons Menu!
 }
 
 void BIOS_InitGamingModeButtonsFaceButtonText()
@@ -4990,6 +5033,8 @@ void BIOS_gamingModeButtonsFaceButtonMenu() //Manage stuff concerning input.
 				BIOS_Settings.input_settings.keyboard_gamemodemappings_alt[BIOS_gamingmodefacebuttonsselection][button] = 0; //Set the shift status!
 				BIOS_Settings.input_settings.mouse_gamemodemappings[BIOS_gamingmodefacebuttonsselection][button] = 0; //Set the mouse status!
 			}
+			BIOS_Changed |= (BIOS_Settings.input_settings.usegamingmode_joystick[BIOS_gamingmodefacebuttonsselection]!=(BIOS_gamingmodefacebuttonsselection?0:1)); //Did we change?
+			BIOS_Settings.input_settings.usegamingmode_joystick[BIOS_gamingmodefacebuttonsselection] = (BIOS_gamingmodefacebuttonsselection?0:1); //Joystick enable!
 		}
 		else //Normal option selected?
 		{
