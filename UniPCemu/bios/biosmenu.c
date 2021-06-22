@@ -250,6 +250,7 @@ void BIOS_ET4000_extensions(); //ET4000 extensions
 void BIOS_video_blackpedestal(); //Black pedestal
 void BIOS_gamingModeButtonsJoystickEnable(); //Gaming Mode Joystick Enable
 void BIOS_modemListenPort(); //Modem Listen Port
+void BIOS_analogMinRange(); //Analog minimum range
 
 //First, global handler!
 Handler BIOS_Menus[] =
@@ -347,6 +348,7 @@ Handler BIOS_Menus[] =
 	,BIOS_gamingModeButtonsFaceButtonMenu //Gaming Mode Face Button menu is #90!
 	,BIOS_gamingModeButtonsJoystickEnable //Gaming Mode Joystick Enable is #91!
 	,BIOS_modemListenPort //Modem listen port is #92!
+	,BIOS_analogMinRange //Analog minimum range is #93!
 };
 
 //Not implemented?
@@ -1283,6 +1285,82 @@ int_64 InputPortNumber(byte x, byte y, word PortNumber) //Retrieve the size, or 
 			if (result < oldvalue) result = oldvalue; //We've overflown?
 		}
 		else if ((key & BUTTON_DOWN) > 0) //1 step up?
+		{
+			if (result == 0) {}
+			else
+			{
+				oldvalue = result;
+				result -= (key & BUTTON_RIGHT) ? 100 : ((key & BUTTON_LEFT) ? 10 : 1); //x100 or x10 or x1!
+				if (result > oldvalue) result = 0; //Underflow!
+			}
+		}
+		else if ((key & BUTTON_UP) > 0) //1 step down?
+		{
+			oldvalue = result; //Save the old value!
+			result += (key & BUTTON_RIGHT) ? 100 : ((key & BUTTON_LEFT) ? 10 : 1); //x100 or x10 or x1!
+			if (result < oldvalue) result = oldvalue; //We've overflown?
+		}
+		//Confirmation buttons etc.
+		else if ((key & (BUTTON_CROSS | BUTTON_START)) > 0)
+		{
+			while ((key & (BUTTON_CROSS | BUTTON_START)) > 0) //Wait for release!
+			{
+				lock(LOCK_INPUT);
+				key = psp_inputkeydelay(BIOS_INPUTDELAY); //Input key!
+				unlock(LOCK_INPUT);
+			}
+			return (int_64)result;
+		}
+		else if ((key & BUTTON_CIRCLE) > 0)
+		{
+			while ((key & BUTTON_CIRCLE) > 0) //Wait for release!
+			{
+				lock(LOCK_INPUT);
+				key = psp_inputkeydelay(BIOS_INPUTDELAY); //Input key!
+				unlock(LOCK_INPUT);
+			}
+			break; //Cancel!
+		}
+		else if ((key & BUTTON_TRIANGLE) > 0)
+		{
+			while ((key & BUTTON_TRIANGLE) > 0) //Wait for release!
+			{
+				lock(LOCK_INPUT);
+				key = psp_inputkeydelay(BIOS_INPUTDELAY); //Input key!
+				unlock(LOCK_INPUT);
+			}
+			return FILELIST_DEFAULT; //Default!
+		}
+		else if (shuttingdown()) break; //Cancel because of shutdown?
+	}
+	return FILELIST_CANCEL; //No size: cancel!
+}
+
+int_64 InputByteNumber(byte x, byte y, byte ByteNumber) //Retrieve the size, or 0 for none!
+{
+	int key = 0;
+	lock(LOCK_INPUT);
+	key = psp_inputkeydelay(BIOS_INPUTDELAY);
+	unlock(LOCK_INPUT);
+	while ((key & (BUTTON_CROSS | BUTTON_START)) > 0) //Pressed? Wait for release!
+	{
+		lock(LOCK_INPUT);
+		key = psp_inputkeydelay(BIOS_INPUTDELAY);
+		unlock(LOCK_INPUT);
+	}
+	byte result = ByteNumber; //Size: result; default 0 for none! Must be a multiple of 4096 bytes for HDD!
+	byte oldvalue; //To check for high overflow!
+	for (;;) //Get input; break on error!
+	{
+		EMU_locktext();
+		EMU_textcolor(BIOS_ATTR_ACTIVE); //We're using active color for input!
+		GPU_EMU_printscreen(x, y, "%u     ", result); //Show current size!
+		EMU_unlocktext();
+		lock(LOCK_INPUT);
+		key = psp_inputkeydelay(BIOS_INPUTDELAY); //Input key!
+		unlock(LOCK_INPUT);
+
+		if ((key & BUTTON_DOWN) > 0) //1 step up?
 		{
 			if (result == 0) {}
 			else
@@ -2476,6 +2554,33 @@ void BIOS_modemListenPort()
 		break;
 	}
 	BIOS_Menu = 8; //Goto Advanced menu!
+}
+
+void BIOS_analogMinRange()
+{
+	BIOS_Title("Analog minimum range");
+	EMU_locktext();
+	EMU_gotoxy(0, 4); //Goto 4th row!
+	EMU_textcolor(BIOS_ATTR_INACTIVE); //We're using inactive color for label!
+	GPU_EMU_printscreen(0, 4, "Analog minimum range: "); //Show selection init!
+	EMU_unlocktext();
+	int_64 file = InputByteNumber(22, 4, BIOS_Settings.input_settings.analog_minrange); //Show options for the analog mimimum range!
+	switch (file) //Which file?
+	{
+	case FILELIST_CANCEL: //Cancelled?
+		//We do nothing with the selected speed!
+		break; //Just calmly return!
+	case FILELIST_DEFAULT: //Default?
+		file = 0; //Default setting!
+	default: //Changed?
+		if (file != BIOS_Settings.input_settings.analog_minrange) //Not current?
+		{
+			BIOS_Changed = 1; //Changed!
+			BIOS_Settings.input_settings.analog_minrange = (byte)file; //Select analog minimum range setting!
+		}
+		break;
+	}
+	BIOS_Menu = 25; //Goto Input menu!
 }
 
 extern byte UniPCEmu_root_dir_setting; //The current root setting to be viewed!
@@ -4691,7 +4796,7 @@ void BIOS_InitInputText()
 {
 	advancedoptions = 0; //Init!
 	int i;
-	for (i = 0; i<10; i++) //Clear all possibilities!
+	for (i = 0; i<11; i++) //Clear all possibilities!
 	{
 		cleardata(&menuoptions[i][0], sizeof(menuoptions[i])); //Init!
 	}
@@ -4780,6 +4885,11 @@ setJoysticktext: //For fixing it!
 	{
 		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Disabled");
 	}
+
+
+	optioninfo[advancedoptions] = 8; //Analog minumum range
+	safestrcpy(menuoptions[advancedoptions], sizeof(menuoptions[0]), "Analog minimum range: "); //Disable RALT during Direct Input!
+	safescatnprintf(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "%u", BIOS_Settings.input_settings.analog_minrange); //Disable RALT during Direct Input!
 }
 
 void BIOS_inputMenu() //Manage stuff concerning input.
@@ -4799,7 +4909,8 @@ void BIOS_inputMenu() //Manage stuff concerning input.
 	case 4:
 	case 5:
 	case 6:
-	case 7: //Valid option?
+	case 7:
+	case 8: //Valid option?
 		switch (optioninfo[menuresult]) //What option has been chosen, since we are dynamic size?
 		{
 		case 0: //Gaming mode buttons?
@@ -4825,6 +4936,9 @@ void BIOS_inputMenu() //Manage stuff concerning input.
 			break;
 		case 7:
 			BIOS_Menu = 76; //Disable RALT during Direct Input is #76!
+			break;
+		case 8:
+			BIOS_Menu = 93; //Analog Minimum Range is #93!
 			break;
 		default:
 			break;
