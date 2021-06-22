@@ -249,6 +249,7 @@ void BIOS_SVGA_DACMode(); //DAC mode
 void BIOS_ET4000_extensions(); //ET4000 extensions
 void BIOS_video_blackpedestal(); //Black pedestal
 void BIOS_gamingModeButtonsJoystickEnable(); //Gaming Mode Joystick Enable
+void BIOS_modemListenPort(); //Modem Listen Port
 
 //First, global handler!
 Handler BIOS_Menus[] =
@@ -345,6 +346,7 @@ Handler BIOS_Menus[] =
 	,BIOS_video_blackpedestal //Black pedestal is #89!
 	,BIOS_gamingModeButtonsFaceButtonMenu //Gaming Mode Face Button menu is #90!
 	,BIOS_gamingModeButtonsJoystickEnable //Gaming Mode Joystick Enable is #91!
+	,BIOS_modemListenPort //Modem listen port is #92!
 };
 
 //Not implemented?
@@ -1237,6 +1239,99 @@ int ExecuteList(int x, int y, char *defaultentry, int maxlen, list_information i
 			return FILELIST_DEFAULT; //Unmount!
 		}
 	}
+}
+
+int_64 InputPortNumber(byte x, byte y, word PortNumber) //Retrieve the size, or 0 for none!
+{
+	int key = 0;
+	lock(LOCK_INPUT);
+	key = psp_inputkeydelay(BIOS_INPUTDELAY);
+	unlock(LOCK_INPUT);
+	while ((key & (BUTTON_CROSS | BUTTON_START)) > 0) //Pressed? Wait for release!
+	{
+		lock(LOCK_INPUT);
+		key = psp_inputkeydelay(BIOS_INPUTDELAY);
+		unlock(LOCK_INPUT);
+	}
+	word result = PortNumber; //Size: result; default 0 for none! Must be a multiple of 4096 bytes for HDD!
+	word oldvalue; //To check for high overflow!
+	for (;;) //Get input; break on error!
+	{
+		EMU_locktext();
+		EMU_textcolor(BIOS_ATTR_ACTIVE); //We're using active color for input!
+		GPU_EMU_printscreen(x, y, "%u     ", result); //Show current size!
+		EMU_unlocktext();
+		lock(LOCK_INPUT);
+		key = psp_inputkeydelay(BIOS_INPUTDELAY); //Input key!
+		unlock(LOCK_INPUT);
+
+		//1GB steps!
+		if ((key & BUTTON_LTRIGGER) > 0) //1000 step down?
+		{
+			if (result == 0) {}
+			else
+			{
+				oldvalue = result; //Load the old value!
+				result -= (key & BUTTON_RIGHT) ? 100000 : ((key & BUTTON_LEFT) ? 10000 : 1000); //x100 or x10 or x1!
+				if (result > oldvalue) result = 0; //Underflow!
+			}
+		}
+		else if ((key & BUTTON_RTRIGGER) > 0) //1000 step up?
+		{
+			oldvalue = result; //Save the old value!
+			result += (key & BUTTON_RIGHT) ? 100000 : ((key & BUTTON_LEFT) ? 10000 : 1000); //x100 or x10 or x1!
+			if (result < oldvalue) result = oldvalue; //We've overflown?
+		}
+		else if ((key & BUTTON_DOWN) > 0) //1 step up?
+		{
+			if (result == 0) {}
+			else
+			{
+				oldvalue = result;
+				result -= (key & BUTTON_RIGHT) ? 100 : ((key & BUTTON_LEFT) ? 10 : 1); //x100 or x10 or x1!
+				if (result > oldvalue) result = 0; //Underflow!
+			}
+		}
+		else if ((key & BUTTON_UP) > 0) //1 step down?
+		{
+			oldvalue = result; //Save the old value!
+			result += (key & BUTTON_RIGHT) ? 100 : ((key & BUTTON_LEFT) ? 10 : 1); //x100 or x10 or x1!
+			if (result < oldvalue) result = oldvalue; //We've overflown?
+		}
+		//Confirmation buttons etc.
+		else if ((key & (BUTTON_CROSS | BUTTON_START)) > 0)
+		{
+			while ((key & (BUTTON_CROSS | BUTTON_START)) > 0) //Wait for release!
+			{
+				lock(LOCK_INPUT);
+				key = psp_inputkeydelay(BIOS_INPUTDELAY); //Input key!
+				unlock(LOCK_INPUT);
+			}
+			return (int_64)result;
+		}
+		else if ((key & BUTTON_CIRCLE) > 0)
+		{
+			while ((key & BUTTON_CIRCLE) > 0) //Wait for release!
+			{
+				lock(LOCK_INPUT);
+				key = psp_inputkeydelay(BIOS_INPUTDELAY); //Input key!
+				unlock(LOCK_INPUT);
+			}
+			break; //Cancel!
+		}
+		else if ((key & BUTTON_TRIANGLE) > 0)
+		{
+			while ((key & BUTTON_TRIANGLE) > 0) //Wait for release!
+			{
+				lock(LOCK_INPUT);
+				key = psp_inputkeydelay(BIOS_INPUTDELAY); //Input key!
+				unlock(LOCK_INPUT);
+			}
+			return FILELIST_DEFAULT; //Default!
+		}
+		else if (shuttingdown()) break; //Cancel because of shutdown?
+	}
+	return FILELIST_CANCEL; //No size: cancel!
 }
 
 byte selectingHDD = 0;
@@ -2250,6 +2345,9 @@ setBackgroundpolicytext: //For fixing it!
 				snprintf(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Connect the passthrough");
 			}
 		}
+
+		optioninfo[advancedoptions] = 12; //Modem listen port!
+		snprintf(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Modem listen port: %u", BIOS_Settings.modemlistenport);
 	}
 }
 
@@ -2296,7 +2394,8 @@ void BIOS_AdvancedMenu() //Manages the boot order etc!
 	case 8:
 	case 9:
 	case 10:
-	case 11: //Valid option?
+	case 11:
+	case 12: //Valid option?
 		switch (optioninfo[menuresult]) //What option has been chosen, since we are dynamic size?
 		{
 		case 0:
@@ -2338,6 +2437,9 @@ void BIOS_AdvancedMenu() //Manages the boot order etc!
 		case 11: //Connect/disconnect the passthrough?
 			BIOS_Menu = 84; //Connect/disconnect the passthrough!
 			break;
+		case 12: //Modem listen port
+			BIOS_Menu = 92; //Modem listen port!
+			break;
 		default:
 			break;
 		}
@@ -2346,6 +2448,34 @@ void BIOS_AdvancedMenu() //Manages the boot order etc!
 		BIOS_Menu = NOTIMPLEMENTED; //Not implemented yet!
 		break;
 	}
+}
+
+void BIOS_modemListenPort()
+{
+	BIOS_Title("Modem listen port");
+	EMU_locktext();
+	EMU_gotoxy(0, 4); //Goto 4th row!
+	EMU_textcolor(BIOS_ATTR_INACTIVE); //We're using inactive color for label!
+	GPU_EMU_printscreen(0, 4, "Modem Listen Port: "); //Show selection init!
+	EMU_unlocktext();
+	int_64 file = InputPortNumber(19, 4, BIOS_Settings.modemlistenport); //Show options for the CPU speed!
+	switch (file) //Which file?
+	{
+	case FILELIST_CANCEL: //Cancelled?
+		//We do nothing with the selected speed!
+		break; //Just calmly return!
+	case FILELIST_DEFAULT: //Default?
+		file = DEFAULT_MODEMLISTENPORT; //Default setting!
+	default: //Changed?
+		if (file != BIOS_Settings.modemlistenport) //Not current?
+		{
+			BIOS_Changed = 1; //Changed!
+			reboot_needed |= 1; //We need to reboot to apply the port changes!
+			BIOS_Settings.modemlistenport = (uint_32)file; //Select CPU speed setting!
+		}
+		break;
+	}
+	BIOS_Menu = 8; //Goto Advanced menu!
 }
 
 extern byte UniPCEmu_root_dir_setting; //The current root setting to be viewed!
