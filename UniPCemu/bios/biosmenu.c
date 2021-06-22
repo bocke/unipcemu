@@ -6589,7 +6589,7 @@ setInboardInitialWaitstates: //For fixing it!
 	}
 
 	optioninfo[advancedoptions] = 14; //We're debugger settings!
-	safestrcpy(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Debugger settings");
+	safestrcpy(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Debugger Settings");
 }
 
 void BIOS_InitCPUDebuggerText()
