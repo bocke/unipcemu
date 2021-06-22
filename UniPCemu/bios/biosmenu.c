@@ -6321,7 +6321,7 @@ void BIOS_InitCPUText()
 {
 	advancedoptions = 0; //Init!
 	int i;
-	for (i = 0; i<20; i++) //Clear all possibilities!
+	for (i = 0; i<15; i++) //Clear all possibilities!
 	{
 		cleardata(&menuoptions[i][0], sizeof(menuoptions[i])); //Init!
 	}
@@ -6502,7 +6502,7 @@ setShowCPUSpeed:
 	}
 
 setArchitecture: //For fixing it!
-	optioninfo[advancedoptions] = 17; //Architecture!
+	optioninfo[advancedoptions] = 10; //Architecture!
 	safestrcpy(menuoptions[advancedoptions],sizeof(menuoptions[0]), "Architecture: ");
 	switch (BIOS_Settings.architecture) //What architecture?
 	{
@@ -6532,7 +6532,7 @@ setArchitecture: //For fixing it!
 	}
 
 setBIOSROMmode: //For fixing it!
-	optioninfo[advancedoptions] = 18; //BIOS ROM mode!
+	optioninfo[advancedoptions] = 11; //BIOS ROM mode!
 	safestrcpy(menuoptions[advancedoptions],sizeof(menuoptions[0]), "BIOS ROM mode: ");
 	switch (BIOS_Settings.BIOSROMmode) //What architecture?
 	{
@@ -6553,7 +6553,7 @@ setBIOSROMmode: //For fixing it!
 	}
 
 setInboardInitialWaitstates: //For fixing it!
-	optioninfo[advancedoptions] = 19; //Inboard Initial Waitstates!
+	optioninfo[advancedoptions] = 12; //Inboard Initial Waitstates!
 	safestrcpy(menuoptions[advancedoptions],sizeof(menuoptions[0]), "Inboard Initial Waitstates: ");
 	switch (BIOS_Settings.InboardInitialWaitstates) //What architecture?
 	{
@@ -6570,7 +6570,7 @@ setInboardInitialWaitstates: //For fixing it!
 		break;
 	}
 
-	optioninfo[advancedoptions] = 28; //We're CPUID mode setting!
+	optioninfo[advancedoptions] = 13; //We're CPUID mode setting!
 	safestrcpy(menuoptions[advancedoptions], sizeof(menuoptions[0]), "CPUID mode: ");
 	switch (*(getarchCPUIDmode()))
 	{
@@ -6588,7 +6588,7 @@ setInboardInitialWaitstates: //For fixing it!
 		break;
 	}
 
-	optioninfo[advancedoptions] = 10; //We're debugger settings!
+	optioninfo[advancedoptions] = 14; //We're debugger settings!
 	safestrcpy(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Debugger settings");
 }
 
@@ -7085,21 +7085,7 @@ void BIOS_CPU() //CPU menu!
 	case 11:
 	case 12:
 	case 13:
-	case 14:
-	case 15:
-	case 16:
-	case 17:
-	case 18:
-	case 19:
-	case 20:
-	case 21:
-	case 22:
-	case 23:
-	case 24:
-	case 25:
-	case 26:
-	case 27:
-	case 28: //Valid option?
+	case 14: //Valid option?
 		switch (optioninfo[menuresult]) //What option has been chosen, since we are dynamic size?
 		{
 		//CPU settings
@@ -7165,25 +7151,25 @@ void BIOS_CPU() //CPU menu!
 			}
 			break;
 		//Debugger information
-		case 10: //Debug settings?
-			if (Menu_Stat == BIOSMENU_STAT_OK) //Plain select?
-			{
-				BIOS_Menu = 94; //Debug settings option!
-			}
-			break;
-		case 17: //Architecture
+		case 10: //Architecture
 			if (!EMU_RUNNING) BIOS_Menu = 34; //Architecture option!
 			break;
-		case 18: //BIOS ROM mode
+		case 11: //BIOS ROM mode
 			if (!EMU_RUNNING) BIOS_Menu = 62; //Architecture option!
 			break;
-		case 19: //Inboard Initial Waitstates?
+		case 12: //Inboard Initial Waitstates?
 			BIOS_Menu = 64; //Architecture option!
 			break;
-		case 28: //CPUID mode?
+		case 13: //CPUID mode?
 			if (Menu_Stat == BIOSMENU_STAT_OK) //Plain select?
 			{
 				BIOS_Menu = 83; //CPUID mode selection!
+			}
+			break;
+		case 14: //Debug settings?
+			if (Menu_Stat == BIOSMENU_STAT_OK) //Plain select?
+			{
+				BIOS_Menu = 94; //Debug settings option!
 			}
 			break;
 		default:
