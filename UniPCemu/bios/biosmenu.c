@@ -6243,7 +6243,7 @@ void BIOS_Architecture()
 
 void BIOSMenu_breakpointDisplay(byte point)
 {
-	byte breakpointindex[5] = {16,23,24,25,26};
+	byte breakpointindex[5] = {10,11,12,13,14};
 	if (point >= NUMITEMS(BIOS_Settings.breakpoint)) return; //Can't handle this?
 	optioninfo[advancedoptions] = breakpointindex[point]; //Breakpoint!
 	safestrcpy(menuoptions[advancedoptions], sizeof(menuoptions[0]), "Breakpoint: ");
@@ -6601,7 +6601,7 @@ void BIOS_InitCPUDebuggerText()
 		cleardata(&menuoptions[i][0], sizeof(menuoptions[i])); //Init!
 	}
 
-	optioninfo[advancedoptions] = 10; //Debug mode!
+	optioninfo[advancedoptions] = 0; //Debug mode!
 	safestrcpy(menuoptions[advancedoptions], sizeof(menuoptions[0]), "Debug mode: ");
 	switch (BIOS_Settings.debugmode) //What debug mode is active?
 	{
@@ -6625,7 +6625,7 @@ void BIOS_InitCPUDebuggerText()
 		break;
 	}
 
-	optioninfo[advancedoptions] = 11; //We're debug log setting!
+	optioninfo[advancedoptions] = 1; //We're debug log setting!
 	safestrcpy(menuoptions[advancedoptions], sizeof(menuoptions[0]), "Debugger log: ");
 	switch (BIOS_Settings.debugger_log)
 	{
@@ -6676,7 +6676,7 @@ void BIOS_InitCPUDebuggerText()
 		break;
 	}
 
-	optioninfo[advancedoptions] = 12; //We're debug log setting!
+	optioninfo[advancedoptions] = 2; //We're debug log setting!
 	safestrcpy(menuoptions[advancedoptions], sizeof(menuoptions[0]), "Debugger state log: ");
 	switch (BIOS_Settings.debugger_logstates)
 	{
@@ -6691,7 +6691,7 @@ void BIOS_InitCPUDebuggerText()
 		break;
 	}
 
-	optioninfo[advancedoptions] = 13; //We're debug log setting!
+	optioninfo[advancedoptions] = 3; //We're debug log setting!
 	safestrcpy(menuoptions[advancedoptions], sizeof(menuoptions[0]), "Debugger register log: ");
 	switch (BIOS_Settings.debugger_logregisters)
 	{
@@ -6707,7 +6707,7 @@ void BIOS_InitCPUDebuggerText()
 	}
 
 
-	optioninfo[advancedoptions] = 14; //We're diagnostics output!
+	optioninfo[advancedoptions] = 4; //We're diagnostics output!
 	if (BIOS_Settings.diagnosticsportoutput_breakpoint >= 0) //Diagnostics breakpoint specified?
 	{
 		snprintf(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Diagnostics code: %02X, Breakpoint at %02X", diagnosticsportoutput, (BIOS_Settings.diagnosticsportoutput_breakpoint & 0xFF)); //Show the diagnostics output!
@@ -6717,7 +6717,7 @@ void BIOS_InitCPUDebuggerText()
 		snprintf(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Diagnostics code: %02X", diagnosticsportoutput); //Show the diagnostics output!
 	}
 
-	optioninfo[advancedoptions] = 15; //Change Diagnostics Port Breakpoint Timeout!
+	optioninfo[advancedoptions] = 5; //Change Diagnostics Port Breakpoint Timeout!
 	safestrcpy(menuoptions[advancedoptions], sizeof(menuoptions[0]), "Diagnostics Port Breakpoint Timeout: ");
 	switch (BIOS_Settings.diagnosticsportoutput_timeout) //What Diagnostics Port Breakpoint Timeout?
 	{
@@ -6736,7 +6736,7 @@ void BIOS_InitCPUDebuggerText()
 	BIOSMenu_breakpointDisplay(3);
 	BIOSMenu_breakpointDisplay(4);
 
-	optioninfo[advancedoptions] = 21; //Task Breakpoint!
+	optioninfo[advancedoptions] = 7; //Task Breakpoint!
 	safestrcpy(menuoptions[advancedoptions], sizeof(menuoptions[0]), "Task Breakpoint: ");
 	//First, convert the current breakpoint to a string format!
 	switch ((BIOS_Settings.taskBreakpoint >> SETTINGS_TASKBREAKPOINT_ENABLE_SHIFT)) //What mode?
@@ -6761,7 +6761,7 @@ void BIOS_InitCPUDebuggerText()
 	}
 	++advancedoptions; //Increase after!
 
-	optioninfo[advancedoptions] = 27; //FS Breakpoint!
+	optioninfo[advancedoptions] = 9; //FS Breakpoint!
 	safestrcpy(menuoptions[advancedoptions], sizeof(menuoptions[0]), "FS Breakpoint: ");
 	//First, convert the current breakpoint to a string format!
 	switch ((BIOS_Settings.FSBreakpoint >> SETTINGS_FSBREAKPOINT_ENABLE_SHIFT)) //What mode?
@@ -6786,7 +6786,7 @@ void BIOS_InitCPUDebuggerText()
 	}
 	++advancedoptions; //Increase after!
 
-	optioninfo[advancedoptions] = 22; //CR3 Breakpoint!
+	optioninfo[advancedoptions] = 8; //CR3 Breakpoint!
 	safestrcpy(menuoptions[advancedoptions], sizeof(menuoptions[0]), "CR3 Breakpoint: ");
 	//First, convert the current breakpoint to a string format!
 	switch ((BIOS_Settings.CR3breakpoint >> SETTINGS_CR3BREAKPOINT_ENABLE_SHIFT)) //What mode?
@@ -6803,7 +6803,7 @@ void BIOS_InitCPUDebuggerText()
 	}
 	++advancedoptions; //Increase after!
 
-	optioninfo[advancedoptions] = 20; //We're debug advanced log setting!
+	optioninfo[advancedoptions] = 6; //We're debug advanced log setting!
 	safestrcpy(menuoptions[advancedoptions], sizeof(menuoptions[0]), "Debugger advanced log: ");
 	switch (BIOS_Settings.advancedlog)
 	{
@@ -6846,49 +6846,35 @@ void BIOS_CPUDebuggerMenu() //CPU debugger menu!
 	case 11:
 	case 12:
 	case 13:
-	case 14:
-	case 15:
-	case 16:
-	case 17:
-	case 18:
-	case 19:
-	case 20:
-	case 21:
-	case 22:
-	case 23:
-	case 24:
-	case 25:
-	case 26:
-	case 27:
-	case 28: //Valid option?
+	case 14: //Valid option?
 		switch (optioninfo[menuresult]) //What option has been chosen, since we are dynamic size?
 		{
 		//Debugger information
-		case 10: //Debug mode?
+		case 0: //Debug mode?
 			if (Menu_Stat == BIOSMENU_STAT_OK) //Plain select?
 			{
 				BIOS_Menu = 13; //Debug mode option!
 			}
 			break;
-		case 11: //Debugger log setting!
+		case 1: //Debugger log setting!
 			if (Menu_Stat == BIOSMENU_STAT_OK) //Plain select?
 			{
 				BIOS_Menu = 23; //Debugger log setting!
 			}
 			break;
-		case 12: //Debugger state log setting!
+		case 2: //Debugger state log setting!
 			if (Menu_Stat == BIOSMENU_STAT_OK) //Plain select?
 			{
 				BIOS_Menu = 63; //Debugger state log setting!
 			}
 			break;
-		case 13: //Debugger register log setting!
+		case 3: //Debugger register log setting!
 			if (Menu_Stat == BIOSMENU_STAT_OK) //Plain select?
 			{
 				BIOS_Menu = 66; //Debugger register log setting!
 			}
 			break;
-		case 14: //Diagnostics output breakpoint setting!
+		case 4: //Diagnostics output breakpoint setting!
 			if (Menu_Stat == BIOSMENU_STAT_OK) //Plain select?
 			{
 				BIOS_Menu = 57; //Diagnostics Output Breakpoint setting!
@@ -6899,18 +6885,121 @@ void BIOS_CPUDebuggerMenu() //CPU debugger menu!
 				BIOS_Changed = 1; //We've changed!
 			}
 			break; //We do nothing!
-		case 15: //Timeout to be used for breakpoints?
+		case 5: //Timeout to be used for breakpoints?
 			if (Menu_Stat == BIOSMENU_STAT_OK) //Plain select?
 			{
 				if (!EMU_RUNNING) BIOS_Menu = 58; //Timeout to be used for breakpoints?
 			}
 			break;
-		case 16: //Breakpoint
-		case 23: //Breakpoint
-		case 24: //Breakpoint
-		case 25: //Breakpoint
-		case 26: //Breakpoint
-			BPindex = (optioninfo[menuresult] == 16) ? 0 : (optioninfo[menuresult] - 22); //What index?
+		case 6: //Debugger advanced log setting!
+			if (Menu_Stat == BIOSMENU_STAT_OK) //Plain select?
+			{
+				BIOS_Menu = 69; //Debugger register log setting!
+			}
+			break;
+		case 7: //Task Breakpoint
+			if (Menu_Stat == BIOSMENU_STAT_OK) //Plain select?
+			{
+#ifndef IS_PSP
+				//This option fails to compile on the PSP for some unknown reason.
+				BIOS_Menu = 70; //Timeout to be used for breakpoints?
+#endif
+			}
+			else if (Menu_Stat == BIOSMENU_STAT_SQUARE) //SQUARE=Set current address&mode as the breakpoint!
+			{
+				byte mode = 0;
+				word segment;
+				uint_32 offset;
+				lock(LOCK_CPU); //Lock the CPU!
+				switch (GENERALSEGMENT_P(CPU[activeCPU].SEG_DESCRIPTOR[CPU_SEGMENT_TR])) //What mode are we?
+				{
+				case 0: //None?
+					BIOS_Settings.taskBreakpoint = 0; //Disabled!
+					break;
+				default: //Enabled?
+					mode = 1; //Enable!
+					break;
+				}
+				if (mode) //Enabled?
+				{
+					segment = REG_TR; //CS!
+					offset = (uint_32)CPU[activeCPU].SEG_DESCRIPTOR[CPU_SEGMENT_TR].PRECALCS.base; //Our offset!
+					BIOS_Settings.taskBreakpoint = (((uint_64)mode & 1) << SETTINGS_TASKBREAKPOINT_ENABLE_SHIFT) | (((uint_64)segment & SETTINGS_TASKBREAKPOINT_SEGMENT_MASK) << SETTINGS_TASKBREAKPOINT_SEGMENT_SHIFT) | ((uint_64)offset & SETTINGS_TASKBREAKPOINT_BASE_MASK); //Set the new breakpoint!
+					BIOS_Changed = 1; //We've changed!
+				}
+				unlock(LOCK_CPU); //Finished with the CPU!
+			}
+			break;
+		case 8: //CR3 Breakpoint
+			if (Menu_Stat == BIOSMENU_STAT_OK) //Plain select?
+			{
+#ifndef IS_PSP
+				//This option fails to compile on the PSP for some unknown reason.
+				BIOS_Menu = 71; //Timeout to be used for breakpoints?
+#endif
+			}
+			else if (Menu_Stat == BIOSMENU_STAT_SQUARE) //SQUARE=Set current address&mode as the breakpoint!
+			{
+				byte mode = 0;
+				uint_32 offset;
+				lock(LOCK_CPU); //Lock the CPU!
+				switch (getcpumode()) //What mode are we?
+				{
+				case CPU_MODE_REAL: //None?
+					BIOS_Settings.CR3breakpoint = 0; //Disabled!
+					break;
+				default: //Enabled?
+					mode = 1; //Enable!
+					break;
+				}
+				if (mode) //Enabled?
+				{
+					offset = CPU[activeCPU].registers->CR3; //Our offset!
+					BIOS_Settings.CR3breakpoint = (((uint_64)mode & 3) << SETTINGS_CR3BREAKPOINT_ENABLE_SHIFT) | ((uint_64)offset & SETTINGS_CR3BREAKPOINT_BASE_MASK); //Set the new breakpoint!
+					BIOS_Changed = 1; //We've changed!
+				}
+				unlock(LOCK_CPU); //Finished with the CPU!
+			}
+			break;
+		case 9: //FS Breakpoint
+			if (Menu_Stat == BIOSMENU_STAT_OK) //Plain select?
+			{
+#ifndef IS_PSP
+				//This option fails to compile on the PSP for some unknown reason.
+				BIOS_Menu = 81; //Timeout to be used for breakpoints?
+#endif
+			}
+			else if (Menu_Stat == BIOSMENU_STAT_SQUARE) //SQUARE=Set current address&mode as the breakpoint!
+			{
+				byte mode = 0;
+				word segment;
+				uint_32 offset;
+				lock(LOCK_CPU); //Lock the CPU!
+				switch (GENERALSEGMENT_P(CPU[activeCPU].SEG_DESCRIPTOR[CPU_SEGMENT_TR])) //What mode are we?
+				{
+				case 0: //None?
+					BIOS_Settings.FSBreakpoint = 0; //Disabled!
+					break;
+				default: //Enabled?
+					mode = 1; //Enable!
+					break;
+				}
+				if (mode) //Enabled?
+				{
+					segment = REG_FS; //CS!
+					offset = (uint_32)CPU[activeCPU].SEG_DESCRIPTOR[CPU_SEGMENT_FS].PRECALCS.base; //Our offset!
+					BIOS_Settings.FSBreakpoint = (((uint_64)mode & 1) << SETTINGS_FSBREAKPOINT_ENABLE_SHIFT) | (((uint_64)segment & SETTINGS_FSBREAKPOINT_SEGMENT_MASK) << SETTINGS_FSBREAKPOINT_SEGMENT_SHIFT) | ((uint_64)offset & SETTINGS_FSBREAKPOINT_BASE_MASK); //Set the new breakpoint!
+					BIOS_Changed = 1; //We've changed!
+				}
+				unlock(LOCK_CPU); //Finished with the CPU!
+			}
+			break;
+		case 10: //Breakpoint
+		case 11: //Breakpoint
+		case 12: //Breakpoint
+		case 13: //Breakpoint
+		case 14: //Breakpoint
+			BPindex = (optioninfo[menuresult] - 10); //What index?
 			if (Menu_Stat == BIOSMENU_STAT_OK) //Plain select?
 			{
 #ifndef IS_PSP
@@ -6944,109 +7033,6 @@ void BIOS_CPUDebuggerMenu() //CPU debugger menu!
 				offset = mode == 1 ? REG_IP : REG_EIP; //Our offset!
 				BIOS_Settings.breakpoint[BPindex] = (((uint_64)mode & 3) << SETTINGS_BREAKPOINT_MODE_SHIFT) | (((uint_64)segment & SETTINGS_BREAKPOINT_SEGMENT_MASK) << SETTINGS_BREAKPOINT_SEGMENT_SHIFT) | ((uint_64)offset & SETTINGS_BREAKPOINT_OFFSET_MASK); //Set the new breakpoint!
 				BIOS_Changed = 1; //We've changed!
-				unlock(LOCK_CPU); //Finished with the CPU!
-			}
-			break;
-		case 20: //Debugger advanced log setting!
-			if (Menu_Stat == BIOSMENU_STAT_OK) //Plain select?
-			{
-				BIOS_Menu = 69; //Debugger register log setting!
-			}
-			break;
-		case 21: //Task Breakpoint
-			if (Menu_Stat == BIOSMENU_STAT_OK) //Plain select?
-			{
-#ifndef IS_PSP
-				//This option fails to compile on the PSP for some unknown reason.
-				BIOS_Menu = 70; //Timeout to be used for breakpoints?
-#endif
-			}
-			else if (Menu_Stat == BIOSMENU_STAT_SQUARE) //SQUARE=Set current address&mode as the breakpoint!
-			{
-				byte mode = 0;
-				word segment;
-				uint_32 offset;
-				lock(LOCK_CPU); //Lock the CPU!
-				switch (GENERALSEGMENT_P(CPU[activeCPU].SEG_DESCRIPTOR[CPU_SEGMENT_TR])) //What mode are we?
-				{
-				case 0: //None?
-					BIOS_Settings.taskBreakpoint = 0; //Disabled!
-					break;
-				default: //Enabled?
-					mode = 1; //Enable!
-					break;
-				}
-				if (mode) //Enabled?
-				{
-					segment = REG_TR; //CS!
-					offset = (uint_32)CPU[activeCPU].SEG_DESCRIPTOR[CPU_SEGMENT_TR].PRECALCS.base; //Our offset!
-					BIOS_Settings.taskBreakpoint = (((uint_64)mode & 1) << SETTINGS_TASKBREAKPOINT_ENABLE_SHIFT) | (((uint_64)segment & SETTINGS_TASKBREAKPOINT_SEGMENT_MASK) << SETTINGS_TASKBREAKPOINT_SEGMENT_SHIFT) | ((uint_64)offset & SETTINGS_TASKBREAKPOINT_BASE_MASK); //Set the new breakpoint!
-					BIOS_Changed = 1; //We've changed!
-				}
-				unlock(LOCK_CPU); //Finished with the CPU!
-			}
-			break;
-		case 22: //CR3 Breakpoint
-			if (Menu_Stat == BIOSMENU_STAT_OK) //Plain select?
-			{
-#ifndef IS_PSP
-				//This option fails to compile on the PSP for some unknown reason.
-				BIOS_Menu = 71; //Timeout to be used for breakpoints?
-#endif
-			}
-			else if (Menu_Stat == BIOSMENU_STAT_SQUARE) //SQUARE=Set current address&mode as the breakpoint!
-			{
-				byte mode = 0;
-				uint_32 offset;
-				lock(LOCK_CPU); //Lock the CPU!
-				switch (getcpumode()) //What mode are we?
-				{
-				case CPU_MODE_REAL: //None?
-					BIOS_Settings.CR3breakpoint = 0; //Disabled!
-					break;
-				default: //Enabled?
-					mode = 1; //Enable!
-					break;
-				}
-				if (mode) //Enabled?
-				{
-					offset = CPU[activeCPU].registers->CR3; //Our offset!
-					BIOS_Settings.CR3breakpoint = (((uint_64)mode & 3) << SETTINGS_CR3BREAKPOINT_ENABLE_SHIFT) | ((uint_64)offset & SETTINGS_CR3BREAKPOINT_BASE_MASK); //Set the new breakpoint!
-					BIOS_Changed = 1; //We've changed!
-				}
-				unlock(LOCK_CPU); //Finished with the CPU!
-			}
-			break;
-		case 27: //FS Breakpoint
-			if (Menu_Stat == BIOSMENU_STAT_OK) //Plain select?
-			{
-#ifndef IS_PSP
-				//This option fails to compile on the PSP for some unknown reason.
-				BIOS_Menu = 81; //Timeout to be used for breakpoints?
-#endif
-			}
-			else if (Menu_Stat == BIOSMENU_STAT_SQUARE) //SQUARE=Set current address&mode as the breakpoint!
-			{
-				byte mode = 0;
-				word segment;
-				uint_32 offset;
-				lock(LOCK_CPU); //Lock the CPU!
-				switch (GENERALSEGMENT_P(CPU[activeCPU].SEG_DESCRIPTOR[CPU_SEGMENT_TR])) //What mode are we?
-				{
-				case 0: //None?
-					BIOS_Settings.FSBreakpoint = 0; //Disabled!
-					break;
-				default: //Enabled?
-					mode = 1; //Enable!
-					break;
-				}
-				if (mode) //Enabled?
-				{
-					segment = REG_FS; //CS!
-					offset = (uint_32)CPU[activeCPU].SEG_DESCRIPTOR[CPU_SEGMENT_FS].PRECALCS.base; //Our offset!
-					BIOS_Settings.FSBreakpoint = (((uint_64)mode & 1) << SETTINGS_FSBREAKPOINT_ENABLE_SHIFT) | (((uint_64)segment & SETTINGS_FSBREAKPOINT_SEGMENT_MASK) << SETTINGS_FSBREAKPOINT_SEGMENT_SHIFT) | ((uint_64)offset & SETTINGS_FSBREAKPOINT_BASE_MASK); //Set the new breakpoint!
-					BIOS_Changed = 1; //We've changed!
-				}
 				unlock(LOCK_CPU); //Finished with the CPU!
 			}
 			break;
