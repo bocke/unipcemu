@@ -2122,6 +2122,8 @@ void BIOS_InstalledCPUOption() //Manages the installed CPU!
 	BIOS_Menu = 35; //Return to CPU menu!
 }
 
+extern byte NET_READY; //Is the network support installed?
+
 void BIOS_InitAdvancedText()
 {
 	advancedoptions = 0; //Init!
@@ -2215,35 +2217,38 @@ setBackgroundpolicytext: //For fixing it!
 	optioninfo[advancedoptions] = 9; //RTC mode!
 	snprintf(menuoptions[advancedoptions++],sizeof(menuoptions[0]), "RTC mode: %s", currentCMOS->cycletiming?"Cycle-accurate":"Realtime");
 
-	optioninfo[advancedoptions] = 10; //Null modem!
-	safestrcpy(menuoptions[advancedoptions], sizeof(menuoptions[0]), "Null modem mode: ");
-	switch (BIOS_Settings.nullmodem) //Null modem mode?
+	if (NET_READY) //Is network support installed?
 	{
-	case 0:
-		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Normal modem");
-		break;
-	case 1:
-		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Simple nullmodem cable");
-		break;
-	case 2:
-		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Nullmodem cable with line signalling");
-		break;
-	default: //Error: fix it!
-	case 3:
-		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Nullmodem cable with line on phonebook #0");
-		break;
-	}
-
-	if (modem_passthrough()) //Passthrough mode?
-	{
-		optioninfo[advancedoptions] = 11; //Connect/disconnect the passthrough!
-		if (modem_connected()) //Connected? Disconnect!
+		optioninfo[advancedoptions] = 10; //Null modem!
+		safestrcpy(menuoptions[advancedoptions], sizeof(menuoptions[0]), "Null modem mode: ");
+		switch (BIOS_Settings.nullmodem) //Null modem mode?
 		{
-			snprintf(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Disconnect the passthrough");
+		case 0:
+			safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Normal modem");
+			break;
+		case 1:
+			safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Simple nullmodem cable");
+			break;
+		case 2:
+			safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Nullmodem cable with line signalling");
+			break;
+		default: //Error: fix it!
+		case 3:
+			safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Nullmodem cable with line on phonebook #0");
+			break;
 		}
-		else
+
+		if (modem_passthrough()) //Passthrough mode?
 		{
-			snprintf(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Connect the passthrough");
+			optioninfo[advancedoptions] = 11; //Connect/disconnect the passthrough!
+			if (modem_connected()) //Connected? Disconnect!
+			{
+				snprintf(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Disconnect the passthrough");
+			}
+			else
+			{
+				snprintf(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Connect the passthrough");
+			}
 		}
 	}
 }
