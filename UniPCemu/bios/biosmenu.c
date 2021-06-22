@@ -251,6 +251,7 @@ void BIOS_video_blackpedestal(); //Black pedestal
 void BIOS_gamingModeButtonsJoystickEnable(); //Gaming Mode Joystick Enable
 void BIOS_modemListenPort(); //Modem Listen Port
 void BIOS_analogMinRange(); //Analog minimum range
+void BIOS_CPUDebuggerMenu(); //CPU debugger menu!
 
 //First, global handler!
 Handler BIOS_Menus[] =
@@ -349,6 +350,7 @@ Handler BIOS_Menus[] =
 	,BIOS_gamingModeButtonsJoystickEnable //Gaming Mode Joystick Enable is #91!
 	,BIOS_modemListenPort //Modem listen port is #92!
 	,BIOS_analogMinRange //Analog minimum range is #93!
+	,BIOS_CPUDebuggerMenu //CPU debugger menu is #94!
 };
 
 //Not implemented?
@@ -4079,7 +4081,7 @@ void BIOS_DebugMode()
 		}
 		break;
 	}
-	BIOS_Menu = 35; //Goto CPU menu!
+	BIOS_Menu = 94; //Goto CPU Debugger menu!
 }
 
 void BIOS_ExecutionMode()
@@ -4240,14 +4242,14 @@ void BIOS_DebugLog()
 		}
 		break;
 	}
-	BIOS_Menu = 35; //Goto CPU menu!
+	BIOS_Menu = 94; //Goto CPU Debugger menu!
 }
 
 void BIOS_DebugState()
 {
 	BIOS_Settings.debugger_logstates = !BIOS_Settings.debugger_logstates;
 	BIOS_Changed = 1; //We're changed!
-	BIOS_Menu = 35; //Goto CPU menu!
+	BIOS_Menu = 94; //Goto CPU Debugger menu!
 }
 
 extern byte force_memoryredetect; //From the MMU: force memory redetect on load?
@@ -6499,208 +6501,6 @@ setShowCPUSpeed:
 		break;
 	}
 
-	optioninfo[advancedoptions] = 10; //Debug mode!
-	safestrcpy(menuoptions[advancedoptions],sizeof(menuoptions[0]), "Debug mode: ");
-	switch (BIOS_Settings.debugmode) //What debug mode is active?
-	{
-	case DEBUGMODE_NONE:
-		safestrcat(menuoptions[advancedoptions++],sizeof(menuoptions[0]), "No debugger enabled"); //Set filename from options!
-		break;
-	case DEBUGMODE_RTRIGGER:
-		safestrcat(menuoptions[advancedoptions++],sizeof(menuoptions[0]), "Enabled, RTrigger=Step"); //Set filename from options!
-		break;
-	case DEBUGMODE_STEP:
-		safestrcat(menuoptions[advancedoptions++],sizeof(menuoptions[0]), "Enabled, Step through"); //Set filename from options!
-		break;
-	case DEBUGMODE_SHOW_RUN:
-		safestrcat(menuoptions[advancedoptions++],sizeof(menuoptions[0]), "Enabled, just run, ignore shoulder buttons"); //Set filename from options!
-		break;
-	case DEBUGMODE_NOSHOW_RUN:
-		safestrcat(menuoptions[advancedoptions++],sizeof(menuoptions[0]), "Enabled, just run, don't show, ignore shoulder buttons"); //Set filename from options!
-		break;
-	default:
-		safestrcat(menuoptions[advancedoptions++],sizeof(menuoptions[0]), "<UNKNOWN. CHECK SETTINGS VERSION>");
-		break;
-	}
-
-	optioninfo[advancedoptions] = 11; //We're debug log setting!
-	safestrcpy(menuoptions[advancedoptions],sizeof(menuoptions[0]), "Debugger log: ");
-	switch (BIOS_Settings.debugger_log)
-	{
-	case DEBUGGERLOG_NONE: //None
-		safestrcat(menuoptions[advancedoptions++],sizeof(menuoptions[0]), "Don't log"); //Set filename from options!
-		break;
-	case DEBUGGERLOG_DEBUGGING: //Only when debugging
-		safestrcat(menuoptions[advancedoptions++],sizeof(menuoptions[0]), "Only when debugging"); //Set filename from options!
-		break;
-	case DEBUGGERLOG_ALWAYS: //Always
-		safestrcat(menuoptions[advancedoptions++],sizeof(menuoptions[0]), "Always log"); //Set filename from options!
-		break;
-	case DEBUGGERLOG_INT: //Interrupt calls only
-		safestrcat(menuoptions[advancedoptions++],sizeof(menuoptions[0]), "Interrupt calls only");
-		break;
-	case DEBUGGERLOG_DIAGNOSTICCODES: //Diagnostic codes only
-		safestrcat(menuoptions[advancedoptions++],sizeof(menuoptions[0]), "BIOS Diagnostic codes only");
-		break;
-	case DEBUGGERLOG_ALWAYS_NOREGISTERS: //Always, no register state!
-		safestrcat(menuoptions[advancedoptions++],sizeof(menuoptions[0]), "Always log, no register state");
-		break;
-	case DEBUGGERLOG_ALWAYS_DURINGSKIPSTEP:
-		safestrcat(menuoptions[advancedoptions++],sizeof(menuoptions[0]), "Always log, even during skipping");
-		break;
-	case DEBUGGERLOG_ALWAYS_SINGLELINE:
-		safestrcat(menuoptions[advancedoptions++],sizeof(menuoptions[0]), "Always log, even during skipping, single line format");
-		break;
-	case DEBUGGERLOG_DEBUGGING_SINGLELINE: //Only when debugging, single line format
-		safestrcat(menuoptions[advancedoptions++],sizeof(menuoptions[0]), "Only when debugging, single line format");
-		break;
-	case DEBUGGERLOG_ALWAYS_SINGLELINE_SIMPLIFIED:
-		safestrcat(menuoptions[advancedoptions++],sizeof(menuoptions[0]), "Always log, even during skipping, single line format, simplified");
-		break;
-	case DEBUGGERLOG_DEBUGGING_SINGLELINE_SIMPLIFIED: //Only when debugging, single line format
-		safestrcat(menuoptions[advancedoptions++],sizeof(menuoptions[0]), "Only when debugging, single line format, simplified");
-		break;
-	case DEBUGGERLOG_ALWAYS_COMMONLOGFORMAT: //Always log, common log format
-		safestrcat(menuoptions[advancedoptions++],sizeof(menuoptions[0]), "Always log, common log format");
-		break;
-	case DEBUGGERLOG_ALWAYS_DURINGSKIPSTEP_COMMONLOGFORMAT: //Always log, even during skipping, common log format
-		safestrcat(menuoptions[advancedoptions++],sizeof(menuoptions[0]), "Always log, even during skipping, common log format");
-		break;
-	case DEBUGGERLOG_DEBUGGING_COMMONLOGFORMAT: //Only when debugging, common log format
-		safestrcat(menuoptions[advancedoptions++],sizeof(menuoptions[0]), "Only when debugging, common log format");
-		break;
-	default:
-		safestrcat(menuoptions[advancedoptions++],sizeof(menuoptions[0]), "Never"); //Set filename from options!
-		break;
-	}
-
-	optioninfo[advancedoptions] = 12; //We're debug log setting!
-	safestrcpy(menuoptions[advancedoptions],sizeof(menuoptions[0]), "Debugger state log: ");
-	switch (BIOS_Settings.debugger_logstates)
-	{
-	case DEBUGGERSTATELOG_DISABLED: //None
-		safestrcat(menuoptions[advancedoptions++],sizeof(menuoptions[0]), "Disabled"); //Set filename from options!
-		break;
-	case DEBUGGERSTATELOG_ENABLED: //Only when debugging
-		safestrcat(menuoptions[advancedoptions++],sizeof(menuoptions[0]), "Enabled"); //Set filename from options!
-		break;
-	default:
-		safestrcat(menuoptions[advancedoptions++],sizeof(menuoptions[0]), "<UNKNOWN. CHECK SETTINGS VERSION>"); //Set filename from options!
-		break;
-	}
-
-	optioninfo[advancedoptions] = 13; //We're debug log setting!
-	safestrcpy(menuoptions[advancedoptions],sizeof(menuoptions[0]), "Debugger register log: ");
-	switch (BIOS_Settings.debugger_logregisters)
-	{
-	case DEBUGGERSTATELOG_DISABLED: //None
-		safestrcat(menuoptions[advancedoptions++],sizeof(menuoptions[0]), "Disabled"); //Set filename from options!
-		break;
-	case DEBUGGERSTATELOG_ENABLED: //Only when debugging
-		safestrcat(menuoptions[advancedoptions++],sizeof(menuoptions[0]), "Enabled"); //Set filename from options!
-		break;
-	default:
-		safestrcat(menuoptions[advancedoptions++],sizeof(menuoptions[0]), "<UNKNOWN. CHECK SETTINGS VERSION>"); //Set filename from options!
-		break;
-	}
-
-
-	optioninfo[advancedoptions] = 14; //We're diagnostics output!
-	if (BIOS_Settings.diagnosticsportoutput_breakpoint>=0) //Diagnostics breakpoint specified?
-	{
-		snprintf(menuoptions[advancedoptions++],sizeof(menuoptions[0]), "Diagnostics code: %02X, Breakpoint at %02X", diagnosticsportoutput,(BIOS_Settings.diagnosticsportoutput_breakpoint&0xFF)); //Show the diagnostics output!
-	}
-	else
-	{
-		snprintf(menuoptions[advancedoptions++],sizeof(menuoptions[0]),"Diagnostics code: %02X",diagnosticsportoutput); //Show the diagnostics output!
-	}
-
-	optioninfo[advancedoptions] = 15; //Change Diagnostics Port Breakpoint Timeout!
-	safestrcpy(menuoptions[advancedoptions],sizeof(menuoptions[0]), "Diagnostics Port Breakpoint Timeout: ");
-	switch (BIOS_Settings.diagnosticsportoutput_timeout) //What Diagnostics Port Breakpoint Timeout?
-	{
-	case 0: //Default cycles?
-		safestrcat(menuoptions[advancedoptions++],sizeof(menuoptions[0]), "First instruction"); //Default!
-		break;
-	default: //Limited cycles?
-		safescatnprintf(menuoptions[advancedoptions],sizeof(menuoptions[0]), "At " LONGLONGSPRINTF " instructions", ((LONG64SPRINTF)(BIOS_Settings.diagnosticsportoutput_timeout+1))); //Cycle limit!
-		++advancedoptions;
-		break;
-	}
-
-	BIOSMenu_breakpointDisplay(0);
-	BIOSMenu_breakpointDisplay(1);
-	BIOSMenu_breakpointDisplay(2);
-	BIOSMenu_breakpointDisplay(3);
-	BIOSMenu_breakpointDisplay(4);
-
-	optioninfo[advancedoptions] = 21; //Task Breakpoint!
-	safestrcpy(menuoptions[advancedoptions],sizeof(menuoptions[0]), "Task Breakpoint: ");
-	//First, convert the current breakpoint to a string format!
-	switch ((BIOS_Settings.taskBreakpoint>>SETTINGS_TASKBREAKPOINT_ENABLE_SHIFT)) //What mode?
-	{
-		case 0: //No breakpoint?
-			safestrcat(menuoptions[advancedoptions],sizeof(menuoptions[0]),"Not set"); //seg16:offs16 default!
-			break;
-		case 1: //Enabled?
-			safescatnprintf(menuoptions[advancedoptions],sizeof(menuoptions[0]),"%04X:%08X",(word)((BIOS_Settings.taskBreakpoint>>SETTINGS_TASKBREAKPOINT_SEGMENT_SHIFT)&SETTINGS_TASKBREAKPOINT_SEGMENT_MASK),(uint_32)(BIOS_Settings.taskBreakpoint&SETTINGS_TASKBREAKPOINT_BASE_MASK)); //seg16:offs16!
-			if ((BIOS_Settings.taskBreakpoint>>SETTINGS_TASKBREAKPOINT_IGNOREBASE_SHIFT)&1) //Ignore Base?
-			{
-				safestrcat(menuoptions[advancedoptions],sizeof(menuoptions[0]),"I"); //Ignore EIP!
-			}
-			else if ((BIOS_Settings.taskBreakpoint >> SETTINGS_TASKBREAKPOINT_IGNORESEGMENT_SHIFT) & 1) //Ignore TR?
-			{
-				safestrcat(menuoptions[advancedoptions], sizeof(menuoptions[0]), "O"); //Ignore TR!
-			}
-			break;
-		default: //Just in case!
-			safestrcat(menuoptions[advancedoptions],sizeof(menuoptions[0]), "<UNKNOWN. CHECK SETTINGS VERSION>");
-			break;
-	}
-	++advancedoptions; //Increase after!
-
-	optioninfo[advancedoptions] = 27; //FS Breakpoint!
-	safestrcpy(menuoptions[advancedoptions], sizeof(menuoptions[0]), "FS Breakpoint: ");
-	//First, convert the current breakpoint to a string format!
-	switch ((BIOS_Settings.FSBreakpoint >> SETTINGS_FSBREAKPOINT_ENABLE_SHIFT)) //What mode?
-	{
-	case 0: //No breakpoint?
-		safestrcat(menuoptions[advancedoptions], sizeof(menuoptions[0]), "Not set"); //seg16:offs16 default!
-		break;
-	case 1: //Enabled?
-		safescatnprintf(menuoptions[advancedoptions], sizeof(menuoptions[0]), "%04X:%08X", (word)((BIOS_Settings.FSBreakpoint >> SETTINGS_TASKBREAKPOINT_SEGMENT_SHIFT) & SETTINGS_TASKBREAKPOINT_SEGMENT_MASK), (uint_32)(BIOS_Settings.FSBreakpoint & SETTINGS_TASKBREAKPOINT_BASE_MASK)); //seg16:offs16!
-		if ((BIOS_Settings.FSBreakpoint >> SETTINGS_FSBREAKPOINT_IGNOREBASE_SHIFT) & 1) //Ignore Base?
-		{
-			safestrcat(menuoptions[advancedoptions], sizeof(menuoptions[0]), "I"); //Ignore EIP!
-		}
-		else if ((BIOS_Settings.FSBreakpoint >> SETTINGS_FSBREAKPOINT_IGNORESEGMENT_SHIFT) & 1) //Ignore TR?
-		{
-			safestrcat(menuoptions[advancedoptions], sizeof(menuoptions[0]), "O"); //Ignore TR!
-		}
-		break;
-	default: //Just in case!
-		safestrcat(menuoptions[advancedoptions], sizeof(menuoptions[0]), "<UNKNOWN. CHECK SETTINGS VERSION>");
-		break;
-	}
-	++advancedoptions; //Increase after!
-
-	optioninfo[advancedoptions] = 22; //CR3 Breakpoint!
-	safestrcpy(menuoptions[advancedoptions],sizeof(menuoptions[0]), "CR3 Breakpoint: ");
-	//First, convert the current breakpoint to a string format!
-	switch ((BIOS_Settings.CR3breakpoint>>SETTINGS_CR3BREAKPOINT_ENABLE_SHIFT)) //What mode?
-	{
-		case 0: //No breakpoint?
-			safestrcat(menuoptions[advancedoptions],sizeof(menuoptions[0]),"Not set"); //seg16:offs16 default!
-			break;
-		case 1: //Enabled?
-			safescatnprintf(menuoptions[advancedoptions],sizeof(menuoptions[0]),"%08X",(uint_32)(BIOS_Settings.CR3breakpoint&SETTINGS_CR3BREAKPOINT_BASE_MASK)); //seg16:offs16!
-			break;
-		default: //Just in case!
-			safestrcat(menuoptions[advancedoptions],sizeof(menuoptions[0]), "<UNKNOWN. CHECK SETTINGS VERSION>");
-			break;
-	}
-	++advancedoptions; //Increase after!
-
 setArchitecture: //For fixing it!
 	optioninfo[advancedoptions] = 17; //Architecture!
 	safestrcpy(menuoptions[advancedoptions],sizeof(menuoptions[0]), "Architecture: ");
@@ -6770,20 +6570,6 @@ setInboardInitialWaitstates: //For fixing it!
 		break;
 	}
 
-	optioninfo[advancedoptions] = 20; //We're debug advanced log setting!
-	safestrcpy(menuoptions[advancedoptions], sizeof(menuoptions[0]), "Debugger advanced log: ");
-	switch (BIOS_Settings.advancedlog)
-	{
-	case DEBUGGERSTATELOG_DISABLED: //None
-		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Disable advanced logging"); //Set filename from options!
-		break;
-	case DEBUGGERSTATELOG_ENABLED: //Only when debugging
-		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Use advanced logging"); //Set filename from options!
-		break;
-	default:
-		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "<UNKNOWN. CHECK SETTINGS VERSION>"); //Set filename from options!
-		break;
-	}
 	optioninfo[advancedoptions] = 28; //We're CPUID mode setting!
 	safestrcpy(menuoptions[advancedoptions], sizeof(menuoptions[0]), "CPUID mode: ");
 	switch (*(getarchCPUIDmode()))
@@ -6801,9 +6587,478 @@ setInboardInitialWaitstates: //For fixing it!
 		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "<UNKNOWN. CHECK SETTINGS VERSION>"); //Set filename from options!
 		break;
 	}
+
+	optioninfo[advancedoptions] = 10; //We're debugger settings!
+	safestrcpy(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Debugger settings");
+}
+
+void BIOS_InitCPUDebuggerText()
+{
+	advancedoptions = 0; //Init!
+	int i;
+	for (i = 0; i < 20; i++) //Clear all possibilities!
+	{
+		cleardata(&menuoptions[i][0], sizeof(menuoptions[i])); //Init!
+	}
+
+	optioninfo[advancedoptions] = 10; //Debug mode!
+	safestrcpy(menuoptions[advancedoptions], sizeof(menuoptions[0]), "Debug mode: ");
+	switch (BIOS_Settings.debugmode) //What debug mode is active?
+	{
+	case DEBUGMODE_NONE:
+		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "No debugger enabled"); //Set filename from options!
+		break;
+	case DEBUGMODE_RTRIGGER:
+		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Enabled, RTrigger=Step"); //Set filename from options!
+		break;
+	case DEBUGMODE_STEP:
+		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Enabled, Step through"); //Set filename from options!
+		break;
+	case DEBUGMODE_SHOW_RUN:
+		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Enabled, just run, ignore shoulder buttons"); //Set filename from options!
+		break;
+	case DEBUGMODE_NOSHOW_RUN:
+		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Enabled, just run, don't show, ignore shoulder buttons"); //Set filename from options!
+		break;
+	default:
+		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "<UNKNOWN. CHECK SETTINGS VERSION>");
+		break;
+	}
+
+	optioninfo[advancedoptions] = 11; //We're debug log setting!
+	safestrcpy(menuoptions[advancedoptions], sizeof(menuoptions[0]), "Debugger log: ");
+	switch (BIOS_Settings.debugger_log)
+	{
+	case DEBUGGERLOG_NONE: //None
+		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Don't log"); //Set filename from options!
+		break;
+	case DEBUGGERLOG_DEBUGGING: //Only when debugging
+		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Only when debugging"); //Set filename from options!
+		break;
+	case DEBUGGERLOG_ALWAYS: //Always
+		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Always log"); //Set filename from options!
+		break;
+	case DEBUGGERLOG_INT: //Interrupt calls only
+		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Interrupt calls only");
+		break;
+	case DEBUGGERLOG_DIAGNOSTICCODES: //Diagnostic codes only
+		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "BIOS Diagnostic codes only");
+		break;
+	case DEBUGGERLOG_ALWAYS_NOREGISTERS: //Always, no register state!
+		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Always log, no register state");
+		break;
+	case DEBUGGERLOG_ALWAYS_DURINGSKIPSTEP:
+		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Always log, even during skipping");
+		break;
+	case DEBUGGERLOG_ALWAYS_SINGLELINE:
+		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Always log, even during skipping, single line format");
+		break;
+	case DEBUGGERLOG_DEBUGGING_SINGLELINE: //Only when debugging, single line format
+		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Only when debugging, single line format");
+		break;
+	case DEBUGGERLOG_ALWAYS_SINGLELINE_SIMPLIFIED:
+		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Always log, even during skipping, single line format, simplified");
+		break;
+	case DEBUGGERLOG_DEBUGGING_SINGLELINE_SIMPLIFIED: //Only when debugging, single line format
+		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Only when debugging, single line format, simplified");
+		break;
+	case DEBUGGERLOG_ALWAYS_COMMONLOGFORMAT: //Always log, common log format
+		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Always log, common log format");
+		break;
+	case DEBUGGERLOG_ALWAYS_DURINGSKIPSTEP_COMMONLOGFORMAT: //Always log, even during skipping, common log format
+		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Always log, even during skipping, common log format");
+		break;
+	case DEBUGGERLOG_DEBUGGING_COMMONLOGFORMAT: //Only when debugging, common log format
+		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Only when debugging, common log format");
+		break;
+	default:
+		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Never"); //Set filename from options!
+		break;
+	}
+
+	optioninfo[advancedoptions] = 12; //We're debug log setting!
+	safestrcpy(menuoptions[advancedoptions], sizeof(menuoptions[0]), "Debugger state log: ");
+	switch (BIOS_Settings.debugger_logstates)
+	{
+	case DEBUGGERSTATELOG_DISABLED: //None
+		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Disabled"); //Set filename from options!
+		break;
+	case DEBUGGERSTATELOG_ENABLED: //Only when debugging
+		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Enabled"); //Set filename from options!
+		break;
+	default:
+		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "<UNKNOWN. CHECK SETTINGS VERSION>"); //Set filename from options!
+		break;
+	}
+
+	optioninfo[advancedoptions] = 13; //We're debug log setting!
+	safestrcpy(menuoptions[advancedoptions], sizeof(menuoptions[0]), "Debugger register log: ");
+	switch (BIOS_Settings.debugger_logregisters)
+	{
+	case DEBUGGERSTATELOG_DISABLED: //None
+		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Disabled"); //Set filename from options!
+		break;
+	case DEBUGGERSTATELOG_ENABLED: //Only when debugging
+		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Enabled"); //Set filename from options!
+		break;
+	default:
+		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "<UNKNOWN. CHECK SETTINGS VERSION>"); //Set filename from options!
+		break;
+	}
+
+
+	optioninfo[advancedoptions] = 14; //We're diagnostics output!
+	if (BIOS_Settings.diagnosticsportoutput_breakpoint >= 0) //Diagnostics breakpoint specified?
+	{
+		snprintf(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Diagnostics code: %02X, Breakpoint at %02X", diagnosticsportoutput, (BIOS_Settings.diagnosticsportoutput_breakpoint & 0xFF)); //Show the diagnostics output!
+	}
+	else
+	{
+		snprintf(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Diagnostics code: %02X", diagnosticsportoutput); //Show the diagnostics output!
+	}
+
+	optioninfo[advancedoptions] = 15; //Change Diagnostics Port Breakpoint Timeout!
+	safestrcpy(menuoptions[advancedoptions], sizeof(menuoptions[0]), "Diagnostics Port Breakpoint Timeout: ");
+	switch (BIOS_Settings.diagnosticsportoutput_timeout) //What Diagnostics Port Breakpoint Timeout?
+	{
+	case 0: //Default cycles?
+		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "First instruction"); //Default!
+		break;
+	default: //Limited cycles?
+		safescatnprintf(menuoptions[advancedoptions], sizeof(menuoptions[0]), "At " LONGLONGSPRINTF " instructions", ((LONG64SPRINTF)(BIOS_Settings.diagnosticsportoutput_timeout + 1))); //Cycle limit!
+		++advancedoptions;
+		break;
+	}
+
+	BIOSMenu_breakpointDisplay(0);
+	BIOSMenu_breakpointDisplay(1);
+	BIOSMenu_breakpointDisplay(2);
+	BIOSMenu_breakpointDisplay(3);
+	BIOSMenu_breakpointDisplay(4);
+
+	optioninfo[advancedoptions] = 21; //Task Breakpoint!
+	safestrcpy(menuoptions[advancedoptions], sizeof(menuoptions[0]), "Task Breakpoint: ");
+	//First, convert the current breakpoint to a string format!
+	switch ((BIOS_Settings.taskBreakpoint >> SETTINGS_TASKBREAKPOINT_ENABLE_SHIFT)) //What mode?
+	{
+	case 0: //No breakpoint?
+		safestrcat(menuoptions[advancedoptions], sizeof(menuoptions[0]), "Not set"); //seg16:offs16 default!
+		break;
+	case 1: //Enabled?
+		safescatnprintf(menuoptions[advancedoptions], sizeof(menuoptions[0]), "%04X:%08X", (word)((BIOS_Settings.taskBreakpoint >> SETTINGS_TASKBREAKPOINT_SEGMENT_SHIFT) & SETTINGS_TASKBREAKPOINT_SEGMENT_MASK), (uint_32)(BIOS_Settings.taskBreakpoint & SETTINGS_TASKBREAKPOINT_BASE_MASK)); //seg16:offs16!
+		if ((BIOS_Settings.taskBreakpoint >> SETTINGS_TASKBREAKPOINT_IGNOREBASE_SHIFT) & 1) //Ignore Base?
+		{
+			safestrcat(menuoptions[advancedoptions], sizeof(menuoptions[0]), "I"); //Ignore EIP!
+		}
+		else if ((BIOS_Settings.taskBreakpoint >> SETTINGS_TASKBREAKPOINT_IGNORESEGMENT_SHIFT) & 1) //Ignore TR?
+		{
+			safestrcat(menuoptions[advancedoptions], sizeof(menuoptions[0]), "O"); //Ignore TR!
+		}
+		break;
+	default: //Just in case!
+		safestrcat(menuoptions[advancedoptions], sizeof(menuoptions[0]), "<UNKNOWN. CHECK SETTINGS VERSION>");
+		break;
+	}
+	++advancedoptions; //Increase after!
+
+	optioninfo[advancedoptions] = 27; //FS Breakpoint!
+	safestrcpy(menuoptions[advancedoptions], sizeof(menuoptions[0]), "FS Breakpoint: ");
+	//First, convert the current breakpoint to a string format!
+	switch ((BIOS_Settings.FSBreakpoint >> SETTINGS_FSBREAKPOINT_ENABLE_SHIFT)) //What mode?
+	{
+	case 0: //No breakpoint?
+		safestrcat(menuoptions[advancedoptions], sizeof(menuoptions[0]), "Not set"); //seg16:offs16 default!
+		break;
+	case 1: //Enabled?
+		safescatnprintf(menuoptions[advancedoptions], sizeof(menuoptions[0]), "%04X:%08X", (word)((BIOS_Settings.FSBreakpoint >> SETTINGS_TASKBREAKPOINT_SEGMENT_SHIFT) & SETTINGS_TASKBREAKPOINT_SEGMENT_MASK), (uint_32)(BIOS_Settings.FSBreakpoint & SETTINGS_TASKBREAKPOINT_BASE_MASK)); //seg16:offs16!
+		if ((BIOS_Settings.FSBreakpoint >> SETTINGS_FSBREAKPOINT_IGNOREBASE_SHIFT) & 1) //Ignore Base?
+		{
+			safestrcat(menuoptions[advancedoptions], sizeof(menuoptions[0]), "I"); //Ignore EIP!
+		}
+		else if ((BIOS_Settings.FSBreakpoint >> SETTINGS_FSBREAKPOINT_IGNORESEGMENT_SHIFT) & 1) //Ignore TR?
+		{
+			safestrcat(menuoptions[advancedoptions], sizeof(menuoptions[0]), "O"); //Ignore TR!
+		}
+		break;
+	default: //Just in case!
+		safestrcat(menuoptions[advancedoptions], sizeof(menuoptions[0]), "<UNKNOWN. CHECK SETTINGS VERSION>");
+		break;
+	}
+	++advancedoptions; //Increase after!
+
+	optioninfo[advancedoptions] = 22; //CR3 Breakpoint!
+	safestrcpy(menuoptions[advancedoptions], sizeof(menuoptions[0]), "CR3 Breakpoint: ");
+	//First, convert the current breakpoint to a string format!
+	switch ((BIOS_Settings.CR3breakpoint >> SETTINGS_CR3BREAKPOINT_ENABLE_SHIFT)) //What mode?
+	{
+	case 0: //No breakpoint?
+		safestrcat(menuoptions[advancedoptions], sizeof(menuoptions[0]), "Not set"); //seg16:offs16 default!
+		break;
+	case 1: //Enabled?
+		safescatnprintf(menuoptions[advancedoptions], sizeof(menuoptions[0]), "%08X", (uint_32)(BIOS_Settings.CR3breakpoint & SETTINGS_CR3BREAKPOINT_BASE_MASK)); //seg16:offs16!
+		break;
+	default: //Just in case!
+		safestrcat(menuoptions[advancedoptions], sizeof(menuoptions[0]), "<UNKNOWN. CHECK SETTINGS VERSION>");
+		break;
+	}
+	++advancedoptions; //Increase after!
+
+	optioninfo[advancedoptions] = 20; //We're debug advanced log setting!
+	safestrcpy(menuoptions[advancedoptions], sizeof(menuoptions[0]), "Debugger advanced log: ");
+	switch (BIOS_Settings.advancedlog)
+	{
+	case DEBUGGERSTATELOG_DISABLED: //None
+		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Disable advanced logging"); //Set filename from options!
+		break;
+	case DEBUGGERSTATELOG_ENABLED: //Only when debugging
+		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Use advanced logging"); //Set filename from options!
+		break;
+	default:
+		safestrcat(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "<UNKNOWN. CHECK SETTINGS VERSION>"); //Set filename from options!
+		break;
+	}
 }
 
 byte BPindex; //What breakpoint to use?
+
+void BIOS_CPUDebuggerMenu() //CPU debugger menu!
+{
+	BIOS_Title("CPU Debugger Menu");
+	BIOS_InitCPUDebuggerText(); //Init text!
+	int menuresult = ExecuteMenu(advancedoptions, 4, BIOSMENU_SPEC_RETURN | BIOSMENU_SPEC_SQUAREOPTION, &Menu_Stat); //Show the menu options!
+	switch (menuresult)
+	{
+	case BIOSMENU_SPEC_CANCEL: //R: Main menu?
+		BIOS_Menu = 35; //Goto CPU Menu!
+		break;
+
+	case 0:
+	case 1:
+	case 2:
+	case 3:
+	case 4:
+	case 5:
+	case 6:
+	case 7:
+	case 8:
+	case 9:
+	case 10:
+	case 11:
+	case 12:
+	case 13:
+	case 14:
+	case 15:
+	case 16:
+	case 17:
+	case 18:
+	case 19:
+	case 20:
+	case 21:
+	case 22:
+	case 23:
+	case 24:
+	case 25:
+	case 26:
+	case 27:
+	case 28: //Valid option?
+		switch (optioninfo[menuresult]) //What option has been chosen, since we are dynamic size?
+		{
+		//Debugger information
+		case 10: //Debug mode?
+			if (Menu_Stat == BIOSMENU_STAT_OK) //Plain select?
+			{
+				BIOS_Menu = 13; //Debug mode option!
+			}
+			break;
+		case 11: //Debugger log setting!
+			if (Menu_Stat == BIOSMENU_STAT_OK) //Plain select?
+			{
+				BIOS_Menu = 23; //Debugger log setting!
+			}
+			break;
+		case 12: //Debugger state log setting!
+			if (Menu_Stat == BIOSMENU_STAT_OK) //Plain select?
+			{
+				BIOS_Menu = 63; //Debugger state log setting!
+			}
+			break;
+		case 13: //Debugger register log setting!
+			if (Menu_Stat == BIOSMENU_STAT_OK) //Plain select?
+			{
+				BIOS_Menu = 66; //Debugger register log setting!
+			}
+			break;
+		case 14: //Diagnostics output breakpoint setting!
+			if (Menu_Stat == BIOSMENU_STAT_OK) //Plain select?
+			{
+				BIOS_Menu = 57; //Diagnostics Output Breakpoint setting!
+			}
+			else if (Menu_Stat == BIOSMENU_STAT_SQUARE) //SQUARE=Set current value as the breakpoint!
+			{
+				BIOS_Settings.diagnosticsportoutput_breakpoint = (sword)diagnosticsportoutput; //Set the current value as the breakpoint!
+				BIOS_Changed = 1; //We've changed!
+			}
+			break; //We do nothing!
+		case 15: //Timeout to be used for breakpoints?
+			if (Menu_Stat == BIOSMENU_STAT_OK) //Plain select?
+			{
+				if (!EMU_RUNNING) BIOS_Menu = 58; //Timeout to be used for breakpoints?
+			}
+			break;
+		case 16: //Breakpoint
+		case 23: //Breakpoint
+		case 24: //Breakpoint
+		case 25: //Breakpoint
+		case 26: //Breakpoint
+			BPindex = (optioninfo[menuresult] == 16) ? 0 : (optioninfo[menuresult] - 22); //What index?
+			if (Menu_Stat == BIOSMENU_STAT_OK) //Plain select?
+			{
+#ifndef IS_PSP
+				//This option fails to compile on the PSP for some unknown reason.
+				BIOS_Menu = 60; //Timeout to be used for breakpoints?
+#endif
+			}
+			else if (Menu_Stat == BIOSMENU_STAT_SQUARE) //SQUARE=Set current address&mode as the breakpoint!
+			{
+				byte mode = 1;
+				word segment;
+				uint_32 offset;
+				lock(LOCK_CPU); //Lock the CPU!
+				switch (getcpumode()) //What mode are we?
+				{
+				case CPU_MODE_REAL: //Real mode?
+					mode = 1; //Real mode!
+					break;
+				case CPU_MODE_PROTECTED: //Protected?
+					mode = 2; //Protected mode!
+					break;
+				case CPU_MODE_8086: //Virtual 8086?
+					mode = 3; //Virtual 8086 mode!
+					break;
+				default: //Unknown mode?
+				case CPU_MODE_UNKNOWN: //Unknown?
+					mode = 1; //Default to Real mode!
+					break;
+				}
+				segment = REG_CS; //CS!
+				offset = mode == 1 ? REG_IP : REG_EIP; //Our offset!
+				BIOS_Settings.breakpoint[BPindex] = (((uint_64)mode & 3) << SETTINGS_BREAKPOINT_MODE_SHIFT) | (((uint_64)segment & SETTINGS_BREAKPOINT_SEGMENT_MASK) << SETTINGS_BREAKPOINT_SEGMENT_SHIFT) | ((uint_64)offset & SETTINGS_BREAKPOINT_OFFSET_MASK); //Set the new breakpoint!
+				BIOS_Changed = 1; //We've changed!
+				unlock(LOCK_CPU); //Finished with the CPU!
+			}
+			break;
+		case 20: //Debugger advanced log setting!
+			if (Menu_Stat == BIOSMENU_STAT_OK) //Plain select?
+			{
+				BIOS_Menu = 69; //Debugger register log setting!
+			}
+			break;
+		case 21: //Task Breakpoint
+			if (Menu_Stat == BIOSMENU_STAT_OK) //Plain select?
+			{
+#ifndef IS_PSP
+				//This option fails to compile on the PSP for some unknown reason.
+				BIOS_Menu = 70; //Timeout to be used for breakpoints?
+#endif
+			}
+			else if (Menu_Stat == BIOSMENU_STAT_SQUARE) //SQUARE=Set current address&mode as the breakpoint!
+			{
+				byte mode = 0;
+				word segment;
+				uint_32 offset;
+				lock(LOCK_CPU); //Lock the CPU!
+				switch (GENERALSEGMENT_P(CPU[activeCPU].SEG_DESCRIPTOR[CPU_SEGMENT_TR])) //What mode are we?
+				{
+				case 0: //None?
+					BIOS_Settings.taskBreakpoint = 0; //Disabled!
+					break;
+				default: //Enabled?
+					mode = 1; //Enable!
+					break;
+				}
+				if (mode) //Enabled?
+				{
+					segment = REG_TR; //CS!
+					offset = (uint_32)CPU[activeCPU].SEG_DESCRIPTOR[CPU_SEGMENT_TR].PRECALCS.base; //Our offset!
+					BIOS_Settings.taskBreakpoint = (((uint_64)mode & 1) << SETTINGS_TASKBREAKPOINT_ENABLE_SHIFT) | (((uint_64)segment & SETTINGS_TASKBREAKPOINT_SEGMENT_MASK) << SETTINGS_TASKBREAKPOINT_SEGMENT_SHIFT) | ((uint_64)offset & SETTINGS_TASKBREAKPOINT_BASE_MASK); //Set the new breakpoint!
+					BIOS_Changed = 1; //We've changed!
+				}
+				unlock(LOCK_CPU); //Finished with the CPU!
+			}
+			break;
+		case 22: //CR3 Breakpoint
+			if (Menu_Stat == BIOSMENU_STAT_OK) //Plain select?
+			{
+#ifndef IS_PSP
+				//This option fails to compile on the PSP for some unknown reason.
+				BIOS_Menu = 71; //Timeout to be used for breakpoints?
+#endif
+			}
+			else if (Menu_Stat == BIOSMENU_STAT_SQUARE) //SQUARE=Set current address&mode as the breakpoint!
+			{
+				byte mode = 0;
+				uint_32 offset;
+				lock(LOCK_CPU); //Lock the CPU!
+				switch (getcpumode()) //What mode are we?
+				{
+				case CPU_MODE_REAL: //None?
+					BIOS_Settings.CR3breakpoint = 0; //Disabled!
+					break;
+				default: //Enabled?
+					mode = 1; //Enable!
+					break;
+				}
+				if (mode) //Enabled?
+				{
+					offset = CPU[activeCPU].registers->CR3; //Our offset!
+					BIOS_Settings.CR3breakpoint = (((uint_64)mode & 3) << SETTINGS_CR3BREAKPOINT_ENABLE_SHIFT) | ((uint_64)offset & SETTINGS_CR3BREAKPOINT_BASE_MASK); //Set the new breakpoint!
+					BIOS_Changed = 1; //We've changed!
+				}
+				unlock(LOCK_CPU); //Finished with the CPU!
+			}
+			break;
+		case 27: //FS Breakpoint
+			if (Menu_Stat == BIOSMENU_STAT_OK) //Plain select?
+			{
+#ifndef IS_PSP
+				//This option fails to compile on the PSP for some unknown reason.
+				BIOS_Menu = 81; //Timeout to be used for breakpoints?
+#endif
+			}
+			else if (Menu_Stat == BIOSMENU_STAT_SQUARE) //SQUARE=Set current address&mode as the breakpoint!
+			{
+				byte mode = 0;
+				word segment;
+				uint_32 offset;
+				lock(LOCK_CPU); //Lock the CPU!
+				switch (GENERALSEGMENT_P(CPU[activeCPU].SEG_DESCRIPTOR[CPU_SEGMENT_TR])) //What mode are we?
+				{
+				case 0: //None?
+					BIOS_Settings.FSBreakpoint = 0; //Disabled!
+					break;
+				default: //Enabled?
+					mode = 1; //Enable!
+					break;
+				}
+				if (mode) //Enabled?
+				{
+					segment = REG_FS; //CS!
+					offset = (uint_32)CPU[activeCPU].SEG_DESCRIPTOR[CPU_SEGMENT_FS].PRECALCS.base; //Our offset!
+					BIOS_Settings.FSBreakpoint = (((uint_64)mode & 1) << SETTINGS_FSBREAKPOINT_ENABLE_SHIFT) | (((uint_64)segment & SETTINGS_FSBREAKPOINT_SEGMENT_MASK) << SETTINGS_FSBREAKPOINT_SEGMENT_SHIFT) | ((uint_64)offset & SETTINGS_FSBREAKPOINT_BASE_MASK); //Set the new breakpoint!
+					BIOS_Changed = 1; //We've changed!
+				}
+				unlock(LOCK_CPU); //Finished with the CPU!
+			}
+			break;
+		default:
+			break;
+		}
+		break;
+	default: //Unknown option?
+		BIOS_Menu = NOTIMPLEMENTED; //Not implemented yet!
+		break;
+	}
+}
 
 void BIOS_CPU() //CPU menu!
 {
@@ -6910,87 +7165,10 @@ void BIOS_CPU() //CPU menu!
 			}
 			break;
 		//Debugger information
-		case 10: //Debug mode?
+		case 10: //Debug settings?
 			if (Menu_Stat == BIOSMENU_STAT_OK) //Plain select?
 			{
-				BIOS_Menu = 13; //Debug mode option!
-			}
-			break;
-		case 11: //Debugger log setting!
-			if (Menu_Stat == BIOSMENU_STAT_OK) //Plain select?
-			{
-				BIOS_Menu = 23; //Debugger log setting!
-			}
-			break;
-		case 12: //Debugger state log setting!
-			if (Menu_Stat == BIOSMENU_STAT_OK) //Plain select?
-			{
-				BIOS_Menu = 63; //Debugger state log setting!
-			}
-			break;
-		case 13: //Debugger register log setting!
-			if (Menu_Stat == BIOSMENU_STAT_OK) //Plain select?
-			{
-				BIOS_Menu = 66; //Debugger register log setting!
-			}
-			break;
-		case 14: //Diagnostics output breakpoint setting!
-			if (Menu_Stat == BIOSMENU_STAT_OK) //Plain select?
-			{
-				BIOS_Menu = 57; //Diagnostics Output Breakpoint setting!
-			}
-			else if (Menu_Stat == BIOSMENU_STAT_SQUARE) //SQUARE=Set current value as the breakpoint!
-			{
-				BIOS_Settings.diagnosticsportoutput_breakpoint = (sword)diagnosticsportoutput; //Set the current value as the breakpoint!
-				BIOS_Changed = 1; //We've changed!
-			}
-			break; //We do nothing!
-		case 15: //Timeout to be used for breakpoints?
-			if (Menu_Stat == BIOSMENU_STAT_OK) //Plain select?
-			{
-				if (!EMU_RUNNING) BIOS_Menu = 58; //Timeout to be used for breakpoints?
-			}
-			break;
-		case 16: //Breakpoint
-		case 23: //Breakpoint
-		case 24: //Breakpoint
-		case 25: //Breakpoint
-		case 26: //Breakpoint
-			BPindex = (optioninfo[menuresult] == 16) ? 0 : (optioninfo[menuresult] - 22); //What index?
-			if (Menu_Stat == BIOSMENU_STAT_OK) //Plain select?
-			{
-				#ifndef IS_PSP
-				//This option fails to compile on the PSP for some unknown reason.
-				BIOS_Menu = 60; //Timeout to be used for breakpoints?
-				#endif
-			}
-			else if (Menu_Stat==BIOSMENU_STAT_SQUARE) //SQUARE=Set current address&mode as the breakpoint!
-			{
-				byte mode=1;
-				word segment;
-				uint_32 offset;
-				lock(LOCK_CPU); //Lock the CPU!
-				switch (getcpumode()) //What mode are we?
-				{
-					case CPU_MODE_REAL: //Real mode?
-						mode = 1; //Real mode!
-						break;
-					case CPU_MODE_PROTECTED: //Protected?
-						mode = 2; //Protected mode!
-						break;
-					case CPU_MODE_8086: //Virtual 8086?
-						mode = 3; //Virtual 8086 mode!
-						break;
-					default: //Unknown mode?
-					case CPU_MODE_UNKNOWN: //Unknown?
-						mode = 1; //Default to Real mode!
-						break;
-				}
-				segment = REG_CS; //CS!
-				offset = mode==1?REG_IP:REG_EIP; //Our offset!
-				BIOS_Settings.breakpoint[BPindex] = (((uint_64)mode&3)<<SETTINGS_BREAKPOINT_MODE_SHIFT)|(((uint_64)segment&SETTINGS_BREAKPOINT_SEGMENT_MASK)<<SETTINGS_BREAKPOINT_SEGMENT_SHIFT)|((uint_64)offset&SETTINGS_BREAKPOINT_OFFSET_MASK); //Set the new breakpoint!
-				BIOS_Changed = 1; //We've changed!
-				unlock(LOCK_CPU); //Finished with the CPU!
+				BIOS_Menu = 94; //Debug settings option!
 			}
 			break;
 		case 17: //Architecture
@@ -7001,109 +7179,6 @@ void BIOS_CPU() //CPU menu!
 			break;
 		case 19: //Inboard Initial Waitstates?
 			BIOS_Menu = 64; //Architecture option!
-			break;
-		case 20: //Debugger advanced log setting!
-			if (Menu_Stat == BIOSMENU_STAT_OK) //Plain select?
-			{
-				BIOS_Menu = 69; //Debugger register log setting!
-			}
-			break;
-		case 21: //Task Breakpoint
-			if (Menu_Stat == BIOSMENU_STAT_OK) //Plain select?
-			{
-				#ifndef IS_PSP
-				//This option fails to compile on the PSP for some unknown reason.
-				BIOS_Menu = 70; //Timeout to be used for breakpoints?
-				#endif
-			}
-			else if (Menu_Stat==BIOSMENU_STAT_SQUARE) //SQUARE=Set current address&mode as the breakpoint!
-			{
-				byte mode=0;
-				word segment;
-				uint_32 offset;
-				lock(LOCK_CPU); //Lock the CPU!
-				switch (GENERALSEGMENT_P(CPU[activeCPU].SEG_DESCRIPTOR[CPU_SEGMENT_TR])) //What mode are we?
-				{
-					case 0: //None?
-						BIOS_Settings.taskBreakpoint = 0; //Disabled!
-						break;
-					default: //Enabled?
-						mode = 1; //Enable!
-						break;
-				}
-				if (mode) //Enabled?
-				{
-					segment = REG_TR; //CS!
-					offset = (uint_32)CPU[activeCPU].SEG_DESCRIPTOR[CPU_SEGMENT_TR].PRECALCS.base; //Our offset!
-					BIOS_Settings.taskBreakpoint = (((uint_64)mode&1)<<SETTINGS_TASKBREAKPOINT_ENABLE_SHIFT)|(((uint_64)segment&SETTINGS_TASKBREAKPOINT_SEGMENT_MASK)<<SETTINGS_TASKBREAKPOINT_SEGMENT_SHIFT)|((uint_64)offset&SETTINGS_TASKBREAKPOINT_BASE_MASK); //Set the new breakpoint!
-					BIOS_Changed = 1; //We've changed!
-				}
-				unlock(LOCK_CPU); //Finished with the CPU!
-			}
-			break;
-		case 22: //CR3 Breakpoint
-			if (Menu_Stat == BIOSMENU_STAT_OK) //Plain select?
-			{
-				#ifndef IS_PSP
-				//This option fails to compile on the PSP for some unknown reason.
-				BIOS_Menu = 71; //Timeout to be used for breakpoints?
-				#endif
-			}
-			else if (Menu_Stat==BIOSMENU_STAT_SQUARE) //SQUARE=Set current address&mode as the breakpoint!
-			{
-				byte mode=0;
-				uint_32 offset;
-				lock(LOCK_CPU); //Lock the CPU!
-				switch (getcpumode()) //What mode are we?
-				{
-					case CPU_MODE_REAL: //None?
-						BIOS_Settings.CR3breakpoint = 0; //Disabled!
-						break;
-					default: //Enabled?
-						mode = 1; //Enable!
-						break;
-				}
-				if (mode) //Enabled?
-				{
-					offset = CPU[activeCPU].registers->CR3; //Our offset!
-					BIOS_Settings.CR3breakpoint = (((uint_64)mode&3)<<SETTINGS_CR3BREAKPOINT_ENABLE_SHIFT)|((uint_64)offset&SETTINGS_CR3BREAKPOINT_BASE_MASK); //Set the new breakpoint!
-					BIOS_Changed = 1; //We've changed!
-				}
-				unlock(LOCK_CPU); //Finished with the CPU!
-			}
-			break;
-		case 27: //FS Breakpoint
-			if (Menu_Stat == BIOSMENU_STAT_OK) //Plain select?
-			{
-#ifndef IS_PSP
-				//This option fails to compile on the PSP for some unknown reason.
-				BIOS_Menu = 81; //Timeout to be used for breakpoints?
-#endif
-			}
-			else if (Menu_Stat == BIOSMENU_STAT_SQUARE) //SQUARE=Set current address&mode as the breakpoint!
-			{
-				byte mode = 0;
-				word segment;
-				uint_32 offset;
-				lock(LOCK_CPU); //Lock the CPU!
-				switch (GENERALSEGMENT_P(CPU[activeCPU].SEG_DESCRIPTOR[CPU_SEGMENT_TR])) //What mode are we?
-				{
-				case 0: //None?
-					BIOS_Settings.FSBreakpoint = 0; //Disabled!
-					break;
-				default: //Enabled?
-					mode = 1; //Enable!
-					break;
-				}
-				if (mode) //Enabled?
-				{
-					segment = REG_FS; //CS!
-					offset = (uint_32)CPU[activeCPU].SEG_DESCRIPTOR[CPU_SEGMENT_FS].PRECALCS.base; //Our offset!
-					BIOS_Settings.FSBreakpoint = (((uint_64)mode & 1) << SETTINGS_FSBREAKPOINT_ENABLE_SHIFT) | (((uint_64)segment & SETTINGS_FSBREAKPOINT_SEGMENT_MASK) << SETTINGS_FSBREAKPOINT_SEGMENT_SHIFT) | ((uint_64)offset & SETTINGS_FSBREAKPOINT_BASE_MASK); //Set the new breakpoint!
-					BIOS_Changed = 1; //We've changed!
-				}
-				unlock(LOCK_CPU); //Finished with the CPU!
-			}
 			break;
 		case 28: //CPUID mode?
 			if (Menu_Stat == BIOSMENU_STAT_OK) //Plain select?
@@ -8671,7 +8746,7 @@ void BIOS_diagnosticsPortBreakpoint()
 		}
 		break;
 	}
-	BIOS_Menu = 35; //Goto CPU menu!
+	BIOS_Menu = 94; //Goto CPU Debugger menu!
 }
 
 void BIOS_diagnosticsPortBreakpointTimeout()
@@ -8698,7 +8773,7 @@ void BIOS_diagnosticsPortBreakpointTimeout()
 		}
 		break;
 	}
-	BIOS_Menu = 35; //Goto CPU menu!
+	BIOS_Menu = 94; //Goto CPU Debugger menu!
 }
 
 void BIOS_useDirectMIDIPassthrough()
@@ -8880,7 +8955,7 @@ void BIOS_breakpoint()
 		}
 	}
 	abortcoloninput:
-	BIOS_Menu = 35; //Goto CPU menu!
+	BIOS_Menu = 94; //Goto CPU Debugger menu!
 }
 
 void BIOS_setTaskBreakpoint(char *breakpointstr, word semicolonpos, byte enabled, byte ignoreBase,  byte ignoreSegment);
@@ -8964,7 +9039,7 @@ void BIOS_taskBreakpoint()
 		}
 	}
 	abortcoloninput:
-	BIOS_Menu = 35; //Goto CPU menu!
+	BIOS_Menu = 94; //Goto CPU Debugger menu!
 }
 
 void BIOS_setFSBreakpoint(char* breakpointstr, word semicolonpos, byte enabled, byte ignoreBase, byte ignoreSegment);
@@ -9049,7 +9124,7 @@ void BIOS_FSBreakpoint()
 		}
 	}
 abortcoloninput:
-	BIOS_Menu = 35; //Goto CPU menu!
+	BIOS_Menu = 94; //Goto CPU Debugger menu!
 }
 
 void BIOS_setCR3breakpoint(char *breakpointstr, byte enabled);
@@ -9099,7 +9174,7 @@ void BIOS_CR3breakpoint()
 			BIOS_Settings.CR3breakpoint = 0; //No breakpoint!
 		}
 	}
-	BIOS_Menu = 35; //Goto CPU menu!
+	BIOS_Menu = 94; //Goto CPU Debugger menu!
 }
 
 void BIOS_setBreakpoint(byte index, char *breakpointstr, word semicolonpos, byte mode, byte ignoreEIP, byte ignoreAddress, byte ignoreSegment, byte singleStep)
@@ -9291,7 +9366,7 @@ void BIOS_DebugRegisters()
 {
 	BIOS_Settings.debugger_logregisters = !BIOS_Settings.debugger_logregisters;
 	BIOS_Changed = 1; //We're changed!
-	BIOS_Menu = 35; //Goto CPU menu!
+	BIOS_Menu = 94; //Goto CPU Debugger menu!
 }
 
 void BIOS_CMOSTiming() //Time the CMOS!
@@ -9515,7 +9590,7 @@ void BIOS_AdvancedLogSetting()
 		}
 		break;
 	}
-	BIOS_Menu = 35; //Goto CPU menu!
+	BIOS_Menu = 94; //Goto CPU Debugger menu!
 }
 
 void BIOS_DirectInput_remap_RCTRL_to_LWIN()
