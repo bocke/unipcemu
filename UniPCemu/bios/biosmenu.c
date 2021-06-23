@@ -2837,7 +2837,7 @@ extern byte input_buffer_mouse; //Mouse button input also supported!
 
 byte BIOS_InputText(byte x, byte y, char *filename, uint_32 maxlength, byte isaddress)
 {
-	char ending[3] = "\u00DB";
+	char ending[3] = "\xC3\x9B";
 	delay(100000); //Wait a bit to make sure nothing's pressed!
 	enableKeyboard(2); //Buffer input!
 	char input[256];
@@ -2958,7 +2958,7 @@ byte BIOS_InputText(byte x, byte y, char *filename, uint_32 maxlength, byte isad
 
 byte BIOS_InputAddressWithMode(byte x, byte y, char *filename, uint_32 maxlength, byte allowModeAndAddressIgnore, byte allowsegment, byte allowSingleStep)
 {
-	char ending[3] = "\u00DB";
+	char ending[3] = "\xC3\x9B";
 	delay(100000); //Wait a bit to make sure nothing's pressed!
 	enableKeyboard(2); //Buffer input!
 	char input[256];
