@@ -9666,12 +9666,15 @@ void BIOS_floppy0_nodisk_type()
 	int result;
 	result = ExecuteList(26, 4, itemlist[currentCMOS->floppy0_nodisk_type], 256, NULL,0); //Get our result!
 	int newtype;
+	byte confirmed;
 	newtype = currentCMOS->floppy0_nodisk_type; //Old type!
+	confirmed = 0; //Default: not confirmed!
 	switch (result) //Which result?
 	{
 	case FILELIST_DEFAULT: //Unmount?
 		BIOS_Changed |= 1; //Changed!
 		newtype = 0; //Default!
+		confirmed = 1; //Confirmed!
 		break;
 	case FILELIST_CANCEL: //Cancelled?
 		//We do nothing with the selected disk!
@@ -9681,6 +9684,7 @@ void BIOS_floppy0_nodisk_type()
 		{
 			if (result != currentCMOS->floppy0_nodisk_type) //Changed?
 			{
+				confirmed = 1; //Confirmed!
 				newtype = result; //Set the new value!
 				BIOS_Changed |= 1; //Changed!
 			}
@@ -9688,78 +9692,80 @@ void BIOS_floppy0_nodisk_type()
 		break;
 	}
 	BIOS_Menu = 1; //Return to Disk Menu!
-
-	BIOS_Changed = 1; //We've changed!
-	lock(LOCK_CPU); //Lock the CPU: we're going to change something in active emulation!
-	CMOS.Loaded = 1; //Unload the CMOS: discard anything that's loaded when saving!
-	CMOS.DATA.floppy0_nodisk_type = newtype; //Reverse!
-	unlock(LOCK_CPU); //We're finished with the main thread!
-	CMOSGLOBALBACKUPDATA backupglobal;
-	if (is_i430fx==2) //i440fx?
+	if ((newtype != currentCMOS->floppy0_nodisk_type) && confirmed) //Changed?
 	{
-		if (!BIOS_Settings.got_i440fxCMOS)
+		BIOS_Changed |= 1; //We've changed!
+		lock(LOCK_CPU); //Lock the CPU: we're going to change something in active emulation!
+		CMOS.Loaded = 1; //Unload the CMOS: discard anything that's loaded when saving!
+		CMOS.DATA.floppy0_nodisk_type = newtype; //Reverse!
+		unlock(LOCK_CPU); //We're finished with the main thread!
+		CMOSGLOBALBACKUPDATA backupglobal;
+		if (is_i430fx == 2) //i440fx?
 		{
-			backupCMOSglobalsettings(&BIOS_Settings.i440fxCMOS, &backupglobal); //Backup the memory field!
-			memset(&BIOS_Settings.i440fxCMOS, 0, sizeof(BIOS_Settings.i440fxCMOS)); //Init!
-			restoreCMOSglobalsettings(&BIOS_Settings.i440fxCMOS, &backupglobal); //Backup the memory field!
+			if (!BIOS_Settings.got_i440fxCMOS)
+			{
+				backupCMOSglobalsettings(&BIOS_Settings.i440fxCMOS, &backupglobal); //Backup the memory field!
+				memset(&BIOS_Settings.i440fxCMOS, 0, sizeof(BIOS_Settings.i440fxCMOS)); //Init!
+				restoreCMOSglobalsettings(&BIOS_Settings.i440fxCMOS, &backupglobal); //Backup the memory field!
+			}
+			BIOS_Settings.i440fxCMOS.floppy0_nodisk_type = result; //Reverse!
+			BIOS_Settings.got_i440fxCMOS = 1; //We hav gotten a CMOS!
 		}
-		BIOS_Settings.i440fxCMOS.floppy0_nodisk_type = result; //Reverse!
-		BIOS_Settings.got_i440fxCMOS = 1; //We hav gotten a CMOS!
-	}
-	else if (is_i430fx==1) //i430fx?
-	{
-		if (!BIOS_Settings.got_i430fxCMOS)
+		else if (is_i430fx == 1) //i430fx?
 		{
-			backupCMOSglobalsettings(&BIOS_Settings.i430fxCMOS, &backupglobal); //Backup the memory field!
-			memset(&BIOS_Settings.i430fxCMOS, 0, sizeof(BIOS_Settings.i430fxCMOS)); //Init!
-			restoreCMOSglobalsettings(&BIOS_Settings.i430fxCMOS, &backupglobal); //Backup the memory field!
+			if (!BIOS_Settings.got_i430fxCMOS)
+			{
+				backupCMOSglobalsettings(&BIOS_Settings.i430fxCMOS, &backupglobal); //Backup the memory field!
+				memset(&BIOS_Settings.i430fxCMOS, 0, sizeof(BIOS_Settings.i430fxCMOS)); //Init!
+				restoreCMOSglobalsettings(&BIOS_Settings.i430fxCMOS, &backupglobal); //Backup the memory field!
+			}
+			BIOS_Settings.i430fxCMOS.floppy0_nodisk_type = result; //Reverse!
+			BIOS_Settings.got_i430fxCMOS = 1; //We hav gotten a CMOS!
 		}
-		BIOS_Settings.i430fxCMOS.floppy0_nodisk_type = result; //Reverse!
-		BIOS_Settings.got_i430fxCMOS = 1; //We hav gotten a CMOS!
-	}
-	else if (is_PS2) //PS/2?
-	{
-		if (!BIOS_Settings.got_PS2CMOS)
+		else if (is_PS2) //PS/2?
 		{
-			backupCMOSglobalsettings(&BIOS_Settings.PS2CMOS, &backupglobal); //Backup the memory field!
-			memset(&BIOS_Settings.PS2CMOS, 0, sizeof(BIOS_Settings.PS2CMOS)); //Init!
-			restoreCMOSglobalsettings(&BIOS_Settings.PS2CMOS, &backupglobal); //Backup the memory field!
+			if (!BIOS_Settings.got_PS2CMOS)
+			{
+				backupCMOSglobalsettings(&BIOS_Settings.PS2CMOS, &backupglobal); //Backup the memory field!
+				memset(&BIOS_Settings.PS2CMOS, 0, sizeof(BIOS_Settings.PS2CMOS)); //Init!
+				restoreCMOSglobalsettings(&BIOS_Settings.PS2CMOS, &backupglobal); //Backup the memory field!
+			}
+			BIOS_Settings.PS2CMOS.floppy0_nodisk_type = result; //Reverse!
+			BIOS_Settings.got_PS2CMOS = 1; //We hav gotten a CMOS!
 		}
-		BIOS_Settings.PS2CMOS.floppy0_nodisk_type = result; //Reverse!
-		BIOS_Settings.got_PS2CMOS = 1; //We hav gotten a CMOS!
-	}
-	else if (is_Compaq)
-	{
-		if (!BIOS_Settings.got_CompaqCMOS)
+		else if (is_Compaq)
 		{
-			backupCMOSglobalsettings(&BIOS_Settings.CompaqCMOS, &backupglobal); //Backup the memory field!
-			memset(&BIOS_Settings.CompaqCMOS, 0, sizeof(BIOS_Settings.CompaqCMOS)); //Init!
-			restoreCMOSglobalsettings(&BIOS_Settings.CompaqCMOS, &backupglobal); //Backup the memory field!
+			if (!BIOS_Settings.got_CompaqCMOS)
+			{
+				backupCMOSglobalsettings(&BIOS_Settings.CompaqCMOS, &backupglobal); //Backup the memory field!
+				memset(&BIOS_Settings.CompaqCMOS, 0, sizeof(BIOS_Settings.CompaqCMOS)); //Init!
+				restoreCMOSglobalsettings(&BIOS_Settings.CompaqCMOS, &backupglobal); //Backup the memory field!
+			}
+			BIOS_Settings.CompaqCMOS.floppy0_nodisk_type = result; //Reverse!
+			BIOS_Settings.got_CompaqCMOS = 1; //We hav gotten a CMOS!
 		}
-		BIOS_Settings.CompaqCMOS.floppy0_nodisk_type = result; //Reverse!
-		BIOS_Settings.got_CompaqCMOS = 1; //We hav gotten a CMOS!
-	}
-	else if (is_XT)
-	{
-		if (!BIOS_Settings.got_XTCMOS)
+		else if (is_XT)
 		{
-			backupCMOSglobalsettings(&BIOS_Settings.XTCMOS, &backupglobal); //Backup the memory field!
-			memset(&BIOS_Settings.XTCMOS, 0, sizeof(BIOS_Settings.XTCMOS)); //Init!
-			restoreCMOSglobalsettings(&BIOS_Settings.XTCMOS, &backupglobal); //Backup the memory field!
+			if (!BIOS_Settings.got_XTCMOS)
+			{
+				backupCMOSglobalsettings(&BIOS_Settings.XTCMOS, &backupglobal); //Backup the memory field!
+				memset(&BIOS_Settings.XTCMOS, 0, sizeof(BIOS_Settings.XTCMOS)); //Init!
+				restoreCMOSglobalsettings(&BIOS_Settings.XTCMOS, &backupglobal); //Backup the memory field!
+			}
+			BIOS_Settings.XTCMOS.floppy0_nodisk_type = result; //Reverse!
+			BIOS_Settings.got_XTCMOS = 1; //We hav gotten a CMOS!
 		}
-		BIOS_Settings.XTCMOS.floppy0_nodisk_type = result; //Reverse!
-		BIOS_Settings.got_XTCMOS = 1; //We hav gotten a CMOS!
-	}
-	else //AT?
-	{
-		if (!BIOS_Settings.got_ATCMOS)
+		else //AT?
 		{
-			backupCMOSglobalsettings(&BIOS_Settings.ATCMOS, &backupglobal); //Backup the memory field!
-			memset(&BIOS_Settings.ATCMOS, 0, sizeof(BIOS_Settings.ATCMOS)); //Init!
-			restoreCMOSglobalsettings(&BIOS_Settings.ATCMOS, &backupglobal); //Backup the memory field!
+			if (!BIOS_Settings.got_ATCMOS)
+			{
+				backupCMOSglobalsettings(&BIOS_Settings.ATCMOS, &backupglobal); //Backup the memory field!
+				memset(&BIOS_Settings.ATCMOS, 0, sizeof(BIOS_Settings.ATCMOS)); //Init!
+				restoreCMOSglobalsettings(&BIOS_Settings.ATCMOS, &backupglobal); //Backup the memory field!
+			}
+			BIOS_Settings.ATCMOS.floppy0_nodisk_type = result; //Reverse!
+			BIOS_Settings.got_ATCMOS = 1; //We hav gotten a CMOS!
 		}
-		BIOS_Settings.ATCMOS.floppy0_nodisk_type = result; //Reverse!
-		BIOS_Settings.got_ATCMOS = 1; //We hav gotten a CMOS!
 	}
 }
 
@@ -9810,12 +9816,15 @@ void BIOS_floppy1_nodisk_type()
 	int result;
 	result = ExecuteList(26, 4, itemlist[currentCMOS->floppy1_nodisk_type], 256, NULL,0); //Get our result!
 	int newtype;
+	byte confirmed;
 	newtype = currentCMOS->floppy1_nodisk_type; //Old type!
+	confirmed = 0; //Default: not confirmed!
 	switch (result) //Which result?
 	{
 	case FILELIST_DEFAULT: //Unmount?
 		BIOS_Changed |= 1; //Changed!
 		newtype = 0; //Default!
+		confirmed = 1; //Confirmed!
 		break;
 	case FILELIST_CANCEL: //Cancelled?
 		//We do nothing with the selected disk!
@@ -9827,83 +9836,87 @@ void BIOS_floppy1_nodisk_type()
 			{
 				newtype = result; //Set the new value!
 				BIOS_Changed |= 1; //Changed!
+				confirmed = 1; //Confirmed!
 			}
 		}
 		break;
 	}
 	BIOS_Menu = 1; //Return to Disk Menu!
 
-	BIOS_Changed = 1; //We've changed!
-	lock(LOCK_CPU); //Lock the CPU: we're going to change something in active emulation!
-	CMOS.Loaded = 1; //Unload the CMOS: discard anything that's loaded when saving!
-	CMOS.DATA.floppy1_nodisk_type = newtype; //Reverse!
-	unlock(LOCK_CPU); //We're finished with the main thread!
-	CMOSGLOBALBACKUPDATA backupglobal;
-	if (is_i430fx==2) //i440fx?
+	if ((newtype != currentCMOS->floppy1_nodisk_type) && confirmed) //Changed?
 	{
-		if (!BIOS_Settings.got_i440fxCMOS)
+		BIOS_Changed = 1; //We've changed!
+		lock(LOCK_CPU); //Lock the CPU: we're going to change something in active emulation!
+		CMOS.Loaded = 1; //Unload the CMOS: discard anything that's loaded when saving!
+		CMOS.DATA.floppy1_nodisk_type = newtype; //Reverse!
+		unlock(LOCK_CPU); //We're finished with the main thread!
+		CMOSGLOBALBACKUPDATA backupglobal;
+		if (is_i430fx == 2) //i440fx?
 		{
-			backupCMOSglobalsettings(&BIOS_Settings.i440fxCMOS, &backupglobal); //Backup the memory field!
-			memset(&BIOS_Settings.i440fxCMOS, 0, sizeof(BIOS_Settings.i440fxCMOS)); //Init!
-			restoreCMOSglobalsettings(&BIOS_Settings.i440fxCMOS, &backupglobal); //Backup the memory field!
+			if (!BIOS_Settings.got_i440fxCMOS)
+			{
+				backupCMOSglobalsettings(&BIOS_Settings.i440fxCMOS, &backupglobal); //Backup the memory field!
+				memset(&BIOS_Settings.i440fxCMOS, 0, sizeof(BIOS_Settings.i440fxCMOS)); //Init!
+				restoreCMOSglobalsettings(&BIOS_Settings.i440fxCMOS, &backupglobal); //Backup the memory field!
+			}
+			BIOS_Settings.i440fxCMOS.floppy1_nodisk_type = result; //Reverse!
+			BIOS_Settings.got_i440fxCMOS = 1; //We hav gotten a CMOS!
 		}
-		BIOS_Settings.i440fxCMOS.floppy1_nodisk_type = result; //Reverse!
-		BIOS_Settings.got_i440fxCMOS = 1; //We hav gotten a CMOS!
-	}
-	else if (is_i430fx==1) //i430fx?
-	{
-		if (!BIOS_Settings.got_i430fxCMOS)
+		else if (is_i430fx == 1) //i430fx?
 		{
-			backupCMOSglobalsettings(&BIOS_Settings.i430fxCMOS, &backupglobal); //Backup the memory field!
-			memset(&BIOS_Settings.i430fxCMOS, 0, sizeof(BIOS_Settings.i430fxCMOS)); //Init!
-			restoreCMOSglobalsettings(&BIOS_Settings.i430fxCMOS, &backupglobal); //Backup the memory field!
+			if (!BIOS_Settings.got_i430fxCMOS)
+			{
+				backupCMOSglobalsettings(&BIOS_Settings.i430fxCMOS, &backupglobal); //Backup the memory field!
+				memset(&BIOS_Settings.i430fxCMOS, 0, sizeof(BIOS_Settings.i430fxCMOS)); //Init!
+				restoreCMOSglobalsettings(&BIOS_Settings.i430fxCMOS, &backupglobal); //Backup the memory field!
+			}
+			BIOS_Settings.i430fxCMOS.floppy1_nodisk_type = result; //Reverse!
+			BIOS_Settings.got_i430fxCMOS = 1; //We hav gotten a CMOS!
 		}
-		BIOS_Settings.i430fxCMOS.floppy1_nodisk_type = result; //Reverse!
-		BIOS_Settings.got_i430fxCMOS = 1; //We hav gotten a CMOS!
-	}
-	else if (is_PS2) //PS/2?
-	{
-		if (!BIOS_Settings.got_PS2CMOS)
+		else if (is_PS2) //PS/2?
 		{
-			backupCMOSglobalsettings(&BIOS_Settings.PS2CMOS, &backupglobal); //Backup the memory field!
-			memset(&BIOS_Settings.PS2CMOS, 0, sizeof(BIOS_Settings.PS2CMOS)); //Init!
-			restoreCMOSglobalsettings(&BIOS_Settings.PS2CMOS, &backupglobal); //Backup the memory field!
+			if (!BIOS_Settings.got_PS2CMOS)
+			{
+				backupCMOSglobalsettings(&BIOS_Settings.PS2CMOS, &backupglobal); //Backup the memory field!
+				memset(&BIOS_Settings.PS2CMOS, 0, sizeof(BIOS_Settings.PS2CMOS)); //Init!
+				restoreCMOSglobalsettings(&BIOS_Settings.PS2CMOS, &backupglobal); //Backup the memory field!
+			}
+			BIOS_Settings.PS2CMOS.floppy1_nodisk_type = result; //Reverse!
+			BIOS_Settings.got_PS2CMOS = 1; //We hav gotten a CMOS!
 		}
-		BIOS_Settings.PS2CMOS.floppy1_nodisk_type = result; //Reverse!
-		BIOS_Settings.got_PS2CMOS = 1; //We hav gotten a CMOS!
-	}
-	else if (is_Compaq)
-	{
-		if (!BIOS_Settings.got_CompaqCMOS)
+		else if (is_Compaq)
 		{
-			backupCMOSglobalsettings(&BIOS_Settings.CompaqCMOS, &backupglobal); //Backup the memory field!
-			memset(&BIOS_Settings.CompaqCMOS, 0, sizeof(BIOS_Settings.CompaqCMOS)); //Init!
-			restoreCMOSglobalsettings(&BIOS_Settings.CompaqCMOS, &backupglobal); //Backup the memory field!
+			if (!BIOS_Settings.got_CompaqCMOS)
+			{
+				backupCMOSglobalsettings(&BIOS_Settings.CompaqCMOS, &backupglobal); //Backup the memory field!
+				memset(&BIOS_Settings.CompaqCMOS, 0, sizeof(BIOS_Settings.CompaqCMOS)); //Init!
+				restoreCMOSglobalsettings(&BIOS_Settings.CompaqCMOS, &backupglobal); //Backup the memory field!
+			}
+			BIOS_Settings.CompaqCMOS.floppy1_nodisk_type = result; //Reverse!
+			BIOS_Settings.got_CompaqCMOS = 1; //We hav gotten a CMOS!
 		}
-		BIOS_Settings.CompaqCMOS.floppy1_nodisk_type = result; //Reverse!
-		BIOS_Settings.got_CompaqCMOS = 1; //We hav gotten a CMOS!
-	}
-	else if (is_XT)
-	{
-		if (!BIOS_Settings.got_XTCMOS)
+		else if (is_XT)
 		{
-			backupCMOSglobalsettings(&BIOS_Settings.XTCMOS, &backupglobal); //Backup the memory field!
-			memset(&BIOS_Settings.XTCMOS, 0, sizeof(BIOS_Settings.XTCMOS)); //Init!
-			restoreCMOSglobalsettings(&BIOS_Settings.XTCMOS, &backupglobal); //Backup the memory field!
+			if (!BIOS_Settings.got_XTCMOS)
+			{
+				backupCMOSglobalsettings(&BIOS_Settings.XTCMOS, &backupglobal); //Backup the memory field!
+				memset(&BIOS_Settings.XTCMOS, 0, sizeof(BIOS_Settings.XTCMOS)); //Init!
+				restoreCMOSglobalsettings(&BIOS_Settings.XTCMOS, &backupglobal); //Backup the memory field!
+			}
+			BIOS_Settings.XTCMOS.floppy1_nodisk_type = result; //Reverse!
+			BIOS_Settings.got_XTCMOS = 1; //We hav gotten a CMOS!
 		}
-		BIOS_Settings.XTCMOS.floppy1_nodisk_type = result; //Reverse!
-		BIOS_Settings.got_XTCMOS = 1; //We hav gotten a CMOS!
-	}
-	else //AT?
-	{
-		if (!BIOS_Settings.got_ATCMOS)
+		else //AT?
 		{
-			backupCMOSglobalsettings(&BIOS_Settings.ATCMOS, &backupglobal); //Backup the memory field!
-			memset(&BIOS_Settings.ATCMOS, 0, sizeof(BIOS_Settings.ATCMOS)); //Init!
-			restoreCMOSglobalsettings(&BIOS_Settings.ATCMOS, &backupglobal); //Backup the memory field!
+			if (!BIOS_Settings.got_ATCMOS)
+			{
+				backupCMOSglobalsettings(&BIOS_Settings.ATCMOS, &backupglobal); //Backup the memory field!
+				memset(&BIOS_Settings.ATCMOS, 0, sizeof(BIOS_Settings.ATCMOS)); //Init!
+				restoreCMOSglobalsettings(&BIOS_Settings.ATCMOS, &backupglobal); //Backup the memory field!
+			}
+			BIOS_Settings.ATCMOS.floppy1_nodisk_type = result; //Reverse!
+			BIOS_Settings.got_ATCMOS = 1; //We hav gotten a CMOS!
 		}
-		BIOS_Settings.ATCMOS.floppy1_nodisk_type = result; //Reverse!
-		BIOS_Settings.got_ATCMOS = 1; //We hav gotten a CMOS!
 	}
 }
 
