@@ -3783,18 +3783,19 @@ void BIOS_DefragmentDynamicHDD() //Defragment a dynamic HDD Image!
 			EMU_unlocktext();
 			cleardata(&originalfilename[0], sizeof(originalfilename)); //Init!
 			safestrcpy(originalfilename,sizeof(originalfilename), filename); //The original filename!
-			safestrcat(filename,sizeof(filename), ".tmp.sfdimg"); //Generate destination filename!
 
 			domkdir(diskpath);
-			memset(&fullfilename, 0, sizeof(fullfilename));
-			safestrcpy(fullfilename,sizeof(fullfilename), diskpath);
-			safestrcat(fullfilename,sizeof(fullfilename), "/");
-			safestrcat(fullfilename,sizeof(fullfilename), filename);
 
 			memset(&fulloriginalfilename, 0, sizeof(fulloriginalfilename));
 			safestrcpy(fulloriginalfilename,sizeof(fulloriginalfilename), diskpath);
 			safestrcat(fulloriginalfilename,sizeof(fulloriginalfilename), "/");
 			safestrcat(fulloriginalfilename,sizeof(fulloriginalfilename), filename);
+
+			safestrcat(filename, sizeof(filename), ".tmp.sfdimg"); //Generate destination filename!
+			memset(&fullfilename, 0, sizeof(fullfilename));
+			safestrcpy(fullfilename, sizeof(fullfilename), diskpath);
+			safestrcat(fullfilename, sizeof(fullfilename), "/");
+			safestrcat(fullfilename, sizeof(fullfilename), filename);
 
 			size = dynamicimage_getsize(fulloriginalfilename); //Get the original size!
 			if (size != 0) //Got size?
