@@ -3995,7 +3995,7 @@ void BIOS_DefragmentDynamicHDD() //Defragment a dynamic HDD Image!
 						{
 							if (!remove(fulloriginalfilename)) //Original can be removed?
 							{
-								if (!rename(fullfilename, fulloriginalfilename)) //The destination is the new original!
+								if (rename(fullfilename, fulloriginalfilename)) //The destination is the new original!
 								{
 									dolog(originalfilename, "Error renaming the new defragmented image to the original filename!");
 								}
