@@ -3961,7 +3961,8 @@ void BIOS_DefragmentDynamicHDD() //Defragment a dynamic HDD Image!
 									break;
 								case -1: //Error in file?
 									safestrcat(errorlog,sizeof(errorlog),"\nSource: ERROR"); //Finished transferring!
-									goto finishedphase2; //Finished transferring!
+								case -2: //Special: termination request!
+									goto finishedphase3; //Finished transferring!
 								default: //Unknown?
 								case 1: //Next sector to process?
 									safescatnprintf(errorlog,sizeof(errorlog),"\nSource: sector %u",sectornr); //This sector!
@@ -3974,15 +3975,21 @@ void BIOS_DefragmentDynamicHDD() //Defragment a dynamic HDD Image!
 									break;
 								case -1: //Error in file?
 									safestrcat(errorlog,sizeof(errorlog),"\nDestination: ERROR"); //Finished transferring!
-									goto finishedphase2; //Finished transferring!
+								case -2: //Special: termination request!
+									goto finishedphase3; //Finished transferring!
 								default: //Unknown?
 								case 1: //Next sector to process?
 									safescatnprintf(errorlog,sizeof(errorlog),"\nDestination: sector %u",sectornr); //This sector!
 									break; //Continue running on the next sector to process!
 							}
+							finishedphase3: //Finished transferring!
 							safescatnprintf(errorlog,sizeof(errorlog),"\nPrevious source sector: %u\nPrevious destination sector: %u",previoussectornr,previousdestsectornr); //Previous sector numbers!
 							dolog(originalfilename, "Error %u validating dynamic image sector %u/%u@byte %u", error, sectornr, size, sectorposition?sectorposition-1:0); //Error at this sector!
 							dolog(originalfilename, "\n%s",errorlog); //Error at this sector information!
+							if (!remove(fullfilename)) //Incomplete file can't be removed?
+							{
+								dolog(originalfilename, "Error cleaning up the new defragmented image!");
+							}
 						}
 						else //We've been defragmented?
 						{
