@@ -3841,6 +3841,8 @@ void BIOS_DefragmentDynamicHDD() //Defragment a dynamic HDD Image!
 						srcstatus = dynamicimage_nextallocatedsector(fulloriginalfilename,&sectornr); //Next sector or block etc. which is available!
 						switch (srcstatus) //What status?
 						{
+							case -2: //Special: termination request!
+								error = 4; //Give the fourth error!
 							case 0: //EOF reached?
 								goto finishedphase1; //Finished transferring!
 							case -1: //Error in file?
@@ -3919,6 +3921,8 @@ void BIOS_DefragmentDynamicHDD() //Defragment a dynamic HDD Image!
 							}
 							switch (srcstatus) //What status?
 							{
+								case -2: //Special: termination request!
+									error = 4; //Give the fourth error!
 								case 0: //EOF reached?
 									goto finishedphase2; //Finished transferring!
 								case -1: //Error in file?

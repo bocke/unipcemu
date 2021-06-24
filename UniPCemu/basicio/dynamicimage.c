@@ -704,6 +704,11 @@ sbyte dynamicimage_nextallocatedsector(char *filename, uint_32 *sector) //Finds 
 	}
 	for (;(present!=-1) && (!present);) //Check while not present and valid sector!
 	{
+		if (shuttingdown()) //Shutting down?
+		{
+			present = -2; //Special: Aborting!
+			break; //Aborting!
+		}
 		if (*sector >= header.filesize) //EOF reached
 		{
 			present = 0; //Nothing present, because of EOF!
