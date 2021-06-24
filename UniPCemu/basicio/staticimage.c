@@ -250,6 +250,13 @@ void generateStaticImage(char *filename, FILEPOS size, int percentagex, int perc
 
 	while (sizeleft) //Left?
 	{
+		if (shuttingdown()) //Shutting down?
+		{
+			//Abort creating the disk image!
+			emufclose64(f);
+			delete_file(diskpath, originalfilename); //Format creation failed, thus file creation failed
+			return;
+		}
 		byteswritten = emufwrite64(&buffer,1,sizeof(buffer),f); //We've processed some!
 		if (byteswritten != sizeof(buffer)) //An error occurred!
 		{
