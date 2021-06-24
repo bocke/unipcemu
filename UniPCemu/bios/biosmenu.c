@@ -3178,6 +3178,7 @@ void BIOS_GenerateStaticHDD() //Generate Static HDD Image!
 	BIOS_Title(title); //Full clear!
 	EMU_locktext();
 	EMU_gotoxy(0, 4); //Goto position for info!
+	EMU_textcolor(BIOS_ATTR_INACTIVE); //We're using inactive color for label!
 	GPU_EMU_printscreen(0, 4, "Name: "); //Show the filename!
 	EMU_unlocktext();
 	if (BIOS_InputText(6, 4, &filename[0], 255-4, 0)) //Input text confirmed?
@@ -3189,6 +3190,7 @@ void BIOS_GenerateStaticHDD() //Generate Static HDD Image!
 				safestrcat(filename,sizeof(filename), ".img"); //Add the extension!
 				EMU_locktext();
 				EMU_gotoxy(0, 4); //Goto position for info!
+				EMU_textcolor(BIOS_ATTR_INACTIVE); //We're using inactive color for label!
 				GPU_EMU_printscreen(0, 4, "Filename: %s", filename); //Show the filename!
 				EMU_gotoxy(0, 5); //Next row!
 				GPU_EMU_printscreen(0, 5, "Image size: "); //Show image size selector!!
@@ -3197,6 +3199,7 @@ void BIOS_GenerateStaticHDD() //Generate Static HDD Image!
 				if (size != 0) //Got size?
 				{
 					EMU_locktext();
+					EMU_textcolor(BIOS_ATTR_INACTIVE); //We're using inactive color for label!
 					GPU_EMU_printscreen(12, 5, "%08i MB %04i KB", (uint_32)(size / MBMEMORY), (uint_32)((size % MBMEMORY) / 1024)); //Show size too!
 					EMU_gotoxy(0, 6); //Next row!
 					GPU_EMU_printscreen(0, 6, "Generating image: "); //Start of percentage!
@@ -3244,6 +3247,7 @@ void BIOS_GenerateDynamicHDD() //Generate Static HDD Image!
 	FILEPOS size = 0;
 	EMU_locktext();
 	EMU_gotoxy(0, 4); //Goto position for info!
+	EMU_textcolor(BIOS_ATTR_INACTIVE); //We're using inactive color for label!
 	GPU_EMU_printscreen(0, 4, "Name: "); //Show the filename!
 	EMU_unlocktext();
 	if (BIOS_InputText(6, 4, &filename[0], 255-7, 0)) //Input text confirmed?
@@ -3264,6 +3268,7 @@ void BIOS_GenerateDynamicHDD() //Generate Static HDD Image!
 				if (size != 0) //Got size?
 				{
 					EMU_locktext();
+					EMU_textcolor(BIOS_ATTR_INACTIVE); //We're using inactive color for label!
 					GPU_EMU_printscreen(12, 5, "%08i MB %04i KB", (uint_32)(size / MBMEMORY), (uint_32)((size % MBMEMORY) / 1024)); //Show size too!
 					EMU_gotoxy(0, 6); //Next row!
 					GPU_EMU_printscreen(0, 6, "Generating image: "); //Start of percentage!
@@ -3353,6 +3358,7 @@ void BIOS_ConvertStaticDynamicHDD() //Generate Dynamic HDD Image from a static o
 				{
 					EMU_locktext();
 					EMU_gotoxy(0, 7); //Next row!
+					EMU_textcolor(BIOS_ATTR_INACTIVE); //We're using inactive color for label!
 					GPU_EMU_printscreen(0, 7, "Generating image: "); //Start of percentage!
 					EMU_unlocktext();
 					FILEPOS sizecreated;
@@ -7815,6 +7821,7 @@ void BIOS_GenerateFloppyDisk()
 	if ((result>=0) && (result<NUMFLOPPYGEOMETRIES)) //Valid item?
 	{
 		EMU_locktext();
+		EMU_textcolor(BIOS_ATTR_INACTIVE); //We're using inactive color for label!
 		EMU_gotoxy(0, 4); //Goto position for info!
 		GPU_EMU_printscreen(0, 5, "Name: "); //Show the filename!
 		EMU_unlocktext();
@@ -7826,6 +7833,7 @@ void BIOS_GenerateFloppyDisk()
 				{
 					safestrcat(filename,sizeof(filename), ".img"); //Add the extension!
 					EMU_locktext();
+					EMU_textcolor(BIOS_ATTR_INACTIVE); //We're using inactive color for label!
 					EMU_gotoxy(0, 5); //Goto position for info!
 					GPU_EMU_printscreen(0, 5, "Filename: %s", filename); //Show the filename!
 					EMU_gotoxy(0, 5); //Next row!
@@ -7835,6 +7843,7 @@ void BIOS_GenerateFloppyDisk()
 					if (size != 0) //Got size?
 					{
 						EMU_locktext();
+						EMU_textcolor(BIOS_ATTR_INACTIVE); //We're using inactive color for label!
 						GPU_EMU_printscreen(12, 6, "%s", itemlist[result]); //Show size we selected!
 						EMU_gotoxy(0, 6); //Next row!
 						GPU_EMU_printscreen(0, 7, "Generating image: "); //Start of percentage!
@@ -7896,6 +7905,7 @@ void BIOS_GenerateIMDFloppyDisk()
 	if ((result >= 0) && (result < NUMFLOPPYGEOMETRIES)) //Valid item?
 	{
 		EMU_locktext();
+		EMU_textcolor(BIOS_ATTR_INACTIVE); //We're using inactive color for label!
 		EMU_gotoxy(0, 4); //Goto position for info!
 		GPU_EMU_printscreen(0, 5, "Name: "); //Show the filename!
 		EMU_unlocktext();
@@ -7907,6 +7917,7 @@ void BIOS_GenerateIMDFloppyDisk()
 				{
 					safestrcat(filename, sizeof(filename), ".imd"); //Add the extension!
 					EMU_locktext();
+					EMU_textcolor(BIOS_ATTR_INACTIVE); //We're using inactive color for label!
 					EMU_gotoxy(0, 5); //Goto position for info!
 					GPU_EMU_printscreen(0, 5, "Filename: %s", filename); //Show the filename!
 					EMU_gotoxy(0, 5); //Next row!
@@ -8856,6 +8867,7 @@ void BIOS_breakpoint()
 	BIOS_Title("Breakpoint"); //Full clear!
 	EMU_locktext();
 	EMU_gotoxy(0, 4); //Goto position for info!
+	EMU_textcolor(BIOS_ATTR_INACTIVE); //We're using inactive color for label!
 	GPU_EMU_printscreen(0, 4, "Address: "); //Show the filename!
 	EMU_unlocktext();
 	byte mode; //The mode to use!
@@ -8959,6 +8971,7 @@ void BIOS_taskBreakpoint()
 	BIOS_Title("Task Breakpoint"); //Full clear!
 	EMU_locktext();
 	EMU_gotoxy(0, 4); //Goto position for info!
+	EMU_textcolor(BIOS_ATTR_INACTIVE); //We're using inactive color for label!
 	GPU_EMU_printscreen(0, 4, "Address: "); //Show the filename!
 	EMU_unlocktext();
 	word semicolonpos;
@@ -9043,6 +9056,7 @@ void BIOS_FSBreakpoint()
 	BIOS_Title("FS Breakpoint"); //Full clear!
 	EMU_locktext();
 	EMU_gotoxy(0, 4); //Goto position for info!
+	EMU_textcolor(BIOS_ATTR_INACTIVE); //We're using inactive color for label!
 	GPU_EMU_printscreen(0, 4, "Address: "); //Show the filename!
 	EMU_unlocktext();
 	//byte mode; //The mode to use!
@@ -9120,6 +9134,7 @@ void BIOS_CR3breakpoint()
 	BIOS_Title("CR3 Breakpoint"); //Full clear!
 	EMU_locktext();
 	EMU_gotoxy(0, 4); //Goto position for info!
+	EMU_textcolor(BIOS_ATTR_INACTIVE); //We're using inactive color for label!
 	GPU_EMU_printscreen(0, 4, "Address: "); //Show the filename!
 	EMU_unlocktext();
 	#ifndef IS_PSP
@@ -9956,6 +9971,7 @@ void BIOS_connectdisconnectpassthrough()
 	BIOS_Title("Connect passthrough"); //Full clear!
 	EMU_locktext();
 	EMU_gotoxy(0, 4); //Goto position for info!
+	EMU_textcolor(BIOS_ATTR_INACTIVE); //We're using inactive color for label!
 	GPU_EMU_printscreen(0, 4, "Address: "); //Show the filename!
 	EMU_unlocktext();
 	if (BIOS_InputText(9, 4, &filename[0], 255 - 4, 1)) //Input text confirmed?
