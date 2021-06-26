@@ -1338,7 +1338,9 @@ int_64 InputPortNumber(byte x, byte y, word PortNumber) //Retrieve the size, or 
 	return FILELIST_CANCEL; //No size: cancel!
 }
 
-int_64 InputByteNumber(byte x, byte y, byte ByteNumber) //Retrieve the size, or 0 for none!
+extern RAW_INPUTSTATUS input;
+
+int_64 InputByteNumber(byte x, byte y, byte ByteNumber, byte showanalogdiverging) //Retrieve the size, or 0 for none!
 {
 	int key = 0;
 	lock(LOCK_INPUT);
@@ -1351,16 +1353,28 @@ int_64 InputByteNumber(byte x, byte y, byte ByteNumber) //Retrieve the size, or 
 		unlock(LOCK_INPUT);
 	}
 	byte result = ByteNumber; //Size: result; default 0 for none! Must be a multiple of 4096 bytes for HDD!
+	int_32 xrel, yrel;
 	byte oldvalue; //To check for high overflow!
 	for (;;) //Get input; break on error!
 	{
-		EMU_locktext();
-		EMU_textcolor(BIOS_ATTR_ACTIVE); //We're using active color for input!
-		GPU_EMU_printscreen(x, y, "%u     ", result); //Show current size!
-		EMU_unlocktext();
 		lock(LOCK_INPUT);
 		key = psp_inputkeydelay(BIOS_INPUTDELAY); //Input key!
+		xrel = input.Lx; //Raw X divergeance from hardware!
+		yrel = input.Ly; //Raw Y divergeance from hardware!
 		unlock(LOCK_INPUT);
+
+		if (xrel < 0) xrel = -xrel; //Positive only!
+		if (yrel < 0) yrel = -yrel; //Positive only!
+
+		EMU_locktext();
+		EMU_textcolor(BIOS_ATTR_ACTIVE); //We're using active color for input!
+		GPU_EMU_printscreen(x, y, "%u     ", (result<<8)); //Show current size!
+		if (showanalogdiverging)
+		{
+			EMU_textcolor(BIOS_ATTR_TEXT); //We're using active color for input!
+			GPU_EMU_printscreen(x, y + 2, "Currently diverging %u     ", (MAX(xrel, yrel)));
+		}
+		EMU_unlocktext();
 
 		if ((key & BUTTON_DOWN) > 0) //1 step up?
 		{
@@ -2566,7 +2580,7 @@ void BIOS_analogMinRange()
 	EMU_textcolor(BIOS_ATTR_INACTIVE); //We're using inactive color for label!
 	GPU_EMU_printscreen(0, 4, "Analog minimum range: "); //Show selection init!
 	EMU_unlocktext();
-	int_64 file = InputByteNumber(22, 4, BIOS_Settings.input_settings.analog_minrange); //Show options for the analog mimimum range!
+	int_64 file = InputByteNumber(22, 4, BIOS_Settings.input_settings.analog_minrange, 1); //Show options for the analog mimimum range!
 	switch (file) //Which file?
 	{
 	case FILELIST_CANCEL: //Cancelled?
@@ -4907,7 +4921,7 @@ setJoysticktext: //For fixing it!
 
 	optioninfo[advancedoptions] = 8; //Analog minumum range
 	safestrcpy(menuoptions[advancedoptions], sizeof(menuoptions[0]), "Analog minimum range: "); //Disable RALT during Direct Input!
-	safescatnprintf(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "%u", BIOS_Settings.input_settings.analog_minrange); //Disable RALT during Direct Input!
+	safescatnprintf(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "%u", (BIOS_Settings.input_settings.analog_minrange<<8)); //Disable RALT during Direct Input!
 }
 
 void BIOS_inputMenu() //Manage stuff concerning input.
