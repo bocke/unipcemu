@@ -411,7 +411,7 @@ void VGA_OddEven_decode(byte towrite, uint_32 offset, byte *planes, uint_32 *rea
 		readbank &= (0xE0000|getActiveVGA()->precalcs.extraSegmentSelectLines); //3/5 bits only!
 	}
 	*realoffset = realoffsettmp; //Give the calculated offset!
-	*planes = (0x5 << calcplanes); //Convert to used plane (0&2 or 1&3)!
+	*planes = ((0x5 << calcplanes) & 0xF); //Convert to used plane (0&2 or 1&3)!
 	#ifdef ENABLE_SPECIALDEBUGGER
 		if (specialdebugger||verboseVGA) //Debugging special?
 	#else
