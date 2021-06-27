@@ -399,9 +399,9 @@ void VGA_OddEven_decode(byte towrite, uint_32 offset, byte *planes, uint_32 *rea
 		realoffsettmp &= ~1; //Clear bit 0 for our result!
 		realoffsettmp |= (offset>>16)&1; //Replace bit 0 with the high order bit(A16), the most-significant bit!
 	}
-	if (GETBITS(getActiveVGA()->registers->ExternalRegisters.MISCOUTPUTREGISTER,5,1)==0) //High page on High RAM?
+	else //High page on High RAM?
 	{
-		calcplanes |= 2; //Apply high page!
+		realoffsettmp |= GETBITS(getActiveVGA()->registers->ExternalRegisters.MISCOUTPUTREGISTER, 5, 1); //Apply high page if needed!
 	}
 	if (decodingbankunfiltered == 0) //Not unfiltered?
 	{
@@ -411,7 +411,7 @@ void VGA_OddEven_decode(byte towrite, uint_32 offset, byte *planes, uint_32 *rea
 		readbank &= (0xE0000|getActiveVGA()->precalcs.extraSegmentSelectLines); //3/5 bits only!
 	}
 	*realoffset = realoffsettmp; //Give the calculated offset!
-	*planes = ((0x5 << calcplanes) & 0xF); //Convert to used plane (0&2 or 1&3)!
+	*planes = (0x5 << calcplanes); //Convert to used plane (0&2 or 1&3)!
 	#ifdef ENABLE_SPECIALDEBUGGER
 		if (specialdebugger||verboseVGA) //Debugging special?
 	#else
