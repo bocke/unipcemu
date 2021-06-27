@@ -117,8 +117,7 @@ OPTINLINE void fillgetcharxy_values(VGA_Type *VGA, int_32 address)
 
 extern char capturepath[256]; //Capture path!
 
-
-uint_32 textdisplay[32 * 8 * 256 * 2]; //All possible output!
+uint_32 textdisplay[2 * 32 * 256 * 16]; //All possible outputs!
 void dumpVGATextFonts()
 {
 	char fullfilename[256];
@@ -134,10 +133,10 @@ void dumpVGATextFonts()
 	getcharxy_values = &getActiveVGA()->getcharxy_values[0]; //The values!
 	for (displayindex=0;displayindex<NUMITEMS(textdisplay);displayindex++)
 	{
-		currentpixel = (displayindex&7); //Every pixel we change the font/back pixel!
-		currentcharacter = ((displayindex>>3)&0xFF); //The character changes every 8 pixels!
-		currentrow = ((displayindex>>11)&0x1F); //The row changes every 256 characters!
-		currentattribute = ((displayindex>>16)&1); //The attribute changes every 32 rows!
+		currentpixel = (displayindex&0xF); //Every pixel we change the font/back pixel!
+		currentcharacter = ((displayindex>>4)&0xFF); //The character changes every 8 pixels!
+		currentrow = ((displayindex>>12)&0x1F); //The row changes every 256 characters!
+		currentattribute = ((displayindex>>17)&1); //The attribute changes every 32 rows!
 		if (getActiveVGA())
 		{
 			if (getActiveVGA()->registers->specialCGAflags&1) //CGA font is used instead?
@@ -158,7 +157,7 @@ void dumpVGATextFonts()
 	safestrcpy(fullfilename,sizeof(fullfilename), capturepath); //Capture path!
 	safestrcat(fullfilename,sizeof(fullfilename), "/");
 	safestrcat(fullfilename,sizeof(fullfilename), "VRAMText"); //The full filename!
-	writeBMP(fullfilename,&textdisplay[0],256*8,32*2,0,0,256*8); //Dump our font to the BMP file! We're two characters high (one for every font table) and 256 characters wide(total characters in the font).
+	writeBMP(fullfilename,&textdisplay[0],256*16,32*2,0,0,256*16); //Dump our font to the BMP file! We're two characters high (one for every font table) and 256 characters wide(total characters in the font).
 }
 
 void VGA_plane23updated(VGA_Type *VGA, uint_32 address) //Plane 2 has been updated?
