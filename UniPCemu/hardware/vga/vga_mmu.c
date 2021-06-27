@@ -399,7 +399,14 @@ void VGA_OddEven_decode(byte towrite, uint_32 offset, byte *planes, uint_32 *rea
 		realoffsettmp &= ~1; //Clear bit 0 for our result!
 		if (VGA_MemoryMapSelect == 0) //128K window?
 		{
-			realoffsettmp |= ((offset >> 16) & 1); //Bit 16 becomes bit A0 for VRAM!
+			if (GETBITS(getActiveVGA()->registers->SequencerRegisters.REGISTERS.SEQUENCERMEMORYMODEREGISTER, 1, 1)) //More than 64K RAM?
+			{
+				realoffsettmp |= ((offset >> 16) & 1); //Bit 16 becomes bit A0 for VRAM!
+			}
+			else //64K RAM mode?
+			{
+				realoffsettmp |= ((offset >> 14) & 1); //Bit 14 becomes bit A0 for VRAM!
+			}
 		}
 		else //Misc Output Register High/Low page becomes A0 for VRAM!
 		{
