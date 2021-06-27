@@ -156,6 +156,7 @@ OPTINLINE byte PORT_readCRTC_3B5() //Read CRTC registers!
 			break; //Run normally.
 		}
 	}
+
 	if (getActiveVGA()->registers->CRTControllerRegisters_Index>=VGA_RegisterWriteLimits_CRTC[(getActiveVGA()->enable_SVGA==3)?1:0]) //Out of range?
 	{
 		return PORT_UNDEFINED_RESULT; //Undefined!
@@ -354,10 +355,13 @@ byte PORT_readVGA(word port, byte *result) //Read from a port/register!
 	case 0x3D5: //CRTC Controller Data Register		DATA
 		if (!GETBITS(getActiveVGA()->registers->ExternalRegisters.MISCOUTPUTREGISTER,0,1)) goto finishinput; //Block: we're a mono mode addressing as color!
 		readcrtvalue:
-		if ((getActiveVGA()->enable_SVGA!=3) || (((getActiveVGA()->registers->CRTControllerRegisters_Index==0x10) || (getActiveVGA()->registers->CRTControllerRegisters_Index==0x11)) && (getActiveVGA()->enable_SVGA==3))) //Not EGA or EGA light pen registers?
+		if ((getActiveVGA()->enable_SVGA!=3) || (((getActiveVGA()->registers->CRTControllerRegisters_Index>=0x0C) || (getActiveVGA()->registers->CRTControllerRegisters_Index<=0x11)) && (getActiveVGA()->enable_SVGA==3))) //Not EGA or EGA light pen registers (or we're reading the readable cursor/start address)?
 		{
-			*result = PORT_readCRTC_3B5(); //Read port 3B5!
-			ok = 1;
+			if (!((getActiveVGA()->registers->CRTControllerRegisters_Index>0xF) && (getActiveVGA()->registers->CRTControllerRegisters_Index<0x12) && (GETBITS(getActiveVGA()->registers->CRTControllerRegisters.REGISTERS.ENDHORIZONTALBLANKINGREGISTER,7,1)) && (getActiveVGA()->enable_SVGA==3))) //Not reading from light pen location registers disabled on EGA?
+			{
+				*result = PORT_readCRTC_3B5(); //Read port 3B5!
+				ok = 1;
+			}
 		}
 		break;
 	case 0x3C0: //Attribute Address/Data register		ADDRESS/DATA
@@ -395,8 +399,11 @@ byte PORT_readVGA(word port, byte *result) //Read from a port/register!
 		}
 		break;
 	case 0x3C4: //Sequencer Address Register		ADDRESS
-		*result = getActiveVGA()->registers->SequencerRegisters_IndexRegister; //Give the index!
-		ok = 1;
+		if (getActiveVGA()->enable_SVGA!=3) //Not EGA?
+		{
+			*result = getActiveVGA()->registers->SequencerRegisters_IndexRegister; //Give the index!
+			ok = 1;
+		}
 		break;
 	case 0x3C5: //Sequencer Data Register			DATA
 		if (getActiveVGA()->enable_SVGA!=3) //Not EGA?
@@ -454,8 +461,11 @@ byte PORT_readVGA(word port, byte *result) //Read from a port/register!
 		}
 		break;
 	case 0x3CE: //Graphics Controller Address Register	ADDRESS
-		*result = getActiveVGA()->registers->GraphicsRegisters_IndexRegister; //Give!
-		ok = 1;
+		if (getActiveVGA()->enable_SVGA!=3) //Not EGA?
+		{
+			*result = getActiveVGA()->registers->GraphicsRegisters_IndexRegister; //Give!
+			ok = 1;
+		}
 		break;
 	case 0x3CF: //Graphics Controller Data Register		DATA
 		if (getActiveVGA()->enable_SVGA!=3) //Not EGA?
