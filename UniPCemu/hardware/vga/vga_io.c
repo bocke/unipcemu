@@ -556,7 +556,16 @@ byte PORT_writeVGA(word port, byte value) //Write to a port/register!
 	case 0x3BA: //Write: Feature Control Register (mono)		DATA
 		if (GETBITS(getActiveVGA()->registers->ExternalRegisters.MISCOUTPUTREGISTER,0,1)) goto finishoutput; //Block: we're a color mode addressing as mono!
 	case 0x3CA: //Same as above!
-		goto accessfc; //Always access at this address!
+		if ((getActiveVGA()->enable_SVGA == 3) && (port==0x3CA)) //EGA? Graphics 2 position!
+		{
+			getActiveVGA()->registers->EGA_graphics2position = value; //Graphics 2 position!
+			ok = 1;
+			goto finishoutput;
+		}
+		else //Non-EGA?
+		{
+			goto accessfc; //Always access at this address!
+		}
 	case 0x3DA: //Same!
 		if (!GETBITS(getActiveVGA()->registers->ExternalRegisters.MISCOUTPUTREGISTER,0,1)) goto finishoutput; //Block: we're a mono mode addressing as color!
 		accessfc: //Allow!
@@ -573,8 +582,14 @@ byte PORT_writeVGA(word port, byte value) //Write to a port/register!
 		//Undefined!
 		goto finishoutput; //Unknown port! Ignore our call!
 		break;
-	case 0x3C2: //Write: Miscellaneous Output Register	DATA
 	case 0x3CC: //Same as above!
+		if (getActiveVGA()->enable_SVGA == 3) //EGA? Graphics 1 position!
+		{
+			getActiveVGA()->registers->EGA_graphics1position = value; //Graphics 1 position!
+			ok = 1;
+			goto finishoutput; //Finish output!
+		}
+	case 0x3C2: //Write: Miscellaneous Output Register	DATA
 		PORT_write_MISC_3C2(value); //Write to 3C2!
 		ok = 1;
 		break;

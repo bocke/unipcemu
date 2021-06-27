@@ -337,6 +337,8 @@ typedef struct PACKED
 	byte EGA_lightpenstrobeswitch; //Strobe/switch status of the light pen! Bit0=1: Light pen trigger has been set and is pending. Bit1=Light pen has been triggered and stopped pending(light pen register contents are valid). Bit2=1: Light pen switch is open(button on the light pen has been pressed).
 	byte verticalinterruptflipflop; //Current vertical interrupt flipflop!
 	byte VGA_enabled; //Responding to MMU and IO ports other than the enable bits?
+	byte EGA_graphics1position; //EGA Graphics 1 position
+	byte EGA_graphics2position; //EGA Graphics 2 position
 } VGA_REGISTERS;
 #include "headers/endpacked.h" //We're packed!
 
