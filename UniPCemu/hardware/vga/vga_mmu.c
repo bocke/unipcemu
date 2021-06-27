@@ -61,7 +61,7 @@ OPTINLINE void VGA_updateLatches()
 
 void VGA_updateVRAMmaps(VGA_Type *VGA)
 {
-	VGA_RAMEnable = GETBITS(VGA->registers->ExternalRegisters.MISCOUTPUTREGISTER,1,1); //RAM enabled?
+	VGA_RAMEnable = GETBITS(VGA->registers->ExternalRegisters.MISCOUTPUTREGISTER,1,1)|((VGA->enable_SVGA==3)?1:0); //RAM enabled?
 	VGA_MemoryMapSelect = GETBITS(VGA->registers->GraphicsRegisters.REGISTERS.MISCGRAPHICSREGISTER,2,3); //Update the selected memory map!
 	switch (VGA_MemoryMapSelect) //What memory map?
 	{
