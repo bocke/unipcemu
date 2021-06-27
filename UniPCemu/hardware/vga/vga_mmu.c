@@ -397,12 +397,16 @@ void VGA_OddEven_decode(byte towrite, uint_32 offset, byte *planes, uint_32 *rea
 	if (GETBITS(getActiveVGA()->registers->GraphicsRegisters.REGISTERS.MISCGRAPHICSREGISTER,1,1)) //Replace A0 with high order bit?
 	{
 		realoffsettmp &= ~1; //Clear bit 0 for our result!
-		realoffsettmp |= (offset>>16)&1; //Replace bit 0 with the high order bit(A16), the most-significant bit!
+		if (VGA_MemoryMapSelect == 0) //128K window?
+		{
+			realoffsettmp |= ((offset >> 16) & 1); //Bit 16 becomes bit A0 for VRAM!
+		}
+		else //Misc Output Register High/Low page becomes A0 for VRAM!
+		{
+			realoffsettmp |= (GETBITS(getActiveVGA()->registers->ExternalRegisters.MISCOUTPUTREGISTER, 5, 1)^1); //Apply high page if needed!
+		}
 	}
-	else //High page on High RAM?
-	{
-		realoffsettmp |= GETBITS(getActiveVGA()->registers->ExternalRegisters.MISCOUTPUTREGISTER, 5, 1); //Apply high page if needed!
-	}
+	//Otherwise, CPU A0 becomes VRAM A0?
 	if (decodingbankunfiltered == 0) //Not unfiltered?
 	{
 		writebank <<= 1; //Shift to it's position!
