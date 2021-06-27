@@ -403,7 +403,11 @@ void VGA_OddEven_decode(byte towrite, uint_32 offset, byte *planes, uint_32 *rea
 		}
 		else //Misc Output Register High/Low page becomes A0 for VRAM!
 		{
-			realoffsettmp |= (GETBITS(getActiveVGA()->registers->ExternalRegisters.MISCOUTPUTREGISTER, 5, 1)^1); //Apply high page if needed!
+			realoffsettmp |= GETBITS(getActiveVGA()->registers->ExternalRegisters.MISCOUTPUTREGISTER, 5, 1); //Apply high page if needed!
+			if (getActiveVGA()->enable_SVGA != 3) //Not EGA?
+			{
+				realoffsettmp ^= 1; //Somehow this bit is swapped?
+			}
 		}
 	}
 	//Otherwise, CPU A0 becomes VRAM A0?
