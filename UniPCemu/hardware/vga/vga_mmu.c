@@ -416,6 +416,17 @@ void VGA_OddEven_decode(byte towrite, uint_32 offset, byte *planes, uint_32 *rea
 	}
 	*realoffset = realoffsettmp; //Give the calculated offset!
 	*planes = (0x5 << calcplanes); //Convert to used plane (0&2 or 1&3)!
+	if (towrite == 0) //Read?
+	{
+		if (!GETBITS(getActiveVGA()->registers->GraphicsRegisters.REGISTERS.READMAPSELECTREGISTER, 1, 1)) //Lower plane?
+		{
+			*planes &= 0x3; //Lower planes only!
+		}
+		else //Upper plane?
+		{
+			*planes &= 0xC; //Upper planes only!
+		}
+	}
 	#ifdef ENABLE_SPECIALDEBUGGER
 		if (specialdebugger||verboseVGA) //Debugging special?
 	#else
