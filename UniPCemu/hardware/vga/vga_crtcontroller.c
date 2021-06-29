@@ -174,7 +174,7 @@ word get_display_x(VGA_Type *VGA, word x) //Horizontal check!
 	{
 		signal |= VGA_SIGNAL_HBLANKSTART; //Blanking!
 	}
-	else if ((hchar&0x3F)==getHorizontalBlankingEnd(VGA)) //We end blanking AFTER this character!
+	else if ((hchar&(0x1F|((VGA->enable_SVGA!=3)?0x20:0)))==getHorizontalBlankingEnd(VGA)) //We end blanking AFTER this character! EGA uses 5 bits matching instead of 6-bit matching for horizontal blanking end!
 	{
 		signal |= VGA_SIGNAL_HBLANKEND; //End blanking!
 	}
