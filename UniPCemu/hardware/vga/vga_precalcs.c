@@ -654,8 +654,15 @@ void VGA_calcprecalcs(void *useVGA, uint_32 whereupdated) //Calculate them, wher
 		if (CRTUpdatedCharwidth || (whereupdated==(WHEREUPDATED_CRTCONTROLLER|0x3)) || (whereupdated==(WHEREUPDATED_CRTCONTROLLER|0x5))) //Updated?
 		{
 			word hblankend;
-			hblankend = GETBITS(VGA->registers->CRTControllerRegisters.REGISTERS.ENDHORIZONTALRETRACEREGISTER,7,1);
-			hblankend <<= 5; //Move to bit 6!
+			if (VGA->enable_SVGA != 3) //Not EGA?
+			{
+				hblankend = GETBITS(VGA->registers->CRTControllerRegisters.REGISTERS.ENDHORIZONTALRETRACEREGISTER, 7, 1);
+				hblankend <<= 5; //Move to bit 6!
+			}
+			else //EGA?
+			{
+				hblankend = 0; //Init!
+			}
 			hblankend |= GETBITS(VGA->registers->CRTControllerRegisters.REGISTERS.ENDHORIZONTALBLANKINGREGISTER,0,0x1F);
 			if (VGA->precalcs.horizontalblankingend != hblankend) adjustVGASpeed(); //Update our speed!
 			updateCRTC |= (VGA->precalcs.horizontalblankingend != hblankend); //Update!
@@ -737,8 +744,15 @@ void VGA_calcprecalcs(void *useVGA, uint_32 whereupdated) //Calculate them, wher
 		if (CRTUpdated || (whereupdated==(WHEREUPDATED_CRTCONTROLLER|0x6)) || overflowupdated) //Updated?
 		{
 			word vtotal;
-			vtotal = GETBITS(VGA->registers->CRTControllerRegisters.REGISTERS.OVERFLOWREGISTER,5,1);
-			vtotal <<= 1;
+			if (VGA->enable_SVGA != 3) //EGA doesn't support this?
+			{
+				vtotal = GETBITS(VGA->registers->CRTControllerRegisters.REGISTERS.OVERFLOWREGISTER, 5, 1);
+				vtotal <<= 1;
+			}
+			else //EGA?
+			{
+				vtotal = 0; //Init!
+			}
 			vtotal |= GETBITS(VGA->registers->CRTControllerRegisters.REGISTERS.OVERFLOWREGISTER,0,1);
 			vtotal <<= 8;
 			vtotal |= VGA->registers->CRTControllerRegisters.REGISTERS.VERTICALTOTALREGISTER;
