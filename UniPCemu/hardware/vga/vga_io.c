@@ -144,7 +144,7 @@ byte VGA_RegisterWriteMask_GraphicsIndex[2] = {0xFF,0x0F}; //A.k.a. Graphics 1 a
 
 OPTINLINE byte PORT_readCRTC_3B5() //Read CRTC registers!
 {
-	if ((getActiveVGA()->registers->CRTControllerRegisters_Index>0xF) && (getActiveVGA()->registers->CRTControllerRegisters_Index<0x12) && ((!GETBITS(getActiveVGA()->registers->CRTControllerRegisters.REGISTERS.ENDHORIZONTALBLANKINGREGISTER,7,1)) && (getActiveVGA()->enable_SVGA==3))) //Reading from light pen location registers?
+	if ((getActiveVGA()->registers->CRTControllerRegisters_Index>0xF) && (getActiveVGA()->registers->CRTControllerRegisters_Index<0x12) && ((!GETBITS(getActiveVGA()->registers->CRTControllerRegisters.REGISTERS.ENDHORIZONTALBLANKINGREGISTER,7,1) || (getActiveVGA()->enable_SVGA == 3)))) //Reading from light pen location registers?
 	{
 		switch (getActiveVGA()->registers->CRTControllerRegisters_Index) //What index?
 		{
@@ -201,10 +201,6 @@ OPTINLINE void PORT_write_CRTC_3B5(byte value)
 	{
 		value &= VGA_RegisterWriteMasks_CRTC[(getActiveVGA()->enable_SVGA==3)?1:0][index]; //Apply the write mask to the data written to the register!
 		//Normal register update?
-		if (!(((index == 0x10) || (index == 0x11)) && (getActiveVGA()->enable_SVGA == 3) && ((!GETBITS(getActiveVGA()->registers->CRTControllerRegisters.REGISTERS.ENDHORIZONTALBLANKINGREGISTER, 7, 1))))) //Not the light pen registers on EGA?
-		{
-			getActiveVGA()->registers->CRTControllerRegisters.DATA[index] = value; //Set!
-		}
 		if (index==0x11) //Bit 4&5 of the Vertical Retrace End register have other effects!
 		{
 			//Bit 5: Input status Register 0, bit 7 needs to be updated with Bit 5?
@@ -357,11 +353,8 @@ byte PORT_readVGA(word port, byte *result) //Read from a port/register!
 		readcrtvalue:
 		if ((getActiveVGA()->enable_SVGA!=3) || (((getActiveVGA()->registers->CRTControllerRegisters_Index>=0x0C) || (getActiveVGA()->registers->CRTControllerRegisters_Index<=0x11)) && (getActiveVGA()->enable_SVGA==3))) //Not EGA or EGA light pen registers (or we're reading the readable cursor/start address)?
 		{
-			if (!((getActiveVGA()->registers->CRTControllerRegisters_Index>0xF) && (getActiveVGA()->registers->CRTControllerRegisters_Index<0x12) && (GETBITS(getActiveVGA()->registers->CRTControllerRegisters.REGISTERS.ENDHORIZONTALBLANKINGREGISTER,7,1)) && (getActiveVGA()->enable_SVGA==3))) //Not reading from light pen location registers disabled on EGA?
-			{
-				*result = PORT_readCRTC_3B5(); //Read port 3B5!
-				ok = 1;
-			}
+			*result = PORT_readCRTC_3B5(); //Read port 3B5!
+			ok = 1;
 		}
 		break;
 	case 0x3C0: //Attribute Address/Data register		ADDRESS/DATA
