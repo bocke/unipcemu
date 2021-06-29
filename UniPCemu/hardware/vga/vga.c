@@ -496,7 +496,7 @@ void VGA_setupEGAPalette(VGA_Type *VGA)
 {
 	word index;
 	byte r,g,b;
-	byte strengthtable[4] = {0x00,0xAA,0x55,0xFF};
+	byte strengthtable[4] = {0x00,0x55,0xAA,0xFF};
 	VGA->registers->DACMaskRegister = 0x3F; //Set a DAC mask register to apply!
 	for (index=0;index<0x100;++index) //
 	{
