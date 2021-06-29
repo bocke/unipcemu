@@ -366,7 +366,7 @@ void VGA_calcprecalcs(void *useVGA, uint_32 whereupdated) //Calculate them, wher
 		{
 			if (VGA->enable_SVGA == 3) //EGA?
 			{
-				pattern = 0xE; //Start up as a EGA 80x25 color!
+				pattern = 0x3; //Start up as a EGA 80x25 color!
 			}
 		}
 
