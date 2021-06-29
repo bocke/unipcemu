@@ -496,13 +496,13 @@ void VGA_setupEGAPalette(VGA_Type *VGA)
 {
 	word index;
 	byte r,g,b;
-	byte strengthtable[4] = {0x00,0x55,0xAA,0xFF};
+	byte strengthtable[4] = {0x00,0x55,0xAA,0xFF}; //4 intentities of each of the 2-bit color channels!
 	VGA->registers->DACMaskRegister = 0x3F; //Set a DAC mask register to apply!
 	for (index=0;index<0x100;++index) //
 	{
-		b = strengthtable[(((index&0x08)>>2)|(index&1))];
-		g = strengthtable[((((index&0x10)>>2)|(index&2))>>1)];
-		r = strengthtable[((((index&0x20)>>2)|(index&4))>>2)];
+		r = strengthtable[((index >> 1) & 2) | ((index >> 5)) & 1];
+		g = strengthtable[(index & 2) | ((index >> 4) & 1)];
+		b = strengthtable[((index << 1) & 2) | ((index >> 3) & 1)];
 		VGA->precalcs.DAC[index] = RGB(r,g,b); //Calculate the color to use!
 	}
 	VGA_calcprecalcs(VGA,WHEREUPDATED_DACMASKREGISTER); //Update the entire DAC with our loaded DAC values!
