@@ -380,7 +380,7 @@ byte PORT_readVGA(word port, byte *result) //Read from a port/register!
 		SETBITS(getActiveVGA()->registers->ExternalRegisters.INPUTSTATUS0REGISTER,4,1,(switchval&1)); //Depends on the switches. This is the reverse of the actual switches used! Originally stuck to 1s, but reported as 0110!
 		*result = getActiveVGA()->registers->ExternalRegisters.INPUTSTATUS0REGISTER; //Give the register!
 		SETBITS(*result, 5, 3, (getActiveVGA()->registers->ExternalRegisters.FEATURECONTROLREGISTER & 3)); //Feature bits 0&1!
-		SETBITS(*result, 7, 1, getActiveVGA()->registers->verticalinterruptflipflop); //Vertical retrace interrupt pending?
+		SETBITS(*result, 7, 1, (getActiveVGA()->registers->verticalinterruptflipflop^((getActiveVGA()->enable_SVGA==3)?1:0))); //Vertical retrace interrupt pending? Inverted on the EGA!
 		*result &= VGA_RegisterWriteMasks_InputStatus0[(getActiveVGA()->enable_SVGA==3)?1:0]; //Apply the write mask to the data written to the register!
 		ok = 1;
 		break;
@@ -483,8 +483,9 @@ byte PORT_readVGA(word port, byte *result) //Read from a port/register!
 			byte DACOutput = getActiveVGA()->CRTC.DACOutput; //Current DAC output to give!
 			SETBITS(*result,4,1,GETBITS(DACOutput,bittablelow[(getActiveVGA()->enable_SVGA==3)?1:0][GETBITS(getActiveVGA()->registers->AttributeControllerRegisters.REGISTERS.COLORPLANEENABLEREGISTER,4,3)],1));
 			SETBITS(*result,5,1,GETBITS(DACOutput,bittablehigh[(getActiveVGA()->enable_SVGA==3)?1:0][GETBITS(getActiveVGA()->registers->AttributeControllerRegisters.REGISTERS.COLORPLANEENABLEREGISTER,4,3)],1));
-			if (getActiveVGA()->enable_SVGA==3) //EGA has lightpen support here?
+			if (getActiveVGA()->enable_SVGA==3) //EGA has lightpen support here and special functionality?
 			{
+				*result ^= 0x11; //EGA actually has display enable(1 when active) and 
 				SETBITS(*result,1,1,GETBITS(getActiveVGA()->registers->EGA_lightpenstrobeswitch,1,1)); //Light pen has been triggered and stopped pending? Set light pen trigger!
 				SETBITS(*result,2,1,GETBITS(~getActiveVGA()->registers->EGA_lightpenstrobeswitch,2,1)); //Light pen switch is open(not pressed)?
 			}
