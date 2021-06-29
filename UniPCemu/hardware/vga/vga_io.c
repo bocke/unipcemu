@@ -201,10 +201,8 @@ OPTINLINE void PORT_write_CRTC_3B5(byte value)
 	{
 		value &= VGA_RegisterWriteMasks_CRTC[(getActiveVGA()->enable_SVGA==3)?1:0][index]; //Apply the write mask to the data written to the register!
 		//Normal register update?
-		if (!(((index == 0x10) || (index == 0x11)) && (getActiveVGA()->enable_SVGA != 3) && ((!GETBITS(getActiveVGA()->registers->CRTControllerRegisters.REGISTERS.ENDHORIZONTALBLANKINGREGISTER, 7, 1))))) //Not the light pen registers on (S)VGA?
-		{
-			getActiveVGA()->registers->CRTControllerRegisters.DATA[index] = value; //Set!
-		}
+		//EVRA only takes effect on reads, not on writes!
+		getActiveVGA()->registers->CRTControllerRegisters.DATA[index] = value; //Set!
 		if (index==0x11) //Bit 4&5 of the Vertical Retrace End register have other effects!
 		{
 			//Bit 5: Input status Register 0, bit 7 needs to be updated with Bit 5?
