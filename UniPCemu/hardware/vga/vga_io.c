@@ -144,7 +144,7 @@ byte VGA_RegisterWriteMask_GraphicsIndex[2] = {0xFF,0x0F}; //A.k.a. Graphics 1 a
 
 OPTINLINE byte PORT_readCRTC_3B5() //Read CRTC registers!
 {
-	if ((getActiveVGA()->registers->CRTControllerRegisters_Index>0xF) && (getActiveVGA()->registers->CRTControllerRegisters_Index<0x12) && ((!GETBITS(getActiveVGA()->registers->CRTControllerRegisters.REGISTERS.ENDHORIZONTALBLANKINGREGISTER,7,1) || (getActiveVGA()->enable_SVGA == 3)))) //Reading from light pen location registers?
+	if ((getActiveVGA()->registers->CRTControllerRegisters_Index>0xF) && (getActiveVGA()->registers->CRTControllerRegisters_Index<0x12) && (((!GETBITS(getActiveVGA()->registers->CRTControllerRegisters.REGISTERS.ENDHORIZONTALBLANKINGREGISTER,7,1)) || (getActiveVGA()->enable_SVGA == 3)))) //Reading from light pen location registers?
 	{
 		switch (getActiveVGA()->registers->CRTControllerRegisters_Index) //What index?
 		{
