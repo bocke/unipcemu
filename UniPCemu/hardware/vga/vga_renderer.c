@@ -678,6 +678,7 @@ void VGA_HTotal(SEQ_DATA *Sequencer, VGA_Type *VGA)
 //Retrace handlers!
 void VGA_VRetrace(SEQ_DATA *Sequencer, VGA_Type *VGA)
 {
+	VGA->CRTC.DACOutput = 0x00; //The output is cleared during retracing!
 	VGA->CRTC.CRTCBwindowmaxstatus = MAX(VGA->CRTC.CRTCBwindowmaxstatus, VGA->CRTC.CRTCBwindowEnabled); //Maximum status detected!
 	if (VGA->CRTC.y>Sequencer->yres)
 	{
@@ -697,6 +698,7 @@ byte CGAMDARenderer = 0; //Render CGA style?
 
 void VGA_HRetrace(SEQ_DATA *Sequencer, VGA_Type *VGA)
 {
+	VGA->CRTC.DACOutput = 0x00; //The output is cleared during retracing!
 	VGA->CRTC.CRTCBwindowmaxstatus = MAX(VGA->CRTC.CRTCBwindowmaxstatus, VGA->CRTC.CRTCBwindowEnabled); //Maximum status detected!
 	CGALineSize = VGA->CRTC.x; //Update X resolution!
 	if (VGA->CRTC.x>Sequencer->xres) Sequencer->xres = VGA->CRTC.x; //Current x resolution!
