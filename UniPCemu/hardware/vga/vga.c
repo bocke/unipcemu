@@ -228,6 +228,10 @@ VGA_Type *VGAalloc(uint_32 custom_vram_size, int update_bios, byte extension, by
 			//SVGA chips?
 			VGA->registers->SequencerRegisters.REGISTERS.SEQUENCERMEMORYMODEREGISTER |= 0x02; //Set by default: extended memory!
 		case 3: //EGA or SVGA? We're starting in color mode!
+			if (VGA->VRAM_size>=0x10004) //More than 64K installed?
+			{
+				VGA->registers->SequencerRegisters.REGISTERS.SEQUENCERMEMORYMODEREGISTER |= 0x02; //Set by default: extended memory!
+			}
 			VGA->registers->ExternalRegisters.MISCOUTPUTREGISTER |= 0x22; //Default misc output set bits!
 		case 0: //VGA?
 			VGA->registers->ExternalRegisters.MISCOUTPUTREGISTER |= 0x02; //Default misc output set bits: VRAM enabled!
