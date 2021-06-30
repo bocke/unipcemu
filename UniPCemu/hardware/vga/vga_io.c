@@ -575,7 +575,15 @@ byte PORT_writeVGA(word port, byte value) //Write to a port/register!
 		ok = 1;
 		break;
 	case 0x3C1: //Attribute Data Read Register		DATA
-		//Undefined!
+		//Undefined on most chipsets!
+		if (getActiveVGA()->enable_SVGA == 3) //EGA?
+		{
+			if (VGA_3C0_FLIPFLOPR) //Flipflop set? Write to the register and toggle the flipflop! Undocumented EGA BIOS behaviour!
+			{
+				PORT_write_ATTR_3C0(value); 
+				ok = 1;
+			}
+		}
 		goto finishoutput; //Unknown port! Ignore our call!
 		break;
 	case 0x3CC: //Same as above!
