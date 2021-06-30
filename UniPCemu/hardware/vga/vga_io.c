@@ -480,8 +480,8 @@ byte PORT_readVGA(word port, byte *result) //Read from a port/register!
 			SETBITS(getActiveVGA()->registers->CRTControllerRegisters.REGISTERS.ATTRIBUTECONTROLLERTOGGLEREGISTER,7,1,0); //Reset flipflop for 3C0!
 
 			*result = getActiveVGA()->registers->ExternalRegisters.INPUTSTATUS1REGISTER; //Give!
-			const static byte bittablelow[2][4] = {{0,4,1,6},{0,4,1,8}}; //Bit 6 is undefined on EGA!
-			const static byte bittablehigh[2][4] = {{2,5,3,7},{2,5,3,8}}; //Bit 7 is undefined on EGA!
+			const static byte bittablelow[2][4] = {{0,4,1,6},{0,1,4,8}}; //Bit 6 is undefined on EGA!
+			const static byte bittablehigh[2][4] = {{2,5,3,7},{2,3,5,8}}; //Bit 7 is undefined on EGA!
 			byte DACOutput = getActiveVGA()->CRTC.DACOutput; //Current DAC output to give!
 			SETBITS(*result,4,1,GETBITS(DACOutput,bittablelow[(getActiveVGA()->enable_SVGA==3)?1:0][GETBITS(getActiveVGA()->registers->AttributeControllerRegisters.REGISTERS.COLORPLANEENABLEREGISTER,4,3)],1));
 			SETBITS(*result,5,1,GETBITS(DACOutput,bittablehigh[(getActiveVGA()->enable_SVGA==3)?1:0][GETBITS(getActiveVGA()->registers->AttributeControllerRegisters.REGISTERS.COLORPLANEENABLEREGISTER,4,3)],1));
