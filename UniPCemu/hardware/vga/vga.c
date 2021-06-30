@@ -504,7 +504,7 @@ void VGA_setupEGAPalette(VGA_Type *VGA)
 	VGA->registers->DACMaskRegister = 0x3F; //Set a DAC mask register to apply!
 	for (index=0;index<0x100;++index) //
 	{
-		r = strengthtable[((index >> 1) & 2) | ((index >> 5)) & 1];
+		r = strengthtable[((index >> 1) & 2) | ((index >> 5) & 1)];
 		g = strengthtable[(index & 2) | ((index >> 4) & 1)];
 		b = strengthtable[((index << 1) & 2) | ((index >> 3) & 1)];
 		VGA->precalcs.DAC[index] = RGB(r,g,b); //Calculate the color to use!
