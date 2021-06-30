@@ -487,7 +487,6 @@ byte PORT_readVGA(word port, byte *result) //Read from a port/register!
 			SETBITS(*result,5,1,GETBITS(DACOutput,bittablehigh[(getActiveVGA()->enable_SVGA==3)?1:0][GETBITS(getActiveVGA()->registers->AttributeControllerRegisters.REGISTERS.COLORPLANEENABLEREGISTER,4,3)],1));
 			if (getActiveVGA()->enable_SVGA==3) //EGA has lightpen support here and special functionality?
 			{
-				*result ^= 0x1; //EGA actually has display enable(1 when active) inverted compared to the VGA!
 				SETBITS(*result,1,1,GETBITS(getActiveVGA()->registers->EGA_lightpenstrobeswitch,1,1)); //Light pen has been triggered and stopped pending? Set light pen trigger!
 				SETBITS(*result,2,1,GETBITS(~getActiveVGA()->registers->EGA_lightpenstrobeswitch,2,1)); //Light pen switch is open(not pressed)?
 			}
