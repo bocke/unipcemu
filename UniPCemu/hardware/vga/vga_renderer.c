@@ -1518,7 +1518,12 @@ void VGA_Overscan_noblanking_VGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_Attribu
 		}
 		else
 		{
-			DACcolor = VGA_DAC(VGA, VGA->CRTC.DACOutput); //What color to render?
+			DACcolor = VGA->CRTC.DACOutput; //The color to convert!
+			if (getActiveVGA()->enable_SVGA == 3) //EGA needs 4-bit to 6-bit mapping depending on polarity?
+			{
+				DACcolor = EGA_SyncPolarityConversion[GETBITS(getActiveVGA()->registers->ExternalRegisters.MISCOUTPUTREGISTER, 7, 1)][(DACcolor & 0x3F)]; //Process EGA VSync polarity required for correct colors to be createn by the display!
+			}
+			DACcolor = VGA_DAC(VGA, (byte)DACcolor); //What color to render?
 			DACcolor = RGB(VGA->DACbrightness[GETR(DACcolor)], VGA->DACbrightness[GETG(DACcolor)], VGA->DACbrightness[GETB(DACcolor)]); //Make sure we're active display levels of brightness!
 			drawPixel(VGA, DACcolor); //Draw overscan in the specified color instead!
 		}
@@ -1532,7 +1537,12 @@ void VGA_Overscan_noblanking_VGA(VGA_Type *VGA, SEQ_DATA *Sequencer, VGA_Attribu
 		}
 		else
 		{
-			DACcolor = VGA_DAC(VGA, VGA->precalcs.overscancolor); //Draw overscan!
+			DACcolor = VGA->CRTC.DACOutput; //The color to convert!
+			if (getActiveVGA()->enable_SVGA == 3) //EGA needs 4-bit to 6-bit mapping depending on polarity?
+			{
+				DACcolor = EGA_SyncPolarityConversion[GETBITS(getActiveVGA()->registers->ExternalRegisters.MISCOUTPUTREGISTER, 7, 1)][(DACcolor & 0x3F)]; //Process EGA VSync polarity required for correct colors to be createn by the display!
+			}
+			DACcolor = VGA_DAC(VGA, (byte)DACcolor); //Draw overscan!
 			DACcolor = RGB(VGA->DACbrightness[GETR(DACcolor)], VGA->DACbrightness[GETG(DACcolor)], VGA->DACbrightness[GETB(DACcolor)]); //Make sure we're active display levels of brightness!
 			drawPixel(VGA, DACcolor); //Draw overscan in the specified color instead!
 		}
