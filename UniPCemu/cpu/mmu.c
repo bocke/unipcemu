@@ -287,7 +287,7 @@ byte checkDirectMMUaccess(uint_32 realaddress, byte readflags, byte CPL)
 }
 
 uint_32 checkMMUaccess_linearaddr; //Saved linear address for the BIU to use!
-//readflags = 1|(opcode<<1) for reads! 0 for writes! Bit 4: Disable segmentation check, Bit 5: Disable debugger check, Bit 6: Disable paging check.
+//readflags = 1|(opcode<<1) for reads! 0 for writes! Bit 4: Disable segmentation check, Bit 5: Disable debugger check, Bit 6: Disable paging check, Bit 8=Disable paging faults.
 byte checkMMUaccess(sword segdesc, word segment, uint_64 offset, word readflags, byte CPL, byte is_offset16, byte subbyte) //Check if a byte address is invalid to read/write for a purpose! Used in all CPU modes! Subbyte is used for alignment checking!
 {
 	byte result;
@@ -333,7 +333,10 @@ byte checkMMUaccess(sword segdesc, word segment, uint_64 offset, word readflags,
 		result = checkDirectMMUaccess(realaddress, (readflags & (~0xE0)), CPL); //Get the result!
 		if (unlikely(result==1)) //Failure in the Paging Unit? Don't give it the special flags we use!
 		{
-			MMU.invaddr = 3; //Invalid address signaling!
+			if ((readflags&0x100)==0) //Not disabling paging faults?
+			{
+				MMU.invaddr = 3; //Invalid address signaling!
+			}
 			return 1; //Error out!
 		}
 		else if (result == 2) //Waiting to page in?
@@ -370,7 +373,10 @@ skipdebugger:
 		result = checkDirectMMUaccess(realaddress, (readflags & (~0xE0)), CPL);
 		if (unlikely(result==1)) //Failure in the Paging Unit? Don't give it the special flags we use!
 		{
-			MMU.invaddr = 3; //Invalid address signaling!
+			if ((readflags&0x100)==0) //Not disabling paging faults?
+			{
+				MMU.invaddr = 3; //Invalid address signaling!
+			}
 			return 1; //Error out!
 		}
 		else if (result == 2) //Waiting to page in?
@@ -468,9 +474,20 @@ byte checkPhysMMUaccess32(void *segdesc, word segment, uint_64 offset, word read
 	{
 		return result; //Give the result!
 	}
-	if ((result = checkPhysMMUaccess(segdesc, segment, offset + 3, readflags, CPL, is_offset16, subbyte | 3)) != 0) //Upper bound!
+	if ((result = checkPhysMMUaccess(segdesc, segment, offset + 3, (readflags|0x100), CPL, is_offset16, subbyte | 3)) != 0) //Upper bound!
 	{
-		return result; //Give the result!
+		if ((result = checkPhysMMUaccess(segdesc, segment, offset + 1, readflags, CPL, is_offset16, subbyte | 3)) != 0) //Upper bound!
+		{
+			return result; //Give the result!
+		}
+		if ((result = checkPhysMMUaccess(segdesc, segment, offset + 2, readflags, CPL, is_offset16, subbyte | 3)) != 0) //Upper bound!
+		{
+			return result; //Give the result!
+		}
+		if ((result = checkPhysMMUaccess(segdesc, segment, offset + 3, readflags, CPL, is_offset16, subbyte | 3)) != 0) //Upper bound!
+		{
+			return result; //Give the result!
+		}
 	}
 	return 0; //OK!
 }
