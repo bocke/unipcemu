@@ -595,7 +595,7 @@ byte CPU_paging_translateaddr(uint_32 address, byte CPL, uint_64 *physaddr) //Do
 	return 1; //Valid!
 }
 
-byte CPU_Paging_checkPage(uint_32 address, byte readflags, byte CPL)
+byte CPU_Paging_checkPage(uint_32 address, word readflags, byte CPL)
 {
 	byte result;
 	result = isvalidpage(address,((readflags&(~0x10))==0),CPL,(((readflags&0x10)>>4)|(readflags&2)|((readflags&0x100)>>6))); //Are we an invalid page? We've raised an error! Bit4 is set during Prefetch operations! Bit 0 is set when performing an instruction fetch!

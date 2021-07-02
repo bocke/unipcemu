@@ -25,7 +25,7 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 
 #define is_paging() CPU[activeCPU].is_paging
 #define mappage effectivemappageHandler
-byte CPU_Paging_checkPage(uint_32 address, byte readflags, byte CPL); //Do we have paging without error? userlevel=CPL usually.
+byte CPU_Paging_checkPage(uint_32 address, word readflags, byte CPL); //Do we have paging without error? userlevel=CPL usually.
 
 typedef struct
 {
