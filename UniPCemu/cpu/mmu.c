@@ -270,7 +270,7 @@ void MMU_clearOP()
 
 //CPU/EMU simple memory access routine.
 
-byte checkDirectMMUaccess(uint_32 realaddress, byte readflags, byte CPL)
+byte checkDirectMMUaccess(uint_32 realaddress, word readflags, byte CPL)
 {
 	byte result;
 	//Check for Page Faults!

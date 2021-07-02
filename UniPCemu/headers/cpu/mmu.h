@@ -87,7 +87,7 @@ byte checkMMUaccess32(sword segdesc, word segment, uint_64 offset, word readflag
 byte checkPhysMMUaccess32(void *segdesc, word segment, uint_64 offset, word readflags, byte CPL, byte is_offset16, byte subbyte); //Check if a byte address is invalid to read/write for a purpose! Used in all CPU modes!
 
 //Direct memory support for the CPU!
-byte checkDirectMMUaccess(uint_32 realaddress, byte readflags, byte CPL); //Check direct memory access before applying the writes below!
+byte checkDirectMMUaccess(uint_32 realaddress, word readflags, byte CPL); //Check direct memory access before applying the writes below!
 void Paging_directwb(sword segdesc, uint_32 realaddress, byte val, byte index, byte is_offset16, byte writewordbackup, byte CPL);
 byte Paging_directrb(sword segdesc, uint_32 realaddress, byte writewordbackup, byte opcode, byte index, byte CPL);
 
