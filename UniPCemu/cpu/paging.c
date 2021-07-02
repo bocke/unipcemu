@@ -92,7 +92,10 @@ extern byte EMU_RUNNING; //1 when paging can be applied!
 extern byte advancedlog; //Advanced log setting
 extern byte MMU_logging; //Are we logging from the MMU?
 
-
+//Extra bits for debugging
+//Instruction fault to bit 4?
+//#define PF_EXTRABITS ((isPrefetch&2)<<3)
+#define PF_EXTRABITS 0
 
 void raisePF(uint_32 address, word flags)
 {
@@ -234,7 +237,7 @@ byte isvalidpage(uint_32 address, byte iswrite, byte CPL, byte isPrefetch) //Do 
 		}
 	}
 
-	if (isPrefetch) return 0; //Stop the prefetch when not in the TLB!
+	if ((isPrefetch&1)) return 0; //Stop the prefetch when not in the TLB!
 
 	#ifdef PAGING_LOCKED
 	if (BIU_obtainbuslock()) //Obtaining the bus lock?
@@ -278,7 +281,7 @@ byte isvalidpage(uint_32 address, byte iswrite, byte CPL, byte isPrefetch) //Do 
 			CPU[activeCPU].PageFault_PDPT = PDPT; //Save!
 			CPU[activeCPU].PageFault_PDE = 0; //Save!
 			CPU[activeCPU].PageFault_PTE = 0; //Save!
-			raisePF(address, (RW << 1) | (effectiveUS << 2)); //Run a not present page fault!
+			raisePF(address, PF_EXTRABITS | (RW << 1) | (effectiveUS << 2)); //Run a not present page fault!
 			return 0; //We have an error, abort!
 		}
 
@@ -296,7 +299,7 @@ byte isvalidpage(uint_32 address, byte iswrite, byte CPL, byte isPrefetch) //Do 
 			CPU[activeCPU].PageFault_PDPT = PDPT; //Save!
 			CPU[activeCPU].PageFault_PDE = PDE; //Save!
 			CPU[activeCPU].PageFault_PTE = 0; //Save!
-			raisePF(address, (RW << 1) | (effectiveUS << 2)); //Run a not present page fault!
+			raisePF(address, PF_EXTRABITS | (RW << 1) | (effectiveUS << 2)); //Run a not present page fault!
 			return 0; //We have an error, abort!
 		}
 		isS = ((PDE & PDE_S) >> 7); //Large page of 2M? Is mandatory to be supported! CR4's PSE bit is ignored!
@@ -312,7 +315,7 @@ byte isvalidpage(uint_32 address, byte iswrite, byte CPL, byte isPrefetch) //Do 
 			CPU[activeCPU].PageFault_PDPT = 0; //Save!
 			CPU[activeCPU].PageFault_PDE = PDE; //Save!
 			CPU[activeCPU].PageFault_PTE = 0; //Save!
-			raisePF(address, (RW << 1) | (effectiveUS << 2)); //Run a not present page fault!
+			raisePF(address, PF_EXTRABITS | (RW << 1) | (effectiveUS << 2)); //Run a not present page fault!
 			return 0; //We have an error, abort!
 		}
 		isS = ((((PDE & PDE_S) >> 7) & ((CPU[activeCPU].registers->CR4 & 0x10) >> 4) & (EMULATED_CPU >= CPU_PENTIUM)) & 1); //Effective size!
@@ -332,7 +335,7 @@ byte isvalidpage(uint_32 address, byte iswrite, byte CPL, byte isPrefetch) //Do 
 			CPU[activeCPU].PageFault_PDPT = PDPT; //Save!
 			CPU[activeCPU].PageFault_PDE = PDE; //Save!
 			CPU[activeCPU].PageFault_PTE = PTE; //Save!
-			raisePF(address, (RW << 1) | (effectiveUS << 2)); //Run a not present page fault!
+			raisePF(address, PF_EXTRABITS | (RW << 1) | (effectiveUS << 2)); //Run a not present page fault!
 			return 0; //We have an error, abort!
 		}
 	}
@@ -344,7 +347,7 @@ byte isvalidpage(uint_32 address, byte iswrite, byte CPL, byte isPrefetch) //Do 
 			CPU[activeCPU].PageFault_PDPT = PDPT; //Save!
 			CPU[activeCPU].PageFault_PDE = PDE; //Save!
 			CPU[activeCPU].PageFault_PTE = 0; //Save!
-			raisePF(address, PXE_P | (RW << 1) | (effectiveUS << 2) | 8); //Run a reserved page fault!
+			raisePF(address, PF_EXTRABITS | PXE_P | (RW << 1) | (effectiveUS << 2) | 8); //Run a reserved page fault!
 			return 0; //We have an error, abort!
 		}
 		if (!verifyCPL(RW,effectiveUS,((PDE&PXE_RW)>>1),((PDE&PXE_US)>>2),((PDE&PXE_RW)>>1),((PDE&PXE_US)>>2),&RW)) //Protection fault on combined flags?
@@ -352,7 +355,7 @@ byte isvalidpage(uint_32 address, byte iswrite, byte CPL, byte isPrefetch) //Do 
 			CPU[activeCPU].PageFault_PDPT = PDPT; //Save!
 			CPU[activeCPU].PageFault_PDE = PDE; //Save!
 			CPU[activeCPU].PageFault_PTE = 0; //Save!
-			raisePF(address,PXE_P|(RW<<1)|(effectiveUS<<2)); //Run a not present page fault!
+			raisePF(address, PF_EXTRABITS | PXE_P|(RW<<1)|(effectiveUS<<2)); //Run a not present page fault!
 			return 0; //We have an error, abort!		
 		}
 		isG = ((PDE>>8)&1); //Bit 8=Global!
@@ -364,7 +367,7 @@ byte isvalidpage(uint_32 address, byte iswrite, byte CPL, byte isPrefetch) //Do 
 			CPU[activeCPU].PageFault_PDPT = PDPT; //Save!
 			CPU[activeCPU].PageFault_PDE = PDE; //Save!
 			CPU[activeCPU].PageFault_PTE = PTE; //Save!
-			raisePF(address, PXE_P | (RW << 1) | (effectiveUS << 2)); //Run a not present page fault!
+			raisePF(address, PF_EXTRABITS | PXE_P | (RW << 1) | (effectiveUS << 2)); //Run a not present page fault!
 			return 0; //We have an error, abort!		
 		}
 		isG = ((PTE>>8)&1); //Bit 8=Global!
@@ -574,7 +577,7 @@ byte CPU_paging_translateaddr(uint_32 address, byte CPL, uint_64 *physaddr) //Do
 byte CPU_Paging_checkPage(uint_32 address, byte readflags, byte CPL)
 {
 	byte result;
-	result = isvalidpage(address,((readflags&(~0x10))==0),CPL,(readflags&0x10)); //Are we an invalid page? We've raised an error! Bit4 is set during Prefetch operations!
+	result = isvalidpage(address,((readflags&(~0x10))==0),CPL,(((readflags&0x10)>>4)|(readflags&2))); //Are we an invalid page? We've raised an error! Bit4 is set during Prefetch operations! Bit 0 is set when performing an instruction fetch!
 	if (result == 1) //OK?
 	{
 		return 0; //OK!
