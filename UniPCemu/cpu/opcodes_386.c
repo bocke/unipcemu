@@ -4194,6 +4194,11 @@ void CPU80386_OPFF() //GRP5 Ev
 			break;
 		}
 	}
+	if (CPU[activeCPU].thereg == 7) //Undefined opcode has priority over all other faults!
+	{
+		CPU_unkOP(); //Invalid: registers aren't allowed!
+		return;
+	}
 	if (unlikely((CPU[activeCPU].modrmstep==0) && (CPU[activeCPU].internalmodrmstep==0) && (CPU[activeCPU].instructionstep==0)))
 	{
 		CPU[activeCPU].modrm_addoffset = 0;
