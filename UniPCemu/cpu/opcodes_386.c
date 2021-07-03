@@ -4202,7 +4202,7 @@ void CPU80386_OPFF() //GRP5 Ev
 			if (modrm_isregister(CPU[activeCPU].params)) //Invalid?
 			{
 				CPU_unkOP(); //Invalid: registers aren't allowed!
-				return 1;
+				return;
 			}
 		}
 		if (modrm_check32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0,1|0x40)) return; //Abort when needed!
