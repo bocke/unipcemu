@@ -115,7 +115,7 @@ void CPU_initBIU()
 		BIU[activeCPU].PIQ = allocfifobuffer(PIQSizes[CPU_databussize][EMULATED_CPU], 0); //Our PIQ we use!
 	}
 	CPU_databusmask = BUSmasks[CPU_databussize][EMULATED_CPU]; //Our data bus mask we use for splitting memory chunks!
-	BIU[activeCPU].requests = allocfifobuffer(20, 0); //Our request buffer to use(1 64-bit entry being 2 32-bit entries, for 2 64-bit entries(payload) and 1 32-bit entry(the request identifier))!
+	BIU[activeCPU].requests = allocfifobuffer(24, 0); //Our request buffer to use(1 64-bit entry being 2 32-bit entries, for 2 64-bit entries(payload) and 1 32-bit expanded to 64-bit entry(the request identifier) for speed purposes)!
 	BIU[activeCPU].responses = allocfifobuffer(sizeof(uint_32) << 1, 0); //Our response buffer to use(1 64-bit entry as 2 32-bit entries)!
 	BIU_is_486 = (EMULATED_CPU >= CPU_80486); //486+ handling?
 	detectBIUactiveCycleHandler(); //Detect the active cycle handler to use!
@@ -206,9 +206,9 @@ OPTINLINE byte BIU_haveRequest() //BIU: Does the BIU have a request?
 
 OPTINLINE byte BIU_readRequest(uint_32 *requesttype, uint_64 *payload1, uint_64 *payload2) //BIU: Read a request to process!
 {
-	uint_32 temppayload1, temppayload2;
+	uint_32 temppayload1, temppayload2, dummypayload;
 	if (BIU[activeCPU].requestready==0) return 0; //Not ready!
-	if (readfifobuffer32(BIU[activeCPU].requests,requesttype)==0) //Type?
+	if (readfifobuffer32_2u(BIU[activeCPU].requests,requesttype,&dummypayload)==0) //Type?
 	{
 		return 0; //No request!
 	}
@@ -231,9 +231,9 @@ OPTINLINE byte BIU_request(uint_32 requesttype, uint_64 payload1, uint_64 payloa
 	if ((BIU[activeCPU].requestready==0) || (fifobuffer_freesize(BIU[activeCPU].responses)==0)) return 0; //Not ready! Don't allow requests while responses are waiting to be handled!
 	request1 = (payload1&0xFFFFFFFF); //Low!
 	request2 = (payload1>>32); //High!
-	if (fifobuffer_freesize(BIU[activeCPU].requests)>=20) //Enough to accept?
+	if (fifobuffer_freesize(BIU[activeCPU].requests)>=24) //Enough to accept?
 	{
-		result = writefifobuffer32(BIU[activeCPU].requests,requesttype); //Request type!
+		result = writefifobuffer32_2u(BIU[activeCPU].requests,requesttype,0); //Request type!
 		result &= writefifobuffer32_2u(BIU[activeCPU].requests,request1,request2); //Payload!
 		request1 = (payload2&0xFFFFFFFF); //Low!
 		request2 = (payload2>>32); //High!
