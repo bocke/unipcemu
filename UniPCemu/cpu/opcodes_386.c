@@ -4197,6 +4197,14 @@ void CPU80386_OPFF() //GRP5 Ev
 	if (unlikely((CPU[activeCPU].modrmstep==0) && (CPU[activeCPU].internalmodrmstep==0) && (CPU[activeCPU].instructionstep==0)))
 	{
 		CPU[activeCPU].modrm_addoffset = 0;
+		if ((CPU[activeCPU].thereg==3) || (CPU[activeCPU].thereg==5)) //extra segment?
+		{
+			if (modrm_isregister(CPU[activeCPU].params)) //Invalid?
+			{
+				CPU_unkOP(); //Invalid: registers aren't allowed!
+				return 1;
+			}
+		}
 		if (modrm_check32(&CPU[activeCPU].params, CPU[activeCPU].MODRM_src0,1|0x40)) return; //Abort when needed!
 		if ((CPU[activeCPU].thereg==3) || (CPU[activeCPU].thereg==5)) //extra segment?
 		{
