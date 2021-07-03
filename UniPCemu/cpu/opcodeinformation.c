@@ -4957,7 +4957,7 @@ CPU_OpcodeInformation CPUOpcodeInformation0F[NUMCPUS-CPU_80286][2][0x100] = { //
 			{ 0,0,0,0,0,0,0,0x00 }, //FC CLD
 			{ 0,0,0,0,0,0,0,0x00 }, //FD STD
 			{ 0,1,0,0,1,0,0,0x00 }, //FE GRP4 Eb Case 0&1 read and write back. Case 7 takes immediate operands(Special callback instruction in this emulation only).
-			{ 1,1,2,0,0,1,0,0x00 } //FF UD r32,r/m32
+			{ 1,0,0,0,0,0,0,0x00 } //FF UD2
 		}, //16-bit
 		{ //32-bit
 			{ 1,1,2,0,1,0,0,0x00 }, //00 Various extended 286+ instructions GRP opcode, 32-bit operand size.
