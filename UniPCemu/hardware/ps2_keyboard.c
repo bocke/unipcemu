@@ -60,6 +60,8 @@ OPTINLINE void loadKeyboardDefaults()
 	Keyboard.scancodeset = is_XT?0:1; //Scan code set 2 or 1, depending on the hardware(XT uses XT-style keyboard instead)!
 }
 
+extern byte is_i430fx; //Are we an i430fx motherboard?
+
 /*
 flags: bit0: XT style enable
 is_ATInit:
@@ -298,7 +300,14 @@ void updatePS2Keyboard(DOUBLE timepassed)
 					input_lastwrite_keyboard(); //Force 0x00(dummy byte) to user!
 					give_keyboard_output(0xFA); //Acnowledge!
 					resetKeyboard(1, 3); //Reset the Keyboard Controller! Don't give a result(this will be done in time)!
-					Keyboard.timeout = KEYBOARD_BATTIMEOUT; //A small delay for the result code to appear!
+					if (is_i430fx) //i430fx/i440fx?
+					{
+						Keyboard.timeout = KEYBOARD_i430fx_RESETCOMMAND_BATTIMEOUT; //A small delay for the result code to appear!
+					}
+					else
+					{
+						Keyboard.timeout = KEYBOARD_BATTIMEOUT; //A small delay for the result code to appear!
+					}
 					Keyboard.command_step = 2; //Step 2!
 					Keyboard.command = 0xFF; //Restore the command byte, so that we can continue!
 					Keyboard.has_command = 1; //We're stil executing a command!
