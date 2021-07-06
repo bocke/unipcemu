@@ -2273,6 +2273,9 @@ Handler opcode_jmptbl[NUMCPUS][256][2] =   //Our standard internal standard inte
 };
 
 Handler CurrentCPU_opcode_jmptbl[1024]; //Our standard internal opcode jmptbl!
+#ifdef VISUALC
+Handler CurrentCPU_opcode_jmptbl_2[2][256][2]; //Our standard internal opcode jmptbl!
+#endif
 
 void unhandled_CPUjmptblitem()
 {
@@ -2316,6 +2319,9 @@ void generate_opcode_jmptbl()
 			{
 				CurrentCPU_opcode_jmptbl[(OP << 2) | currentoperandsize] = &unhandled_CPUjmptblitem; //Execute this instruction when we're triggered!
 			}
+			#ifdef VISUALC
+			CurrentCPU_opcode_jmptbl_2[0][OP][currentoperandsize] = CurrentCPU_opcode_jmptbl[(OP << 2) | currentoperandsize]; //Easy to view version!
+			#endif
 		}
 	}
 }

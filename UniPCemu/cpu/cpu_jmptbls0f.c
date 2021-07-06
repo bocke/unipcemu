@@ -1689,6 +1689,9 @@ Handler opcode0F_jmptbl[NUM0FEXTS][256][2] =   //Our standard internal standard 
 };
 
 extern Handler CurrentCPU_opcode_jmptbl[1024]; //Our standard internal opcode jmptbl!
+#ifdef VISUALC
+extern Handler CurrentCPU_opcode_jmptbl_2[2][256][2]; //Our standard internal opcode jmptbl!
+#endif
 
 void generate_opcode0F_jmptbl()
 {
@@ -1737,6 +1740,9 @@ void generate_opcode0F_jmptbl()
 			{
 				CurrentCPU_opcode_jmptbl[(OP << 1) | 2 | currentoperandsize] = (cpu==CPU_8086)?&unkOP_8086:&unkOP_186; //Execute this instruction when we're triggered!
 			}
+			#ifdef VISUALC
+			CurrentCPU_opcode_jmptbl_2[1][OP][currentoperandsize] = CurrentCPU_opcode_jmptbl[(OP << 2) | 2 | currentoperandsize]; //Easy to view version!
+			#endif
 		}
 	}
 }
