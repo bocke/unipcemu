@@ -1413,7 +1413,14 @@ OPTINLINE byte coreHandler()
 				//Tick the Pentium TSC and APIC!
 				uint_64 clocks;
 				CPU[activeCPU].TSCtiming += effectiveinstructiontime; //Time some in realtime!
-				clocks = (uint_64)floor(CPU[activeCPU].TSCtiming / Pentiumtick); //How much to tick!
+				if (likely(CPU[activeCPU].TSCtiming >= Pentiumtick)) //Enough to tick?
+				{
+					clocks = (uint_64)floor(CPU[activeCPU].TSCtiming / Pentiumtick); //How much to tick!
+				}
+				else
+				{
+					clocks = 0; //Nothing ticked!
+				}
 				CPU[activeCPU].TSCtiming -= clocks * Pentiumtick; //Rest the time to keep us constant!
 				CPU[activeCPU].TSC += clocks; //Tick the clocks to keep us running!
 				updateAPIC(clocks, effectiveinstructiontime); //Clock the APIC as well!
