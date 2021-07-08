@@ -35,6 +35,10 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.txt'
+            signingConfig signingConfigs.release
+        }
+        debug {
+            signingConfig signingConfigs.debug
         }
     }
     compileOptions {
@@ -51,7 +55,6 @@ android {
             targetSdkVersion 16
             versionCode gitVersionCode
             versionName gitVersionName
-            signingConfig signingConfigs.release
         }
         dev {
             dimension "build"
@@ -60,7 +63,6 @@ android {
             targetSdkVersion 16
             versionCode gitVersionCodeTime
             versionName gitVersionName
-            signingConfig signingConfigs.debug
         }
     }
     externalNativeBuild {
