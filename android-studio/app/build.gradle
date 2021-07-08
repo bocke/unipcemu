@@ -1,7 +1,25 @@
 apply plugin: 'com.android.application'
 apply from: "$project.rootDir/../commonemuframework/script-git-version.gradle"
 
+// Create a variable called keystorePropertiesFile, and initialize it to your
+// keystore.properties file, in the rootProject folder.
+def keystorePropertiesFile = rootProject.file("..\\..\\UniPCemu.keystore.properties")
+
+// Initialize a new Properties() object called keystoreProperties.
+def keystoreProperties = new Properties()
+
+// Load your keystore.properties file into the keystoreProperties object.
+keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+
 android {
+    signingConfigs {
+        release {
+            storeFile file(keystoreProperties['storeFile'])
+            storePassword keystoreProperties['storePassword']
+            keyPassword keystoreProperties['keyPassword']
+            keyAlias keystoreProperties['keyAlias']
+        }
+    }
     compileSdkVersion 30
 
     defaultConfig {
@@ -33,6 +51,7 @@ android {
             targetSdkVersion 16
             versionCode gitVersionCode
             versionName gitVersionName
+            signingConfig signingConfigs.release
         }
         dev {
             dimension "build"
@@ -41,6 +60,7 @@ android {
             targetSdkVersion 16
             versionCode gitVersionCodeTime
             versionName gitVersionName
+            signingConfig signingConfigs.debug
         }
     }
     externalNativeBuild {
