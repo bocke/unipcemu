@@ -418,6 +418,7 @@ void emu_raise_resetline(byte resetPendingFlags)
 void initEMU(int full) //Init!
 {
 	char soundfont[256];
+	byte multiplier=1;
 	doneEMU(); //Make sure we're finished too!
 
 	closeLogFile(0); //Close all log files!
@@ -473,13 +474,27 @@ void initEMU(int full) //Init!
 
 	numemulatedcpus = MAX(numemulatedcpus, 1); //At least 1 emulated CPU!
 
+	multiplier = 1; //No multiplier!
+	if (emulated_CPUtype==CPU_PENTIUMPRO)
+	{
+		multiplier = 3; //x3 multiplier (Pentium Pro 66MHz FSB @200MHz CPU)!
+	}
+	else if (emulated_CPUtype==CPU_PENTIUM2)
+	{
+		multiplier = 5; //x5 multiplier (Pentium II 66MHz FSB @333MHz CPU)!
+	}
+	else //Pentium-compatible?
+	{
+		multiplier = 2; //x2 multiplier (Pentium 66MHz FSB @133Hz CPU)!	
+	}
+
 	if (is_i430fx == 2) //66MHz instead?
 	{
-		Pentiumtick = (1000000000 / (DOUBLE)66000000.0); //Timing of the Pentium IPS TimeStamp Counter clock, at 33MHz!
+		Pentiumtick = (1000000000 / (DOUBLE)(66000000.0*(DOUBLE)multiplier)); //Timing of the Pentium IPS TimeStamp Counter clock, at 66MHz!
 	}
 	else
 	{
-		Pentiumtick = (1000000000 / (DOUBLE)33000000.0); //Timing of the Pentium IPS TimeStamp Counter clock, at 33MHz!
+		Pentiumtick = (1000000000 / (DOUBLE)(33000000.0*(DOUBLE)multiplier)); //Timing of the Pentium IPS TimeStamp Counter clock, at 33MHz!
 	}
 
 	debugrow("Initializing I/O port handling...");
