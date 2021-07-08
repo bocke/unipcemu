@@ -167,7 +167,7 @@ extern byte motherboard_responds_to_shutdown; //Motherboard responds to shutdown
 
 DOUBLE MHZ14tick = (1000000000/(DOUBLE)MHZ14); //Time of a 14 MHZ tick!
 DOUBLE MHZ14_ticktiming = 0.0; //Timing of the 14MHz clock!
-DOUBLE Pentiumtick = (1000000000 / (DOUBLE)33000000.0); //Timing of the Pentium IPS TimeStamp Counter clock, at 33MHz!
+DOUBLE Pentiumtick = (1000000000 / (((DOUBLE)33333333.0)+(1.0/3.0))); //Timing of the Pentium IPS TimeStamp Counter clock, at 33MHz!
 
 extern byte useIPSclock; //Are we using the IPS clock instead of cycle accurate clock?
 
@@ -490,11 +490,11 @@ void initEMU(int full) //Init!
 
 	if (is_i430fx == 2) //66MHz instead?
 	{
-		Pentiumtick = (1000000000 / (DOUBLE)(66000000.0*(DOUBLE)multiplier)); //Timing of the Pentium IPS TimeStamp Counter clock, at 66MHz!
+		Pentiumtick = (1000000000 / (DOUBLE)((66666666.0+(2.0/3.0))*(DOUBLE)multiplier)); //Timing of the Pentium IPS TimeStamp Counter clock, at 66 2/3 MHz!
 	}
-	else
+	else //33MHz?
 	{
-		Pentiumtick = (1000000000 / (DOUBLE)(33000000.0*(DOUBLE)multiplier)); //Timing of the Pentium IPS TimeStamp Counter clock, at 33MHz!
+		Pentiumtick = (1000000000 / (DOUBLE)((33333333.0+(1.0/3.0))*(DOUBLE)multiplier)); //Timing of the Pentium IPS TimeStamp Counter clock, at 33 1/3 MHz!
 	}
 
 	debugrow("Initializing I/O port handling...");
