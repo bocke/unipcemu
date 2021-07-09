@@ -796,7 +796,7 @@ void ATAPI_SET_SENSE(byte channel, byte drive, byte SK,byte ASC,byte ASCQ,byte i
 	ATAPI_SENSEPACKET_ASCQW(channel, drive, ASCQ); //ASCQ code!
 	ATAPI_SENSEPACKET_ILIW(channel, drive, 0); //ILI bit cleared!
 	ATAPI_SENSEPACKET_ERRORCODEW(channel, drive, 0x70); //Default error code?
-	ATAPI_SENSEPACKET_ADDITIONALSENSELENGTHW(channel, drive, 8); //Additional Sense Length = 8?
+	ATAPI_SENSEPACKET_ADDITIONALSENSELENGTHW(channel, drive, 10); //Additional Sense Length = 10?
 	ATAPI_SENSEPACKET_INFORMATION0W(channel, drive, 0); //No info!
 	ATAPI_SENSEPACKET_INFORMATION1W(channel, drive, 0); //No info!
 	ATAPI_SENSEPACKET_INFORMATION2W(channel, drive, 0); //No info!
@@ -2546,7 +2546,7 @@ OPTINLINE byte ATAPI_readsector(byte channel, byte drive) //Read the current sec
 						ATAPI_SENSEPACKET_ILIW(channel, drive,0); //ILI bit cleared!
 					}
 					ATAPI_SENSEPACKET_ERRORCODEW(channel, drive,0x70); //Default error code?
-					ATAPI_SENSEPACKET_ADDITIONALSENSELENGTHW(channel, drive,8); //Additional Sense Length = 8?
+					ATAPI_SENSEPACKET_ADDITIONALSENSELENGTHW(channel, drive,10); //Additional Sense Length = 10?
 					ATAPI_SENSEPACKET_INFORMATION0W(channel, drive,0); //No info!
 					ATAPI_SENSEPACKET_INFORMATION1W(channel, drive,0); //No info!
 					ATAPI_SENSEPACKET_INFORMATION2W(channel, drive,0); //No info!
@@ -2596,7 +2596,7 @@ OPTINLINE byte ATAPI_readsector(byte channel, byte drive) //Read the current sec
 			ATAPI_SENSEPACKET_ILIW(channel, drive, 0); //ILI bit cleared!
 		}
 		ATAPI_SENSEPACKET_ERRORCODEW(channel, drive, 0x70); //Default error code?
-		ATAPI_SENSEPACKET_ADDITIONALSENSELENGTHW(channel, drive, 8); //Additional Sense Length = 8?
+		ATAPI_SENSEPACKET_ADDITIONALSENSELENGTHW(channel, drive, 10); //Additional Sense Length = 10?
 		ATAPI_SENSEPACKET_INFORMATION0W(channel, drive, 0); //No info!
 		ATAPI_SENSEPACKET_INFORMATION1W(channel, drive, 0); //No info!
 		ATAPI_SENSEPACKET_INFORMATION2W(channel, drive, 0); //No info!
@@ -2651,7 +2651,7 @@ OPTINLINE byte ATAPI_readsector(byte channel, byte drive) //Read the current sec
 		ATAPI_SENSEPACKET_ADDITIONALSENSECODEW(channel,drive,ASC_MEDIUM_NOT_PRESENT); //Extended reason code
 		ATAPI_SENSEPACKET_ASCQW(channel, drive, ascq); //ASCQ code!
 		ATAPI_SENSEPACKET_ERRORCODEW(channel,drive,0x70); //Default error code?
-		ATAPI_SENSEPACKET_ADDITIONALSENSELENGTHW(channel,drive,8); //Additional Sense Length = 8?
+		ATAPI_SENSEPACKET_ADDITIONALSENSELENGTHW(channel,drive,10); //Additional Sense Length = 10?
 		ATAPI_SENSEPACKET_INFORMATION0W(channel,drive,0); //No info!
 		ATAPI_SENSEPACKET_INFORMATION1W(channel,drive,0); //No info!
 		ATAPI_SENSEPACKET_INFORMATION2W(channel,drive,0); //No info!
@@ -2709,7 +2709,7 @@ OPTINLINE byte ATAPI_readsector(byte channel, byte drive) //Read the current sec
 			ATAPI_SENSEPACKET_ILIW(channel, drive, 0); //ILI bit cleared!
 		}
 		ATAPI_SENSEPACKET_ERRORCODEW(channel, drive, 0x70); //Default error code?
-		ATAPI_SENSEPACKET_ADDITIONALSENSELENGTHW(channel, drive, 8); //Additional Sense Length = 8?
+		ATAPI_SENSEPACKET_ADDITIONALSENSELENGTHW(channel, drive, 10); //Additional Sense Length = 10?
 		ATAPI_SENSEPACKET_INFORMATION0W(channel, drive, 0); //No info!
 		ATAPI_SENSEPACKET_INFORMATION1W(channel, drive, 0); //No info!
 		ATAPI_SENSEPACKET_INFORMATION2W(channel, drive, 0); //No info!
@@ -3589,7 +3589,7 @@ void ATAPI_executeCommand(byte channel, byte drive) //Prototype for ATAPI execut
 			ATAPI_SENSEPACKET_ASCQW(channel, drive, 0); //ASCQ also is cleared!
 			ATAPI_SENSEPACKET_ILIW(channel,drive,0); //ILI bit cleared!
 			ATAPI_SENSEPACKET_ERRORCODEW(channel,drive,0x70); //Default error code?
-			ATAPI_SENSEPACKET_ADDITIONALSENSELENGTHW(channel,drive,8); //Additional Sense Length = 8?
+			ATAPI_SENSEPACKET_ADDITIONALSENSELENGTHW(channel,drive,10); //Additional Sense Length = 10?
 			ATAPI_SENSEPACKET_INFORMATION0W(channel,drive,0); //No info!
 			ATAPI_SENSEPACKET_INFORMATION1W(channel,drive,0); //No info!
 			ATAPI_SENSEPACKET_INFORMATION2W(channel,drive,0); //No info!
@@ -4646,7 +4646,7 @@ void ATAPI_executeCommand(byte channel, byte drive) //Prototype for ATAPI execut
 		ATAPI_SENSEPACKET_ASCQW(channel, drive, ascq); //ASCQ code!
 		ATAPI_SENSEPACKET_ILIW(channel,drive,0); //ILI bit cleared!
 		ATAPI_SENSEPACKET_ERRORCODEW(channel,drive,0x70); //Default error code?
-		ATAPI_SENSEPACKET_ADDITIONALSENSELENGTHW(channel,drive,8); //Additional Sense Length = 8?
+		ATAPI_SENSEPACKET_ADDITIONALSENSELENGTHW(channel,drive,10); //Additional Sense Length = 10?
 		ATAPI_SENSEPACKET_INFORMATION0W(channel,drive,0); //No info!
 		ATAPI_SENSEPACKET_INFORMATION1W(channel,drive,0); //No info!
 		ATAPI_SENSEPACKET_INFORMATION2W(channel,drive,0); //No info!
@@ -5912,7 +5912,7 @@ void ATAPI_insertCD(int disk, byte disk_channel, byte disk_drive)
 			ATAPI_SENSEPACKET_ASCQW(disk_channel, disk_drive, ascq); //ASCQ code!
 			ATAPI_SENSEPACKET_ILIW(disk_channel, disk_drive, 0); //ILI bit cleared!
 			ATAPI_SENSEPACKET_ERRORCODEW(disk_channel, disk_drive, 0x70); //Default error code?
-			ATAPI_SENSEPACKET_ADDITIONALSENSELENGTHW(disk_channel, disk_drive, 8); //Additional Sense Length = 8?
+			ATAPI_SENSEPACKET_ADDITIONALSENSELENGTHW(disk_channel, disk_drive, 10); //Additional Sense Length = 10?
 			ATAPI_SENSEPACKET_INFORMATION0W(disk_channel, disk_drive, 0);	 //No info!
 			ATAPI_SENSEPACKET_INFORMATION1W(disk_channel, disk_drive, 0); //No info!
 			ATAPI_SENSEPACKET_INFORMATION2W(disk_channel, disk_drive, 0); //No info!
