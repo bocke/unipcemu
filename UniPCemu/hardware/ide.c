@@ -197,7 +197,7 @@ typedef struct
 		byte readmultipleerror;
 		word readmultiple_partialtransfer; //For error cases, how much is actually transferred(in sectors)!
 
-		byte SensePacket[0x10]; //Data of a request sense packet.
+		byte SensePacket[0x12]; //Data of a request sense packet.
 
 		byte diskInserted; //Is the disk even inserted, from the CD-ROM-drive perspective(isn't inserted when 0, inserted only when both this and backend is present)?
 		byte ATAPI_diskChanged; //Is the disk changed, from the CD-ROM-drive perspective(not ready becoming ready)?
@@ -390,6 +390,8 @@ enum {
 #define ATAPI_SENSEPACKET_ASCQW(channel,drive,val) ATA[channel].Drive[drive].SensePacket[0xD]=val
 #define ATAPI_SENSEPACKET_RESERVED3_1W(channel,drive,val) ATA[channel].Drive[drive].SensePacket[0xE]=val
 #define ATAPI_SENSEPACKET_RESERVED3_2W(channel,drive,val) ATA[channel].Drive[drive].SensePacket[0xF]=val
+//CD is unsupported, so always report 0?
+#define ATAPI_SENSEPACKET_CD(channel,drive,val) ATA[channel].Drive[drive].SensePacket[0xF]=/*(((val)&1)<<6)*/ 0
 
 //ATAPI interrupt reason!
 //CD: 1 for command packet, 0 for data transfer
@@ -626,7 +628,7 @@ void ATAPI_setModePages(byte disk_channel, byte disk_slave)
 }
 
 void ATAPI_command_reportError(byte channel, byte slave); //Prototype!
-void ATAPI_SET_SENSE(byte channel, byte drive, byte SK, byte ASC, byte ASCQ); //Prototype!
+void ATAPI_SET_SENSE(byte channel, byte drive, byte SK, byte ASC, byte ASCQ, byte isCommandCause); //Prototype!
 
 void ATAPI_insertCD(int disk, byte disk_channel, byte disk_drive); //Prototype for inserting a new CD, whether present or not, inserting the caddy!
 
@@ -638,7 +640,7 @@ void ATAPI_diskchangedhandler(byte channel, byte drive, byte inserted)
 		ATA[channel].Drive[drive].diskInserted = 1; //We're inserted!
 		if (ATA[channel].Drive[drive].EnableMediaStatusNotification) //Enabled the notification of media being inserted?
 		{
-			ATAPI_SET_SENSE(channel, drive, SENSE_UNIT_ATTENTION, ASC_MEDIUM_MAY_HAVE_CHANGED, 0x00); //Set the error sense!
+			ATAPI_SET_SENSE(channel, drive, SENSE_UNIT_ATTENTION, ASC_MEDIUM_MAY_HAVE_CHANGED, 0x00, 0); //Set the error sense!
 			ATA[channel].Drive[drive].ATAPI_diskchangepending = 2; //Special: disk inserted!
 			ATAPI_command_reportError(channel, drive); //Prototype!
 		}
@@ -786,7 +788,7 @@ void tickATADiskChange(byte channel, byte drive)
 	}
 }
 
-void ATAPI_SET_SENSE(byte channel, byte drive, byte SK,byte ASC,byte ASCQ)
+void ATAPI_SET_SENSE(byte channel, byte drive, byte SK,byte ASC,byte ASCQ,byte isCommandCause)
 {
 	ATAPI_SENSEPACKET_SENSEKEYW(channel, drive, SK); //Reason of the error
 	ATAPI_SENSEPACKET_RESERVED2W(channel, drive, 0); //Reserved field!
@@ -804,6 +806,7 @@ void ATAPI_SET_SENSE(byte channel, byte drive, byte SK,byte ASC,byte ASCQ)
 	ATAPI_SENSEPACKET_COMMANDSPECIFICINFORMATION2W(channel, drive, 0); //No command specific information?
 	ATAPI_SENSEPACKET_COMMANDSPECIFICINFORMATION3W(channel, drive, 0); //No command specific information?
 	ATAPI_SENSEPACKET_VALIDW(channel, drive, 1); //We're valid!
+	ATAPI_SENSEPACKET_CD(channel, drive, (isCommandCause?1:0)); //Command/Data! 
 }
 
 void ATAPI_PendingExecuteCommand(byte channel, byte drive) //We're pending until execution!
@@ -816,7 +819,7 @@ byte ATAPI_common_spin_response(byte channel, byte drive, byte spinupdown, byte 
 {
 	if (ATA[channel].Drive[drive].ATAPI_caddyejected == 1) //Caddy is ejected?
 	{
-		ATAPI_SET_SENSE(channel, drive, 0x02, 0x3A, 0x02); //Drive not ready. Tray open.
+		ATAPI_SET_SENSE(channel, drive, 0x02, 0x3A, 0x02, 1); //Drive not ready. Tray open.
 		return 0; //Abort the command!
 	}
 	switch (ATA[channel].Drive[drive].PendingLoadingMode)
@@ -833,7 +836,7 @@ byte ATAPI_common_spin_response(byte channel, byte drive, byte spinupdown, byte 
 		else if (spinupdown == 2) //Need to be kept running?
 		{
 			//Not ready!
-			ATAPI_SET_SENSE(channel, drive, 0x02, 0x04, 0x00); //Drive not ready
+			ATAPI_SET_SENSE(channel, drive, 0x02, 0x04, 0x00, 1); //Drive not ready
 			return 0; //Abort the command!
 		}
 		break;
@@ -856,19 +859,19 @@ byte ATAPI_common_spin_response(byte channel, byte drive, byte spinupdown, byte 
 		}
 		break;
 	case LOAD_NO_DISC:
-		ATAPI_SET_SENSE(channel, drive, 0x02, 0x3A, 0x01); //Medium not present - Tray closed
+		ATAPI_SET_SENSE(channel, drive, 0x02, 0x3A, 0x01, 1); //Medium not present - Tray closed
 		return 0; //Abort the command!
 		break;
 	case LOAD_INSERT_CD:
 	case LOAD_EJECTING: //Ejecting the disc?
-		ATAPI_SET_SENSE(channel,drive,0x02,0x3A,0x02); //Medium not present - Tray open
+		ATAPI_SET_SENSE(channel,drive,0x02,0x3A,0x02, 1); //Medium not present - Tray open
 		return 0; //Abort the command!
 		break;
 	case LOAD_DISC_LOADING:
 		applyDiscLoadingState:
 		if ((ATA[channel].Drive[drive].ATAPI_diskChanged || ATA[channel].Drive[drive].ATAPI_mediaChanged2) && (dowait==0))
 		{
-			ATAPI_SET_SENSE(channel,drive,0x02,0x04,0x01); //Medium is becoming available
+			ATAPI_SET_SENSE(channel,drive,0x02,0x04,0x01, 1); //Medium is becoming available
 			return 0; //Abort the command!
 		}
 		else if (dowait) //Waiting?
@@ -878,7 +881,7 @@ byte ATAPI_common_spin_response(byte channel, byte drive, byte spinupdown, byte 
 		}
 		else //Becoming ready and not waiting?
 		{
-			ATAPI_SET_SENSE(channel, drive, 0x02, 0x04, 0x01); //Medium is becoming available
+			ATAPI_SET_SENSE(channel, drive, 0x02, 0x04, 0x01, 1); //Medium is becoming available
 			return 0; //Abort the command!
 		}
 		break;
@@ -891,7 +894,7 @@ byte ATAPI_common_spin_response(byte channel, byte drive, byte spinupdown, byte 
 				ATA[channel].Drive[drive].ATAPI_diskChanged = 0; //Not changed anymore!
 				ATA[channel].Drive[drive].ATAPI_mediaChanged2 = 0; //Not changed anymore!
 			}
-			ATAPI_SET_SENSE(channel,drive,0x02,0x28,0x00); //Medium is ready (has changed)
+			ATAPI_SET_SENSE(channel,drive,0x02,0x28,0x00, 1); //Medium is ready (has changed)
 			return 0; //Abort the command!
 		}
 		break;
@@ -1147,7 +1150,7 @@ void ATAPI_tickAudio(byte channel, byte slave)
 			{
 			case 0: //Errored out?
 				ATA[channel].Drive[slave].AUDIO_PLAYER.status = PLAYER_INITIALIZED; //We're erroring out!
-				ATAPI_SET_SENSE(channel, slave, SENSE_ILLEGAL_REQUEST, ASC_END_OF_USER_AREA_ENCOUNTERED_ON_THIS_TRACK, 0x00); //Medium is becoming available
+				ATAPI_SET_SENSE(channel, slave, SENSE_ILLEGAL_REQUEST, ASC_END_OF_USER_AREA_ENCOUNTERED_ON_THIS_TRACK, 0x00, 0); //Medium is becoming available
 				ATA[channel].Drive[slave].AUDIO_PLAYER.effectiveplaystatus = PLAYER_STATUS_ERROREDOUT; //We're finished!
 				ATAPI_command_reportError(channel, slave);
 				goto finishPlayback;
@@ -1161,7 +1164,7 @@ void ATAPI_tickAudio(byte channel, byte slave)
 					ATA[channel].Drive[slave].lastF = ATA[channel].Drive[slave].AUDIO_PLAYER.F; //Our last position!
 					ATA[channel].Drive[slave].AUDIO_PLAYER.status = PLAYER_INITIALIZED; //We're erroring out!
 					//Error out on transition of track type!
-					ATAPI_SET_SENSE(channel, slave, SENSE_ILLEGAL_REQUEST, ASC_END_OF_USER_AREA_ENCOUNTERED_ON_THIS_TRACK, 0x00); //Medium is becoming available
+					ATAPI_SET_SENSE(channel, slave, SENSE_ILLEGAL_REQUEST, ASC_END_OF_USER_AREA_ENCOUNTERED_ON_THIS_TRACK, 0x00, 0); //Medium is becoming available
 					ATA[channel].Drive[slave].AUDIO_PLAYER.effectiveplaystatus = PLAYER_STATUS_ERROREDOUT; //We're finished!
 					ATAPI_command_reportError(channel, slave);
 					goto finishPlayback;
@@ -1171,7 +1174,7 @@ void ATAPI_tickAudio(byte channel, byte slave)
 					ATA[channel].Drive[slave].AUDIO_PLAYER.status = PLAYER_INITIALIZED; //We're erroring out!
 					//Error out on transition of track number crossing!
 					ATA[channel].Drive[slave].AUDIO_PLAYER.effectiveplaystatus = PLAYER_STATUS_ERROREDOUT; //We're finished!
-					ATAPI_SET_SENSE(channel, slave, SENSE_ILLEGAL_REQUEST, ASC_ILLEGAL_MODE_FOR_THIS_TRACK_OR_INCOMPATIBLE_MEDIUM, 0x00); //Medium is becoming available
+					ATAPI_SET_SENSE(channel, slave, SENSE_ILLEGAL_REQUEST, ASC_ILLEGAL_MODE_FOR_THIS_TRACK_OR_INCOMPATIBLE_MEDIUM, 0x00, 0); //Medium is becoming available
 					ATAPI_command_reportError(channel, slave);
 					goto finishPlayback;
 				}
@@ -1181,7 +1184,7 @@ void ATAPI_tickAudio(byte channel, byte slave)
 				ATA[channel].Drive[slave].AUDIO_PLAYER.status = PLAYER_INITIALIZED; //We're erroring out!
 				ATA[channel].Drive[slave].AUDIO_PLAYER.effectiveplaystatus = PLAYER_STATUS_ERROREDOUT; //We're finished!
 				//Error out on the track being out of range!
-				ATAPI_SET_SENSE(channel, slave, SENSE_ILLEGAL_REQUEST, ASC_ILLEGAL_MODE_FOR_THIS_TRACK_OR_INCOMPATIBLE_MEDIUM, 0x00); //Medium is becoming available
+				ATAPI_SET_SENSE(channel, slave, SENSE_ILLEGAL_REQUEST, ASC_ILLEGAL_MODE_FOR_THIS_TRACK_OR_INCOMPATIBLE_MEDIUM, 0x00, 0); //Medium is becoming available
 				ATAPI_command_reportError(channel, slave);
 				goto finishPlayback;
 				break;
@@ -1215,13 +1218,13 @@ void ATAPI_tickAudio(byte channel, byte slave)
 						if (loadstatus == -1) //End of track reached?
 						{
 							//Error out!
-							ATAPI_SET_SENSE(channel, slave, SENSE_ILLEGAL_REQUEST, ASC_END_OF_USER_AREA_ENCOUNTERED_ON_THIS_TRACK, 0x00); //Medium is becoming available
+							ATAPI_SET_SENSE(channel, slave, SENSE_ILLEGAL_REQUEST, ASC_END_OF_USER_AREA_ENCOUNTERED_ON_THIS_TRACK, 0x00, 0); //Medium is becoming available
 							ATAPI_command_reportError(channel, slave);
 						}
 						else //Invalid type!
 						{
 							//Error out!
-							ATAPI_SET_SENSE(channel, slave, SENSE_ILLEGAL_REQUEST, ASC_ILLEGAL_MODE_FOR_THIS_TRACK_OR_INCOMPATIBLE_MEDIUM, 0x00); //Medium is becoming available
+							ATAPI_SET_SENSE(channel, slave, SENSE_ILLEGAL_REQUEST, ASC_ILLEGAL_MODE_FOR_THIS_TRACK_OR_INCOMPATIBLE_MEDIUM, 0x00, 0); //Medium is becoming available
 							ATAPI_command_reportError(channel, slave);
 						}
 						goto finishPlayback; //Finished playback!
@@ -1275,7 +1278,7 @@ byte ATAPI_audioplayer_startPlayback(byte channel, byte drive, byte startM, byte
 		{
 		playback_noCUELBA_invalidtype: //Invalid type due to OOR in the pregap?
 			//Error out because it's Out of Range!
-			ATAPI_SET_SENSE(channel, drive, SENSE_ILLEGAL_REQUEST, ASC_LOGICAL_BLOCK_OOR, 0x00); //Medium is becoming available
+			ATAPI_SET_SENSE(channel, drive, SENSE_ILLEGAL_REQUEST, ASC_LOGICAL_BLOCK_OOR, 0x00, 0); //Medium is becoming available
 			ATAPI_command_reportError(channel, drive);
 		}
 		else //Invalid data type?
@@ -1287,7 +1290,7 @@ byte ATAPI_audioplayer_startPlayback(byte channel, byte drive, byte startM, byte
 			ATA[channel].Drive[drive].lastformat = 0x14; //Data track!
 			ATA[channel].Drive[drive].lasttrack = 1; //Last track!
 			//Error out because it's data type instead of audio type!
-			ATAPI_SET_SENSE(channel, drive, SENSE_ILLEGAL_REQUEST, ASC_ILLEGAL_MODE_FOR_THIS_TRACK_OR_INCOMPATIBLE_MEDIUM, 0x00); //Medium is becoming available
+			ATAPI_SET_SENSE(channel, drive, SENSE_ILLEGAL_REQUEST, ASC_ILLEGAL_MODE_FOR_THIS_TRACK_OR_INCOMPATIBLE_MEDIUM, 0x00, 0); //Medium is becoming available
 			ATAPI_command_reportError(channel, drive);
 		}
 		return 0; //Failure!
@@ -1297,7 +1300,7 @@ byte ATAPI_audioplayer_startPlayback(byte channel, byte drive, byte startM, byte
 	case 0: //Errored out?
 		ATA[channel].Drive[drive].AUDIO_PLAYER.status = PLAYER_INITIALIZED; //We're erroring out!
 		ATA[channel].Drive[drive].AUDIO_PLAYER.effectiveplaystatus = PLAYER_STATUS_ERROREDOUT; //We're finished!
-		ATAPI_SET_SENSE(channel, drive, SENSE_ILLEGAL_REQUEST, ASC_LOGICAL_BLOCK_OOR, 0x00); //Medium is becoming available
+		ATAPI_SET_SENSE(channel, drive, SENSE_ILLEGAL_REQUEST, ASC_LOGICAL_BLOCK_OOR, 0x00, 0); //Medium is becoming available
 		ATAPI_command_reportError(channel, drive);
 		break;
 	case 1: //Playing?
@@ -1306,7 +1309,7 @@ byte ATAPI_audioplayer_startPlayback(byte channel, byte drive, byte startM, byte
 			ATA[channel].Drive[drive].AUDIO_PLAYER.status = PLAYER_INITIALIZED; //We're erroring out!
 			ATA[channel].Drive[drive].AUDIO_PLAYER.effectiveplaystatus = PLAYER_STATUS_ERROREDOUT; //We're finished!
 			//Error out!
-			ATAPI_SET_SENSE(channel, drive, SENSE_ILLEGAL_REQUEST, ASC_ILLEGAL_MODE_FOR_THIS_TRACK_OR_INCOMPATIBLE_MEDIUM, 0x00); //Medium is becoming available
+			ATAPI_SET_SENSE(channel, drive, SENSE_ILLEGAL_REQUEST, ASC_ILLEGAL_MODE_FOR_THIS_TRACK_OR_INCOMPATIBLE_MEDIUM, 0x00, 0); //Medium is becoming available
 			ATAPI_command_reportError(channel, drive);
 			return 0; //Failure!
 		}
@@ -1316,7 +1319,7 @@ byte ATAPI_audioplayer_startPlayback(byte channel, byte drive, byte startM, byte
 	case -1: //Track not found?
 		ATA[channel].Drive[drive].AUDIO_PLAYER.status = PLAYER_INITIALIZED; //We're erroring out!
 		ATA[channel].Drive[drive].AUDIO_PLAYER.effectiveplaystatus = PLAYER_STATUS_ERROREDOUT; //We're finished!
-		ATAPI_SET_SENSE(channel, drive, SENSE_ILLEGAL_REQUEST, ASC_LOGICAL_BLOCK_OOR, 0x00); //Medium is becoming available
+		ATAPI_SET_SENSE(channel, drive, SENSE_ILLEGAL_REQUEST, ASC_LOGICAL_BLOCK_OOR, 0x00, 0); //Medium is becoming available
 		ATAPI_command_reportError(channel, drive);
 		break;
 	}
@@ -2553,6 +2556,7 @@ OPTINLINE byte ATAPI_readsector(byte channel, byte drive) //Read the current sec
 					ATAPI_SENSEPACKET_COMMANDSPECIFICINFORMATION2W(channel, drive,0); //No command specific information?
 					ATAPI_SENSEPACKET_COMMANDSPECIFICINFORMATION3W(channel, drive,0); //No command specific information?
 					ATAPI_SENSEPACKET_VALIDW(channel, drive,1); //We're valid!
+					ATAPI_SENSEPACKET_CD(channel, drive, 0); //Error in the packet parameters!
 					ATA[channel].Drive[drive].STATUSREGISTER = 0x40; //Clear status!
 					ATA_STATUSREGISTER_DRIVEREADYW(channel, drive,1); //Ready!
 					ATA_STATUSREGISTER_ERRORW(channel, drive,1); //Ready!
@@ -2602,6 +2606,7 @@ OPTINLINE byte ATAPI_readsector(byte channel, byte drive) //Read the current sec
 		ATAPI_SENSEPACKET_COMMANDSPECIFICINFORMATION2W(channel, drive, 0); //No command specific information?
 		ATAPI_SENSEPACKET_COMMANDSPECIFICINFORMATION3W(channel, drive, 0); //No command specific information?
 		ATAPI_SENSEPACKET_VALIDW(channel, drive, 1); //We're valid!
+		ATAPI_SENSEPACKET_CD(channel, drive, 0); //Error in the packet parameters!
 		ATA[channel].Drive[drive].STATUSREGISTER = 0x40; //Clear status!
 		ATA_STATUSREGISTER_DRIVEREADYW(channel, drive, 1); //Ready!
 		ATA_STATUSREGISTER_ERRORW(channel, drive, 1); //Ready!
@@ -2656,6 +2661,7 @@ OPTINLINE byte ATAPI_readsector(byte channel, byte drive) //Read the current sec
 		ATAPI_SENSEPACKET_COMMANDSPECIFICINFORMATION2W(channel,drive,0); //No command specific information?
 		ATAPI_SENSEPACKET_COMMANDSPECIFICINFORMATION3W(channel,drive,0); //No command specific information?
 		ATAPI_SENSEPACKET_VALIDW(channel,drive,1); //We're valid!
+		ATAPI_SENSEPACKET_CD(channel, drive, 0); //Error in the packet parameters!
 		ATA[channel].Drive[drive].STATUSREGISTER = 0x40; //Clear status!
 		ATA_STATUSREGISTER_DRIVEREADYW(channel,drive,1); //Ready!
 		ATA_STATUSREGISTER_ERRORW(channel,drive,1); //Ready!
@@ -2713,6 +2719,7 @@ OPTINLINE byte ATAPI_readsector(byte channel, byte drive) //Read the current sec
 		ATAPI_SENSEPACKET_COMMANDSPECIFICINFORMATION2W(channel, drive, 0); //No command specific information?
 		ATAPI_SENSEPACKET_COMMANDSPECIFICINFORMATION3W(channel, drive, 0); //No command specific information?
 		ATAPI_SENSEPACKET_VALIDW(channel, drive, 1); //We're valid!
+		ATAPI_SENSEPACKET_CD(channel, drive, 0); //Error in the packet parameters!
 		ATA[channel].Drive[drive].STATUSREGISTER = 0x40; //Clear status!
 		ATA_STATUSREGISTER_DRIVEREADYW(channel, drive, 1); //Ready!
 		ATA_STATUSREGISTER_ERRORW(channel, drive, 1); //Ready!
@@ -3591,6 +3598,7 @@ void ATAPI_executeCommand(byte channel, byte drive) //Prototype for ATAPI execut
 			ATAPI_SENSEPACKET_COMMANDSPECIFICINFORMATION2W(channel,drive,0); //No command specific information?
 			ATAPI_SENSEPACKET_COMMANDSPECIFICINFORMATION3W(channel,drive,0); //No command specific information?
 			ATAPI_SENSEPACKET_VALIDW(channel,drive,1); //We're valid!
+			ATAPI_SENSEPACKET_CD(channel, drive, 0); //Error in the packet parameters!
 		}
 
 		//Leave the rest of the information cleared (unknown/unspecified)
@@ -4362,7 +4370,7 @@ void ATAPI_executeCommand(byte channel, byte drive) //Prototype for ATAPI execut
 			if (MSF2LBAbin(startM, startS, startF) > MSF2LBAbin(endM, endS, endF)) //Check condition status of SENSE_ILLEGAL_REQUEST!
 			{
 				//Throw the error!
-				ATAPI_SET_SENSE(channel, drive, SENSE_ILLEGAL_REQUEST, ASC_LOGICAL_BLOCK_OOR, 0x00); //Medium is becoming available
+				ATAPI_SET_SENSE(channel, drive, SENSE_ILLEGAL_REQUEST, ASC_LOGICAL_BLOCK_OOR, 0x00, 0); //Medium is becoming available
 				ATAPI_command_reportError(channel, drive);
 				goto playAudioMSF_handleMSFpositionerror;
 			}
@@ -4648,6 +4656,7 @@ void ATAPI_executeCommand(byte channel, byte drive) //Prototype for ATAPI execut
 		ATAPI_SENSEPACKET_COMMANDSPECIFICINFORMATION2W(channel,drive,0); //No command specific information?
 		ATAPI_SENSEPACKET_COMMANDSPECIFICINFORMATION3W(channel,drive,0); //No command specific information?
 		ATAPI_SENSEPACKET_VALIDW(channel,drive,1); //We're valid!
+		ATAPI_SENSEPACKET_CD(channel,drive,0); //Error in the packet command itself!
 		ATA[channel].Drive[drive].STATUSREGISTER = 0x40; //Clear status!
 		ATA_STATUSREGISTER_DRIVEREADYW(channel,drive,1); //Ready!
 		ATA_STATUSREGISTER_ERRORW(channel,drive,1); //Ready!
@@ -5913,6 +5922,7 @@ void ATAPI_insertCD(int disk, byte disk_channel, byte disk_drive)
 			ATAPI_SENSEPACKET_COMMANDSPECIFICINFORMATION2W(disk_channel, disk_drive, 0); //No command specific information?
 			ATAPI_SENSEPACKET_COMMANDSPECIFICINFORMATION3W(disk_channel, disk_drive, 0); //No command specific information?
 			ATAPI_SENSEPACKET_VALIDW(disk_channel, disk_drive, 1); //We're valid!
+			ATAPI_SENSEPACKET_CD(disk_channel, disk_drive, 0); //Error in the packet data itself!
 			ATA[disk_channel].Drive[disk_drive].STATUSREGISTER = 0x40; //Clear status!
 			ATA_STATUSREGISTER_DRIVEREADYW(disk_channel, disk_drive, 1); //Ready!
 			ATA_STATUSREGISTER_ERRORW(disk_channel, disk_drive, 1); //Ready!
