@@ -400,16 +400,23 @@ extern byte numemulatedcpus; //Amount of emulated CPUs!
 void emu_raise_resetline(byte resetPendingFlags)
 {
 	byte whichCPU;
+	byte effectivePendingFlags;
 	//Affect all CPUs!
 	for (whichCPU = 0; whichCPU < numemulatedcpus; ++whichCPU)
 	{
+		effectivePendingFlags = resetPendingFlags; //Effective flags!
+		if (is_i430fx && (effectivePendingFlags == 1)) //8042,PPI,Reset,Shutdown cause on i430fx/i440fx?
+		{
+			//Pulling CPU INIT# low!
+			effectivePendingFlags = 0x80; //Perform an CPU_INIT# instead on all CPUs?
+		}
 		if (whichCPU) //MP?
 		{
-			CPU[whichCPU].resetPending = (resetPendingFlags&(~4)); //Start pending reset MP!
+			CPU[whichCPU].resetPending = (effectivePendingFlags&(~4)); //Start pending reset MP!
 		}
 		else
 		{
-			CPU[whichCPU].resetPending = resetPendingFlags; //Start pending reset BSP!
+			CPU[whichCPU].resetPending = effectivePendingFlags; //Start pending reset BSP!
 		}
 	}
 	//Affect the I/O APIC as well, but that's done by the hardware reset on the i440fx!
