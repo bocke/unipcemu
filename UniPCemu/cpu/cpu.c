@@ -1160,7 +1160,7 @@ OPTINLINE void CPU_initRegisters(word isInit) //Init the registers!
 			memset(&MSRbackup, 0, sizeof(MSRbackup)); //Cleared MSRs!
 			CPU[activeCPU].TSC = 0; //Clear the TSC (Reset without BIST)!
 		}
-		if ((isInit != 0x80) && ((isInit&0x100)==0)) //Not local reset?
+		if (((isInit&0x80)==0) && ((isInit&0x100)==0)) //Not local reset?
 		{
 			free_CPUregisters(); //Free the CPU registers!
 		}
@@ -1178,7 +1178,7 @@ OPTINLINE void CPU_initRegisters(word isInit) //Init the registers!
 	{
 		CSAccessRights = 0x93; //Initialise the CS access rights!
 	}
-	if (((isInit != 0x80) && ((isInit&0x100)==0)) || (!CPU[activeCPU].registers)) //Needs allocation of registers?
+	if ((((isInit&0x80)==0) && ((isInit&0x100)==0)) || (!CPU[activeCPU].registers)) //Needs allocation of registers?
 	{
 		alloc_CPUregisters(); //Allocate the CPU registers!
 		CPU[activeCPU].TSC = 0; //Clear the TSC (Reset without BIST)!
@@ -1406,8 +1406,11 @@ void resetCPU(word isInit) //Initialises the currently selected CPU!
 	CPU_executionphase_init(); //Initialize the execution phase to it's initial state!
 	if (EMULATED_CPU >= CPU_PENTIUMPRO) //Has APIC support?
 	{
-		CPU[activeCPU].registers->genericMSR[MSRnumbers[0x1B] - 1].lo = 0xFEE00800 | (activeCPU?0:0x100); //Initial value! We're the bootstrap processor! APIC enabled!
-		CPU[activeCPU].registers->genericMSR[MSRnumbers[0x1B] - 1].hi = 0; //Initial value!
+		if ((isInit & 0x80) == 0) //Not INIT?
+		{
+			CPU[activeCPU].registers->genericMSR[MSRnumbers[0x1B] - 1].lo = 0xFEE00800 | (activeCPU ? 0 : 0x100); //Initial value! We're the bootstrap processor! APIC enabled!
+			CPU[activeCPU].registers->genericMSR[MSRnumbers[0x1B] - 1].hi = 0; //Initial value!
+		}
 		APIC_updateWindowMSR(activeCPU,CPU[activeCPU].registers->genericMSR[MSRnumbers[0x1B] - 1].lo, CPU[activeCPU].registers->genericMSR[MSRnumbers[0x1B] - 1].hi); //Update the MSR for the hardware!
 	}
 	else
