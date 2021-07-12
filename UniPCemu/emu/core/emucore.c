@@ -408,7 +408,7 @@ void emu_raise_resetline(byte resetPendingFlags)
 		if (is_i430fx && (effectivePendingFlags == 1)) //8042,PPI,Reset,Shutdown cause on i430fx/i440fx?
 		{
 			//Pulling CPU INIT# low!
-			effectivePendingFlags = 0x80; //Perform an CPU_INIT# instead on all CPUs?
+			effectivePendingFlags = 0x8; //Perform an CPU_INIT# instead on all CPUs? This value is shifter upwards to bits 4-7, so to set bit 7, set bit 3!
 		}
 		if (whichCPU) //MP?
 		{
