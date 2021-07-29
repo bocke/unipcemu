@@ -956,6 +956,7 @@ SEGMENT_DESCRIPTOR *getsegment_seg(int segment, SEGMENT_DESCRIPTOR *dest, word *
 		)
 		&& (!(((isJMPorCALL&0x1FF)==3) && is_TSS)) //No privilege checking is done on IRET through TSS!
 		&& (!((isJMPorCALL&0x80)==0x80)) //Don't ignore privilege?
+		&& (segment!=CPU_SEGMENT_TR) //TR loading (LTR, task switching) ignores RPL and DPL!
 		)
 	{
 	throwdescoriginalval:
