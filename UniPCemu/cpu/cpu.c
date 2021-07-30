@@ -1310,7 +1310,11 @@ OPTINLINE void CPU_initRegisters(word isInit) //Init the registers!
 		//According to http://www.sandpile.org/x86/initial.htm the following access rights are used:
 		if ((reg == CPU_SEGMENT_LDTR) || (reg == CPU_SEGMENT_TR)) //LDTR&TR=Special case! Apply special access rights!
 		{
-			CPU[activeCPU].SEG_DESCRIPTOR[reg].desc.AccessRights = 0x82; //Invalid segment!
+			CPU[activeCPU].SEG_DESCRIPTOR[reg].desc.AccessRights = (reg == CPU_SEGMENT_TR)?0x83:0x82; //Invalid segment or 16/32-bit TSS!
+			if ((reg == CPU_SEGMENT_TR) && (EMULATED_CPU>=CPU_80386))
+			{
+				CPU[activeCPU].SEG_DESCRIPTOR[reg].desc.AccessRights |= 0x8; //32-bit TSS?
+			}
 		}
 		else //Normal Code/Data segment?
 		{
