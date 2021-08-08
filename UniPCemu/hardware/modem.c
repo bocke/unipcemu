@@ -3605,6 +3605,18 @@ byte PPPOE_handlePADreceived(sword connectedclient)
 	return 0; //Not handled!
 }
 
+/*
+
+PPP packet (flag is before and after each packet, which is ignored for packets present(used for framing only). It's location is before and after the packet data, which is unescaped in the buffer):
+* start of packet *
+address (byte): always 0xFF
+control (byte): always 0x03
+protocol (word): the protocol that's sent/received.
+info: the payload (variable length)
+checksum (word or doubleword): HDLC CRC
+* end of packet *
+*/
+
 //result: 1 on success, 0 on pending.
 byte PPP_parseSentPacketFromClient(sword connectedclient)
 {
