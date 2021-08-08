@@ -230,6 +230,7 @@ typedef struct
 	char packetserver_staticIPstr[256]; //Static IP, string format
 	byte packetserver_useStaticIP; //Use static IP?
 	byte packetserver_slipprotocol; //Are we using the slip protocol?
+	byte packetserver_slipprotocol_pppoe; //Are we using the PPPOE protocol instead of PPP?
 	byte packetserver_stage; //Current login/service/packet(connected and authenticated state).
 	word packetserver_stage_byte; //Byte of data within the current stage(else, use string length or connected stage(no position; in SLIP mode). 0xFFFF=Init new stage.
 	byte packetserver_stage_byte_overflown; //Overflown?
@@ -257,6 +258,9 @@ typedef struct
 	MODEM_PACKETBUFFER DHCP_requestpacket; //Request packet that's sent!
 	MODEM_PACKETBUFFER DHCP_acknowledgepacket; //Acknowledge packet that's sent!
 	MODEM_PACKETBUFFER DHCP_releasepacket; //Release packet that's sent!
+	//PPP data
+	byte PPP_packetreadyforsending; //Is the PPP packet ready to be sent to the client? 1 when containing data for the client, 0 otherwise. Ignored for non-PPP clients!
+	byte PPP_packetpendingforsending; //Is the PPP packet pending processed for the client? 1 when pending to be processed for the client, 0 otherwise. Ignored for non-PPP clients!
 } PacketServer_client;
 
 PacketServer_client Packetserver_clients[0x100]; //Up to 100 clients!
@@ -321,7 +325,7 @@ word Packetserver_totalClients = 0; //How many clients are available?
 #define PPP_DECODEESC(val) (val^0x20)
 
 //Define below to encode/decode the PPP packets sent/received from the user using the PPP_ESC values
-//#define PPPOE_ENCODEDECODE
+#define PPPOE_ENCODEDECODE 0
 
 #ifdef PACKETSERVER_ENABLED
 struct netstruct { //Supported, thus use!
@@ -981,7 +985,7 @@ byte packetserver_authenticate(sword client)
 	char *p;
 #endif
 #endif
-	if ((strcmp(Packetserver_clients[client].packetserver_protocol, "slip") == 0) || (strcmp(Packetserver_clients[client].packetserver_protocol, "ethernetslip") == 0) || (strcmp(Packetserver_clients[client].packetserver_protocol, "ipxslip") == 0)  || (strcmp(Packetserver_clients[client].packetserver_protocol, "ppp") == 0)) //Valid protocol?
+	if ((strcmp(Packetserver_clients[client].packetserver_protocol, "slip") == 0) || (strcmp(Packetserver_clients[client].packetserver_protocol, "ethernetslip") == 0) || (strcmp(Packetserver_clients[client].packetserver_protocol, "ipxslip") == 0) || (strcmp(Packetserver_clients[client].packetserver_protocol, "ppp") == 0) || (strcmp(Packetserver_clients[client].packetserver_protocol, "pppoe") == 0)) //Valid protocol?
 	{
 #ifdef PACKETSERVER_ENABLED
 #ifndef NOPCAP
@@ -3481,6 +3485,7 @@ byte PPPOE_handlePADreceived(sword connectedclient)
 	byte code;
 	//Handle a packet that's currently received!
 	ETHERNETHEADER ethernetheader, packetheader;
+	if (Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe == 0) return 0; //Invalid: not using PPPOE!
 	memcpy(&ethernetheader.data, &Packetserver_clients[connectedclient].packet[0], sizeof(ethernetheader.data)); //Make a copy of the ethernet header to use!
 	//Handle the CheckSum after the payload here?
 	code = Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data) + 1]; //The code field!
@@ -3599,6 +3604,22 @@ byte PPPOE_handlePADreceived(sword connectedclient)
 	//No PADI sent? Can't handle anything!
 	return 0; //Not handled!
 }
+
+//result: 1 on success, 0 on pending.
+byte PPP_parseSentPacketFromClient(sword connectedclient)
+{
+	//Not handled yet. This is supposed to check the packet, parse it and send packets to the ethernet in response when it's able to!
+	return 1; //Currently simply discard it!
+}
+
+//result: 0 to discard the packet. 1 to start sending the packet to the client, 2 to keep it pending in this stage until we're ready to send it to the client.
+byte PPP_parseReceivedPacketForClient(sword connectedclient)
+{
+	//Not handled yet. This is supposed to check the packet, parse it and send packets to the connected client in response when it's able to!
+	return 0; //Currently simply discard it!
+}
+
+
 
 void connectModem(char* number)
 {
@@ -4168,6 +4189,16 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 										Packetserver_clients[connectedclient].pktlen = net.pktlen; //Save the length of the packet!
 										memcpy(Packetserver_clients[connectedclient].packet, net.packet, net.pktlen); //Copy the packet to the active buffer!
 									}
+									if (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe && (Packetserver_clients[connectedclient].packetserver_slipprotocol == 3)) //Not suitable for consumption by the client yet?
+									{
+										Packetserver_clients[connectedclient].PPP_packetreadyforsending = 0; //Not ready to send to the client yet!
+										Packetserver_clients[connectedclient].PPP_packetpendingforsending = 0; //Not pending for sending by default!
+									}
+									else //Packet ready for sending to the client!
+									{
+										Packetserver_clients[connectedclient].PPP_packetreadyforsending = 1; //Ready to send to client always!
+										Packetserver_clients[connectedclient].PPP_packetpendingforsending = 0; //Not pending for sending by default!
+									}
 								}
 								if (fifobuffer_freesize(Packetserver_clients[connectedclient].packetserver_receivebuffer) >= 2) //Valid to produce more data?
 								{
@@ -4181,14 +4212,19 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 											{
 												if (ethernetheader.type == SDL_SwapBE16(0x8863)) //Are we a discovery packet?
 												{
-													if (PPPOE_handlePADreceived(connectedclient)) //Handle the received PAD packet!
+													if (Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe) //Using PPPOE?
 													{
-														//Discard the received packet, so nobody else handles it too!
-														freez((void**)&net.packet, net.pktlen, "MODEM_PACKET");
-														net.packet = NULL; //Discard if failed to deallocate!
-														net.pktlen = 0; //Not allocated!
-														goto invalidpacket; //Invalid packet!
+														if (PPPOE_handlePADreceived(connectedclient)) //Handle the received PAD packet!
+														{
+															invalidPPPOEclient:
+															//Discard the received packet, so nobody else handles it too!
+															freez((void**)&net.packet, net.pktlen, "MODEM_PACKET");
+															net.packet = NULL; //Discard if failed to deallocate!
+															net.pktlen = 0; //Not allocated!
+															goto invalidpacket; //Invalid packet!
+														}
 													}
+													//Using PPP, ignore the header type and parse this later!
 												}
 												headertype = SDL_SwapBE16(0x8864); //Receiving uses normal PPP packets to transfer/receive on the receiver line only!
 											}
@@ -4201,7 +4237,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 												headertype = SDL_SwapBE16(0x0800); //We're an IP packet!
 											}
 											//Now, check the normal receive parameters!
-											if (Packetserver_clients[connectedclient].packetserver_useStaticIP && (headertype == SDL_SwapBE16(0x0800)) && (ethernetheader.type==headertype)) //IP filter to apply?
+											if (Packetserver_clients[connectedclient].packetserver_useStaticIP && (headertype == SDL_SwapBE16(0x0800)) && (ethernetheader.type==headertype) && (!((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) && (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe)))) //IP filter to apply?
 											{
 												if ((memcmp(&Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data) + 16], Packetserver_clients[connectedclient].packetserver_staticIP, 4) != 0) && (memcmp(&Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data) + 16], packetserver_broadcastIP, 4) != 0)) //Static IP mismatch?
 												{
@@ -4289,44 +4325,66 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 														}
 													}
 												}
-												goto invalidpacket; //Invalid packet!
+												if ((!((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) && (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe)))) //Applying a filter on the type at all? PPP type handles this itself!
+												{
+													goto invalidpacket; //Invalid packet!
+												}
 											}
 											//Valid packet! Receive it!
 											if (Packetserver_clients[connectedclient].packetserver_slipprotocol) //Using slip or PPP protocol?
 											{
 												if (Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) //PPP?
 												{
-													if (Packetserver_clients[connectedclient].pppoe_discovery_PADS.length == 0) //No PADS received yet? Invalid packet!
+													if (Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe) //Using PPPOE?
 													{
-														goto invalidpacket; //Invalid packet: not ready yet!
+														if (Packetserver_clients[connectedclient].pppoe_discovery_PADS.length == 0) //No PADS received yet? Invalid packet!
+														{
+															goto invalidpacket; //Invalid packet: not ready yet!
+														}
+														if (Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data) + 0] != 0x11) //Invalid VER/type?
+														{
+															goto invalidpacket; //Invalid packet!
+														}
+														if (Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data) + 1] != 0) //Invalid Type?
+														{
+															goto invalidpacket; //Invalid packet!
+														}
+														word length, sessionid, requiredsessionid, pppoe_protocol;
+														memcpy(&length, &Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data) + 4], sizeof(length)); //The length field!
+														memcpy(&sessionid, &Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data) + 2], sizeof(sessionid)); //The length field!
+														memcpy(&pppoe_protocol, &Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data) + 6], sizeof(sessionid)); //The length field!
+														memcpy(&requiredsessionid, &Packetserver_clients[connectedclient].pppoe_discovery_PADS.buffer[sizeof(ethernetheader.data) + 4], sizeof(requiredsessionid)); //The required session id field!
+														if (SDL_SwapBE16(length) < 4) //Invalid Length?
+														{
+															goto invalidpacket; //Invalid packet!
+														}
+														if (sessionid != requiredsessionid) //Invalid required session id(other client)?
+														{
+															goto invalidpacket; //Invalid packet!
+														}
+														if (SDL_SwapBE16(pppoe_protocol) != 0xC021) //Invalid packet type?
+														{
+															goto invalidpacket; //Invalid packet!
+														}
+														Packetserver_clients[connectedclient].packetserver_packetpos = sizeof(ethernetheader.data) + 0x8; //Skip the ethernet header and give the raw IP data!
+														Packetserver_clients[connectedclient].packetserver_bytesleft = Packetserver_clients[connectedclient].pktlen - Packetserver_clients[connectedclient].packetserver_packetpos; //How much is left to send?
 													}
-													if (Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data) + 0] != 0x11) //Invalid VER/type?
+													else //Filter the packet depending on the packet type we're receiving!
 													{
-														goto invalidpacket; //Invalid packet!
+														switch (PPP_parseReceivedPacketForClient(connectedclient)) //Failed to receive the packet as proper to use?
+														{
+														case 0: //Discard it!
+															goto invalidpacket; //Invalid packet!
+															break;
+														case 1: //Received it!
+															Packetserver_clients[connectedclient].PPP_packetreadyforsending = 1; //Ready, not pending anymore!
+															Packetserver_clients[connectedclient].PPP_packetpendingforsending = 0; //Ready, not pending anymore!
+															break;
+														case 2: //Keep it pending!
+															Packetserver_clients[connectedclient].PPP_packetpendingforsending = 1; //Not ready, pending still!
+															break;
+														}
 													}
-													if (Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data) + 1] != 0) //Invalid Type?
-													{
-														goto invalidpacket; //Invalid packet!
-													}
-													word length,sessionid,requiredsessionid,pppoe_protocol;
-													memcpy(&length, &Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data) + 4], sizeof(length)); //The length field!
-													memcpy(&sessionid, &Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data) + 2], sizeof(sessionid)); //The length field!
-													memcpy(&pppoe_protocol, &Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data) + 6], sizeof(sessionid)); //The length field!
-													memcpy(&requiredsessionid, &Packetserver_clients[connectedclient].pppoe_discovery_PADS.buffer[sizeof(ethernetheader.data) + 4], sizeof(requiredsessionid)); //The required session id field!
-													if (SDL_SwapBE16(length) < 4) //Invalid Length?
-													{
-														goto invalidpacket; //Invalid packet!
-													}
-													if (sessionid != requiredsessionid) //Invalid required session id(other client)?
-													{
-														goto invalidpacket; //Invalid packet!
-													}
-													if (SDL_SwapBE16(pppoe_protocol) != 0xC021) //Invalid packet type?
-													{
-														goto invalidpacket; //Invalid packet!
-													}
-													Packetserver_clients[connectedclient].packetserver_packetpos = sizeof(ethernetheader.data)+0x8; //Skip the ethernet header and give the raw IP data!
-													Packetserver_clients[connectedclient].packetserver_bytesleft = Packetserver_clients[connectedclient].pktlen - Packetserver_clients[connectedclient].packetserver_packetpos; //How much is left to send?
 												}
 												else //SLIP?
 												{
@@ -4336,7 +4394,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 											}
 											else //We're using the ethernet header protocol?
 											{
-												//else, we're using ethernet header protocol, so take the
+												//else, we're using ethernet header protocol, so take the packet and start sending it to the client!
 												Packetserver_clients[connectedclient].packetserver_packetack = 1; //We're acnowledging the packet, so start transferring it!
 												Packetserver_clients[connectedclient].packetserver_bytesleft = Packetserver_clients[connectedclient].pktlen; //Use the entire packet, unpatched!
 											}
@@ -4359,7 +4417,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 										}
 										goto skipSLIP_PPP; //Don't handle SLIP/PPP because we're not ready yet!
 									}
-									if (Packetserver_clients[connectedclient].packet) //Still a valid packet to send?
+									if (Packetserver_clients[connectedclient].packet && ((Packetserver_clients[connectedclient].PPP_packetreadyforsending && (Packetserver_clients[connectedclient].PPP_packetpendingforsending==0)) || (Packetserver_clients[connectedclient].packetserver_slipprotocol!=3))) //Still a valid packet to send and allowed to send the packet that's stored?
 									{
 										//Convert the buffer into transmittable bytes using the proper encoding!
 										if (Packetserver_clients[connectedclient].packetserver_bytesleft) //Not finished yet?
@@ -4378,29 +4436,32 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 													}
 												}
 
-												#ifdef PPPOE_ENCODEDECODE
-												if (datatotransmit == PPP_END) //End byte?
+												if (PPPOE_ENCODEDECODE || !Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe) //Encoding PPP?
 												{
-													writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, PPP_ESC); //Escaped ...
-													writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, PPP_ENCODEESC(PPP_ESC)); //END raw data!
+													if (datatotransmit == PPP_END) //End byte?
+													{
+														writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, PPP_ESC); //Escaped ...
+														writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, PPP_ENCODEESC(PPP_END)); //END raw data!
+													}
+													else if (datatotransmit == PPP_ESC) //ESC byte?
+													{
+														writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, PPP_ESC); //Escaped ...
+														writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, PPP_ENCODEESC(PPP_ESC)); //ESC raw data!
+													}
+													else //Normal data?
+													{
+														writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, datatotransmit); //Unescaped!
+													}
+													Packetserver_clients[connectedclient].pppoe_lastrecvbytewasEND = 0; //Last wasn't END!
 												}
-												else if (datatotransmit == PPP_ESC) //ESC byte?
+												else //Not encoding PPP?
 												{
-													writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, PPP_ESC); //Escaped ...
-													writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, PPP_ENCODEESC(PPP_ESC)); //ESC raw data!
+													if (!((Packetserver_clients[connectedclient].pppoe_lastrecvbytewasEND) && (datatotransmit == PPP_END))) //Not doubled END?
+													{
+														writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, datatotransmit); //Raw!
+													}
+													Packetserver_clients[connectedclient].pppoe_lastrecvbytewasEND = (datatotransmit == PPP_END); //Last was END?
 												}
-												else //Normal data?
-												{
-													writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, datatotransmit); //Unescaped!
-												}
-												Packetserver_clients[connectedclient].pppoe_lastrecvbytewasEND = 0; //Last wasn't END!
-												#else
-												if (!((Packetserver_clients[connectedclient].pppoe_lastrecvbytewasEND) && (datatotransmit == PPP_END))) //Not doubled END?
-												{
-													writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, datatotransmit); //Raw!
-												}
-												Packetserver_clients[connectedclient].pppoe_lastrecvbytewasEND = (datatotransmit == PPP_END); //Last was END?
-												#endif
 											}
 											else //SLIP?
 											{
@@ -4488,11 +4549,15 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 								}
 								if (Packetserver_clients[connectedclient].packetserver_slipprotocol==3) //PPP?
 								{
-									if (Packetserver_clients[connectedclient].pppoe_discovery_PADS.buffer && Packetserver_clients[connectedclient].pppoe_discovery_PADS.length) //Valid to send?
+									if (Packetserver_clients->packetserver_slipprotocol_pppoe) //Using PPPOE?
 									{
-										ethernetheader.type = SDL_SwapBE16(0x8864); //Our packet type!
+										if (Packetserver_clients[connectedclient].pppoe_discovery_PADS.buffer && Packetserver_clients[connectedclient].pppoe_discovery_PADS.length) //Valid to send?
+										{
+											ethernetheader.type = SDL_SwapBE16(0x8864); //Our packet type!
+										}
+										else goto noPPPtransmit; //Ignore the transmitter for now!
 									}
-									else goto noPPPtransmit; //Ignore the transmitter for now!
+									//Otherwise, PPP packet to send? Are we to do something with this now?
 								}
 								else if (Packetserver_clients[connectedclient].packetserver_slipprotocol==2) //IPX?
 								{
@@ -4509,7 +4574,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 										break; //Stop adding!
 									}
 								}
-								if ((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) && Packetserver_clients[connectedclient].pppoe_discovery_PADS.buffer && Packetserver_clients[connectedclient].pppoe_discovery_PADS.length) //PPP?
+								if ((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) && (Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe) && Packetserver_clients[connectedclient].pppoe_discovery_PADS.buffer && Packetserver_clients[connectedclient].pppoe_discovery_PADS.length) //PPP?
 								{
 									if (!packetServerAddWriteQueue(connectedclient, 0x11)) //V/T?
 									{
@@ -4550,12 +4615,12 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 								}
 								if (
 									((Packetserver_clients[connectedclient].packetserver_transmitlength != 14) && (Packetserver_clients[connectedclient].packetserver_slipprotocol!=3)) || 
-									((Packetserver_clients[connectedclient].packetserver_transmitlength != 22) && (Packetserver_clients[connectedclient].packetserver_slipprotocol == 3))
+									((Packetserver_clients[connectedclient].packetserver_transmitlength != 22) && (Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) && (Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe))
 									) //Failed to generate header?
 								{
 									dolog("ethernetcard", "Error: Transmit initialization failed. Resetting transmitter!");
 									noPPPtransmit:
-									if (!(Packetserver_clients[connectedclient].pppoe_discovery_PADS.buffer && Packetserver_clients[connectedclient].pppoe_discovery_PADS.length)) //Not ready to send?
+									if (!(Packetserver_clients[connectedclient].pppoe_discovery_PADS.buffer && Packetserver_clients[connectedclient].pppoe_discovery_PADS.length) && Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe) //Not ready to send?
 									{
 										if (!(Packetserver_clients[connectedclient].pppoe_discovery_PADI.buffer && Packetserver_clients[connectedclient].pppoe_discovery_PADI.length)) //No PADI sent yet? Start sending one now to restore the connection!
 										{
@@ -4586,6 +4651,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 									if (
 										((Packetserver_clients[connectedclient].packetserver_transmitlength > sizeof(ethernetheader.data)) && (Packetserver_clients[connectedclient].packetserver_slipprotocol!=3)) || //Anything buffered(the header is required)?
 										((Packetserver_clients[connectedclient].packetserver_transmitlength > 0x22) && (Packetserver_clients[connectedclient].packetserver_slipprotocol == 3)) //Anything buffered(the header is required)?
+										|| ((Packetserver_clients[connectedclient].packetserver_transmitlength > sizeof(ethernetheader.data)) && (Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) && (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe)) //Anything buffered(the header is required)?
 										)
 									{
 										//Send the frame to the server, if we're able to!
@@ -4593,22 +4659,35 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 										{
 											if (Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) //PPP?
 											{
-												if (!((Packetserver_clients[connectedclient].pppoe_lastsentbytewasEND))) //Not doubled END?
+												if (Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe) //Using PPPOE?
 												{
-													if (!packetServerAddWriteQueue(connectedclient, PPP_END))
+													if (!((Packetserver_clients[connectedclient].pppoe_lastsentbytewasEND))) //Not doubled END?
 													{
-														goto skipSLIP_PPP; //Don't handle the sending of the packet yet: not ready!
+														if (!packetServerAddWriteQueue(connectedclient, PPP_END))
+														{
+															goto skipSLIP_PPP; //Don't handle the sending of the packet yet: not ready!
+														}
+														Packetserver_clients[connectedclient].pppoe_lastsentbytewasEND = 1; //Last was END!
 													}
-													Packetserver_clients[connectedclient].pppoe_lastsentbytewasEND = 1; //Last was END!
 												}
 											}
-											if (Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) //Length field needs fixing up?
+											if ((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) && (Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe)) //Length field needs fixing up?
 											{
 												NETWORKVALSPLITTER.wval = SDL_SwapBE16(Packetserver_clients[connectedclient].packetserver_transmitlength-0x22); //The length of the PPP packet itself!
 												Packetserver_clients[connectedclient].packetserver_transmitbuffer[0x12] = NETWORKVALSPLITTER.bval[0]; //First byte!
 												Packetserver_clients[connectedclient].packetserver_transmitbuffer[0x13] = NETWORKVALSPLITTER.bval[1]; //Second byte!
 											}
-											sendpkt_pcap(Packetserver_clients[connectedclient].packetserver_transmitbuffer, Packetserver_clients[connectedclient].packetserver_transmitlength); //Send the packet!
+											if (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe) //Able to send the packet?
+											{
+												sendpkt_pcap(Packetserver_clients[connectedclient].packetserver_transmitbuffer, Packetserver_clients[connectedclient].packetserver_transmitlength); //Send the packet!
+											}
+											else
+											{
+												if (!PPP_parseSentPacketFromClient(connectedclient)) //TODO: Parse PPP packets to their respective ethernet or IPv4 protocols for sending to the ethernet layer, as supported!
+												{
+													goto skipSLIP_PPP; //Keep the packet parsing pending!
+												}
+											}
 										}
 										else
 										{
@@ -4625,8 +4704,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 									readfifobuffer(modem.inputdatabuffer[connectedclient], &datatotransmit); //Ignore the data, just discard the packet END!
 								}
 							}
-							#ifdef PPPOE_ENCODEDECODE
-							else if ((Packetserver_clients[connectedclient].packetserver_transmitstate) && (Packetserver_clients[connectedclient].packetserver_slipprotocol==3)) //PPP ESCaped value?
+							else if ((Packetserver_clients[connectedclient].packetserver_transmitstate) && (Packetserver_clients[connectedclient].packetserver_slipprotocol==3) && ((!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe) || PPPOE_ENCODEDECODE)) //PPP ESCaped value?
 							{
 								if (Packetserver_clients[connectedclient].packetserver_transmitlength) //Gotten a valid packet?
 								{
@@ -4643,12 +4721,11 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 									Packetserver_clients[connectedclient].packetserver_transmitstate = 0; //We're not escaping something anymore!
 								}
 							}
-							else if ((datatotransmit==PPP_ESC) && (Packetserver_clients[connectedclient].packetserver_slipprotocol==3)) //PPP ESC?
+							else if ((datatotransmit==PPP_ESC) && (Packetserver_clients[connectedclient].packetserver_slipprotocol==3) && ((!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe) || PPPOE_ENCODEDECODE)) //PPP ESC?
 							{
 								readfifobuffer(modem.inputdatabuffer[connectedclient], &datatotransmit); //Discard, as it's processed!
 								Packetserver_clients[connectedclient].packetserver_transmitstate = 1; //We're escaping something! Multiple escapes are ignored and not sent!
 							}
-							#endif
 							else if ((datatotransmit == SLIP_ESC) && (Packetserver_clients[connectedclient].packetserver_slipprotocol!=3)) //Escaped something?
 							{
 								if (Packetserver_clients[connectedclient].packetserver_transmitstate) //Were we already escaping?
@@ -4772,9 +4849,13 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 								if (Packetserver_clients[connectedclient].packetserver_credentials_invalid) goto packetserver_autherror; //Authentication error!
 								if (packetserver_authenticate(connectedclient)) //Authenticated?
 								{
-									Packetserver_clients[connectedclient].packetserver_slipprotocol = (strcmp(Packetserver_clients[connectedclient].packetserver_protocol, "ppp") == 0)?3:((strcmp(Packetserver_clients[connectedclient].packetserver_protocol, "ipxslip") == 0)?2:((strcmp(Packetserver_clients[connectedclient].packetserver_protocol, "slip") == 0) ? 1 : 0)); //Are we using the slip protocol?
+									Packetserver_clients[connectedclient].packetserver_slipprotocol = ((strcmp(Packetserver_clients[connectedclient].packetserver_protocol, "ppp") == 0) || (strcmp(Packetserver_clients[connectedclient].packetserver_protocol, "pppoe") == 0))?3:((strcmp(Packetserver_clients[connectedclient].packetserver_protocol, "ipxslip") == 0)?2:((strcmp(Packetserver_clients[connectedclient].packetserver_protocol, "slip") == 0) ? 1 : 0)); //Are we using the slip protocol?
+									Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe = (strcmp(Packetserver_clients[connectedclient].packetserver_protocol, "pppoe") == 0) ? 1 : 0; //Use PPPOE instead of PPP?
 									PacketServer_startNextStage(connectedclient, (Packetserver_clients[connectedclient].packetserver_useStaticIP==2)?PACKETSTAGE_DHCP:PACKETSTAGE_INFORMATION); //We're logged in! Give information stage next!
-									PPPOE_requestdiscovery(connectedclient); //Start the discovery phase of the connected client!
+									if (Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe) //Using PPPOE?
+									{
+										PPPOE_requestdiscovery(connectedclient); //Start the discovery phase of the connected client!
+									}
 								}
 								else goto packetserver_autherror; //Authentication error!
 								break;
