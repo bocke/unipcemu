@@ -3618,7 +3618,7 @@ checksum (word or doubleword): HDLC CRC
 */
 
 //PPP_calcFCS: calculates the FCS of a PPP frame (minus PPP 0x7F bytes). This is transferred in little endian byte order.
-//The value of a FCS check including FCS should be 0x0F47 when including the FCS calculated. The address and control fields are also included in this.
+//The value of a FCS check including FCS should be 0x0F47 when including the FCS calculated from the sender. When calculating the FCS for sending, the FCS field isn't included in the calculation. The FCS is always stored in little-endian format.
 
 static const word fcslookup[256] =
 {
