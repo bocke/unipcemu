@@ -263,6 +263,7 @@ typedef struct
 	byte PPP_packetpendingforsending; //Is the PPP packet pending processed for the client? 1 when pending to be processed for the client, 0 otherwise. Ignored for non-PPP clients!
 	//PPP CP packet processing
 	byte PPP_headercompressed; //Is the header compressed?
+	byte PPP_protocolcompressed; //Is the protocol compressed?
 	MODEM_PACKETBUFFER ppp_response; //The PPP packet that's to be sent to the client!
 	MODEM_PACKETBUFFER ppp_nakfields, ppp_rejectfields; //The NAK and Reject packet that's pending to be sent!
 	byte ppp_nakfields_identifier, ppp_rejectfields_identifier; //The NAK and Reject packet identifier to be sent!
@@ -3764,7 +3765,7 @@ word PPP_calcFCS(byte* buffer, uint_32 length)
 }
 
 //result: 1 on success, 0 on pending.
-byte PPP_parseSentPacketFromClient(sword connectedclient)
+byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 {
 	MODEM_PACKETBUFFER pppNakRejectFields;
 	byte result; //The result for this function!
@@ -3778,14 +3779,31 @@ byte PPP_parseSentPacketFromClient(sword connectedclient)
 	byte common_CodeField; //Code field!
 	byte common_IdentifierField; //Identifier field!
 	word common_LengthField; //Length field!
-	if (Packetserver_clients[connectedclient].packetserver_transmitlength < (4 + (Packetserver_clients[connectedclient].PPP_headercompressed ? 2 : 0))) //Not enough for a full minimal PPP packet (with 1 byte of payload)?
+	byte common_TypeField; //Type field
+	byte common_OptionLengthField; //Option Length field!
+	word request_pendingMRU; //Pending MTU field for the request!
+	byte request_pendingProtocolFieldCompression; //Default: no protocol field compression!
+	byte request_pendingAddressAndControlFieldCompression; //Default: no address-and-control-field compression!
+	uint_32 skipdatacounter;
+	if (handleTransmit)
 	{
-		return 1; //Incorrect packet: discard it!
+		if (Packetserver_clients[connectedclient].packetserver_transmitlength < (3 + (Packetserver_clients[connectedclient].PPP_protocolcompressed ? 1 : 0) + (Packetserver_clients[connectedclient].PPP_headercompressed ? 2 : 0))) //Not enough for a full minimal PPP packet (with 1 byte of payload)?
+		{
+			return 1; //Incorrect packet: discard it!
+		}
 	}
 	if (Packetserver_clients[connectedclient].ppp_nakfields.buffer || Packetserver_clients[connectedclient].ppp_rejectfields.buffer) //NAK or Reject packet pending?
 	{
 		//Try to send the NAK fields or Reject fields to the client!
 	sendNAKRejectFields:
+		if (!handleTransmit) //Not transmitting?
+		{
+			result = 0; //Default: not handled!
+		}
+		else
+		{
+			result = 1; //Default: handled!
+		}
 		if (Packetserver_clients[connectedclient].ppp_nakfields.buffer) //Gotten NAK fields to send?
 		{
 			memcpy(&pppNakRejectFields, &Packetserver_clients[connectedclient].ppp_nakfields, sizeof(pppNakRejectFields)); //Which one to use!
@@ -3872,6 +3890,14 @@ byte PPP_parseSentPacketFromClient(sword connectedclient)
 			{
 				packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].ppp_rejectfields); //Free the queued response!
 			}
+			if (!handleTransmit) //Not performing an transmit?
+			{
+				result = 1; //OK, handled!
+			}
+			else
+			{
+				result = 0; //Keep pending!
+			}
 		}
 		goto ppp_finishcorrectpacketbufferqueueNAKReject; //Success!
 	ppp_finishpacketbufferqueueNAKReject: //An error occurred during the response?
@@ -3880,6 +3906,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient)
 	ppp_finishcorrectpacketbufferqueueNAKReject: //Correctly finished!
 		return 0; //Keep pending!
 	}
+	if (!handleTransmit) return 0; //Don't do anything more when not handling a transmit!
 	createPPPstream(&pppstream, &Packetserver_clients[connectedclient].packetserver_transmitbuffer[0], Packetserver_clients[connectedclient].packetserver_transmitlength-2); //Create a stream object for us to use, which goes until the end of the payload!
 	createPPPstream(&checksumppp, &Packetserver_clients[connectedclient].packetserver_transmitbuffer[Packetserver_clients[connectedclient].packetserver_transmitlength - 2], 2); //Create a stream object for us to use for the checksum!
 	memcpy(&pppstreambackup, &pppstream, sizeof(pppstream)); //Backup for checking again!
@@ -3908,7 +3935,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient)
 		return 1; //incorrect packet: discard it!
 	}
 	dataw = (word)datab; //Store First byte, in little-endian!
-	if ((datab & 1)==0) //2-byte protocol?
+	if (((datab & 1)==0) || (!Packetserver_clients[connectedclient].PPP_protocolcompressed)) //2-byte protocol?
 	{
 		if (!PPP_consumeStream(&pppstream, &datab)) //Second byte!
 		{
@@ -3955,14 +3982,133 @@ byte PPP_parseSentPacketFromClient(sword connectedclient)
 		{
 			return 1; //Incorrect packet: discard it!
 		}
+		if (common_LengthField < 3) //Not enough data?
+		{
+			return 1; //Incorrect packet: discard it!
+		}
 		switch (common_CodeField) //What operation code?
 		{
 		case 1: //Configure-Request
-			if (!createPPPsubstream(&pppstream, &pppstream_requestfield, common_LengthField)) //Not enough room for the data?
+			if (!createPPPsubstream(&pppstream, &pppstream_requestfield, MIN(common_LengthField,3)-3)) //Not enough room for the data?
 			{
 				goto ppp_finishpacketbufferqueue; //Finish up!
 			}
-			goto ppp_finishpacketbufferqueue; //TODO: main handling of options not implemented yet!
+			request_pendingMRU = 1500; //Default MTU value to use!
+			request_pendingProtocolFieldCompression = 0; //Default: no protocol field compression!
+			request_pendingAddressAndControlFieldCompression = 0; //Default: no address-and-control-field compression!
+
+			//Now, start parsing the options for the connection!
+			for (; PPP_peekStream(&pppstream_requestfield, &common_TypeField);) //Gotten a new option to parse?
+			{
+				if (!PPP_consumeStream(&pppstream_requestfield, &common_TypeField))
+				{
+					goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+				}
+				if (!PPP_consumeStream(&pppstream_requestfield, &common_OptionLengthField))
+				{
+					goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+				}
+				if (PPP_streamdataleft(&pppstream_requestfield) < (MIN(common_OptionLengthField,2)-2)) //Not enough room left for the option data?
+				{
+					goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+				}
+				switch (common_TypeField) //What type is specified for the option?
+				{
+				case 1: //Maximum Receive Unit
+					if (common_OptionLengthField != 4) //Unsupported length?
+					{
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, common_TypeField)) //NAK it!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 4)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueueLE16(&pppNakFields, 1500)) //Correct data!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						continue; //Next entry please!
+					}
+					if (!PPP_consumeStream16(&pppstream_requestfield, &request_pendingMRU)) //Pending MRU field!
+					{
+						goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+					}
+					//Field is OK!
+					break;
+				case 7: //Protocol Field Compression
+					if (common_OptionLengthField != 2) //Unsupported length?
+					{
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, common_TypeField)) //NAK it!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 2)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						continue; //Next entry please!
+					}
+					request_pendingProtocolFieldCompression = 1; //Set the request!
+					break;
+				case 8: //Address-And-Control-Field-Compression
+					if (common_OptionLengthField != 2) //Unsupported length?
+					{
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, common_TypeField)) //NAK it!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 2)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						continue; //Next entry please!
+					}
+					request_pendingAddressAndControlFieldCompression = 1; //Set the request!
+					break;
+				case 3: //Authentication Protocol
+				case 4: //Quality protocol
+				case 5: //Magic Number
+				default: //Unknown option?
+					if (!packetServerAddPacketBufferQueue(&pppRejectFields, common_TypeField)) //NAK it!
+					{
+						goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+					}
+					if (!packetServerAddPacketBufferQueue(&pppRejectFields, 2)) //Correct length!
+					{
+						goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+					}
+					if (common_OptionLengthField >= 2) //Enough length to skip?
+					{
+						skipdatacounter = common_OptionLengthField - 2; //How much to skip!
+						for (; skipdatacounter;) //Skip it!
+						{
+							if (!PPP_consumeStream(&pppstream_requestfield, &datab)) //Failed to consume properly?
+							{
+								goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+							}
+						}
+					}
+					else //Malformed parameter!
+					{
+						goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+					}
+					break;
+				}
+			}
+			//TODO: Finish parsing properly
+			if (pppNakFields.buffer || pppRejectFields.buffer) //NAK or Rejected any fields? Then don't process to the connected phase!
+			{
+				memcpy(&Packetserver_clients[connectedclient].ppp_nakfields, &pppNakFields, sizeof(pppNakFields)); //Give the response to the client!
+				memcpy(&Packetserver_clients[connectedclient].ppp_rejectfields, &pppRejectFields, sizeof(pppRejectFields)); //Give the response to the client!
+			}
+			else //OK! All parameters are fine!
+			{
+				//Apply the parameters to the session and send back an request-ACK!
+				//TODO: Create and send a request-ACK!
+			}
+			goto ppp_finishpacketbufferqueue; //Finish up!
 			break;
 		case 5: //Terminate-Request (Request termination of connection)
 			//Send a Code-Reject packet to the client!
@@ -5023,6 +5169,17 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 							goto skipSLIP_PPP; //Don't handle SLIP/PPP because we're not ready yet!
 						}
 
+						if (Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) //PPP?
+						{
+							if (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe) //Not using PPPOE?
+							{
+								if (!PPP_parseSentPacketFromClient(connectedclient, 0)) //TODO: Parse PPP packets to their respective ethernet or IPv4 protocols for sending to the ethernet layer, as supported!
+								{
+									goto skipSLIP_PPP; //Keep the packet parsing pending!
+								}
+							}
+						}
+
 						//Handle transmitting packets(with automatically increasing buffer sizing, as a packet can be received of any size theoretically)!
 						if (peekfifobuffer(modem.inputdatabuffer[connectedclient], &datatotransmit)) //Is anything transmitted yet?
 						{
@@ -5184,7 +5341,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 											}
 											else
 											{
-												if (!PPP_parseSentPacketFromClient(connectedclient)) //TODO: Parse PPP packets to their respective ethernet or IPv4 protocols for sending to the ethernet layer, as supported!
+												if (!PPP_parseSentPacketFromClient(connectedclient,1)) //TODO: Parse PPP packets to their respective ethernet or IPv4 protocols for sending to the ethernet layer, as supported!
 												{
 													goto skipSLIP_PPP; //Keep the packet parsing pending!
 												}
