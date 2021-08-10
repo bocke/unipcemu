@@ -3646,7 +3646,7 @@ data (variable): Options as described below for the Option header.
 Option header:
 Type (byte)
 Length (byte): Length including this header
-data (variable, depending on the Type as well)
+data (variable, depending on the Type as well). Invalid or unrecognised length should result in a Configure-Nak.
 */
 
 typedef struct
