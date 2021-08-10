@@ -5224,7 +5224,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 											}
 											if (Packetserver_clients[connectedclient].packetserver_slipprotocol==3) //PPP?
 											{
-												if (Packetserver_clients[connectedclient].packetserver_packetpos == (sizeof(ethernetheader.data) + 0x8 + 1)) //Starting new packet?
+												if (Packetserver_clients[connectedclient].packetserver_packetpos == ((!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe)?0:(sizeof(ethernetheader.data) + 0x8 + 1))) //Starting new packet?
 												{
 													if (!(Packetserver_clients[connectedclient].pppoe_lastrecvbytewasEND) || (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe)) //Not doubled END and used this way?
 													{
@@ -5893,7 +5893,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 							Packetserver_clients[connectedclient].packetserver_delay -= timepassed; //Delaying!
 							if ((Packetserver_clients[connectedclient].packetserver_delay <= 0.0) || (!Packetserver_clients[connectedclient].packetserver_delay)) //Finished?
 							{
-								if (Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) //Requires PAD connection!
+								if ((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) && Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe) //Requires PAD connection!
 								{
 									if ((Packetserver_clients[connectedclient].pppoe_discovery_PADS.length && Packetserver_clients[connectedclient].pppoe_discovery_PADS.buffer) == 0) goto sendoutputbuffer; //Don't finish connecting yet! We're requiring an active PADS packet to have been received(PPPOE connection setup)!
 								}
