@@ -3922,7 +3922,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient)
 	default: //Unknown protocol?
 		break;
 	}
-	return 1; //Currently simply discard it!
+	return result; //Currently simply discard it!
 }
 
 //result: 0 to discard the packet. 1 to start sending the packet to the client, 2 to keep it pending in this stage until we're ready to send it to the client.
