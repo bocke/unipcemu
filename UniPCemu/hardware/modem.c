@@ -269,6 +269,7 @@ typedef struct
 	MODEM_PACKETBUFFER ppp_nakfields, ppp_rejectfields; //The NAK and Reject packet that's pending to be sent!
 	byte ppp_nakfields_identifier, ppp_rejectfields_identifier; //The NAK and Reject packet identifier to be sent!
 	byte ppp_LCPstatus; //Current LCP status. 0=Init, 1=Open.
+	byte ppp_protocolreject_count; //Protocol-Reject counter. From 0 onwards
 } PacketServer_client;
 
 PacketServer_client Packetserver_clients[0x100]; //Up to 100 clients!
@@ -3821,7 +3822,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 
 		createPPPstream(&pppstream, &pppNakRejectFields.buffer[0], pppNakRejectFields.length); //Create a stream object for us to use, which goes until the end of the payload!
 
-		//Send a Code-Reject packet to the client!
+		//Send a Reject/NAK packet to the client!
 		memset(&response, 0, sizeof(response)); //Init the response!
 		//Build the PPP header first!
 		if (!Packetserver_clients[connectedclient].PPP_headercompressed) //Header isn't compressed?
@@ -3842,13 +3843,13 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			memset(&pppNakRejectFields, 0, sizeof(pppNakRejectFields)); //Abort!
 			goto ppp_finishpacketbufferqueueNAKReject; //Finish up!
 		}
-		//Code Reject header!
+		//Reject/NAK header!
 		if (!packetServerAddPacketBufferQueue(&response, common_CodeField)) //The Code!
 		{
 			memset(&pppNakRejectFields, 0, sizeof(pppNakRejectFields)); //Abort!
 			goto ppp_finishpacketbufferqueueNAKReject; //Finish up!
 		}
-		if (!packetServerAddPacketBufferQueue(&response, common_IdentifierField)) //Terminate-Ack!
+		if (!packetServerAddPacketBufferQueue(&response, common_IdentifierField)) //Identifier!
 		{
 			memset(&pppNakRejectFields, 0, sizeof(pppNakRejectFields)); //Abort!
 			goto ppp_finishpacketbufferqueueNAKReject; //Finish up!
@@ -3931,7 +3932,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			return 1; //incorret packet: discard it!
 		}
 	}
-	//Now, the packet is at the protcol byte/word, so parse it!
+	//Now, the packet is at the protocol byte/word, so parse it!
 	if (!PPP_consumeStream(&pppstream, &datab))
 	{
 		return 1; //incorrect packet: discard it!
@@ -4103,7 +4104,9 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			if (pppNakFields.buffer || pppRejectFields.buffer) //NAK or Rejected any fields? Then don't process to the connected phase!
 			{
 				memcpy(&Packetserver_clients[connectedclient].ppp_nakfields, &pppNakFields, sizeof(pppNakFields)); //Give the response to the client!
+				Packetserver_clients[connectedclient].ppp_nakfields_identifier = common_IdentifierField; //Identifier!
 				memcpy(&Packetserver_clients[connectedclient].ppp_rejectfields, &pppRejectFields, sizeof(pppRejectFields)); //Give the response to the client!
+				Packetserver_clients[connectedclient].ppp_rejectfields_identifier = common_IdentifierField; //Identifier!
 				memset(&pppNakFields, 0, sizeof(pppNakFields)); //Queued!
 				memset(&pppRejectFields, 0, sizeof(pppRejectFields)); //Queued!
 			}
@@ -4127,12 +4130,12 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				{
 					goto ppp_finishpacketbufferqueue; //Finish up!
 				}
-				//Code Reject header!
+				//Request-Ack header!
 				if (!packetServerAddPacketBufferQueue(&response, 0x02)) //Request-Ack!
 				{
 					goto ppp_finishpacketbufferqueue; //Finish up!
 				}
-				if (!packetServerAddPacketBufferQueue(&response, common_IdentifierField)) //Terminate-Ack!
+				if (!packetServerAddPacketBufferQueue(&response, common_IdentifierField)) //Identifier!
 				{
 					goto ppp_finishpacketbufferqueue; //Finish up!
 				}
@@ -4200,11 +4203,11 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				goto ppp_finishpacketbufferqueue; //Finish up!
 			}
 			//Code Reject header!
-			if (!packetServerAddPacketBufferQueue(&response, 0x06)) //Terminate-Ack!
+			if (!packetServerAddPacketBufferQueue(&response, 0x06)) //Code-Reject!
 			{
 				goto ppp_finishpacketbufferqueue; //Finish up!
 			}
-			if (!packetServerAddPacketBufferQueue(&response, common_IdentifierField)) //Terminate-Ack!
+			if (!packetServerAddPacketBufferQueue(&response, common_IdentifierField)) //Identifier!
 			{
 				goto ppp_finishpacketbufferqueue; //Finish up!
 			}
@@ -4319,11 +4322,81 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		break;
 	case 0x802B: //IPXCP?
 		//TODO
-		break;
+		//break;
 	case 0x2B: //IPX datagram?
 		//TODO
-		break;
+		//break;
 	default: //Unknown protocol?
+		if (Packetserver_clients[connectedclient].ppp_LCPstatus) //LCP is Open?
+		{
+			//Send a Code-Reject packet to the client!
+			memset(&response, 0, sizeof(response)); //Init the response!
+			//Build the PPP header first!
+			if (!Packetserver_clients[connectedclient].PPP_headercompressed) //Header isn't compressed?
+			{
+				if (!packetServerAddPacketBufferQueue(&response, 0xFF)) //Start of PPP header!
+				{
+					goto ppp_finishpacketbufferqueue; //Finish up!
+				}
+				if (!packetServerAddPacketBufferQueue(&response, 0x03)) //Start of PPP header!
+				{
+					goto ppp_finishpacketbufferqueue; //Finish up!
+				}
+			}
+			if (!packetServerAddPacketBufferQueueLE16(&response, 0xC021)) //The protocol!
+			{
+				goto ppp_finishpacketbufferqueue; //Finish up!
+			}
+			//Protocol Reject header!
+			if (!packetServerAddPacketBufferQueue(&response, 0x08)) //Protocol-Reject!
+			{
+				goto ppp_finishpacketbufferqueue; //Finish up!
+			}
+			if (!packetServerAddPacketBufferQueue(&response, Packetserver_clients[connectedclient].ppp_protocolreject_count)) //Identifier!
+			{
+				goto ppp_finishpacketbufferqueue; //Finish up!
+			}
+			if (!packetServerAddPacketBufferQueueLE16(&response, PPP_streamdataleft(&pppstream)+2)) //How much data follows!
+			{
+				goto ppp_finishpacketbufferqueue; //Finish up!
+			}
+			if (!packetServerAddPacketBufferQueueLE16(&response, protocol)) //Rejected Protocol!
+			{
+				goto ppp_finishpacketbufferqueue; //Finish up!
+			}
+			//Now, the rejected packet itself!
+			for (; PPP_consumeStream(&pppstream, &datab);) //The data field itself follows!
+			{
+				if (!packetServerAddPacketBufferQueue(&response, datab))
+				{
+					goto ppp_finishpacketbufferqueue;
+				}
+			}
+			//Calculate and add the checksum field!
+			checksumfield = PPP_calcFCS(response.buffer, response.length); //The checksum field!
+			if (!packetServerAddPacketBufferQueueLE16(&response, checksumfield)) //Checksum failure?
+			{
+				goto ppp_finishpacketbufferqueue;
+			}
+			//Packet is fully built. Now send it!
+			if (Packetserver_clients[connectedclient].ppp_response.size) //Previous Response still valid?
+			{
+				goto ppp_finishpacketbufferqueue; //Keep pending!
+			}
+			if (response.buffer) //Any response to give?
+			{
+				memcpy(&Packetserver_clients[connectedclient].ppp_response, &response, sizeof(response)); //Give the response to the client!
+				Packetserver_clients[connectedclient].packetserver_bytesleft = response.length; //How much to send!
+				memset(&response, 0, sizeof(response)); //Parsed!
+				//Now, apply the request properly!
+				Packetserver_clients[connectedclient].ppp_LCPstatus = 0; //Closed!
+				Packetserver_clients[connectedclient].PPP_MRU = 1500; //Default: 1500
+				Packetserver_clients[connectedclient].PPP_headercompressed = 0; //Default: uncompressed
+				Packetserver_clients[connectedclient].PPP_protocolcompressed = 0; //Default: uncompressed
+				Packetserver_clients[connectedclient].ppp_protocolreject_count = 0; //Default: 0!
+			}
+			goto ppp_finishpacketbufferqueue; //Finish up!
+		}
 		break;
 	}
 	return result; //Currently simply discard it!
@@ -5848,6 +5921,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 									Packetserver_clients[connectedclient].PPP_MRU = 1500; //Default: 1500
 									Packetserver_clients[connectedclient].PPP_headercompressed = 0; //Default: uncompressed
 									Packetserver_clients[connectedclient].PPP_protocolcompressed = 0; //Default: uncompressed
+									Packetserver_clients[connectedclient].ppp_protocolreject_count = 0; //Default: 0!
 								}
 							}
 						}
