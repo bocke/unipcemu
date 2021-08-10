@@ -4238,6 +4238,9 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				memset(&response, 0, sizeof(response)); //Parsed!
 				//Now, apply the request properly!
 				Packetserver_clients[connectedclient].ppp_LCPstatus = 0; //Closed!
+				Packetserver_clients[connectedclient].PPP_MRU = 1500; //Default: 1500
+				Packetserver_clients[connectedclient].PPP_headercompressed = 0; //Default: uncompressed
+				Packetserver_clients[connectedclient].PPP_protocolcompressed = 0; //Default: uncompressed
 			}
 			goto ppp_finishpacketbufferqueue; //Finish up!
 			break;
