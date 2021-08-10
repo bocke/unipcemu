@@ -3774,7 +3774,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 	byte result; //The result for this function!
 	MODEM_PACKETBUFFER response, pppNakFields, pppRejectFields; //The normal response and Nak fields/Reject fields that are queued!
 	word checksum, checksumfield;
-	PPP_Stream pppstream, pppstreambackup, checksumppp, pppstream_informationfield, pppstream_requestfield, pppstream_optionfield;
+	PPP_Stream pppstream, pppstreambackup, checksumppp, pppstream_informationfield, pppstream_requestfield /*, pppstream_optionfield*/;
 	byte datab; //byte data from the stream!
 	word dataw; //word data from the stream!
 	word protocol; //The used protocol!
@@ -3798,7 +3798,6 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 	if (Packetserver_clients[connectedclient].ppp_nakfields.buffer || Packetserver_clients[connectedclient].ppp_rejectfields.buffer) //NAK or Reject packet pending?
 	{
 		//Try to send the NAK fields or Reject fields to the client!
-	sendNAKRejectFields:
 		if (!handleTransmit) //Not transmitting?
 		{
 			result = 0; //Default: not handled!
@@ -5006,7 +5005,6 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 													{
 														if (PPPOE_handlePADreceived(connectedclient)) //Handle the received PAD packet!
 														{
-															invalidPPPOEclient:
 															//Discard the received packet, so nobody else handles it too!
 															freez((void**)&net.packet, net.pktlen, "MODEM_PACKET");
 															net.packet = NULL; //Discard if failed to deallocate!
