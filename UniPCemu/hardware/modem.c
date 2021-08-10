@@ -3263,7 +3263,10 @@ byte packetServerAddPacketBufferQueueLE16(MODEM_PACKETBUFFER* buffer, word data)
 
 void packetServerFreePacketBufferQueue(MODEM_PACKETBUFFER *buffer)
 {
-	freez((void **)&buffer->buffer, buffer->size, "MODEM_SENDPACKET"); //Free it!
+	if (buffer->buffer) //Valid buffer to free?
+	{
+		freez((void**)&buffer->buffer, buffer->size, "MODEM_SENDPACKET"); //Free it!
+	}
 	buffer->size = buffer->length = 0; //No length anymore!
 }
 
