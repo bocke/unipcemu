@@ -3635,6 +3635,20 @@ checksum (word or doubleword): HDLC CRC
 //PPP_calcFCS: calculates the FCS of a PPP frame (minus PPP 0x7F bytes). This is transferred in little endian byte order.
 //The value of a FCS check including FCS should be 0x0F47 when including the FCS calculated from the sender. When calculating the FCS for sending, the FCS field isn't included in the calculation. The FCS is always stored in little-endian format.
 
+/*
+LCP header:
+Code (byte)
+Length (word): Length including this header.
+data (variable): Options as described below for the Option header.
+*/
+
+/*
+Option header:
+Type (byte)
+Length (byte): Length including this header
+data (variable, depending on the Type as well)
+*/
+
 typedef struct
 {
 	byte* data; //Data pointer!
@@ -3834,14 +3848,14 @@ byte PPP_parseSentPacketFromClient(sword connectedclient)
 		switch (common_CodeField) //What operation code?
 		{
 		case 1: //Configure-Request
-		case 2: //Configure-Ack
-		case 3: //Configure-Nak
-		case 4: //Configure-Reject
-		case 5: //Terminate-Request
-		case 6: //Terminate-Ack
-		case 7: //Code-Reject
-		case 8: //Protocol-Reject
-		case 9: //Echo-Request
+		case 2: //Configure-Ack (All options OK)
+		case 3: //Configure-Nak (Some options unacceptable)
+		case 4: //Configure-Reject (Some options not recognisable or acceptable for negotiation)
+		case 5: //Terminate-Request (Request termination of connection)
+		case 6: //Terminate-Ack (Acnowledge termination of connection)
+		case 7: //Code-Reject (Code field is rejected because it's unknown)
+		case 8: //Protocol-Reject (Protocol field is rejected for an active connection)
+		case 9: //Echo-Request (Request Echo-Reply. Required for an open connection to reply).
 		case 10: //Echo-Reply
 		case 11: //Discard-Request
 		default: //Unknown Code field?
