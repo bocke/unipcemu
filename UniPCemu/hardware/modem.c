@@ -263,6 +263,7 @@ typedef struct
 	byte PPP_packetpendingforsending; //Is the PPP packet pending processed for the client? 1 when pending to be processed for the client, 0 otherwise. Ignored for non-PPP clients!
 	//PPP CP packet processing
 	byte PPP_headercompressed; //Is the header compressed?
+	MODEM_PACKETBUFFER ppp_response; //The PPP packet that's to be sent to the client!
 } PacketServer_client;
 
 PacketServer_client Packetserver_clients[0x100]; //Up to 100 clients!
@@ -3248,6 +3249,18 @@ byte packetServerAddPacketBufferQueue(MODEM_PACKETBUFFER *buffer, byte data) //T
 	return 0; //Failed!
 }
 
+byte packetServerAddPacketBufferQueueLE16(MODEM_PACKETBUFFER* buffer, word data) //Try to add something to the discovery queue!
+{
+	if (packetServerAddPacketBufferQueue(buffer, (data & 0xFF)))
+	{
+		if (packetServerAddPacketBufferQueue(buffer, ((data >> 8) & 0xFF)))
+		{
+			return 1; //Success!
+		}
+	}
+	return 0; //Error!
+}
+
 void packetServerFreePacketBufferQueue(MODEM_PACKETBUFFER *buffer)
 {
 	freez((void **)&buffer->buffer, buffer->size, "MODEM_SENDPACKET"); //Free it!
@@ -3719,11 +3732,17 @@ word PPP_calcFCS(byte* buffer, uint_32 length)
 //result: 1 on success, 0 on pending.
 byte PPP_parseSentPacketFromClient(sword connectedclient)
 {
+	byte result; //The result for this function!
+	MODEM_PACKETBUFFER response; //The response!
 	word checksum, checksumfield;
-	PPP_Stream pppstream, pppstreambackup, checksumppp;
+	PPP_Stream pppstream, pppstreambackup, checksumppp, pppstream_informationfield;
 	byte datab; //byte data from the stream!
 	word dataw; //word data from the stream!
 	word protocol; //The used protocol!
+	//Header at the start of the info field!
+	byte common_CodeField; //Code field!
+	byte common_IdentifierField; //Identifier field!
+	word common_LengthField;
 	//Not handled yet. This is supposed to check the packet, parse it and send packets to the ethernet in response when it's able to!
 	if (Packetserver_clients[connectedclient].packetserver_transmitlength < (4 + (Packetserver_clients[connectedclient].PPP_headercompressed ? 2 : 0))) //Not enough for a full minimal PPP packet (with 1 byte of payload)?
 	{
@@ -3781,6 +3800,8 @@ byte PPP_parseSentPacketFromClient(sword connectedclient)
 	{
 		return 1; //Incorrect packet: discard it!
 	}
+	memcpy(&pppstream_informationfield, &pppstream, sizeof(pppstream)); //The information field that's used, backed up!
+	result = 1; //Default result: finished up!
 	//Now, the PPPstream contains the packet information field, which is the payload. The data has been checked out and is now ready for processing, according to the protocol!
 	switch (protocol) //What protocol is used?
 	{
@@ -3788,7 +3809,82 @@ byte PPP_parseSentPacketFromClient(sword connectedclient)
 		//NOP!
 		break;
 	case 0xC021: //LCP?
-		//TODO
+		if (!PPP_consumeStream(&pppstream, &common_CodeField)) //Code couldn't be read?
+		{
+			return 1; //Incorrect packet: discard it!
+		}
+		if (!PPP_consumeStream(&pppstream, &common_IdentifierField)) //Identifier couldn't be read?
+		{
+			return 1; //Incorrect packet: discard it!
+		}
+		if (!PPP_consumeStream16(&pppstream, &common_LengthField)) //Length couldn't be read?
+		{
+			return 1; //Incorrect packet: discard it!
+		}
+		switch (common_CodeField) //What operation code?
+		{
+		case 1: //Configure-Request
+		case 2: //Configure-Ack
+		case 3: //Configure-Nak
+		case 4: //Configure-Reject
+		case 5: //Terminate-Request
+		case 6: //Terminate-Ack
+		case 7: //Code-Reject
+		case 8: //Protocol-Reject
+		case 9: //Echo-Request
+		case 10: //Echo-Reply
+		case 11: //Discard-Request
+		default: //Unknown Code field?
+			//Send a Code-Reject packet to the client!
+			memset(&response, 0, sizeof(response)); //Init the response!
+			//Build the PPP header first!
+			if (!Packetserver_clients[connectedclient].PPP_headercompressed) //Header isn't compressed?
+			{
+				if (!packetServerAddPacketBufferQueue(&response, 0xFF)) //Start of PPP header!
+				{
+					goto ppp_finishpacketbufferqueue; //Finish up!
+				}
+				if (!packetServerAddPacketBufferQueue(&response, 0x03)) //Start of PPP header!
+				{
+					goto ppp_finishpacketbufferqueue; //Finish up!
+				}
+			}
+			if (!packetServerAddPacketBufferQueueLE16(&response, 0xC021)) //The protocol!
+			{
+				goto ppp_finishpacketbufferqueue; //Finish up!
+			}
+			//Code Reject header!
+			if (!packetServerAddPacketBufferQueue(&response, 0x07)) //Code-Reject!
+			{
+				goto ppp_finishpacketbufferqueue; //Finish up!
+			}
+			//Now, the rejected packet itself!
+			for (; PPP_consumeStream(&pppstream_informationfield,&datab);) //The information field itself follows!
+			{
+				if (!packetServerAddPacketBufferQueue(&response, datab))
+				{
+					goto ppp_finishpacketbufferqueue;
+				}
+			}
+			//Calculate and add the checksum field!
+			checksumfield = PPP_calcFCS(response.buffer, response.length); //The checksum field!
+			if (!packetServerAddPacketBufferQueue(&response, checksumfield)) //Checksum failure?
+			{
+				goto ppp_finishpacketbufferqueue;
+			}
+			break;
+		}
+		//Packet is fully built. Now send it!
+		if (Packetserver_clients[connectedclient].ppp_response.size) //Previous Response still valid?
+		{
+			goto ppp_finishpacketbufferqueue; //Keep pending!
+		}
+		memcpy(&Packetserver_clients[connectedclient].ppp_response, &response, sizeof(response)); //Give the response to the client!
+		goto ppp_finishcorrectpacketbufferqueue; //Success!
+		ppp_finishpacketbufferqueue: //An error occurred during the response?
+		result = 0; //Keep pending until we can properly handle it!
+		packetServerFreePacketBufferQueue(&response); //Free the queued response!
+		ppp_finishcorrectpacketbufferqueue: //Correctly finished!
 		break;
 	case 0x802B: //IPXCP?
 		//TODO
@@ -4610,23 +4706,30 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 									if (Packetserver_clients[connectedclient].packet && ((Packetserver_clients[connectedclient].PPP_packetreadyforsending && (Packetserver_clients[connectedclient].PPP_packetpendingforsending==0)) || (Packetserver_clients[connectedclient].packetserver_slipprotocol!=3))) //Still a valid packet to send and allowed to send the packet that's stored?
 									{
 										//Convert the buffer into transmittable bytes using the proper encoding!
-										if (Packetserver_clients[connectedclient].packetserver_bytesleft) //Not finished yet?
+										if ((Packetserver_clients[connectedclient].packetserver_bytesleft)) //Not finished yet?
 										{
 											//Start transmitting data into the buffer, according to the protocol!
 											--Packetserver_clients[connectedclient].packetserver_bytesleft;
-											datatotransmit = Packetserver_clients[connectedclient].packet[Packetserver_clients[connectedclient].packetserver_packetpos++]; //Read the data to construct!
+											if ((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) && (Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe == 0)) //PPP?
+											{
+												datatotransmit = Packetserver_clients[connectedclient].ppp_response.buffer[Packetserver_clients[connectedclient].packetserver_packetpos++]; //Take the PPP packet from the buffer that's responding instead of the raw packet that's received (which is parsed already and in a different format)!
+											}
+											else //Normal packet that's sent?
+											{
+												datatotransmit = Packetserver_clients[connectedclient].packet[Packetserver_clients[connectedclient].packetserver_packetpos++]; //Read the data to construct!
+											}
 											if (Packetserver_clients[connectedclient].packetserver_slipprotocol==3) //PPP?
 											{
 												if (Packetserver_clients[connectedclient].packetserver_packetpos == (sizeof(ethernetheader.data) + 0x8 + 1)) //Starting new packet?
 												{
-													if (!(Packetserver_clients[connectedclient].pppoe_lastrecvbytewasEND)) //Not doubled END?
+													if (!(Packetserver_clients[connectedclient].pppoe_lastrecvbytewasEND) || (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe)) //Not doubled END and used this way?
 													{
 														writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, PPP_END); //END of frame!
 														Packetserver_clients[connectedclient].pppoe_lastrecvbytewasEND = 1; //Last was END!
 													}
 												}
 
-												if (PPPOE_ENCODEDECODE || !Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe) //Encoding PPP?
+												if (PPPOE_ENCODEDECODE || (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe)) //Encoding PPP?
 												{
 													if (datatotransmit == PPP_END) //End byte?
 													{
@@ -4675,10 +4778,20 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 										{
 											if (Packetserver_clients[connectedclient].packetserver_slipprotocol==3) //PPP?
 											{
-												if (!(Packetserver_clients[connectedclient].pppoe_lastrecvbytewasEND)) //Not doubled END?
+												if ((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) && (Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe == 0)) //PPP?
 												{
 													writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, PPP_END); //END of frame!
-													Packetserver_clients[connectedclient].pppoe_lastrecvbytewasEND = 1; //Last was END!
+													Packetserver_clients[connectedclient].pppoe_lastrecvbytewasEND = 0; //Last wasn't END! This is ignored for PPP frames (always send them)!
+													packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].ppp_response); //Free the response that's queued for packets to be sent to the client!
+													goto doPPPtransmit; //Don't perform normal receive buffer cleanup, as this isn't used here!
+												}
+												else //PPPOE?
+												{
+													if (!(Packetserver_clients[connectedclient].pppoe_lastrecvbytewasEND)) //Not doubled END?
+													{
+														writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, PPP_END); //END of frame!
+														Packetserver_clients[connectedclient].pppoe_lastrecvbytewasEND = 1; //Last was END!
+													}
 												}
 											}
 											else //SLIP?
@@ -4693,7 +4806,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 									}
 								}
 							}
-
+							doPPPtransmit: //NOP operation for the PPP packet that's transmitted!
 							//Transmit the encoded packet buffer to the client!
 							if (fifobuffer_freesize(modem.outputbuffer[connectedclient]) && peekfifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, &datatotransmit)) //Able to transmit something?
 							{
