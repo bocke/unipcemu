@@ -264,9 +264,11 @@ typedef struct
 	//PPP CP packet processing
 	byte PPP_headercompressed; //Is the header compressed?
 	byte PPP_protocolcompressed; //Is the protocol compressed?
+	word PPP_MRU; //Pending MRU field for the request!
 	MODEM_PACKETBUFFER ppp_response; //The PPP packet that's to be sent to the client!
 	MODEM_PACKETBUFFER ppp_nakfields, ppp_rejectfields; //The NAK and Reject packet that's pending to be sent!
 	byte ppp_nakfields_identifier, ppp_rejectfields_identifier; //The NAK and Reject packet identifier to be sent!
+	byte ppp_LCPstatus; //Current LCP status. 0=Init, 1=Open.
 } PacketServer_client;
 
 PacketServer_client Packetserver_clients[0x100]; //Up to 100 clients!
@@ -4102,11 +4104,79 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			{
 				memcpy(&Packetserver_clients[connectedclient].ppp_nakfields, &pppNakFields, sizeof(pppNakFields)); //Give the response to the client!
 				memcpy(&Packetserver_clients[connectedclient].ppp_rejectfields, &pppRejectFields, sizeof(pppRejectFields)); //Give the response to the client!
+				memset(&pppNakFields, 0, sizeof(pppNakFields)); //Queued!
+				memset(&pppRejectFields, 0, sizeof(pppRejectFields)); //Queued!
 			}
 			else //OK! All parameters are fine!
 			{
 				//Apply the parameters to the session and send back an request-ACK!
-				//TODO: Create and send a request-ACK!
+				memset(&response, 0, sizeof(response)); //Init the response!
+				//Build the PPP header first!
+				if (!Packetserver_clients[connectedclient].PPP_headercompressed) //Header isn't compressed?
+				{
+					if (!packetServerAddPacketBufferQueue(&response, 0xFF)) //Start of PPP header!
+					{
+						goto ppp_finishpacketbufferqueue; //Finish up!
+					}
+					if (!packetServerAddPacketBufferQueue(&response, 0x03)) //Start of PPP header!
+					{
+						goto ppp_finishpacketbufferqueue; //Finish up!
+					}
+				}
+				if (!packetServerAddPacketBufferQueueLE16(&response, 0xC021)) //The protocol!
+				{
+					goto ppp_finishpacketbufferqueue; //Finish up!
+				}
+				//Code Reject header!
+				if (!packetServerAddPacketBufferQueue(&response, 0x02)) //Request-Ack!
+				{
+					goto ppp_finishpacketbufferqueue; //Finish up!
+				}
+				if (!packetServerAddPacketBufferQueue(&response, common_IdentifierField)) //Terminate-Ack!
+				{
+					goto ppp_finishpacketbufferqueue; //Finish up!
+				}
+				if (!createPPPsubstream(&pppstream, &pppstream_requestfield, MIN(common_LengthField, 3) - 3)) //Not enough room for the data?
+				{
+					goto ppp_finishpacketbufferqueue; //Finish up!
+				}
+				if (!packetServerAddPacketBufferQueueLE16(&response, PPP_streamdataleft(&pppstream_requestfield))) //How much data follows!
+				{
+					goto ppp_finishpacketbufferqueue; //Finish up!
+				}
+				for (; PPP_streamdataleft(&pppstream_requestfield);) //Data left?
+				{
+					if (!PPP_consumeStream(&pppstream_requestfield, &datab))
+					{
+						goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+					}
+					if (!packetServerAddPacketBufferQueue(&response, datab)) //Add it!
+					{
+						goto ppp_finishpacketbufferqueue; //Finish up!
+					}
+				}
+				//Calculate and add the checksum field!
+				checksumfield = PPP_calcFCS(response.buffer, response.length); //The checksum field!
+				if (!packetServerAddPacketBufferQueueLE16(&response, checksumfield)) //Checksum failure?
+				{
+					goto ppp_finishpacketbufferqueue;
+				}
+				//Packet is fully built. Now send it!
+				if (Packetserver_clients[connectedclient].ppp_response.size) //Previous Response still valid?
+				{
+					goto ppp_finishpacketbufferqueue; //Keep pending!
+				}
+				if (response.buffer) //Any response to give?
+				{
+					memcpy(&Packetserver_clients[connectedclient].ppp_response, &response, sizeof(response)); //Give the response to the client!
+					Packetserver_clients[connectedclient].packetserver_bytesleft = response.length; //How much to send!
+					memset(&response, 0, sizeof(response)); //Parsed!
+					//Now, apply the request properly!
+					Packetserver_clients[connectedclient].ppp_LCPstatus = 1; //Open!
+					Packetserver_clients[connectedclient].PPP_MRU = request_pendingMRU; //MRU!
+					Packetserver_clients[connectedclient].PPP_headercompressed = request_pendingAddressAndControlFieldCompression; //Header compression!
+					Packetserver_clients[connectedclient].PPP_protocolcompressed = request_pendingProtocolFieldCompression; //Protocol compressed!
+				}
 			}
 			goto ppp_finishpacketbufferqueue; //Finish up!
 			break;
@@ -4156,6 +4226,20 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			{
 				goto ppp_finishpacketbufferqueue;
 			}
+			//Packet is fully built. Now send it!
+			if (Packetserver_clients[connectedclient].ppp_response.size) //Previous Response still valid?
+			{
+				goto ppp_finishpacketbufferqueue; //Keep pending!
+			}
+			if (response.buffer) //Any response to give?
+			{
+				memcpy(&Packetserver_clients[connectedclient].ppp_response, &response, sizeof(response)); //Give the response to the client!
+				Packetserver_clients[connectedclient].packetserver_bytesleft = response.length; //How much to send!
+				memset(&response, 0, sizeof(response)); //Parsed!
+				//Now, apply the request properly!
+				Packetserver_clients[connectedclient].ppp_LCPstatus = 0; //Closed!
+			}
+			goto ppp_finishpacketbufferqueue; //Finish up!
 			break;
 		case 9: //Echo-Request (Request Echo-Reply. Required for an open connection to reply).
 		case 2: //Configure-Ack (All options OK)
@@ -5756,6 +5840,12 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 							{
 								Packetserver_clients[connectedclient].packetserver_delay = (DOUBLE)0; //Finish the delay!
 								PacketServer_startNextStage(connectedclient, PACKETSTAGE_PACKETS); //Start the SLIP service!
+								if ((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) && (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe)) //PPP?
+								{
+									Packetserver_clients[connectedclient].PPP_MRU = 1500; //Default: 1500
+									Packetserver_clients[connectedclient].PPP_headercompressed = 0; //Default: uncompressed
+									Packetserver_clients[connectedclient].PPP_protocolcompressed = 0; //Default: uncompressed
+								}
 							}
 						}
 					}
