@@ -261,6 +261,8 @@ typedef struct
 	//PPP data
 	byte PPP_packetreadyforsending; //Is the PPP packet ready to be sent to the client? 1 when containing data for the client, 0 otherwise. Ignored for non-PPP clients!
 	byte PPP_packetpendingforsending; //Is the PPP packet pending processed for the client? 1 when pending to be processed for the client, 0 otherwise. Ignored for non-PPP clients!
+	//PPP CP packet processing
+	byte PPP_headercompressed; //Is the header compressed?
 } PacketServer_client;
 
 PacketServer_client Packetserver_clients[0x100]; //Up to 100 clients!
@@ -3620,6 +3622,52 @@ checksum (word or doubleword): HDLC CRC
 //PPP_calcFCS: calculates the FCS of a PPP frame (minus PPP 0x7F bytes). This is transferred in little endian byte order.
 //The value of a FCS check including FCS should be 0x0F47 when including the FCS calculated from the sender. When calculating the FCS for sending, the FCS field isn't included in the calculation. The FCS is always stored in little-endian format.
 
+typedef struct
+{
+	byte* data; //Data pointer!
+	uint_32 pos; //Reading position within the data!
+	uint_32 size; //Size of the data!
+} PPP_Stream;
+
+void createPPPstream(PPP_Stream* stream, byte *data, uint_32 size)
+{
+	stream->data = data;
+	stream->pos = 0; //Start of stream!
+	stream->size = size; //The size of the stream!
+}
+
+byte PPP_consumeStream(PPP_Stream* stream, byte* result)
+{
+	if (stream->pos >= stream->size) return 0; //End of stream reached!
+	*result = stream->data[stream->pos]; //Read the data!
+	++stream->pos; //Increase pointer in the stream!
+	return 1; //Consumed!
+}
+
+//result: -1: only managed to read 1 byte(result contains first byte), 0: failed completely, 1: Result read from stream!
+sbyte PPP_consumeStream16(PPP_Stream* stream, word* result)
+{
+	byte temp, temp2;
+	if (PPP_consumeStream(stream, &temp)) //First byte!
+	{
+		if (PPP_consumeStream(stream, &temp2)) //Second byte!
+		{
+			*result = temp | (temp2 << 8); //Little endian word order!
+			return 1; //Success!
+		}
+		*result = temp; //What we've read successfully!
+		return -1; //Failed at 1 byte!
+	}
+	return 0; //Failed at 0 bytes!
+}
+
+byte PPP_peekStream(PPP_Stream* stream, byte* result)
+{
+	if (stream->pos >= stream->size) return 0; //End of stream reached!
+	*result = stream->data[stream->pos]; //Read the data!
+	return 1; //Consumed!
+}
+
 static const word fcslookup[256] =
 {
    0x0000, 0x1189, 0x2312, 0x329B, 0x4624, 0x57AD, 0x6536, 0x74BF,
@@ -3671,7 +3719,84 @@ word PPP_calcFCS(byte* buffer, uint_32 length)
 //result: 1 on success, 0 on pending.
 byte PPP_parseSentPacketFromClient(sword connectedclient)
 {
+	word checksum, checksumfield;
+	PPP_Stream pppstream, pppstreambackup, checksumppp;
+	byte datab; //byte data from the stream!
+	word dataw; //word data from the stream!
+	word protocol; //The used protocol!
 	//Not handled yet. This is supposed to check the packet, parse it and send packets to the ethernet in response when it's able to!
+	if (Packetserver_clients[connectedclient].packetserver_transmitlength < (4 + (Packetserver_clients[connectedclient].PPP_headercompressed ? 2 : 0))) //Not enough for a full minimal PPP packet (with 1 byte of payload)?
+	{
+		return 1; //Incorrect packet: discard it!
+	}
+	createPPPstream(&pppstream, &Packetserver_clients[connectedclient].packetserver_transmitbuffer[0], Packetserver_clients[connectedclient].packetserver_transmitlength-2); //Create a stream object for us to use, which goes until the end of the payload!
+	createPPPstream(&checksumppp, &Packetserver_clients[connectedclient].packetserver_transmitbuffer[Packetserver_clients[connectedclient].packetserver_transmitlength - 2], 2); //Create a stream object for us to use for the checksum!
+	memcpy(&pppstreambackup, &pppstream, sizeof(pppstream)); //Backup for checking again!
+	if (!Packetserver_clients[connectedclient].PPP_headercompressed) //Header present?
+	{
+		if (!PPP_consumeStream(&pppstream, &datab))
+		{
+			return 1; //incorrect packet: discard it!
+		}
+		if (datab != 0xFF) //Invalid address?
+		{
+			return 1; //incorret packet: discard it!
+		}
+		if (!PPP_consumeStream(&pppstream, &datab))
+		{
+			return 1; //incorrect packet: discard it!
+		}
+		if (datab != 0x03) //Invalid control?
+		{
+			return 1; //incorret packet: discard it!
+		}
+	}
+	//Now, the packet is at the protcol byte/word, so parse it!
+	if (!PPP_consumeStream(&pppstream, &datab))
+	{
+		return 1; //incorrect packet: discard it!
+	}
+	dataw = (word)datab; //Store First byte, in little-endian!
+	if ((datab & 1)==0) //2-byte protocol?
+	{
+		if (!PPP_consumeStream(&pppstream, &datab)) //Second byte!
+		{
+			return 1; //Incorrect packet: discard it!
+		}
+		dataw |= (datab << 8); //Second byte of the protocol!
+	}
+	protocol = dataw; //The used protocol in the header, if it's valid!
+	if (!PPP_peekStream(&pppstream, &datab)) //Reached end of stream (no payload)?
+	{
+		return 1; //Incorrect packet: discard it!
+	}
+	//Otherwise, it's a 1-byte protocol!
+	//It might be a valid packet if we got here! Perform the checksum first to check!
+	if (!PPP_consumeStream16(&checksumppp, &checksumfield)) //Gotten the checksum from the packet?
+	{
+		return 1; //Incorrect packet: discard it!
+	}
+	checksum = PPP_calcFCS(&Packetserver_clients[connectedclient].packetserver_transmitbuffer[0], Packetserver_clients[connectedclient].packetserver_transmitlength - 2); //Calculate the checksum!
+	if (checksum != checksumfield) //Checksum mismatch? Checksum error!
+	{
+		return 1; //Incorrect packet: discard it!
+	}
+	//Now, the PPPstream contains the packet information field, which is the payload. The data has been checked out and is now ready for processing, according to the protocol!
+	switch (protocol) //What protocol is used?
+	{
+	case 0x0001: //Padding protocol?
+		//NOP!
+		break;
+	case 0xC021: //LCP?
+		//TODO
+		break;
+	case 0x802B: //IPXCP?
+		//TODO
+		break;
+	case 0x2B: //IPX datagram?
+		//TODO
+		break;
+	}
 	return 1; //Currently simply discard it!
 }
 
