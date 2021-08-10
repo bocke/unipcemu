@@ -3796,6 +3796,8 @@ byte PPP_parseSentPacketFromClient(sword connectedclient)
 	case 0x2B: //IPX datagram?
 		//TODO
 		break;
+	default: //Unknown protocol?
+		break;
 	}
 	return 1; //Currently simply discard it!
 }
