@@ -3796,7 +3796,6 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 	byte request_authenticationspecified; //Authentication protocol used!
 	uint_32 skipdatacounter;
 	byte pap_fieldcounter; //Length of a field until 0 for PAP comparison!
-	byte usernamepasswordbyte; //Username/password by
 	byte username_length; //Username length for PAP!
 	byte password_length; //Password length for PAP!
 	byte pap_authenticated; //Is the user authenticated properly?
@@ -3807,6 +3806,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			return 1; //Incorrect packet: discard it!
 		}
 	}
+	memset(&response, 0, sizeof(response)); //Make sure it's ready for usage!
 	//TODO: ipxcp nakfields/rejectfields.
 	if (Packetserver_clients[connectedclient].ppp_nakfields.buffer || Packetserver_clients[connectedclient].ppp_rejectfields.buffer) //NAK or Reject packet pending?
 	{
