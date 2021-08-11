@@ -266,8 +266,8 @@ typedef struct
 	byte PPP_protocolcompressed; //Is the protocol compressed?
 	word PPP_MRU; //Pending MRU field for the request!
 	MODEM_PACKETBUFFER ppp_response; //The PPP packet that's to be sent to the client!
-	MODEM_PACKETBUFFER ppp_nakfields, ppp_rejectfields; //The NAK and Reject packet that's pending to be sent!
-	byte ppp_nakfields_identifier, ppp_rejectfields_identifier; //The NAK and Reject packet identifier to be sent!
+	MODEM_PACKETBUFFER ppp_nakfields, ppp_nakfields_ipxcp, ppp_rejectfields, ppp_rejectfields_ipxcp; //The NAK and Reject packet that's pending to be sent!
+	byte ppp_nakfields_identifier, ppp_nakfields_ipxcp_identifier, ppp_rejectfields_identifier, ppp_rejectfields_ipxcp_identifier; //The NAK and Reject packet identifier to be sent!
 	byte ppp_LCPstatus; //Current LCP status. 0=Init, 1=Open.
 	byte ppp_protocolreject_count; //Protocol-Reject counter. From 0 onwards
 	byte magic_number[4];
@@ -3799,6 +3799,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			return 1; //Incorrect packet: discard it!
 		}
 	}
+	//TODO: ipxcp nakfields/rejectfields.
 	if (Packetserver_clients[connectedclient].ppp_nakfields.buffer || Packetserver_clients[connectedclient].ppp_rejectfields.buffer) //NAK or Reject packet pending?
 	{
 		//Try to send the NAK fields or Reject fields to the client!
@@ -4497,8 +4498,398 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 	ppp_finishcorrectpacketbufferqueue: //Correctly finished!
 		break;
 	case 0x802B: //IPXCP?
-		//TODO
-		//break;
+		if (!Packetserver_clients[connectedclient].ppp_LCPstatus) //LCP is Closee?
+		{
+			break; //Don't handle!
+		}
+
+		if (!PPP_consumeStream(&pppstream, &common_CodeField)) //Code couldn't be read?
+		{
+			return 1; //Incorrect packet: discard it!
+		}
+		if (!PPP_consumeStream(&pppstream, &common_IdentifierField)) //Identifier couldn't be read?
+		{
+			return 1; //Incorrect packet: discard it!
+		}
+		if (!PPP_consumeStream16(&pppstream, &common_LengthField)) //Length couldn't be read?
+		{
+			return 1; //Incorrect packet: discard it!
+		}
+		if (common_LengthField < 3) //Not enough data?
+		{
+			return 1; //Incorrect packet: discard it!
+		}
+		switch (common_CodeField) //What operation code?
+		{
+		case 1: //Configure-Request
+			if (!createPPPsubstream(&pppstream, &pppstream_requestfield, MIN(common_LengthField, 3) - 3)) //Not enough room for the data?
+			{
+				goto ppp_finishpacketbufferqueue_ipxcp; //Finish up!
+			}
+
+			//Now, start parsing the options for the connection!
+			for (; PPP_peekStream(&pppstream_requestfield, &common_TypeField);) //Gotten a new option to parse?
+			{
+				if (!PPP_consumeStream(&pppstream_requestfield, &common_TypeField))
+				{
+					goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+				}
+				if (!PPP_consumeStream(&pppstream_requestfield, &common_OptionLengthField))
+				{
+					goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+				}
+				if (PPP_streamdataleft(&pppstream_requestfield) < (MIN(common_OptionLengthField, 2) - 2)) //Not enough room left for the option data?
+				{
+					goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+				}
+				switch (common_TypeField) //What type is specified for the option?
+				{
+					/*
+				case 1: //Maximum Receive Unit
+					if (common_OptionLengthField != 4) //Unsupported length?
+					{
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, common_TypeField)) //NAK it!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 4)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueueLE16(&pppNakFields, 1500)) //Correct data!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						continue; //Next entry please!
+					}
+					if (!PPP_consumeStream16(&pppstream_requestfield, &request_pendingMRU)) //Pending MRU field!
+					{
+						goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+					}
+					//Field is OK!
+					break;
+				case 7: //Protocol Field Compression
+					if (common_OptionLengthField != 2) //Unsupported length?
+					{
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, common_TypeField)) //NAK it!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 2)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						continue; //Next entry please!
+					}
+					request_pendingProtocolFieldCompression = 1; //Set the request!
+					break;
+				case 8: //Address-And-Control-Field-Compression
+					if (common_OptionLengthField != 2) //Unsupported length?
+					{
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, common_TypeField)) //NAK it!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 2)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						continue; //Next entry please!
+					}
+					request_pendingAddressAndControlFieldCompression = 1; //Set the request!
+					break;
+				case 5: //Magic Number
+					if (common_OptionLengthField != 6) //Unsupported length?
+					{
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, common_TypeField)) //NAK it!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 6)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						continue; //Next entry please!
+					}
+					request_magic_number_used = 1; //Set the request!
+					if (!PPP_consumeStream(&pppstream, &request_magic_number[0])) //Length couldn't be read?
+					{
+						result = 1; //Duscard!
+						goto ppp_finishpacketbufferqueue2_ipxcp; //Finish up!
+					}
+					if (!PPP_consumeStream(&pppstream, &request_magic_number[1])) //Length couldn't be read?
+					{
+						result = 1; //Duscard!
+						goto ppp_finishpacketbufferqueue2_ipxcp; //Finish up!
+					}
+					if (!PPP_consumeStream(&pppstream, &request_magic_number[2])) //Length couldn't be read?
+					{
+						result = 1; //Duscard!
+						goto ppp_finishpacketbufferqueue2_ipxcp; //Finish up!
+					}
+					if (!PPP_consumeStream(&pppstream, &request_magic_number[3])) //Length couldn't be read?
+					{
+						result = 1; //Duscard!
+						goto ppp_finishpacketbufferqueue2_ipxcp; //Finish up!
+					}
+					break;
+				case 3: //Authentication Protocol
+				case 4: //Quality protocol
+				*/
+				default: //Unknown option?
+					if (!packetServerAddPacketBufferQueue(&pppRejectFields, common_TypeField)) //NAK it!
+					{
+						goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+					}
+					if (!packetServerAddPacketBufferQueue(&pppRejectFields, 2)) //Correct length!
+					{
+						goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+					}
+					if (common_OptionLengthField >= 2) //Enough length to skip?
+					{
+						skipdatacounter = common_OptionLengthField - 2; //How much to skip!
+						for (; skipdatacounter;) //Skip it!
+						{
+							if (!PPP_consumeStream(&pppstream_requestfield, &datab)) //Failed to consume properly?
+							{
+								goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+							}
+						}
+					}
+					else //Malformed parameter!
+					{
+						goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+					}
+					break;
+				}
+			}
+			//TODO: Finish parsing properly
+			if (pppNakFields.buffer || pppRejectFields.buffer) //NAK or Rejected any fields? Then don't process to the connected phase!
+			{
+				memcpy(&Packetserver_clients[connectedclient].ppp_nakfields_ipxcp, &pppNakFields, sizeof(pppNakFields)); //Give the response to the client!
+				Packetserver_clients[connectedclient].ppp_nakfields_ipxcp_identifier = common_IdentifierField; //Identifier!
+				memcpy(&Packetserver_clients[connectedclient].ppp_rejectfields_ipxcp, &pppRejectFields, sizeof(pppRejectFields)); //Give the response to the client!
+				Packetserver_clients[connectedclient].ppp_rejectfields_ipxcp_identifier = common_IdentifierField; //Identifier!
+				memset(&pppNakFields, 0, sizeof(pppNakFields)); //Queued!
+				memset(&pppRejectFields, 0, sizeof(pppRejectFields)); //Queued!
+			}
+			else //OK! All parameters are fine!
+			{
+				//Apply the parameters to the session and send back an request-ACK!
+				memset(&response, 0, sizeof(response)); //Init the response!
+				//Build the PPP header first!
+				if (!Packetserver_clients[connectedclient].PPP_headercompressed) //Header isn't compressed?
+				{
+					if (!packetServerAddPacketBufferQueue(&response, 0xFF)) //Start of PPP header!
+					{
+						goto ppp_finishpacketbufferqueue_ipxcp; //Finish up!
+					}
+					if (!packetServerAddPacketBufferQueue(&response, 0x03)) //Start of PPP header!
+					{
+						goto ppp_finishpacketbufferqueue_ipxcp; //Finish up!
+					}
+				}
+				if (!packetServerAddPacketBufferQueueLE16(&response, 0x802B)) //The protocol!
+				{
+					goto ppp_finishpacketbufferqueue_ipxcp; //Finish up!
+				}
+				//Request-Ack header!
+				if (!packetServerAddPacketBufferQueue(&response, 0x02)) //Request-Ack!
+				{
+					goto ppp_finishpacketbufferqueue_ipxcp; //Finish up!
+				}
+				if (!packetServerAddPacketBufferQueue(&response, common_IdentifierField)) //Identifier!
+				{
+					goto ppp_finishpacketbufferqueue_ipxcp; //Finish up!
+				}
+				if (!createPPPsubstream(&pppstream, &pppstream_requestfield, MIN(common_LengthField, 3) - 3)) //Not enough room for the data?
+				{
+					goto ppp_finishpacketbufferqueue_ipxcp; //Finish up!
+				}
+				if (!packetServerAddPacketBufferQueueLE16(&response, PPP_streamdataleft(&pppstream_requestfield))) //How much data follows!
+				{
+					goto ppp_finishpacketbufferqueue_ipxcp; //Finish up!
+				}
+				for (; PPP_streamdataleft(&pppstream_requestfield);) //Data left?
+				{
+					if (!PPP_consumeStream(&pppstream_requestfield, &datab))
+					{
+						goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+					}
+					if (!packetServerAddPacketBufferQueue(&response, datab)) //Add it!
+					{
+						goto ppp_finishpacketbufferqueue_ipxcp; //Finish up!
+					}
+				}
+				//Calculate and add the checksum field!
+				checksumfield = PPP_calcFCS(response.buffer, response.length); //The checksum field!
+				if (!packetServerAddPacketBufferQueueLE16(&response, checksumfield)) //Checksum failure?
+				{
+					goto ppp_finishpacketbufferqueue_ipxcp;
+				}
+				//Packet is fully built. Now send it!
+				if (Packetserver_clients[connectedclient].ppp_response.size) //Previous Response still valid?
+				{
+					goto ppp_finishpacketbufferqueue_ipxcp; //Keep pending!
+				}
+				if (response.buffer) //Any response to give?
+				{
+					memcpy(&Packetserver_clients[connectedclient].ppp_response, &response, sizeof(response)); //Give the response to the client!
+					Packetserver_clients[connectedclient].packetserver_bytesleft = response.length; //How much to send!
+					memset(&response, 0, sizeof(response)); //Parsed!
+					//Now, apply the request properly!
+					//Packetserver_clients[connectedclient].ppp_LCPstatus = 1; //Open!
+				}
+			}
+			goto ppp_finishpacketbufferqueue_ipxcp; //Finish up!
+			break;
+		case 5: //Terminate-Request (Request termination of connection)
+			//Send a Code-Reject packet to the client!
+			memset(&response, 0, sizeof(response)); //Init the response!
+			//Build the PPP header first!
+			if (!Packetserver_clients[connectedclient].PPP_headercompressed) //Header isn't compressed?
+			{
+				if (!packetServerAddPacketBufferQueue(&response, 0xFF)) //Start of PPP header!
+				{
+					goto ppp_finishpacketbufferqueue_ipxcp; //Finish up!
+				}
+				if (!packetServerAddPacketBufferQueue(&response, 0x03)) //Start of PPP header!
+				{
+					goto ppp_finishpacketbufferqueue_ipxcp; //Finish up!
+				}
+			}
+			if (!packetServerAddPacketBufferQueueLE16(&response, 0x802B)) //The protocol!
+			{
+				goto ppp_finishpacketbufferqueue_ipxcp; //Finish up!
+			}
+			//Code Reject header!
+			if (!packetServerAddPacketBufferQueue(&response, 0x06)) //Code-Reject!
+			{
+				goto ppp_finishpacketbufferqueue_ipxcp; //Finish up!
+			}
+			if (!packetServerAddPacketBufferQueue(&response, common_IdentifierField)) //Identifier!
+			{
+				goto ppp_finishpacketbufferqueue_ipxcp; //Finish up!
+			}
+			if (!packetServerAddPacketBufferQueueLE16(&response, PPP_streamdataleft(&pppstream))) //How much data follows!
+			{
+				goto ppp_finishpacketbufferqueue_ipxcp; //Finish up!
+			}
+			//Now, the rejected packet itself!
+			for (; PPP_consumeStream(&pppstream, &datab);) //The data field itself follows!
+			{
+				if (!packetServerAddPacketBufferQueue(&response, datab))
+				{
+					goto ppp_finishpacketbufferqueue_ipxcp;
+				}
+			}
+			//Calculate and add the checksum field!
+			checksumfield = PPP_calcFCS(response.buffer, response.length); //The checksum field!
+			if (!packetServerAddPacketBufferQueueLE16(&response, checksumfield)) //Checksum failure?
+			{
+				goto ppp_finishpacketbufferqueue_ipxcp;
+			}
+			//Packet is fully built. Now send it!
+			if (Packetserver_clients[connectedclient].ppp_response.size) //Previous Response still valid?
+			{
+				goto ppp_finishpacketbufferqueue_ipxcp; //Keep pending!
+			}
+			if (response.buffer) //Any response to give?
+			{
+				memcpy(&Packetserver_clients[connectedclient].ppp_response, &response, sizeof(response)); //Give the response to the client!
+				Packetserver_clients[connectedclient].packetserver_bytesleft = response.length; //How much to send!
+				memset(&response, 0, sizeof(response)); //Parsed!
+				//Now, apply the request properly!
+				//Packetserver_clients[connectedclient].ppp_LCPstatus = 0; //Closed!
+			}
+			goto ppp_finishpacketbufferqueue_ipxcp; //Finish up!
+			break;
+		case 2: //Configure-Ack (All options OK)
+		case 3: //Configure-Nak (Some options unacceptable)
+		case 4: //Configure-Reject (Some options not recognisable or acceptable for negotiation)
+		case 6: //Terminate-Ack (Acnowledge termination of connection)
+		case 7: //Code-Reject (Code field is rejected because it's unknown)
+		default: //Unknown Code field?
+			//Send a Code-Reject packet to the client!
+			memset(&response, 0, sizeof(response)); //Init the response!
+			//Build the PPP header first!
+			if (!Packetserver_clients[connectedclient].PPP_headercompressed) //Header isn't compressed?
+			{
+				if (!packetServerAddPacketBufferQueue(&response, 0xFF)) //Start of PPP header!
+				{
+					goto ppp_finishpacketbufferqueue_ipxcp; //Finish up!
+				}
+				if (!packetServerAddPacketBufferQueue(&response, 0x03)) //Start of PPP header!
+				{
+					goto ppp_finishpacketbufferqueue_ipxcp; //Finish up!
+				}
+			}
+			if (!packetServerAddPacketBufferQueueLE16(&response, 0x802B)) //The protocol!
+			{
+				goto ppp_finishpacketbufferqueue_ipxcp; //Finish up!
+			}
+			//Code Reject header!
+			if (!packetServerAddPacketBufferQueue(&response, 0x07)) //Code-Reject!
+			{
+				goto ppp_finishpacketbufferqueue_ipxcp; //Finish up!
+			}
+			if (!packetServerAddPacketBufferQueue(&response, common_IdentifierField)) //Identifier!
+			{
+				goto ppp_finishpacketbufferqueue_ipxcp; //Finish up!
+			}
+			if (!packetServerAddPacketBufferQueueLE16(&response, PPP_streamdataleft(&pppstream_informationfield)))
+				//Now, the rejected packet itself!
+				for (; PPP_consumeStream(&pppstream_informationfield, &datab);) //The information field itself follows!
+				{
+					if (!packetServerAddPacketBufferQueue(&response, datab))
+					{
+						goto ppp_finishpacketbufferqueue_ipxcp;
+					}
+				}
+			//Calculate and add the checksum field!
+			checksumfield = PPP_calcFCS(response.buffer, response.length); //The checksum field!
+			if (!packetServerAddPacketBufferQueueLE16(&response, checksumfield)) //Checksum failure?
+			{
+				goto ppp_finishpacketbufferqueue_ipxcp;
+			}
+			break;
+		}
+		//Packet is fully built. Now send it!
+		if (Packetserver_clients[connectedclient].ppp_response.size) //Previous Response still valid?
+		{
+			goto ppp_finishpacketbufferqueue_ipxcp; //Keep pending!
+		}
+		if (response.buffer) //Any response to give?
+		{
+			memcpy(&Packetserver_clients[connectedclient].ppp_response, &response, sizeof(response)); //Give the response to the client!
+			Packetserver_clients[connectedclient].packetserver_bytesleft = response.length; //How much to send!
+			memset(&response, 0, sizeof(response)); //Parsed!
+		}
+		goto ppp_finishcorrectpacketbufferqueue_ipxcp; //Success!
+	ppp_finishpacketbufferqueue_ipxcp: //An error occurred during the response?
+		result = 0; //Keep pending until we can properly handle it!
+	//ppp_finishpacketbufferqueue2_ipxcp: //TODO: Uncomment this line when implementing the condigure-request options.
+		packetServerFreePacketBufferQueue(&response); //Free the queued response!
+		packetServerFreePacketBufferQueue(&pppNakFields); //Free the queued response!
+		packetServerFreePacketBufferQueue(&pppRejectFields); //Free the queued response!
+	ppp_finishcorrectpacketbufferqueue_ipxcp: //Correctly finished!
+		break;
 	case 0x2B: //IPX datagram?
 		//TODO
 		//break;
