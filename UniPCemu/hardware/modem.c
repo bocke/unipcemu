@@ -272,6 +272,7 @@ typedef struct
 	byte ppp_protocolreject_count; //Protocol-Reject counter. From 0 onwards
 	byte magic_number[4];
 	byte have_magic_number;
+	byte ppp_PAPstatus; //0=Not authenticated, 1=Authenticated.
 } PacketServer_client;
 
 PacketServer_client Packetserver_clients[0x100]; //Up to 100 clients!
@@ -3791,7 +3792,14 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 	byte request_pendingAddressAndControlFieldCompression; //Default: no address-and-control-field compression!
 	byte request_magic_number_used; //Default: none
 	byte request_magic_number[4]; //Set magic number
+	word request_authenticationprotocol; //Authentication protocol requested!
+	byte request_authenticationspecified; //Authentication protocol used!
 	uint_32 skipdatacounter;
+	byte pap_fieldcounter; //Length of a field until 0 for PAP comparison!
+	byte usernamepasswordbyte; //Username/password by
+	byte username_length; //Username length for PAP!
+	byte password_length; //Password length for PAP!
+	byte pap_authenticated; //Is the user authenticated properly?
 	if (handleTransmit)
 	{
 		if (Packetserver_clients[connectedclient].packetserver_transmitlength < (3 + (Packetserver_clients[connectedclient].PPP_protocolcompressed ? 1 : 0) + (Packetserver_clients[connectedclient].PPP_headercompressed ? 2 : 0))) //Not enough for a full minimal PPP packet (with 1 byte of payload)?
@@ -4005,6 +4013,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			request_pendingAddressAndControlFieldCompression = 0; //Default: no address-and-control-field compression!
 			memset(&request_magic_number, 0, sizeof(request_magic_number)); //Default: none
 			request_magic_number_used = 0; //Default: not used!
+			request_authenticationspecified = 0; //Default: not used!
 
 			//Now, start parsing the options for the connection!
 			for (; PPP_peekStream(&pppstream_requestfield, &common_TypeField);) //Gotten a new option to parse?
@@ -4128,6 +4137,35 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 					}
 					break;
 				case 3: //Authentication Protocol
+					if (common_OptionLengthField != 4) //Unsupported length?
+					{
+						invalidauthenticationprotocol:
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, common_TypeField)) //NAK it!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 4)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueueLE16(&pppNakFields, 0xC023)) //PAP!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						continue; //Next entry please!
+					}
+					request_magic_number_used = 1; //Set the request!
+					if (!PPP_consumeStream16(&pppstream, &request_authenticationprotocol)) //Length couldn't be read?
+					{
+						result = 1; //Duscard!
+						goto ppp_finishpacketbufferqueue2; //Finish up!
+					}
+					if (request_authenticationprotocol != 0xC023) //Not a supported protocol?
+					{
+						goto invalidauthenticationprotocol; //Count as invalid!
+					}
+					request_authenticationspecified = 1; //Request that authentication be used!
+					break;
 				case 4: //Quality protocol
 				default: //Unknown option?
 					if (!packetServerAddPacketBufferQueue(&pppRejectFields, common_TypeField)) //NAK it!
@@ -4237,6 +4275,14 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 					Packetserver_clients[connectedclient].PPP_protocolcompressed = request_pendingProtocolFieldCompression; //Protocol compressed!
 					memcpy(&Packetserver_clients[connectedclient].magic_number, &request_magic_number, sizeof(request_magic_number)); //Magic number
 					Packetserver_clients[connectedclient].have_magic_number = request_magic_number_used; //Use magic number?
+					if (request_authenticationspecified) //Authentication specified?
+					{
+						Packetserver_clients[connectedclient].ppp_PAPstatus = 0; //Not Authenticated yet!
+					}
+					else
+					{
+						Packetserver_clients[connectedclient].ppp_PAPstatus = 1; //Authenticated automatically!
+					}
 				}
 			}
 			goto ppp_finishpacketbufferqueue; //Finish up!
@@ -4497,8 +4543,167 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		packetServerFreePacketBufferQueue(&pppRejectFields); //Free the queued response!
 	ppp_finishcorrectpacketbufferqueue: //Correctly finished!
 		break;
+	case 0xC023: //PAP?
+		if (!PPP_consumeStream(&pppstream, &common_CodeField)) //Code couldn't be read?
+		{
+			return 1; //Incorrect packet: discard it!
+		}
+		if (!PPP_consumeStream(&pppstream, &common_IdentifierField)) //Identifier couldn't be read?
+		{
+			return 1; //Incorrect packet: discard it!
+		}
+		if (!PPP_consumeStream16(&pppstream, &common_LengthField)) //Length couldn't be read?
+		{
+			return 1; //Incorrect packet: discard it!
+		}
+		if (common_LengthField < 6) //Not enough data?
+		{
+			return 1; //Incorrect packet: discard it!
+		}
+		switch (common_CodeField) //What operation code?
+		{
+		case 1: //Authentication-Request
+			if (!createPPPsubstream(&pppstream, &pppstream_requestfield, MIN(common_LengthField, 4) - 4)) //Not enough room for the data?
+			{
+				goto ppp_finishpacketbufferqueue_pap; //Finish up!
+			}
+
+			if (!PPP_consumeStream(&pppstream_requestfield, &username_length))
+			{
+				goto ppp_finishpacketbufferqueue_pap; //Incorrect packet: discard it!
+			}
+			pap_authenticated = 1; //Default: authenticated properly!
+			//First, the username!
+			if (username_length != safe_strlen(Packetserver_clients[connectedclient].packetserver_username, sizeof(Packetserver_clients[connectedclient].packetserver_username))) //Length mismatch?
+			{
+				pap_authenticated = 0; //Not authenticated!
+			}
+			for (pap_fieldcounter = 0; pap_fieldcounter < username_length; ++pap_fieldcounter) //Now the username follows (for the specified length)
+			{
+				if (!PPP_consumeStream(&pppstream_requestfield, &datab)) //Data to compare!
+				{
+					goto ppp_finishpacketbufferqueue_pap; //Incorrect packet: discard it!
+				}
+				if (pap_authenticated) //Still valid to compare?
+				{
+					if (Packetserver_clients[connectedclient].packetserver_username[pap_fieldcounter] != datab) //Mismatch?
+					{
+						pap_authenticated = 0; //Going to NAK it!
+					}
+				}
+			}
+			//Now the password follows (for the specified length)
+			if (!PPP_consumeStream(&pppstream_requestfield, &password_length))
+			{
+				goto ppp_finishpacketbufferqueue_pap; //Incorrect packet: discard it!
+			}
+			if (password_length != safe_strlen(Packetserver_clients[connectedclient].packetserver_password, sizeof(Packetserver_clients[connectedclient].packetserver_password))) //Length mismatch?
+			{
+				pap_authenticated = 0; //Not authenticated!
+			}
+			for (pap_fieldcounter = 0; pap_fieldcounter < username_length; ++pap_fieldcounter) //Now the username follows (for the specified length)
+			{
+				if (!PPP_consumeStream(&pppstream_requestfield, &datab)) //Data to compare!
+				{
+					goto ppp_finishpacketbufferqueue_pap; //Incorrect packet: discard it!
+				}
+				if (pap_authenticated) //Still valid to compare?
+				{
+					if (Packetserver_clients[connectedclient].packetserver_password[pap_fieldcounter] != datab) //Mismatch?
+					{
+						pap_authenticated = 0; //Going to NAK it!
+					}
+				}
+			}
+
+
+			//Apply the parameters to the session and send back an request-ACK/NAK!
+			memset(&response, 0, sizeof(response)); //Init the response!
+			//Build the PPP header first!
+			if (!Packetserver_clients[connectedclient].PPP_headercompressed) //Header isn't compressed?
+			{
+				if (!packetServerAddPacketBufferQueue(&response, 0xFF)) //Start of PPP header!
+				{
+					goto ppp_finishpacketbufferqueue_pap; //Finish up!
+				}
+				if (!packetServerAddPacketBufferQueue(&response, 0x03)) //Start of PPP header!
+				{
+					goto ppp_finishpacketbufferqueue_pap; //Finish up!
+				}
+			}
+			if (!packetServerAddPacketBufferQueueLE16(&response, 0xC021)) //The protocol!
+			{
+				goto ppp_finishpacketbufferqueue_pap; //Finish up!
+			}
+			//Request-Ack header!
+			if (!packetServerAddPacketBufferQueue(&response, pap_authenticated?0x02:0x03)) //Authentication-Ack/Nak!
+			{
+				goto ppp_finishpacketbufferqueue_pap; //Finish up!
+			}
+			if (!packetServerAddPacketBufferQueue(&response, common_IdentifierField)) //Identifier!
+			{
+				goto ppp_finishpacketbufferqueue_pap; //Finish up!
+			}
+			if (!createPPPsubstream(&pppstream, &pppstream_requestfield, MIN(common_LengthField, 3) - 3)) //Not enough room for the data?
+			{
+				goto ppp_finishpacketbufferqueue_pap; //Finish up!
+			}
+			if (!packetServerAddPacketBufferQueueLE16(&response, /*PPP_streamdataleft(&pppstream_requestfield)*/ 0)) //How much data follows (Message field)!
+			{
+				goto ppp_finishpacketbufferqueue_pap; //Finish up!
+			}
+			//No messager for now!
+			//Calculate and add the checksum field!
+			checksumfield = PPP_calcFCS(response.buffer, response.length); //The checksum field!
+			if (!packetServerAddPacketBufferQueueLE16(&response, checksumfield)) //Checksum failure?
+			{
+				goto ppp_finishpacketbufferqueue_pap;
+			}
+			//Packet is fully built. Now send it!
+			if (Packetserver_clients[connectedclient].ppp_response.size) //Previous Response still valid?
+			{
+				goto ppp_finishpacketbufferqueue_pap; //Keep pending!
+			}
+			if (response.buffer) //Any response to give?
+			{
+				memcpy(&Packetserver_clients[connectedclient].ppp_response, &response, sizeof(response)); //Give the response to the client!
+				Packetserver_clients[connectedclient].packetserver_bytesleft = response.length; //How much to send!
+				memset(&response, 0, sizeof(response)); //Parsed!
+				//Now, apply the request properly!
+				if (pap_authenticated) //Authenticated?
+				{
+					Packetserver_clients[connectedclient].ppp_PAPstatus = 1; //Authenticated!
+				}
+				else
+				{
+					Packetserver_clients[connectedclient].ppp_PAPstatus = 0; //Not authenticated!
+				}
+			}
+			goto ppp_finishpacketbufferqueue_pap; //Finish up!
+			break;
+		default: //Unknown Code field?
+			goto ppp_finishpacketbufferqueue2_pap; //Finish up only (NOP)!
+			break;
+		}
+		if (response.buffer) //Any response to give?
+		{
+			memcpy(&Packetserver_clients[connectedclient].ppp_response, &response, sizeof(response)); //Give the response to the client!
+			Packetserver_clients[connectedclient].packetserver_bytesleft = response.length; //How much to send!
+			memset(&response, 0, sizeof(response)); //Parsed!
+		}
+		goto ppp_finishcorrectpacketbufferqueue_pap; //Success!
+	ppp_finishpacketbufferqueue_pap: //An error occurred during the response?
+		result = 0; //Keep pending until we can properly handle it!
+	ppp_finishpacketbufferqueue2_pap:
+		packetServerFreePacketBufferQueue(&response); //Free the queued response!
+		packetServerFreePacketBufferQueue(&pppNakFields); //Free the queued response!
+		packetServerFreePacketBufferQueue(&pppRejectFields); //Free the queued response!
+	ppp_finishcorrectpacketbufferqueue_pap: //Correctly finished!
+		break;
+
+
 	case 0x802B: //IPXCP?
-		if (!Packetserver_clients[connectedclient].ppp_LCPstatus) //LCP is Closee?
+		if ((!Packetserver_clients[connectedclient].ppp_LCPstatus) || (!Packetserver_clients[connectedclient].ppp_PAPstatus)) //LCP is Closed or PAP isn't authenticated?
 		{
 			break; //Don't handle!
 		}
