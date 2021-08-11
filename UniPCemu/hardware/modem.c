@@ -270,6 +270,8 @@ typedef struct
 	byte ppp_nakfields_identifier, ppp_rejectfields_identifier; //The NAK and Reject packet identifier to be sent!
 	byte ppp_LCPstatus; //Current LCP status. 0=Init, 1=Open.
 	byte ppp_protocolreject_count; //Protocol-Reject counter. From 0 onwards
+	byte magic_number[4];
+	byte have_magic_number;
 } PacketServer_client;
 
 PacketServer_client Packetserver_clients[0x100]; //Up to 100 clients!
@@ -3787,6 +3789,8 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 	word request_pendingMRU; //Pending MTU field for the request!
 	byte request_pendingProtocolFieldCompression; //Default: no protocol field compression!
 	byte request_pendingAddressAndControlFieldCompression; //Default: no address-and-control-field compression!
+	byte request_magic_number_used; //Default: none
+	byte request_magic_number[4]; //Set magic number
 	uint_32 skipdatacounter;
 	if (handleTransmit)
 	{
@@ -3998,6 +4002,8 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			request_pendingMRU = 1500; //Default MTU value to use!
 			request_pendingProtocolFieldCompression = 0; //Default: no protocol field compression!
 			request_pendingAddressAndControlFieldCompression = 0; //Default: no address-and-control-field compression!
+			memset(&request_magic_number, 0, sizeof(request_magic_number)); //Default: none
+			request_magic_number_used = 0; //Default: not used!
 
 			//Now, start parsing the options for the connection!
 			for (; PPP_peekStream(&pppstream_requestfield, &common_TypeField);) //Gotten a new option to parse?
@@ -4069,9 +4075,59 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 					}
 					request_pendingAddressAndControlFieldCompression = 1; //Set the request!
 					break;
+				case 5: //Magic Number
+					if (common_OptionLengthField != 6) //Unsupported length?
+					{
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, common_TypeField)) //NAK it!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 6)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						continue; //Next entry please!
+					}
+					request_magic_number_used = 1; //Set the request!
+					if (!PPP_consumeStream(&pppstream, &request_magic_number[0])) //Length couldn't be read?
+					{
+						result = 1; //Duscard!
+						goto ppp_finishpacketbufferqueue2; //Finish up!
+					}
+					if (!PPP_consumeStream(&pppstream, &request_magic_number[1])) //Length couldn't be read?
+					{
+						result = 1; //Duscard!
+						goto ppp_finishpacketbufferqueue2; //Finish up!
+					}
+					if (!PPP_consumeStream(&pppstream, &request_magic_number[2])) //Length couldn't be read?
+					{
+						result = 1; //Duscard!
+						goto ppp_finishpacketbufferqueue2; //Finish up!
+					}
+					if (!PPP_consumeStream(&pppstream, &request_magic_number[3])) //Length couldn't be read?
+					{
+						result = 1; //Duscard!
+						goto ppp_finishpacketbufferqueue2; //Finish up!
+					}
+					break;
 				case 3: //Authentication Protocol
 				case 4: //Quality protocol
-				case 5: //Magic Number
 				default: //Unknown option?
 					if (!packetServerAddPacketBufferQueue(&pppRejectFields, common_TypeField)) //NAK it!
 					{
@@ -4178,6 +4234,8 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 					Packetserver_clients[connectedclient].PPP_MRU = request_pendingMRU; //MRU!
 					Packetserver_clients[connectedclient].PPP_headercompressed = request_pendingAddressAndControlFieldCompression; //Header compression!
 					Packetserver_clients[connectedclient].PPP_protocolcompressed = request_pendingProtocolFieldCompression; //Protocol compressed!
+					memcpy(&Packetserver_clients[connectedclient].magic_number, &request_magic_number, sizeof(request_magic_number)); //Magic number
+					Packetserver_clients[connectedclient].have_magic_number = request_magic_number_used; //Use magic number?
 				}
 			}
 			goto ppp_finishpacketbufferqueue; //Finish up!
@@ -4243,10 +4301,128 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				Packetserver_clients[connectedclient].PPP_MRU = 1500; //Default: 1500
 				Packetserver_clients[connectedclient].PPP_headercompressed = 0; //Default: uncompressed
 				Packetserver_clients[connectedclient].PPP_protocolcompressed = 0; //Default: uncompressed
+				Packetserver_clients[connectedclient].have_magic_number = 0; //Default: no magic number yet
 			}
 			goto ppp_finishpacketbufferqueue; //Finish up!
 			break;
 		case 9: //Echo-Request (Request Echo-Reply. Required for an open connection to reply).
+			//Send a Code-Reject packet to the client!
+			if ((!Packetserver_clients[connectedclient].ppp_LCPstatus) || (!Packetserver_clients[connectedclient].have_magic_number))
+			{
+				result = 1;
+				goto ppp_finishpacketbufferqueue2; //Finish up!
+			}
+			memset(&response, 0, sizeof(response)); //Init the response!
+			//Build the PPP header first!
+			if (!Packetserver_clients[connectedclient].PPP_headercompressed) //Header isn't compressed?
+			{
+				if (!packetServerAddPacketBufferQueue(&response, 0xFF)) //Start of PPP header!
+				{
+					goto ppp_finishpacketbufferqueue; //Finish up!
+				}
+				if (!packetServerAddPacketBufferQueue(&response, 0x03)) //Start of PPP header!
+				{
+					goto ppp_finishpacketbufferqueue; //Finish up!
+				}
+			}
+			if (!packetServerAddPacketBufferQueueLE16(&response, 0xC021)) //The protocol!
+			{
+				goto ppp_finishpacketbufferqueue; //Finish up!
+			}
+			//Code Reject header!
+			if (!packetServerAddPacketBufferQueue(&response, 0x0A)) //Echo-Reply!
+			{
+				goto ppp_finishpacketbufferqueue; //Finish up!
+			}
+			if (!packetServerAddPacketBufferQueue(&response, common_IdentifierField)) //Identifier!
+			{
+				goto ppp_finishpacketbufferqueue; //Finish up!
+			}
+			if (!createPPPsubstream(&pppstream, &pppstream_requestfield, MIN(common_LengthField, 8) - 4)) //Not enough room for the data?
+			{
+				goto ppp_finishpacketbufferqueue; //Finish up!
+			}
+			if (!packetServerAddPacketBufferQueueLE16(&response, PPP_streamdataleft(&pppstream_requestfield))) //How much data follows!
+			{
+				goto ppp_finishpacketbufferqueue; //Finish up!
+			}
+			if (Packetserver_clients[connectedclient].have_magic_number) //Magic number set?
+			{
+				if (!PPP_consumeStream(&pppstream_requestfield, &request_magic_number[0])) //Length couldn't be read?
+				{
+					result = 1; //Duscard!
+					goto ppp_finishpacketbufferqueue2; //Finish up!
+				}
+				if (!PPP_consumeStream(&pppstream_requestfield, &request_magic_number[1])) //Length couldn't be read?
+				{
+					result = 1; //Duscard!
+					goto ppp_finishpacketbufferqueue2; //Finish up!
+				}
+				if (!PPP_consumeStream(&pppstream_requestfield, &request_magic_number[2])) //Length couldn't be read?
+				{
+					result = 1; //Duscard!
+					goto ppp_finishpacketbufferqueue2; //Finish up!
+				}
+				if (!PPP_consumeStream(&pppstream_requestfield, &request_magic_number[3])) //Length couldn't be read?
+				{
+					result = 1; //Duscard!
+					goto ppp_finishpacketbufferqueue2; //Finish up!
+				}
+				if (memcmp(&request_magic_number, Packetserver_clients[connectedclient].magic_number, sizeof(request_magic_number)) != 0) //Maguc number mismatch?
+				{
+					result = 1; //Duscard!
+					goto ppp_finishpacketbufferqueue2; //Finish up!
+				}
+				if (!packetServerAddPacketBufferQueue(&response, request_magic_number[0])) //Magic-number option!
+				{
+					goto ppp_finishpacketbufferqueue; //Finish up!
+				}
+				if (!packetServerAddPacketBufferQueue(&response, request_magic_number[1])) //Magic-number option!
+				{
+					goto ppp_finishpacketbufferqueue; //Finish up!
+				}
+				if (!packetServerAddPacketBufferQueue(&response, request_magic_number[2])) //Magic-number option!
+				{
+					goto ppp_finishpacketbufferqueue; //Finish up!
+				}
+				if (!packetServerAddPacketBufferQueue(&response, request_magic_number[3])) //Magic-number option!
+				{
+					goto ppp_finishpacketbufferqueue; //Finish up!
+				}
+
+			}
+			else //Magic-number option missing?
+			{
+				result = 1; //Duscard!
+				goto ppp_finishpacketbufferqueue2; //Finish up!
+			}
+			//Now, the rejected packet itself!
+			for (; PPP_consumeStream(&pppstream_requestfield, &datab);) //The data field itself follows!
+			{
+				if (!packetServerAddPacketBufferQueue(&response, datab))
+				{
+					goto ppp_finishpacketbufferqueue;
+				}
+			}
+			//Calculate and add the checksum field!
+			checksumfield = PPP_calcFCS(response.buffer, response.length); //The checksum field!
+			if (!packetServerAddPacketBufferQueueLE16(&response, checksumfield)) //Checksum failure?
+			{
+				goto ppp_finishpacketbufferqueue;
+			}
+			//Packet is fully built. Now send it!
+			if (Packetserver_clients[connectedclient].ppp_response.size) //Previous Response still valid?
+			{
+				goto ppp_finishpacketbufferqueue; //Keep pending!
+			}
+			if (response.buffer) //Any response to give?
+			{
+				memcpy(&Packetserver_clients[connectedclient].ppp_response, &response, sizeof(response)); //Give the response to the client!
+				Packetserver_clients[connectedclient].packetserver_bytesleft = response.length; //How much to send!
+				memset(&response, 0, sizeof(response)); //Parsed!
+			}
+			goto ppp_finishpacketbufferqueue2; //Finish up!
+			break;
 		case 2: //Configure-Ack (All options OK)
 		case 3: //Configure-Nak (Some options unacceptable)
 		case 4: //Configure-Reject (Some options not recognisable or acceptable for negotiation)
@@ -4314,6 +4490,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		goto ppp_finishcorrectpacketbufferqueue; //Success!
 		ppp_finishpacketbufferqueue: //An error occurred during the response?
 		result = 0; //Keep pending until we can properly handle it!
+		ppp_finishpacketbufferqueue2:
 		packetServerFreePacketBufferQueue(&response); //Free the queued response!
 		packetServerFreePacketBufferQueue(&pppNakFields); //Free the queued response!
 		packetServerFreePacketBufferQueue(&pppRejectFields); //Free the queued response!
@@ -4393,6 +4570,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				Packetserver_clients[connectedclient].PPP_headercompressed = 0; //Default: uncompressed
 				Packetserver_clients[connectedclient].PPP_protocolcompressed = 0; //Default: uncompressed
 				Packetserver_clients[connectedclient].ppp_protocolreject_count = 0; //Default: 0!
+				Packetserver_clients[connectedclient].have_magic_number = 0; //Default: no magic number yet
 			}
 			goto ppp_finishpacketbufferqueue; //Finish up!
 		}
