@@ -278,6 +278,7 @@ typedef struct
 	byte ipxcp_nodenumber[6];
 	word ipxcp_routingprotocol;
 	byte ipxcp_negotiationstatus; //Negotiation status for the IPXCP login. 0=Ready for new negotiation. 1=Negotiation request has been sent. 2=Negotation has been given a reply and to NAK, 3=Negotiation has succeeded.
+	TicksHolder ipxcp_negotiationstatustimer; //Negotiation status timer for determining response time!
 } PacketServer_client;
 
 PacketServer_client Packetserver_clients[0x100]; //Up to 100 clients!
@@ -3805,7 +3806,7 @@ byte incIPXaddr2(byte* ipxaddr, byte addrsizeleft) //addrsizeleft=6 for the addr
 			incIPXaddr2(ipxaddr, addrsizeleft); //Increase to NULL address (forbidden), which we'll skip!
 			return incIPXaddr2(ipxaddr, addrsizeleft); //Increase to the first address, which we'll use!
 		}
-		else if (memcmp(ipxaddr - 5, &ipxbroadcastaddr, sizeof(ipxnulladdr)) == 0) //Null address?
+		else if (memcmp(ipxaddr - 5, &ipxnulladdr, sizeof(ipxnulladdr)) == 0) //Null address?
 		{
 			return incIPXaddr2(ipxaddr, addrsizeleft); //Increase to the first address, which we'll use!
 		}
@@ -3813,10 +3814,10 @@ byte incIPXaddr2(byte* ipxaddr, byte addrsizeleft) //addrsizeleft=6 for the addr
 	return 1; //Address is OK!
 }
 
-//ipxaddr must point to the final byte of the address (it's in big endian format)
+//ipxaddr must point to the first byte of the address (it's in big endian format)
 byte incIPXaddr(byte* ipxaddr)
 {
-	return incIPXaddr2(ipxaddr, 6); //Increment the IPX address to a valid address!
+	return incIPXaddr2(&ipxaddr[5], 6); //Increment the IPX address to a valid address from the LSB!
 }
 
 //srcaddr should be 12 bytes in length.
@@ -5241,6 +5242,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			//TODO: Finish parsing properly
 			if (pppNakFields.buffer || pppRejectFields.buffer) //NAK or Rejected any fields? Then don't process to the connected phase!
 			{
+				ipxcp_requestfixnodenumber: //Fix network number supplied by authentication!
 				memcpy(&Packetserver_clients[connectedclient].ppp_nakfields_ipxcp, &pppNakFields, sizeof(pppNakFields)); //Give the response to the client!
 				Packetserver_clients[connectedclient].ppp_nakfields_ipxcp_identifier = common_IdentifierField; //Identifier!
 				memcpy(&Packetserver_clients[connectedclient].ppp_rejectfields_ipxcp, &pppRejectFields, sizeof(pppRejectFields)); //Give the response to the client!
@@ -5250,6 +5252,84 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			}
 			else //OK! All parameters are fine!
 			{
+				if (Packetserver_clients[connectedclient].ipxcp_negotiationstatus == 0) //Starting negotiation on the parameters?
+				{
+					if (!memcmp(&ipxcp_pendingnodenumber, &ipxnulladdr, 6)) //Null address?
+					{
+						Packetserver_clients[connectedclient].ipxcp_negotiationstatus = 2; //NAK it!
+					}
+					else if (memcmp(&ipxcp_pendingnodenumber, &ipxbroadcastaddr, 6)) //Broadcast address?
+					{
+						Packetserver_clients[connectedclient].ipxcp_negotiationstatus = 2; //NAK it!
+					}
+					else if (memcmp(&ipxcp_pendingnodenumber, &ipxnegotiationnodeaddr, 6)) //Negotiation node address?
+					{
+						Packetserver_clients[connectedclient].ipxcp_negotiationstatus = 2; //NAK it!
+					}
+					else //Valid address to use? Start validation of existing clients!
+					{
+						//TODO: Check other clients for pending negotiations! Wait for other clients to complete first!
+						memcpy(Packetserver_clients[connectedclient].ipxcp_networknumber, &ipxcp_pendingnetworknumber, sizeof(ipxcp_pendingnetworknumber)); //Network number specified or 0 for none!
+						memcpy(Packetserver_clients[connectedclient].ipxcp_nodenumber, &ipxcp_pendingnodenumber, sizeof(ipxcp_pendingnodenumber)); //Node number or 0 for none!
+						if (sendIPXechorequest(connectedclient)) //Properly sent an echo request?
+						{
+							Packetserver_clients[connectedclient].ipxcp_negotiationstatus = 1; //Start negotiating the IPX node number!
+							initTicksHolder(&Packetserver_clients[connectedclient].ipxcp_negotiationstatustimer); //Initialize the timer!
+							getnspassed(&Packetserver_clients[connectedclient].ipxcp_negotiationstatustimer); //Start the timer now!
+						}
+						//Otherwise, keep pending!
+					}
+				}
+
+				if (Packetserver_clients[connectedclient].ipxcp_negotiationstatus == 1) //Timing the timer for negotiating the network/node address?
+				{
+					if (getnspassed_k(&Packetserver_clients[connectedclient].ipxcp_negotiationstatustimer) >= 1500000000.0f) //Negotiation timeout?
+					{
+						Packetserver_clients[connectedclient].ipxcp_negotiationstatus = 3; //Timeout reached! No other client responded to the request! Take the network/node address specified! 
+					}
+				}
+
+				if (Packetserver_clients[connectedclient].ipxcp_negotiationstatus != 3) //Not ready yet?
+				{
+					if (Packetserver_clients[connectedclient].ipxcp_negotiationstatus == 2) //NAK has been reached?
+					{
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0x02)) //IPX node number!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						incIPXaddr(&ipxcp_pendingnodenumber[0]); //Increase the address to the first next valid address to use!
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 8)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, ipxcp_pendingnodenumber[0])) //None!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, ipxcp_pendingnodenumber[1])) //None!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, ipxcp_pendingnodenumber[2])) //None!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, ipxcp_pendingnodenumber[3])) //None!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, ipxcp_pendingnodenumber[4])) //None!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, ipxcp_pendingnodenumber[5])) //None!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						goto ipxcp_requestfixnodenumber; //Request a fix for the node number!
+					}
+				}
+
 				//Apply the parameters to the session and send back an request-ACK!
 				memset(&response, 0, sizeof(response)); //Init the response!
 				//Build the PPP header first!
