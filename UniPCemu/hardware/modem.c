@@ -3813,7 +3813,7 @@ byte incIPXaddr(byte* ipxaddr)
 }
 
 //srcaddr should be 12 bytes in length.
-byte sendIPXecho(sword connectedclient, PPP_Stream *echodata, PPP_Stream *srcaddr)
+byte sendIPXechoreply(sword connectedclient, PPP_Stream *echodata, PPP_Stream *srcaddr)
 {
 	byte datab;
 	byte result;
@@ -5472,12 +5472,29 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 	return result; //Currently simply discard it!
 }
 
+#include "headers/packed.h"
+typedef struct PACKED
+{
+	word CheckSum;
+	word Length;
+	byte TransportControl;
+	byte PacketType;
+	byte DestinationNetworkNumber[4];
+	byte DestinationNodeNumber[6];
+	word DestinationSocketNumber;
+	byte SourceNetworkNumber[4];
+	byte SourceNodeNumber[6];
+	word SourceSocketNumber;
+} IPXPACKETHEADER;
+#include "headers/endpacked.h"
+
 //result: 0 to discard the packet. 1 to start sending the packet to the client, 2 to keep it pending in this stage until we're ready to send it to the client.
 byte PPP_parseReceivedPacketForClient(sword connectedclient)
 {
 	ETHERNETHEADER ethernetheader;
+	IPXPACKETHEADER ipxheader;
 	MODEM_PACKETBUFFER response;
-	PPP_Stream pppstream;
+	PPP_Stream pppstream, ipxechostream;
 	byte result;
 	byte datab;
 	word checksumfield;
@@ -5488,15 +5505,41 @@ byte PPP_parseReceivedPacketForClient(sword connectedclient)
 		if (Packetserver_clients[connectedclient].pktlen > sizeof(ethernetheader.data)) //Length might be fine?
 		{
 			result = 1; //Default: pending!
-			if (!Packetserver_clients[connectedclient].ppp_response.buffer) //Already receiving something?
-			{
-				return 1; //Keep pending until we can receive it!
-			}
 
 			memcpy(&ethernetheader.data, Packetserver_clients[connectedclient].packet, sizeof(ethernetheader.data)); //Take a look at the ethernet header!
 			if (ethernetheader.type != SDL_SwapBE16(0x8137)) //We're not an IPX packet!
 			{
 				return 0; //Unsupported packet type, discard!
+			}
+
+			if (Packetserver_clients[connectedclient].pktlen >= (30 + sizeof(ethernetheader.data))) //Proper IPX packet received?
+			{
+				memcpy(&ipxheader, &Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data)], 30); //Get the IPX header from the packet!
+				createPPPstream(&ipxechostream, &Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data)+30], Packetserver_clients[connectedclient].pktlen - (sizeof(ethernetheader.data)+30)); //Create a stream out of the possible echo packet!
+				createPPPstream(&pppstream, &Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data+18)], 12); //Create a stream out of the IPX packet source address!
+				if (SDL_SwapLE16(ipxheader.DestinationSocketNumber) == 2) //Echo request?
+				{
+					if (memcmp(&ipxheader.DestinationNetworkNumber, &Packetserver_clients[connectedclient].ipxcp_networknumber, 4)==0) //Network number match?
+					{
+						if (memcmp(&ipxheader.DestinationNodeNumber, &ipxbroadcastaddr, 6) == 0) //Destination node is the broadcast address?
+						{
+							//We're replying to the echo packet!
+							if (sendIPXechoreply(connectedclient, &ipxechostream, &pppstream)) //Sent a reply?
+							{
+								return 0; //Handled, discard!
+							}
+							else //Couldn't send a reply packet?
+							{
+								return 1; //Keep pending until we can send a reply!
+							}
+						}
+					}
+				}
+			}
+
+			if (!Packetserver_clients[connectedclient].ppp_response.buffer) //Already receiving something?
+			{
+				return 1; //Keep pending until we can receive it!
 			}
 
 			//TODO: Determine if the packet is to be received or not deoending on the IPX packet header. Just receive all compatible IPX packets for now.
