@@ -3838,7 +3838,7 @@ byte sendIPXechoreply(sword connectedclient, PPP_Stream *echodata, PPP_Stream *s
 	ppptransmitheader.dst[5] = 0xFF; //To a broadcast!
 	ppptransmitheader.type = SDL_SwapBE16(0x8137); //We're an IPX packet!
 
-	packetServerFreePacketBufferQueue(&response); //Clear the response to start filling it!
+	memset(&response,0,sizeof(response)); //Clear the response to start filling it!
 
 	for (skipdatacounter = 0; skipdatacounter < 14; ++skipdatacounter)
 	{
@@ -3944,7 +3944,6 @@ byte sendIPXechoreply(sword connectedclient, PPP_Stream *echodata, PPP_Stream *s
 //Send an IPX echo request to the network for all other existing clients to apply.
 byte sendIPXechorequest(sword connectedclient)
 {
-	byte datab;
 	byte result;
 	MODEM_PACKETBUFFER response;
 	ETHERNETHEADER ppptransmitheader;
@@ -3959,7 +3958,7 @@ byte sendIPXechorequest(sword connectedclient)
 	ppptransmitheader.dst[5] = 0xFF; //To a broadcast!
 	ppptransmitheader.type = SDL_SwapBE16(0x8137); //We're an IPX packet!
 
-	packetServerFreePacketBufferQueue(&response); //Clear the response to start filling it!
+	memset(&response,0,sizeof(response)); //Clear the response to start filling it!
 
 	for (skipdatacounter = 0; skipdatacounter < 14; ++skipdatacounter)
 	{
