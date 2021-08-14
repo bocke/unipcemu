@@ -538,6 +538,10 @@ void initPcap() {
 
 #ifdef _WIN32
 	pcap_loaded = LoadPcapLibrary(); //Load the PCap library that's to be used!
+#else
+#if defined(IS_LINUX) && !defined(NOPCAP)
+	pcap_loaded = 1; //pcap is always assumed loaded on Linux!
+#endif
 #endif
 
 	/*
