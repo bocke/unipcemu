@@ -3774,6 +3774,165 @@ word PPP_calcFCS(byte* buffer, uint_32 length)
 	return ~fcs; //One's complement value!
 }
 
+byte ipxbroadcastaddr[6] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF}; //IPX Broadcast address
+byte ipxnulladdr[6] = {0x00,0x00,0x00,0x00,0x00,0x00 }; //IPX Forbidden NULL address
+//result: 1 for OK address. 0 for overflow! NULL and Broadcast addresses are skipped automatically. addrsizeleft should be 6 (the size of an IPX address)
+byte incIPXaddr2(byte* ipxaddr, byte addrsizeleft) //addrsizeleft=6 for the address specified
+{
+	++*ipxaddr; //Increase the address!
+	if (*ipxaddr == 0) //Overflow?
+	{
+		if (--addrsizeleft) //Something left?
+		{
+			return incIPXaddr2(--ipxaddr, --addrsizeleft); //Try the next upper byte!
+		}
+		else //Nothing left to increase?
+		{
+			return 0; //Error out!
+		}
+	}
+	if (addrsizeleft == sizeof(ipxbroadcastaddr)) //No overflow for full address?
+	{
+		if (memcmp(ipxaddr-5, &ipxbroadcastaddr, sizeof(ipxbroadcastaddr)) == 0) //Broadcast address?
+		{
+			incIPXaddr2(ipxaddr, addrsizeleft); //Increase to NULL address (forbidden), which we'll skip!
+			return incIPXaddr2(ipxaddr, addrsizeleft); //Increase to the first address, which we'll use!
+		}
+		else if (memcmp(ipxaddr - 5, &ipxbroadcastaddr, sizeof(ipxnulladdr)) == 0) //Null address?
+		{
+			return incIPXaddr2(ipxaddr, addrsizeleft); //Increase to the first address, which we'll use!
+		}
+	}
+	return 1; //Address is OK!
+}
+
+//ipxaddr must point to the final byte of the address (it's in big endian format)
+byte incIPXaddr(byte* ipxaddr)
+{
+	return incIPXaddr2(ipxaddr, 6); //Increment the IPX address to a valid address!
+}
+
+//srcaddr should be 12 bytes in length.
+byte sendIPXecho(sword connectedclient, PPP_Stream *echodata, PPP_Stream *srcaddr)
+{
+	byte datab;
+	byte result;
+	MODEM_PACKETBUFFER response;
+	ETHERNETHEADER ppptransmitheader;
+	uint_32 skipdatacounter;
+	//Now, construct the ethernet header!
+	memcpy(&ppptransmitheader.src, &maclocal, 6); //From us!
+	ppptransmitheader.dst[0] = 0xFF;
+	ppptransmitheader.dst[1] = 0xFF;
+	ppptransmitheader.dst[2] = 0xFF;
+	ppptransmitheader.dst[3] = 0xFF;
+	ppptransmitheader.dst[4] = 0xFF;
+	ppptransmitheader.dst[5] = 0xFF; //To a broadcast!
+	ppptransmitheader.type = SDL_SwapBE16(0x8137); //We're an IPX packet!
+
+	packetServerFreePacketBufferQueue(&response); //Clear the response to start filling it!
+
+	for (skipdatacounter = 0; skipdatacounter < 14; ++skipdatacounter)
+	{
+		if (!packetServerAddPacketBufferQueue(&response, 0)) //Start making room for the header!
+		{
+			goto ppp_finishpacketbufferqueue_echo; //Keep pending!
+		}
+	}
+
+	memcpy(&response.buffer[0], ppptransmitheader.data, sizeof(ppptransmitheader.data)); //The ethernet header!
+	//Now, create the entire packet as the content for the IPX packet!
+	//Header fields
+	if (!packetServerAddPacketBufferQueueLE16(&response, 0xFFFF)) //Checksum!
+	{
+		goto ppp_finishpacketbufferqueue_echo; //Keep pending!
+	}
+	if (!packetServerAddPacketBufferQueueLE16(&response, PPP_streamdataleft(echodata)+30)) //Length!
+	{
+		goto ppp_finishpacketbufferqueue_echo; //Keep pending!
+	}
+	if (!packetServerAddPacketBufferQueue(&response, 0)) //Control!
+	{
+		goto ppp_finishpacketbufferqueue_echo; //Keep pending!
+	}
+	if (!packetServerAddPacketBufferQueue(&response, 0x2)) //Echo!
+	{
+		goto ppp_finishpacketbufferqueue_echo; //Keep pending!
+	}
+
+	//Now, the destination address, which is the sender of the original request packet!
+	for (skipdatacounter = 0; skipdatacounter < 4; ++skipdatacounter)
+	{
+		if (PPP_consumeStream(srcaddr, &datab)) //The information field itself follows!
+		{
+			if (!packetServerAddPacketBufferQueue(&response, datab))
+			{
+				goto ppp_finishpacketbufferqueue_echo;
+			}
+		}
+		else
+		{
+			goto ppp_finishpacketbufferqueue_echo;
+		}
+	}
+	for (skipdatacounter = 0; skipdatacounter < 6; ++skipdatacounter)
+	{
+		if (PPP_consumeStream(srcaddr, &datab)) //The information field itself follows!
+		{
+			if (!packetServerAddPacketBufferQueue(&response, datab))
+			{
+				goto ppp_finishpacketbufferqueue_echo;
+			}
+		}
+		else
+		{
+			goto ppp_finishpacketbufferqueue_echo;
+		}
+	}
+	if (!packetServerAddPacketBufferQueueLE16(&response, 0x2)) //Socket!
+	{
+		goto ppp_finishpacketbufferqueue_echo; //Keep pending!
+	}
+	//Now, the source address, which is our client address for the connected client!
+	for (skipdatacounter = 0; skipdatacounter < 4; ++skipdatacounter)
+	{
+		if (!packetServerAddPacketBufferQueue(&response, Packetserver_clients[connectedclient].ipxcp_networknumber[skipdatacounter])) //Our network number!
+		{
+			goto ppp_finishpacketbufferqueue_echo; //Keep pending!
+		}
+	}
+	for (skipdatacounter = 0; skipdatacounter < 6; ++skipdatacounter)
+	{
+		if (!packetServerAddPacketBufferQueue(&response, Packetserver_clients[connectedclient].ipxcp_nodenumber[skipdatacounter])) //Our network number!
+		{
+			goto ppp_finishpacketbufferqueue_echo; //Keep pending!
+		}
+	}
+	if (!packetServerAddPacketBufferQueueLE16(&response, 0x2)) //Socket!
+	{
+		goto ppp_finishpacketbufferqueue_echo; //Keep pending!
+	}
+	//This is followed by the data for from the echo packet!
+	for (; PPP_consumeStream(echodata, &datab);) //The information field itself follows!
+	{
+		if (!packetServerAddPacketBufferQueue(&response, datab))
+		{
+			goto ppp_finishpacketbufferqueue_echo;
+		}
+	}
+	//End of IPX packet creation.
+
+	//Now, the packet we've stored has become the packet to send!
+	sendpkt_pcap(response.buffer, response.length); //Send the response on the network!
+	result = 1; //Successfully sent!
+	goto ppp_finishpacketbufferqueue2_echo;
+	ppp_finishpacketbufferqueue_echo: //An error occurred during the response?
+	result = 0; //Keep pending until we can properly handle it!
+	ppp_finishpacketbufferqueue2_echo:
+	packetServerFreePacketBufferQueue(&response); //Free the queued response!
+	return result; //Give the result!
+}
+
 //result: 1 on success, 0 on pending.
 byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 {
