@@ -4892,6 +4892,10 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		packetServerFreePacketBufferQueue(&pppRejectFields); //Free the queued response!
 		break;
 	case 0xC023: //PAP?
+		if (!Packetserver_clients[connectedclient].PPP_LCPstatus) //LCP is closed?
+		{
+			goto ppp_invalidprotocol; //Invalid protocol!
+		}
 		if (!PPP_consumeStream(&pppstream, &common_CodeField)) //Code couldn't be read?
 		{
 			return 1; //Incorrect packet: discard it!
@@ -5051,7 +5055,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 	case 0x802B: //IPXCP?
 		if ((!Packetserver_clients[connectedclient].ppp_LCPstatus) || (!Packetserver_clients[connectedclient].ppp_PAPstatus)) //LCP is Closed or PAP isn't authenticated?
 		{
-			break; //Don't handle!
+			goto ppp_invalidprotocol; //Don't handle!
 		}
 
 		if (!PPP_consumeStream(&pppstream, &common_CodeField)) //Code couldn't be read?
@@ -5625,6 +5629,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		//TODO
 		//break;
 	default: //Unknown protocol?
+		ppp_invalidprotocol: //Invalid protocol used when not fully authenticated or verified?
 		if (Packetserver_clients[connectedclient].ppp_LCPstatus) //LCP is Open?
 		{
 			//Send a Code-Reject packet to the client!
