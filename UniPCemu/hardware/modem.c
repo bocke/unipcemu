@@ -3853,6 +3853,16 @@ byte incIPXaddr(byte* ipxaddr)
 	return incIPXaddr2(&ipxaddr[5], 6); //Increment the IPX address to a valid address from the LSB!
 }
 
+//ppp_responseforuser: a packet for an client has been placed for the client to receive.
+void ppp_responseforuser(sword connectedclient)
+{
+	//A packet has arrived for an user. Prepare the user data for receiving the packet properly.
+	Packetserver_clients[connectedclient].packetserver_packetpos = 0; //Reset packet position!
+	Packetserver_clients[connectedclient].packetserver_bytesleft = Packetserver_clients[connectedclient].ppp_response.length; //How much to send!
+	Packetserver_clients[connectedclient].PPP_packetreadyforsending = 1; //Ready, not pending anymore!
+	Packetserver_clients[connectedclient].PPP_packetpendingforsending = 0; //Ready, not pending anymore!
+}
+
 //srcaddr should be 12 bytes in length.
 byte sendIPXechoreply(sword connectedclient, PPP_Stream *echodata, PPP_Stream *srcaddr)
 {
@@ -4221,8 +4231,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		if (response.buffer) //Any response to give?
 		{
 			memcpy(&Packetserver_clients[connectedclient].ppp_response, &response, sizeof(response)); //Give the response to the client!
-			Packetserver_clients[connectedclient].packetserver_packetpos = 0; //Reset packet position!
-			Packetserver_clients[connectedclient].packetserver_bytesleft = response.length; //How much to send!
+			ppp_responseforuser(connectedclient); //A response is ready!
 			memset(&response, 0, sizeof(response)); //Parsed!
 			if (common_CodeField == 3) //NAK?
 			{
@@ -4607,8 +4616,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				if (response.buffer) //Any response to give?
 				{
 					memcpy(&Packetserver_clients[connectedclient].ppp_response, &response, sizeof(response)); //Give the response to the client!
-					Packetserver_clients[connectedclient].packetserver_packetpos = 0; //Reset packet position!
-					Packetserver_clients[connectedclient].packetserver_bytesleft = response.length; //How much to send!
+					ppp_responseforuser(connectedclient); //A response is ready!
 					memset(&response, 0, sizeof(response)); //Parsed!
 					//Now, apply the request properly!
 					Packetserver_clients[connectedclient].ppp_LCPstatus = 1; //Open!
@@ -4685,8 +4693,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			if (response.buffer) //Any response to give?
 			{
 				memcpy(&Packetserver_clients[connectedclient].ppp_response, &response, sizeof(response)); //Give the response to the client!
-				Packetserver_clients[connectedclient].packetserver_packetpos = 0; //Reset packet position!
-				Packetserver_clients[connectedclient].packetserver_bytesleft = response.length; //How much to send!
+				ppp_responseforuser(connectedclient); //A response is ready!
 				memset(&response, 0, sizeof(response)); //Parsed!
 				//Now, apply the request properly!
 				Packetserver_clients[connectedclient].ppp_LCPstatus = 0; //Closed!
@@ -4810,8 +4817,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			if (response.buffer) //Any response to give?
 			{
 				memcpy(&Packetserver_clients[connectedclient].ppp_response, &response, sizeof(response)); //Give the response to the client!
-				Packetserver_clients[connectedclient].packetserver_packetpos = 0; //Reset packet position!
-				Packetserver_clients[connectedclient].packetserver_bytesleft = response.length; //How much to send!
+				ppp_responseforuser(connectedclient); //A response is ready!
 				memset(&response, 0, sizeof(response)); //Parsed!
 			}
 			goto ppp_finishpacketbufferqueue2; //Finish up!
@@ -4877,8 +4883,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		if (response.buffer) //Any response to give?
 		{
 			memcpy(&Packetserver_clients[connectedclient].ppp_response, &response, sizeof(response)); //Give the response to the client!
-			Packetserver_clients[connectedclient].packetserver_packetpos = 0; //Reset packet position!
-			Packetserver_clients[connectedclient].packetserver_bytesleft = response.length; //How much to send!
+			ppp_responseforuser(connectedclient); //A response is ready!
 			memset(&response, 0, sizeof(response)); //Parsed!
 		}
 		goto ppp_finishcorrectpacketbufferqueue; //Success!
@@ -5014,8 +5019,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			if (response.buffer) //Any response to give?
 			{
 				memcpy(&Packetserver_clients[connectedclient].ppp_response, &response, sizeof(response)); //Give the response to the client!
-				Packetserver_clients[connectedclient].packetserver_packetpos = 0; //Reset packet position!
-				Packetserver_clients[connectedclient].packetserver_bytesleft = response.length; //How much to send!
+				ppp_responseforuser(connectedclient); //A response is ready!
 				memset(&response, 0, sizeof(response)); //Parsed!
 				//Now, apply the request properly!
 				if (pap_authenticated) //Authenticated?
@@ -5036,8 +5040,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		if (response.buffer) //Any response to give?
 		{
 			memcpy(&Packetserver_clients[connectedclient].ppp_response, &response, sizeof(response)); //Give the response to the client!
-			Packetserver_clients[connectedclient].packetserver_packetpos = 0; //Reset packet position!
-			Packetserver_clients[connectedclient].packetserver_bytesleft = response.length; //How much to send!
+			ppp_responseforuser(connectedclient); //A response is ready!
 			memset(&response, 0, sizeof(response)); //Parsed!
 		}
 		goto ppp_finishcorrectpacketbufferqueue_pap; //Success!
@@ -5428,8 +5431,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				if (response.buffer) //Any response to give?
 				{
 					memcpy(&Packetserver_clients[connectedclient].ppp_response, &response, sizeof(response)); //Give the response to the client!
-					Packetserver_clients[connectedclient].packetserver_packetpos = 0; //Reset packet position!
-					Packetserver_clients[connectedclient].packetserver_bytesleft = response.length; //How much to send!
+					ppp_responseforuser(connectedclient); //A response is ready!
 					memset(&response, 0, sizeof(response)); //Parsed!
 					//Now, apply the request properly!
 					Packetserver_clients[connectedclient].ppp_IPXCPstatus = 1; //Open!
@@ -5495,8 +5497,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			if (response.buffer) //Any response to give?
 			{
 				memcpy(&Packetserver_clients[connectedclient].ppp_response, &response, sizeof(response)); //Give the response to the client!
-				Packetserver_clients[connectedclient].packetserver_packetpos = 0; //Reset packet position!
-				Packetserver_clients[connectedclient].packetserver_bytesleft = response.length; //How much to send!
+				ppp_responseforuser(connectedclient); //A response is ready!
 				memset(&response, 0, sizeof(response)); //Parsed!
 				//Now, apply the request properly!
 				Packetserver_clients[connectedclient].ppp_IPXCPstatus = 0; //Closed!
@@ -5565,8 +5566,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		if (response.buffer) //Any response to give?
 		{
 			memcpy(&Packetserver_clients[connectedclient].ppp_response, &response, sizeof(response)); //Give the response to the client!
-			Packetserver_clients[connectedclient].packetserver_packetpos = 0; //Reset packet position!
-			Packetserver_clients[connectedclient].packetserver_bytesleft = response.length; //How much to send!
+			ppp_responseforuser(connectedclient); //A response is ready!
 			memset(&response, 0, sizeof(response)); //Parsed!
 		}
 		goto ppp_finishcorrectpacketbufferqueue_ipxcp; //Success!
@@ -5690,8 +5690,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			if (response.buffer) //Any response to give?
 			{
 				memcpy(&Packetserver_clients[connectedclient].ppp_response, &response, sizeof(response)); //Give the response to the client!
-				Packetserver_clients[connectedclient].packetserver_packetpos = 0; //Reset packet position!
-				Packetserver_clients[connectedclient].packetserver_bytesleft = response.length; //How much to send!
+				ppp_responseforuser(connectedclient); //A response is ready!
 				memset(&response, 0, sizeof(response)); //Parsed!
 				//Now, apply the request properly!
 				Packetserver_clients[connectedclient].ppp_LCPstatus = 0; //Closed!
@@ -5864,8 +5863,7 @@ byte PPP_parseReceivedPacketForClient(sword connectedclient)
 			if (response.buffer) //Any response to give?
 			{
 				memcpy(&Packetserver_clients[connectedclient].ppp_response, &response, sizeof(response)); //Give the response to the client!
-				Packetserver_clients[connectedclient].packetserver_packetpos = 0; //Reset packet position!
-				Packetserver_clients[connectedclient].packetserver_bytesleft = response.length; //How much to send!
+				ppp_responseforuser(connectedclient); //A response is ready!
 				memset(&response, 0, sizeof(response)); //Parsed!
 			}
 			result = 0; //Success!
@@ -6453,8 +6451,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 									}
 									if (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe && (Packetserver_clients[connectedclient].packetserver_slipprotocol == 3)) //Not suitable for consumption by the client yet?
 									{
-										Packetserver_clients[connectedclient].PPP_packetreadyforsending = 0; //Not ready to send to the client yet!
-										Packetserver_clients[connectedclient].PPP_packetpendingforsending = 0; //Not pending for sending by default!
+										//This is handled by the protocol itself! It has it's own packet handling code!
 									}
 									else //Packet ready for sending to the client!
 									{
@@ -6638,8 +6635,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 															goto invalidpacket; //Invalid packet!
 															break;
 														case 1: //Received it!
-															Packetserver_clients[connectedclient].PPP_packetreadyforsending = 1; //Ready, not pending anymore!
-															Packetserver_clients[connectedclient].PPP_packetpendingforsending = 0; //Ready, not pending anymore!
+															//Ready/pending is done by the PPP function!
 															goto invalidpacket; //Received the packet, so discard it!
 															break;
 														case 2: //Keep it pending!
