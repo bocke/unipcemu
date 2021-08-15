@@ -5926,7 +5926,7 @@ typedef struct PACKED
 typedef union PACKED
 {
 	UDPpseudoheader header;
-	word data[12]; //12 bytes of data!
+	byte data[12]; //12 bytes of data!
 } UDPpseudoheadercontainer;
 #include "headers/endpacked.h"
 
