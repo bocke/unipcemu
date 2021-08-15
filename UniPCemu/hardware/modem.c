@@ -5654,7 +5654,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			{
 				goto ppp_finishpacketbufferqueue; //Finish up!
 			}
-			if (!packetServerAddPacketBufferQueueBE16(&response, PPP_streamdataleft(&pppstream)+4)) //How much data follows!
+			if (!packetServerAddPacketBufferQueueBE16(&response, PPP_streamdataleft(&pppstream)+6)) //How much data follows!
 			{
 				goto ppp_finishpacketbufferqueue; //Finish up!
 			}
