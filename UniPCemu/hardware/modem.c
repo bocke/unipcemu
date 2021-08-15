@@ -3806,7 +3806,7 @@ word PPP_calcFCS(byte* buffer, uint_32 length)
 	{
 		fcs = (fcs >> 8) ^ fcslookup[(fcs & 0xFF) ^ buffer[pos]]; //Calcalate FCS!
 	}
-	return ~fcs; //One's complement value!
+	return SDL_SwapBE16(~fcs); //One's complement value! This is to be swapped to Big-Endian order to work properly!
 }
 
 byte ipxbroadcastaddr[6] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF}; //IPX Broadcast address
@@ -5740,7 +5740,7 @@ byte PPP_parseReceivedPacketForClient(sword connectedclient)
 				memcpy(&ipxheader, &Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data)], 30); //Get the IPX header from the packet!
 				createPPPstream(&ipxechostream, &Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data)+30], Packetserver_clients[connectedclient].pktlen - (sizeof(ethernetheader.data)+30)); //Create a stream out of the possible echo packet!
 				createPPPstream(&pppstream, &Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data+18)], 12); //Create a stream out of the IPX packet source address!
-				if (SDL_SwapLE16(ipxheader.DestinationSocketNumber) == 2) //Echo request?
+				if (SDL_SwapBE16(ipxheader.DestinationSocketNumber) == 2) //Echo request?
 				{
 					if (memcmp(&ipxheader.DestinationNetworkNumber, &Packetserver_clients[connectedclient].ipxcp_networknumber, 4)==0) //Network number match?
 					{
