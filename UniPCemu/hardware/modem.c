@@ -4112,7 +4112,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 	ETHERNETHEADER ppptransmitheader;
 	if (handleTransmit)
 	{
-		if (Packetserver_clients[connectedclient].packetserver_transmitlength < (3 + (Packetserver_clients[connectedclient].PPP_protocolcompressed ? 1 : 0) + (Packetserver_clients[connectedclient].PPP_headercompressed ? 2 : 0))) //Not enough for a full minimal PPP packet (with 1 byte of payload)?
+		if (Packetserver_clients[connectedclient].packetserver_transmitlength < (3 + (Packetserver_clients[connectedclient].PPP_protocolcompressed ? 1U : 0U) + (Packetserver_clients[connectedclient].PPP_headercompressed ? 2U : 0U))) //Not enough for a full minimal PPP packet (with 1 byte of payload)?
 		{
 			return 1; //Incorrect packet: discard it!
 		}
@@ -4366,7 +4366,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				{
 					goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
 				}
-				if (PPP_streamdataleft(&pppstream_requestfield) < (MAX(common_OptionLengthField,2)-2)) //Not enough room left for the option data?
+				if (PPP_streamdataleft(&pppstream_requestfield) < (MAX(common_OptionLengthField,2U)-2U)) //Not enough room left for the option data?
 				{
 					goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
 				}
@@ -5087,7 +5087,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				{
 					goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
 				}
-				if (PPP_streamdataleft(&pppstream_requestfield) < (MAX(common_OptionLengthField, 2) - 2)) //Not enough room left for the option data?
+				if (PPP_streamdataleft(&pppstream_requestfield) < (MAX(common_OptionLengthField, 2U) - 2U)) //Not enough room left for the option data?
 				{
 					goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
 				}
