@@ -6954,7 +6954,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 							}
 							else if ((Packetserver_clients[connectedclient].packetserver_transmitstate) && (Packetserver_clients[connectedclient].packetserver_slipprotocol==3) && ((!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe) || PPPOE_ENCODEDECODE)) //PPP ESCaped value?
 							{
-								if (Packetserver_clients[connectedclient].packetserver_transmitlength) //Gotten a valid packet?
+								if (Packetserver_clients[connectedclient].packetserver_transmitlength || ((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) && ((!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe)))) //Gotten a valid packet to start adding an escaped value to?
 								{
 									if (packetServerAddWriteQueue(connectedclient, PPP_DECODEESC(datatotransmit))) //Added to the queue?
 									{
@@ -6991,7 +6991,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 							}
 							else if (Packetserver_clients[connectedclient].packetserver_slipprotocol==3) //Active PPP data?
 							{
-								if (Packetserver_clients[connectedclient].packetserver_transmitlength) //Gotten a valid packet?
+								if (Packetserver_clients[connectedclient].packetserver_transmitlength || (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe)) //Gotten a valid packet?
 								{
 									goto addUnescapedValue; //Process an unescaped PPP value!
 								}
