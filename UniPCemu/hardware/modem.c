@@ -6771,7 +6771,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 						//Handle transmitting packets(with automatically increasing buffer sizing, as a packet can be received of any size theoretically)!
 						if (peekfifobuffer(modem.inputdatabuffer[connectedclient], &datatotransmit)) //Is anything transmitted yet?
 						{
-							if ((Packetserver_clients[connectedclient].packetserver_transmitlength == 0) && (!(((Packetserver_clients[connectedclient].packetserver_slipprotocol==3) && (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe)))) //We might need to create an ethernet header?
+							if ((Packetserver_clients[connectedclient].packetserver_transmitlength == 0) && (!((Packetserver_clients[connectedclient].packetserver_slipprotocol==3) && (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe)))) //We might need to create an ethernet header?
 							{
 								//Build an ethernet header, platform dependent!
 								//Use the data provided by the settings!
