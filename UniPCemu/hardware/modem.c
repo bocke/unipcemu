@@ -3280,6 +3280,18 @@ byte packetServerAddPacketBufferQueueBE16(MODEM_PACKETBUFFER* buffer, word data)
 	return 0; //Error!
 }
 
+byte packetServerAddPacketBufferQueueLE16(MODEM_PACKETBUFFER* buffer, word data) //Try to add something to the discovery queue!
+{
+	if (packetServerAddPacketBufferQueue(buffer, (data & 0xFF)))
+	{
+		if (packetServerAddPacketBufferQueue(buffer, ((data >> 8) & 0xFF)))
+		{
+			return 1; //Success!
+		}
+	}
+	return 0; //Error!
+}
+
 void packetServerFreePacketBufferQueue(MODEM_PACKETBUFFER *buffer)
 {
 	if (buffer->buffer) //Valid buffer to free?
