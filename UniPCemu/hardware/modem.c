@@ -4344,7 +4344,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		switch (common_CodeField) //What operation code?
 		{
 		case 1: //Configure-Request
-			if (!createPPPsubstream(&pppstream, &pppstream_requestfield, MAX(common_LengthField,3)-3)) //Not enough room for the data?
+			if (!createPPPsubstream(&pppstream, &pppstream_requestfield, MAX(common_LengthField,4)-4)) //Not enough room for the data?
 			{
 				goto ppp_finishpacketbufferqueue; //Finish up!
 			}
@@ -4573,11 +4573,11 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				{
 					goto ppp_finishpacketbufferqueue; //Finish up!
 				}
-				if (!createPPPsubstream(&pppstream, &pppstream_requestfield, MAX(common_LengthField, 3) - 3)) //Not enough room for the data?
+				if (!createPPPsubstream(&pppstream, &pppstream_requestfield, MAX(common_LengthField, 4) - 4)) //Not enough room for the data?
 				{
 					goto ppp_finishpacketbufferqueue; //Finish up!
 				}
-				if (!packetServerAddPacketBufferQueueBE16(&response, PPP_streamdataleft(&pppstream_requestfield))) //How much data follows!
+				if (!packetServerAddPacketBufferQueueBE16(&response, PPP_streamdataleft(&pppstream_requestfield))+4) //How much data follows!
 				{
 					goto ppp_finishpacketbufferqueue; //Finish up!
 				}
@@ -4657,7 +4657,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			{
 				goto ppp_finishpacketbufferqueue; //Finish up!
 			}
-			if (!packetServerAddPacketBufferQueueBE16(&response, PPP_streamdataleft(&pppstream))) //How much data follows!
+			if (!packetServerAddPacketBufferQueueBE16(&response, PPP_streamdataleft(&pppstream))+4) //How much data follows!
 			{
 				goto ppp_finishpacketbufferqueue; //Finish up!
 			}
@@ -4727,11 +4727,11 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			{
 				goto ppp_finishpacketbufferqueue; //Finish up!
 			}
-			if (!createPPPsubstream(&pppstream, &pppstream_requestfield, MAX(common_LengthField, 8) - 4)) //Not enough room for the data?
+			if (!createPPPsubstream(&pppstream, &pppstream_requestfield, MAX(common_LengthField, 4) - 4)) //Not enough room for the data?
 			{
 				goto ppp_finishpacketbufferqueue; //Finish up!
 			}
-			if (!packetServerAddPacketBufferQueueBE16(&response, PPP_streamdataleft(&pppstream_requestfield))) //How much data follows!
+			if (!packetServerAddPacketBufferQueueBE16(&response, PPP_streamdataleft(&pppstream_requestfield))+4) //How much data follows!
 			{
 				goto ppp_finishpacketbufferqueue; //Finish up!
 			}
@@ -4848,7 +4848,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			{
 				goto ppp_finishpacketbufferqueue; //Finish up!
 			}
-			if (!packetServerAddPacketBufferQueueBE16(&response, PPP_streamdataleft(&pppstream_informationfield)))
+			if (!packetServerAddPacketBufferQueueBE16(&response, PPP_streamdataleft(&pppstream_informationfield)+4))
 			//Now, the rejected packet itself!
 			for (; PPP_consumeStream(&pppstream_informationfield,&datab);) //The information field itself follows!
 			{
@@ -4986,11 +4986,11 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			{
 				goto ppp_finishpacketbufferqueue_pap; //Finish up!
 			}
-			if (!createPPPsubstream(&pppstream, &pppstream_requestfield, MAX(common_LengthField, 3) - 3)) //Not enough room for the data?
+			if (!createPPPsubstream(&pppstream, &pppstream_requestfield, MAX(common_LengthField, 4) - 4)) //Not enough room for the data?
 			{
 				goto ppp_finishpacketbufferqueue_pap; //Finish up!
 			}
-			if (!packetServerAddPacketBufferQueueBE16(&response, /*PPP_streamdataleft(&pppstream_requestfield)*/ 0)) //How much data follows (Message field)!
+			if (!packetServerAddPacketBufferQueueBE16(&response, /*PPP_streamdataleft(&pppstream_requestfield)*/ 4)) //How much data follows (Message field)!
 			{
 				goto ppp_finishpacketbufferqueue_pap; //Finish up!
 			}
@@ -5060,14 +5060,14 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		{
 			return 1; //Incorrect packet: discard it!
 		}
-		if (common_LengthField < 3) //Not enough data?
+		if (common_LengthField < 4) //Not enough data?
 		{
 			return 1; //Incorrect packet: discard it!
 		}
 		switch (common_CodeField) //What operation code?
 		{
 		case 1: //Configure-Request
-			if (!createPPPsubstream(&pppstream, &pppstream_requestfield, MAX(common_LengthField, 3) - 3)) //Not enough room for the data?
+			if (!createPPPsubstream(&pppstream, &pppstream_requestfield, MAX(common_LengthField, 4) - 4)) //Not enough room for the data?
 			{
 				goto ppp_finishpacketbufferqueue_ipxcp; //Finish up!
 			}
@@ -5389,11 +5389,11 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				{
 					goto ppp_finishpacketbufferqueue_ipxcp; //Finish up!
 				}
-				if (!createPPPsubstream(&pppstream, &pppstream_requestfield, MAX(common_LengthField, 3) - 3)) //Not enough room for the data?
+				if (!createPPPsubstream(&pppstream, &pppstream_requestfield, MAX(common_LengthField, 4) - 4)) //Not enough room for the data?
 				{
 					goto ppp_finishpacketbufferqueue_ipxcp; //Finish up!
 				}
-				if (!packetServerAddPacketBufferQueueBE16(&response, PPP_streamdataleft(&pppstream_requestfield))) //How much data follows!
+				if (!packetServerAddPacketBufferQueueBE16(&response, PPP_streamdataleft(&pppstream_requestfield)+4)) //How much data follows!
 				{
 					goto ppp_finishpacketbufferqueue_ipxcp; //Finish up!
 				}
@@ -5462,7 +5462,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			{
 				goto ppp_finishpacketbufferqueue_ipxcp; //Finish up!
 			}
-			if (!packetServerAddPacketBufferQueueBE16(&response, PPP_streamdataleft(&pppstream))) //How much data follows!
+			if (!packetServerAddPacketBufferQueueBE16(&response, PPP_streamdataleft(&pppstream)+4)) //How much data follows!
 			{
 				goto ppp_finishpacketbufferqueue_ipxcp; //Finish up!
 			}
@@ -5529,15 +5529,18 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			{
 				goto ppp_finishpacketbufferqueue_ipxcp; //Finish up!
 			}
-			if (!packetServerAddPacketBufferQueueBE16(&response, PPP_streamdataleft(&pppstream_informationfield)))
-				//Now, the rejected packet itself!
-				for (; PPP_consumeStream(&pppstream_informationfield, &datab);) //The information field itself follows!
+			if (!packetServerAddPacketBufferQueueBE16(&response, PPP_streamdataleft(&pppstream_informationfield)+4))
+			{
+				goto ppp_finishpacketbufferqueue_ipxcp; //Finish up!
+			}
+			//Now, the rejected packet itself!
+			for (; PPP_consumeStream(&pppstream_informationfield, &datab);) //The information field itself follows!
+			{
+				if (!packetServerAddPacketBufferQueue(&response, datab))
 				{
-					if (!packetServerAddPacketBufferQueue(&response, datab))
-					{
-						goto ppp_finishpacketbufferqueue_ipxcp;
-					}
+					goto ppp_finishpacketbufferqueue_ipxcp;
 				}
+			}
 			//Calculate and add the checksum field!
 			checksumfield = PPP_calcFCS(response.buffer, response.length); //The checksum field!
 			if (!packetServerAddPacketBufferQueueBE16(&response, checksumfield)) //Checksum failure?
@@ -5648,7 +5651,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			{
 				goto ppp_finishpacketbufferqueue; //Finish up!
 			}
-			if (!packetServerAddPacketBufferQueueBE16(&response, PPP_streamdataleft(&pppstream)+2)) //How much data follows!
+			if (!packetServerAddPacketBufferQueueBE16(&response, PPP_streamdataleft(&pppstream)+6)) //How much data follows!
 			{
 				goto ppp_finishpacketbufferqueue; //Finish up!
 			}
