@@ -3716,7 +3716,7 @@ byte PPP_consumeStream(PPP_Stream* stream, byte* result)
 }
 
 //result: -1: only managed to read 1 byte(result contains first byte), 0: failed completely, 1: Result read from stream!
-sbyte PPP_consumeStream16(PPP_Stream* stream, word* result)
+sbyte PPP_consumeStreamBE16(PPP_Stream* stream, word* result)
 {
 	byte temp, temp2;
 	if (PPP_consumeStream(stream, &temp)) //First byte!
@@ -4333,7 +4333,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		{
 			return 1; //Incorrect packet: discard it!
 		}
-		if (!PPP_consumeStream16(&pppstream, &common_LengthField)) //Length couldn't be read?
+		if (!PPP_consumeStreamBE16(&pppstream, &common_LengthField)) //Length couldn't be read?
 		{
 			return 1; //Incorrect packet: discard it!
 		}
@@ -4389,7 +4389,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 						}
 						continue; //Next entry please!
 					}
-					if (!PPP_consumeStream16(&pppstream_requestfield, &request_pendingMRU)) //Pending MRU field!
+					if (!PPP_consumeStreamBE16(&pppstream_requestfield, &request_pendingMRU)) //Pending MRU field!
 					{
 						goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
 					}
@@ -4495,7 +4495,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 						continue; //Next entry please!
 					}
 					request_magic_number_used = 1; //Set the request!
-					if (!PPP_consumeStream16(&pppstream, &request_authenticationprotocol)) //Length couldn't be read?
+					if (!PPP_consumeStreamBE16(&pppstream, &request_authenticationprotocol)) //Length couldn't be read?
 					{
 						result = 1; //Duscard!
 						goto ppp_finishpacketbufferqueue2; //Finish up!
@@ -4894,7 +4894,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		{
 			return 1; //Incorrect packet: discard it!
 		}
-		if (!PPP_consumeStream16(&pppstream, &common_LengthField)) //Length couldn't be read?
+		if (!PPP_consumeStreamBE16(&pppstream, &common_LengthField)) //Length couldn't be read?
 		{
 			return 1; //Incorrect packet: discard it!
 		}
@@ -5056,7 +5056,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		{
 			return 1; //Incorrect packet: discard it!
 		}
-		if (!PPP_consumeStream16(&pppstream, &common_LengthField)) //Length couldn't be read?
+		if (!PPP_consumeStreamBE16(&pppstream, &common_LengthField)) //Length couldn't be read?
 		{
 			return 1; //Incorrect packet: discard it!
 		}
@@ -5229,7 +5229,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 						}
 						continue; //Next entry please!
 					}
-					if (!PPP_consumeStream16(&pppstream_requestfield, &dataw)) //Pending Node Number field!
+					if (!PPP_consumeStreamBE16(&pppstream_requestfield, &dataw)) //Pending Node Number field!
 					{
 						goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
 					}
