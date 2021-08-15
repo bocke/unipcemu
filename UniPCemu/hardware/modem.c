@@ -4455,22 +4455,22 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 						continue; //Next entry please!
 					}
 					request_magic_number_used = 1; //Set the request!
-					if (!PPP_consumeStream(&pppstream, &request_magic_number[0])) //Length couldn't be read?
+					if (!PPP_consumeStream(&pppstream_requestfield, &request_magic_number[0])) //Length couldn't be read?
 					{
 						result = 1; //Duscard!
 						goto ppp_finishpacketbufferqueue2; //Finish up!
 					}
-					if (!PPP_consumeStream(&pppstream, &request_magic_number[1])) //Length couldn't be read?
+					if (!PPP_consumeStream(&pppstream_requestfield, &request_magic_number[1])) //Length couldn't be read?
 					{
 						result = 1; //Duscard!
 						goto ppp_finishpacketbufferqueue2; //Finish up!
 					}
-					if (!PPP_consumeStream(&pppstream, &request_magic_number[2])) //Length couldn't be read?
+					if (!PPP_consumeStream(&pppstream_requestfield, &request_magic_number[2])) //Length couldn't be read?
 					{
 						result = 1; //Duscard!
 						goto ppp_finishpacketbufferqueue2; //Finish up!
 					}
-					if (!PPP_consumeStream(&pppstream, &request_magic_number[3])) //Length couldn't be read?
+					if (!PPP_consumeStream(&pppstream_requestfield, &request_magic_number[3])) //Length couldn't be read?
 					{
 						result = 1; //Duscard!
 						goto ppp_finishpacketbufferqueue2; //Finish up!
@@ -4495,7 +4495,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 						continue; //Next entry please!
 					}
 					request_magic_number_used = 1; //Set the request!
-					if (!PPP_consumeStreamBE16(&pppstream, &request_authenticationprotocol)) //Length couldn't be read?
+					if (!PPP_consumeStreamBE16(&pppstream_requestfield, &request_authenticationprotocol)) //Length couldn't be read?
 					{
 						result = 1; //Duscard!
 						goto ppp_finishpacketbufferqueue2; //Finish up!
@@ -5126,7 +5126,6 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 					{
 						goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
 					}
-					
 					if (!PPP_consumeStream(&pppstream_requestfield, &data4[1])) //Pending Node Number field!
 					{
 						goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
@@ -5651,7 +5650,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			{
 				goto ppp_finishpacketbufferqueue; //Finish up!
 			}
-			if (!packetServerAddPacketBufferQueueBE16(&response, PPP_streamdataleft(&pppstream)+6)) //How much data follows!
+			if (!packetServerAddPacketBufferQueueBE16(&response, PPP_streamdataleft(&pppstream)+4)) //How much data follows!
 			{
 				goto ppp_finishpacketbufferqueue; //Finish up!
 			}
