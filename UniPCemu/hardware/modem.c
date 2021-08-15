@@ -6898,7 +6898,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 									//Clean up the packet container!
 									if (
 										((Packetserver_clients[connectedclient].packetserver_transmitlength > sizeof(ethernetheader.data)) && (Packetserver_clients[connectedclient].packetserver_slipprotocol!=3)) || //Anything buffered(the header is required)?
-										((Packetserver_clients[connectedclient].packetserver_transmitlength > 0x22) && (Packetserver_clients[connectedclient].packetserver_slipprotocol == 3)) //Anything buffered(the header is required)?
+										((Packetserver_clients[connectedclient].packetserver_transmitlength > 0x22) && (Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) && (Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe)) //Anything buffered(the header is required)?
 										|| ((Packetserver_clients[connectedclient].packetserver_transmitlength > 0) && (Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) && (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe)) //Anything buffered(the header is required)?
 										)
 									{
