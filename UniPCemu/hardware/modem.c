@@ -3720,6 +3720,23 @@ sbyte PPP_consumeStream16(PPP_Stream* stream, word* result)
 	return 0; //Failed at 0 bytes!
 }
 
+
+sbyte PPP_consumeStreamLE16(PPP_Stream* stream, word* result)
+{
+	byte temp, temp2;
+	if (PPP_consumeStream(stream, &temp)) //First byte!
+	{
+		if (PPP_consumeStream(stream, &temp2)) //Second byte!
+		{
+			*result = temp | (temp2 << 8); //Little endian word order!
+			return 1; //Success!
+		}
+		*result = temp; //What we've read successfully!
+		return -1; //Failed at 1 byte!
+	}
+	return 0; //Failed at 0 bytes!
+}
+
 byte PPP_peekStream(PPP_Stream* stream, byte* result)
 {
 	if (stream->pos >= stream->size) return 0; //End of stream reached!
