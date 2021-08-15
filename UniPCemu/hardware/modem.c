@@ -6771,7 +6771,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 						//Handle transmitting packets(with automatically increasing buffer sizing, as a packet can be received of any size theoretically)!
 						if (peekfifobuffer(modem.inputdatabuffer[connectedclient], &datatotransmit)) //Is anything transmitted yet?
 						{
-							if ((Packetserver_clients[connectedclient].packetserver_transmitlength == 0) && (Packetserver_clients[connectedclient].packetserver_slipprotocol)) //We might need to create an ethernet header?
+							if ((Packetserver_clients[connectedclient].packetserver_transmitlength == 0) && (!(((Packetserver_clients[connectedclient].packetserver_slipprotocol==3) && (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe)))) //We might need to create an ethernet header?
 							{
 								//Build an ethernet header, platform dependent!
 								//Use the data provided by the settings!
@@ -6813,14 +6813,11 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 								{
 									ethernetheader.type = SDL_SwapBE16(0x0800); //We're an IP packet!
 								}
-								if ((Packetserver_clients[connectedclient].packetserver_slipprotocol != 3) || (Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe)) //Requiring a header to be sent directly (not handled through a software)?
+								for (b = 0; b < 14; ++b) //Use the provided ethernet packet header!
 								{
-									for (b = 0; b < 14; ++b) //Use the provided ethernet packet header!
+									if (!packetServerAddWriteQueue(connectedclient, ethernetheader.data[b])) //Failed to add?
 									{
-										if (!packetServerAddWriteQueue(connectedclient, ethernetheader.data[b])) //Failed to add?
-										{
-											break; //Stop adding!
-										}
+										break; //Stop adding!
 									}
 								}
 								if ((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) && (Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe) && Packetserver_clients[connectedclient].pppoe_discovery_PADS.buffer && Packetserver_clients[connectedclient].pppoe_discovery_PADS.length) //PPP?
@@ -6880,6 +6877,8 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 									Packetserver_clients[connectedclient].packetserver_transmitlength = 0; //Abort the packet generation!
 								}
 							}
+							
+							//Now, parse the normal packet and decrypt it!
 							if (((datatotransmit == SLIP_END) && (Packetserver_clients[connectedclient].packetserver_slipprotocol!=3))
 									|| ((datatotransmit==PPP_END) && (Packetserver_clients[connectedclient].packetserver_slipprotocol==3))) //End-of-frame? Send the frame!
 							{
