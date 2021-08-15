@@ -6813,7 +6813,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 								{
 									ethernetheader.type = SDL_SwapBE16(0x0800); //We're an IP packet!
 								}
-								if ((Packetserver_clients[connectedclient].packetserver_slipprotocol != 3) || (Packetserver_clients[connectedclinet].packetserver_slipprotocol_pppoe)) //Requiring a header to be sent directly (not handled through a software)?
+								if ((Packetserver_clients[connectedclient].packetserver_slipprotocol != 3) || (Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe)) //Requiring a header to be sent directly (not handled through a software)?
 								{
 									for (b = 0; b < 14; ++b) //Use the provided ethernet packet header!
 									{
