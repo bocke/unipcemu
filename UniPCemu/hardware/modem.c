@@ -4337,7 +4337,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		{
 			return 1; //Incorrect packet: discard it!
 		}
-		if (common_LengthField < 3) //Not enough data?
+		if (common_LengthField < 4) //Not enough data?
 		{
 			return 1; //Incorrect packet: discard it!
 		}
