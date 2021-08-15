@@ -7333,6 +7333,10 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 								{
 									if (++Packetserver_clients[connectedclient].packetserver_stage_byte == safestrlen(Packetserver_clients[connectedclient].packetserver_stage_str, sizeof(Packetserver_clients[connectedclient].packetserver_stage_str))) //Finished?
 									{
+										if ((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) && (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe)) //PPP starts immediately?
+										{
+											goto startPPPimmediately;
+										}
 										Packetserver_clients[connectedclient].packetserver_delay = PACKETSERVER_SLIP_DELAY; //Delay this much!
 										PacketServer_startNextStage(connectedclient, PACKETSTAGE_SLIPDELAY); //Start delay stage next before starting the server fully!
 									}
@@ -7345,6 +7349,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 							Packetserver_clients[connectedclient].packetserver_delay -= timepassed; //Delaying!
 							if ((Packetserver_clients[connectedclient].packetserver_delay <= 0.0) || (!Packetserver_clients[connectedclient].packetserver_delay)) //Finished?
 							{
+								startPPPimmediately: //Start PPP immediately?
 								Packetserver_clients[connectedclient].packetserver_delay = (DOUBLE)0; //Finish the delay!
 								PacketServer_startNextStage(connectedclient, PACKETSTAGE_PACKETS); //Start the SLIP service!
 								if ((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) && (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe)) //PPP?
