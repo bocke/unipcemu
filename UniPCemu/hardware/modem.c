@@ -6813,11 +6813,14 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 								{
 									ethernetheader.type = SDL_SwapBE16(0x0800); //We're an IP packet!
 								}
-								for (b = 0; b < 14; ++b) //Use the provided ethernet packet header!
+								if ((Packetserver_clients[connectedclient].packetserver_slipprotocol != 3) || (Packetserver_clients[connectedclinet].packetserver_slipprotocol_pppoe)) //Requiring a header to be sent directly (not handled through a software)?
 								{
-									if (!packetServerAddWriteQueue(connectedclient,ethernetheader.data[b])) //Failed to add?
+									for (b = 0; b < 14; ++b) //Use the provided ethernet packet header!
 									{
-										break; //Stop adding!
+										if (!packetServerAddWriteQueue(connectedclient, ethernetheader.data[b])) //Failed to add?
+										{
+											break; //Stop adding!
+										}
 									}
 								}
 								if ((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) && (Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe) && Packetserver_clients[connectedclient].pppoe_discovery_PADS.buffer && Packetserver_clients[connectedclient].pppoe_discovery_PADS.length) //PPP?
@@ -6897,7 +6900,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 									if (
 										((Packetserver_clients[connectedclient].packetserver_transmitlength > sizeof(ethernetheader.data)) && (Packetserver_clients[connectedclient].packetserver_slipprotocol!=3)) || //Anything buffered(the header is required)?
 										((Packetserver_clients[connectedclient].packetserver_transmitlength > 0x22) && (Packetserver_clients[connectedclient].packetserver_slipprotocol == 3)) //Anything buffered(the header is required)?
-										|| ((Packetserver_clients[connectedclient].packetserver_transmitlength > sizeof(ethernetheader.data)) && (Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) && (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe)) //Anything buffered(the header is required)?
+										|| ((Packetserver_clients[connectedclient].packetserver_transmitlength > 0) && (Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) && (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe)) //Anything buffered(the header is required)?
 										)
 									{
 										//Send the frame to the server, if we're able to!
