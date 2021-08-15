@@ -4269,7 +4269,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		packetServerFreePacketBufferQueue(&response); //Free the queued response!
 		//Don't touch the NakReject field, as this is still pending!
 	ppp_finishcorrectpacketbufferqueueNAKReject: //Correctly finished!
-		return 0; //Keep pending!
+		return result; //Keep pending, is selected!
 	}
 	if (!handleTransmit) return 1; //Don't do anything more when not handling a transmit!
 	createPPPstream(&pppstream, &Packetserver_clients[connectedclient].packetserver_transmitbuffer[0], Packetserver_clients[connectedclient].packetserver_transmitlength-2); //Create a stream object for us to use, which goes until the end of the payload!
@@ -4636,8 +4636,9 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 					Packetserver_clients[connectedclient].ppp_IPXCPstatus = 0; //Closed!
 					Packetserver_clients[connectedclient].ipxcp_negotiationstatus = 0; //No negotation yet!
 				}
+				result = 1; //Success!
 			}
-			goto ppp_finishpacketbufferqueue; //Finish up!
+			goto ppp_finishpacketbufferqueue2; //Finish up!
 			break;
 		case 5: //Terminate-Request (Request termination of connection)
 			//Send a Code-Reject packet to the client!
@@ -4702,7 +4703,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				Packetserver_clients[connectedclient].PPP_protocolcompressed = 0; //Default: uncompressed
 				Packetserver_clients[connectedclient].have_magic_number = 0; //Default: no magic number yet
 			}
-			goto ppp_finishpacketbufferqueue; //Finish up!
+			goto ppp_finishpacketbufferqueue2; //Finish up!
 			break;
 		case 9: //Echo-Request (Request Echo-Reply. Required for an open connection to reply).
 			//Send a Code-Reject packet to the client!
@@ -4749,22 +4750,18 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			{
 				if (!PPP_consumeStream(&pppstream_requestfield, &request_magic_number[0])) //Length couldn't be read?
 				{
-					result = 1; //Duscard!
 					goto ppp_finishpacketbufferqueue2; //Finish up!
 				}
 				if (!PPP_consumeStream(&pppstream_requestfield, &request_magic_number[1])) //Length couldn't be read?
 				{
-					result = 1; //Duscard!
 					goto ppp_finishpacketbufferqueue2; //Finish up!
 				}
 				if (!PPP_consumeStream(&pppstream_requestfield, &request_magic_number[2])) //Length couldn't be read?
 				{
-					result = 1; //Duscard!
 					goto ppp_finishpacketbufferqueue2; //Finish up!
 				}
 				if (!PPP_consumeStream(&pppstream_requestfield, &request_magic_number[3])) //Length couldn't be read?
 				{
-					result = 1; //Duscard!
 					goto ppp_finishpacketbufferqueue2; //Finish up!
 				}
 				if (memcmp(&request_magic_number, Packetserver_clients[connectedclient].magic_number, sizeof(request_magic_number)) != 0) //Maguc number mismatch?
@@ -4886,14 +4883,13 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			ppp_responseforuser(connectedclient); //A response is ready!
 			memset(&response, 0, sizeof(response)); //Parsed!
 		}
-		goto ppp_finishcorrectpacketbufferqueue; //Success!
+		goto ppp_finishpacketbufferqueue2; //Success!
 		ppp_finishpacketbufferqueue: //An error occurred during the response?
 		result = 0; //Keep pending until we can properly handle it!
 		ppp_finishpacketbufferqueue2:
 		packetServerFreePacketBufferQueue(&response); //Free the queued response!
 		packetServerFreePacketBufferQueue(&pppNakFields); //Free the queued response!
 		packetServerFreePacketBufferQueue(&pppRejectFields); //Free the queued response!
-	ppp_finishcorrectpacketbufferqueue: //Correctly finished!
 		break;
 	case 0xC023: //PAP?
 		if (!PPP_consumeStream(&pppstream, &common_CodeField)) //Code couldn't be read?
@@ -5031,7 +5027,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 					Packetserver_clients[connectedclient].ppp_PAPstatus = 0; //Not authenticated!
 				}
 			}
-			goto ppp_finishpacketbufferqueue_pap; //Finish up!
+			goto ppp_finishpacketbufferqueue2_pap; //Finish up!
 			break;
 		default: //Unknown Code field?
 			goto ppp_finishpacketbufferqueue2_pap; //Finish up only (NOP)!
@@ -5043,14 +5039,14 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			ppp_responseforuser(connectedclient); //A response is ready!
 			memset(&response, 0, sizeof(response)); //Parsed!
 		}
-		goto ppp_finishcorrectpacketbufferqueue_pap; //Success!
+		result = 1; //Handled!
+		goto ppp_finishpacketbufferqueue2_pap; //Success!
 	ppp_finishpacketbufferqueue_pap: //An error occurred during the response?
 		result = 0; //Keep pending until we can properly handle it!
 	ppp_finishpacketbufferqueue2_pap:
 		packetServerFreePacketBufferQueue(&response); //Free the queued response!
 		packetServerFreePacketBufferQueue(&pppNakFields); //Free the queued response!
 		packetServerFreePacketBufferQueue(&pppRejectFields); //Free the queued response!
-	ppp_finishcorrectpacketbufferqueue_pap: //Correctly finished!
 		break;
 	case 0x802B: //IPXCP?
 		if ((!Packetserver_clients[connectedclient].ppp_LCPstatus) || (!Packetserver_clients[connectedclient].ppp_PAPstatus)) //LCP is Closed or PAP isn't authenticated?
@@ -5441,7 +5437,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 					Packetserver_clients[connectedclient].ipxcp_routingprotocol = ipxcp_pendingroutingprotocol; //No routing protocol!
 				}
 			}
-			goto ppp_finishpacketbufferqueue_ipxcp; //Finish up!
+			goto ppp_finishpacketbufferqueue2_ipxcp; //Finish up!
 			break;
 		case 5: //Terminate-Request (Request termination of connection)
 			//Send a Code-Reject packet to the client!
@@ -5503,7 +5499,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				Packetserver_clients[connectedclient].ppp_IPXCPstatus = 0; //Closed!
 				Packetserver_clients[connectedclient].ipxcp_negotiationstatus = 0; //No negotation yet!
 			}
-			goto ppp_finishpacketbufferqueue_ipxcp; //Finish up!
+			goto ppp_finishpacketbufferqueue2_ipxcp; //Finish up!
 			break;
 		case 2: //Configure-Ack (All options OK)
 		case 3: //Configure-Nak (Some options unacceptable)
@@ -5569,14 +5565,13 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			ppp_responseforuser(connectedclient); //A response is ready!
 			memset(&response, 0, sizeof(response)); //Parsed!
 		}
-		goto ppp_finishcorrectpacketbufferqueue_ipxcp; //Success!
+		goto ppp_finishpacketbufferqueue2_ipxcp; //Success!
 	ppp_finishpacketbufferqueue_ipxcp: //An error occurred during the response?
 		result = 0; //Keep pending until we can properly handle it!
-	//ppp_finishpacketbufferqueue2_ipxcp:
+	ppp_finishpacketbufferqueue2_ipxcp:
 		packetServerFreePacketBufferQueue(&response); //Free the queued response!
 		packetServerFreePacketBufferQueue(&pppNakFields); //Free the queued response!
 		packetServerFreePacketBufferQueue(&pppRejectFields); //Free the queued response!
-	ppp_finishcorrectpacketbufferqueue_ipxcp: //Correctly finished!
 		break;
 	case 0x2B: //IPX datagram?
 		if (Packetserver_clients[connectedclient].ppp_IPXCPstatus && Packetserver_clients[connectedclient].ppp_PAPstatus && Packetserver_clients[connectedclient].ppp_LCPstatus) //Fully authenticated and logged in?
@@ -5624,7 +5619,6 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 
 			//Now, the packet we've stored has become the packet to send!
 			sendpkt_pcap(response.buffer, response.length); //Send the response on the network!
-			result = 1; //Successfully sent!
 			goto ppp_finishpacketbufferqueue2;
 			break;
 		}
@@ -5700,7 +5694,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				Packetserver_clients[connectedclient].ppp_protocolreject_count = 0; //Default: 0!
 				Packetserver_clients[connectedclient].have_magic_number = 0; //Default: no magic number yet
 			}
-			goto ppp_finishpacketbufferqueue; //Finish up!
+			goto ppp_finishpacketbufferqueue2; //Finish up!
 		}
 		break;
 	}
@@ -5867,12 +5861,11 @@ byte PPP_parseReceivedPacketForClient(sword connectedclient)
 				memset(&response, 0, sizeof(response)); //Parsed!
 			}
 			result = 0; //Success!
-			goto ppp_finishcorrectpacketbufferqueue_ppprecv; //Success!
+			goto ppp_finishcorrectpacketbufferqueue2_ppprecv; //Success!
 		ppp_finishpacketbufferqueue_ppprecv: //An error occurred during the response?
 			result = 2; //Keep pending until we can properly handle it!
-		//ppp_finishpacketbufferqueue2_ppprecv:
+		ppp_finishcorrectpacketbufferqueue2_ppprecv: //Correctly finished!
 			packetServerFreePacketBufferQueue(&response); //Free the queued response!
-		ppp_finishcorrectpacketbufferqueue_ppprecv: //Correctly finished!
 			return result; //Give the result!
 		}
 	}
