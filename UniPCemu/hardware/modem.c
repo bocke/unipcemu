@@ -4208,7 +4208,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		}
 		//Calculate and add the checksum field!
 		checksumfield = PPP_calcFCS(response.buffer, response.length); //The checksum field!
-		if (!packetServerAddPacketBufferQueueLE16(&response, checksumfield)) //Checksum failure?
+		if (!packetServerAddPacketBufferQueueBE16(&response, checksumfield)) //Checksum failure?
 		{
 			goto ppp_finishpacketbufferqueueNAKReject;
 		}
@@ -4305,7 +4305,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 	}
 	//Otherwise, it's a 1-byte protocol!
 	//It might be a valid packet if we got here! Perform the checksum first to check!
-	if (!PPP_consumeStreamLE16(&checksumppp, &checksumfield)) //Gotten the checksum from the packet?
+	if (!PPP_consumeStreamBE16(&checksumppp, &checksumfield)) //Gotten the checksum from the packet?
 	{
 		return 1; //Incorrect packet: discard it!
 	}
@@ -4594,7 +4594,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				}
 				//Calculate and add the checksum field!
 				checksumfield = PPP_calcFCS(response.buffer, response.length); //The checksum field!
-				if (!packetServerAddPacketBufferQueueLE16(&response, checksumfield)) //Checksum failure?
+				if (!packetServerAddPacketBufferQueueBE16(&response, checksumfield)) //Checksum failure?
 				{
 					goto ppp_finishpacketbufferqueue;
 				}
@@ -4671,7 +4671,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			}
 			//Calculate and add the checksum field!
 			checksumfield = PPP_calcFCS(response.buffer, response.length); //The checksum field!
-			if (!packetServerAddPacketBufferQueueLE16(&response, checksumfield)) //Checksum failure?
+			if (!packetServerAddPacketBufferQueueBE16(&response, checksumfield)) //Checksum failure?
 			{
 				goto ppp_finishpacketbufferqueue;
 			}
@@ -4795,7 +4795,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			}
 			//Calculate and add the checksum field!
 			checksumfield = PPP_calcFCS(response.buffer, response.length); //The checksum field!
-			if (!packetServerAddPacketBufferQueueLE16(&response, checksumfield)) //Checksum failure?
+			if (!packetServerAddPacketBufferQueueBE16(&response, checksumfield)) //Checksum failure?
 			{
 				goto ppp_finishpacketbufferqueue;
 			}
@@ -4859,7 +4859,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			}
 			//Calculate and add the checksum field!
 			checksumfield = PPP_calcFCS(response.buffer, response.length); //The checksum field!
-			if (!packetServerAddPacketBufferQueueLE16(&response, checksumfield)) //Checksum failure?
+			if (!packetServerAddPacketBufferQueueBE16(&response, checksumfield)) //Checksum failure?
 			{
 				goto ppp_finishpacketbufferqueue;
 			}
@@ -4997,7 +4997,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			//No messager for now!
 			//Calculate and add the checksum field!
 			checksumfield = PPP_calcFCS(response.buffer, response.length); //The checksum field!
-			if (!packetServerAddPacketBufferQueueLE16(&response, checksumfield)) //Checksum failure?
+			if (!packetServerAddPacketBufferQueueBE16(&response, checksumfield)) //Checksum failure?
 			{
 				goto ppp_finishpacketbufferqueue_pap;
 			}
@@ -5410,7 +5410,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				}
 				//Calculate and add the checksum field!
 				checksumfield = PPP_calcFCS(response.buffer, response.length); //The checksum field!
-				if (!packetServerAddPacketBufferQueueLE16(&response, checksumfield)) //Checksum failure?
+				if (!packetServerAddPacketBufferQueueBE16(&response, checksumfield)) //Checksum failure?
 				{
 					goto ppp_finishpacketbufferqueue_ipxcp;
 				}
@@ -5476,7 +5476,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			}
 			//Calculate and add the checksum field!
 			checksumfield = PPP_calcFCS(response.buffer, response.length); //The checksum field!
-			if (!packetServerAddPacketBufferQueueLE16(&response, checksumfield)) //Checksum failure?
+			if (!packetServerAddPacketBufferQueueBE16(&response, checksumfield)) //Checksum failure?
 			{
 				goto ppp_finishpacketbufferqueue_ipxcp;
 			}
@@ -5540,7 +5540,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				}
 			//Calculate and add the checksum field!
 			checksumfield = PPP_calcFCS(response.buffer, response.length); //The checksum field!
-			if (!packetServerAddPacketBufferQueueLE16(&response, checksumfield)) //Checksum failure?
+			if (!packetServerAddPacketBufferQueueBE16(&response, checksumfield)) //Checksum failure?
 			{
 				goto ppp_finishpacketbufferqueue_ipxcp;
 			}
@@ -5666,7 +5666,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			}
 			//Calculate and add the checksum field!
 			checksumfield = PPP_calcFCS(response.buffer, response.length); //The checksum field!
-			if (!packetServerAddPacketBufferQueueLE16(&response, checksumfield)) //Checksum failure?
+			if (!packetServerAddPacketBufferQueueBE16(&response, checksumfield)) //Checksum failure?
 			{
 				goto ppp_finishpacketbufferqueue;
 			}
@@ -5839,7 +5839,7 @@ byte PPP_parseReceivedPacketForClient(sword connectedclient)
 			}
 			//Calculate and add the checksum field!
 			checksumfield = PPP_calcFCS(response.buffer, response.length); //The checksum field!
-			if (!packetServerAddPacketBufferQueueLE16(&response, checksumfield)) //Checksum failure?
+			if (!packetServerAddPacketBufferQueueBE16(&response, checksumfield)) //Checksum failure?
 			{
 				goto ppp_finishpacketbufferqueue_ppprecv;
 			}
