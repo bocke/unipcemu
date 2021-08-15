@@ -6923,16 +6923,16 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 												Packetserver_clients[connectedclient].packetserver_transmitbuffer[0x12] = NETWORKVALSPLITTER.bval[0]; //First byte!
 												Packetserver_clients[connectedclient].packetserver_transmitbuffer[0x13] = NETWORKVALSPLITTER.bval[1]; //Second byte!
 											}
-											if (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe) //Able to send the packet?
+											if ((!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe) && (Packetserver_clients[connectedclient].packetserver_slipprotocol == 3)) //Able to send the packet for the PPP connection we manage?
 											{
-												sendpkt_pcap(Packetserver_clients[connectedclient].packetserver_transmitbuffer, Packetserver_clients[connectedclient].packetserver_transmitlength); //Send the packet!
-											}
-											else
-											{
-												if (!PPP_parseSentPacketFromClient(connectedclient,1)) //TODO: Parse PPP packets to their respective ethernet or IPv4 protocols for sending to the ethernet layer, as supported!
+												if (!PPP_parseSentPacketFromClient(connectedclient, 1)) //Parse PPP packets to their respective ethernet or IPv4 protocols for sending to the ethernet layer, as supported!
 												{
 													goto skipSLIP_PPP; //Keep the packet parsing pending!
 												}
+											}
+											else //Able to send the packet always?
+											{
+												sendpkt_pcap(Packetserver_clients[connectedclient].packetserver_transmitbuffer, Packetserver_clients[connectedclient].packetserver_transmitlength); //Send the packet!
 											}
 										}
 										else
