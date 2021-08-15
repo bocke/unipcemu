@@ -4232,7 +4232,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 	ppp_finishcorrectpacketbufferqueueNAKReject: //Correctly finished!
 		return 0; //Keep pending!
 	}
-	if (!handleTransmit) return 0; //Don't do anything more when not handling a transmit!
+	if (!handleTransmit) return 1; //Don't do anything more when not handling a transmit!
 	createPPPstream(&pppstream, &Packetserver_clients[connectedclient].packetserver_transmitbuffer[0], Packetserver_clients[connectedclient].packetserver_transmitlength-2); //Create a stream object for us to use, which goes until the end of the payload!
 	createPPPstream(&checksumppp, &Packetserver_clients[connectedclient].packetserver_transmitbuffer[Packetserver_clients[connectedclient].packetserver_transmitlength - 2], 2); //Create a stream object for us to use for the checksum!
 	memcpy(&pppstreambackup, &pppstream, sizeof(pppstream)); //Backup for checking again!
