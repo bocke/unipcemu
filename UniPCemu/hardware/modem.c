@@ -5686,13 +5686,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				memcpy(&Packetserver_clients[connectedclient].ppp_response, &response, sizeof(response)); //Give the response to the client!
 				ppp_responseforuser(connectedclient); //A response is ready!
 				memset(&response, 0, sizeof(response)); //Parsed!
-				//Now, apply the request properly!
-				Packetserver_clients[connectedclient].ppp_LCPstatus = 0; //Closed!
-				Packetserver_clients[connectedclient].PPP_MRU = 1500; //Default: 1500
-				Packetserver_clients[connectedclient].PPP_headercompressed = 0; //Default: uncompressed
-				Packetserver_clients[connectedclient].PPP_protocolcompressed = 0; //Default: uncompressed
-				Packetserver_clients[connectedclient].ppp_protocolreject_count = 0; //Default: 0!
-				Packetserver_clients[connectedclient].have_magic_number = 0; //Default: no magic number yet
+				//This doesn't affect any state otherwise!
 			}
 			goto ppp_finishpacketbufferqueue2; //Finish up!
 		}
