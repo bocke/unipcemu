@@ -7459,6 +7459,8 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 									Packetserver_clients[connectedclient].PPP_headercompressed = 0; //Default: uncompressed
 									Packetserver_clients[connectedclient].PPP_protocolcompressed = 0; //Default: uncompressed
 									Packetserver_clients[connectedclient].ppp_protocolreject_count = 0; //Default: 0!
+									Packetserver_clients[connectedclient].ppp_LCPstatus = Packetserver_clients[connectedclient].ppp_PAPstatus = Packetserver_clients[connectedclient].ppp_IPXCPstatus = 0; //Reset all protocols to init state!
+									Packetserver_clients[connectedclient].asynccontrolcharactermap = 0xFFFFFFFF; //Initialize the Async Control Character Map to init value!
 								}
 							}
 						}
