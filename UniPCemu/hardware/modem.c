@@ -4873,6 +4873,16 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			}
 			goto ppp_finishpacketbufferqueue2; //Finish up!
 			break;
+		case 11: //Discard-Request
+			if (Packetserver_clients[connectedclient].ppp_LCPstatus) //LCP opened?
+			{
+				//Magic-NUmber is ignored.
+				//This packet is fully discarded!
+				result = 1; //Simply discard it, not doing anything with this packet!
+				goto ppp_finishpacketbufferqueue2; //Simply 
+				break;
+			}
+			//Is LCP is closed, an Code-Reject is issued instead?
 		case 2: //Configure-Ack (All options OK)
 		case 3: //Configure-Nak (Some options unacceptable)
 		case 4: //Configure-Reject (Some options not recognisable or acceptable for negotiation)
@@ -4880,7 +4890,6 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		case 7: //Code-Reject (Code field is rejected because it's unknown)
 		case 8: //Protocol-Reject (Protocol field is rejected for an active connection)
 		case 10: //Echo-Reply
-		case 11: //Discard-Request
 		default: //Unknown Code field?
 			//Send a Code-Reject packet to the client!
 			memset(&response, 0, sizeof(response)); //Init the response!
