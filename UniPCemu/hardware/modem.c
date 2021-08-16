@@ -4296,6 +4296,17 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			return 1; //incorret packet: discard it!
 		}
 	}
+	else //Header MIGHT be compressed?
+	{
+		if (!PPP_consumeStreamBE16(&pppstream, &dataw))
+		{
+			return 1; //Incorrect packet: discard it!
+		}
+		if (dataw != 0xFF03) //The first two bytes are not 0xFF and 0x03? It's an compressed header instead!
+		{
+			memcpy(&pppstream, &pppstreambackup, sieof(pppstream)); //Return the stream to it's proper start, being compressed away!
+		}
+	}
 	//Now, the packet is at the protocol byte/word, so parse it!
 	if (!PPP_consumeStream(&pppstream, &datab))
 	{
