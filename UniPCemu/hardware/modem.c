@@ -4304,7 +4304,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		}
 		if (dataw != 0xFF03) //The first two bytes are not 0xFF and 0x03? It's an compressed header instead!
 		{
-			memcpy(&pppstream, &pppstreambackup, sieof(pppstream)); //Return the stream to it's proper start, being compressed away!
+			memcpy(&pppstream, &pppstreambackup, sizeof(pppstream)); //Return the stream to it's proper start, being compressed away!
 		}
 	}
 	//Now, the packet is at the protocol byte/word, so parse it!
