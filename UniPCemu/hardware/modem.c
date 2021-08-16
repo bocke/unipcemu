@@ -279,6 +279,7 @@ typedef struct
 	word ipxcp_routingprotocol;
 	byte ipxcp_negotiationstatus; //Negotiation status for the IPXCP login. 0=Ready for new negotiation. 1=Negotiation request has been sent. 2=Negotation has been given a reply and to NAK, 3=Negotiation has succeeded.
 	TicksHolder ipxcp_negotiationstatustimer; //Negotiation status timer for determining response time!
+	uint_32 asynccontrolcharactermap; //Async control character map, stored in little endian format!
 } PacketServer_client;
 
 PacketServer_client Packetserver_clients[0x100]; //Up to 100 clients!
@@ -4108,6 +4109,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 	byte request_pendingAddressAndControlFieldCompression; //Default: no address-and-control-field compression!
 	byte request_magic_number_used; //Default: none
 	byte request_magic_number[4]; //Set magic number
+	byte request_asynccontrolcharactermap[4]; //ASync-Control-Character-Map MSB to LSB (Big Endian)!
 	word request_authenticationprotocol; //Authentication protocol requested!
 	byte request_authenticationspecified; //Authentication protocol used!
 	uint_32 skipdatacounter;
@@ -4364,6 +4366,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			memset(&request_magic_number, 0, sizeof(request_magic_number)); //Default: none
 			request_magic_number_used = 0; //Default: not used!
 			request_authenticationspecified = 0; //Default: not used!
+			request_asynccontrolcharactermap[0] = request_asynccontrolcharactermap[1] = request_asynccontrolcharactermap[2] = request_asynccontrolcharactermap[3] = 0xFF; //All ones by default!
 
 			//Now, start parsing the options for the connection!
 			for (; PPP_peekStream(&pppstream_requestfield, &common_TypeField);) //Gotten a new option to parse?
@@ -4516,6 +4519,56 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 					}
 					request_authenticationspecified = 1; //Request that authentication be used!
 					break;
+				case 2: //ASync-Control-Character-Map
+					if (common_OptionLengthField != 6) //Unsupported length?
+					{
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, common_TypeField)) //NAK it!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 6)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0xFF)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0xFF)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0xFF)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0xFF)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						continue; //Next entry please!
+					}
+					if (!PPP_consumeStream(&pppstream_requestfield, &request_asynccontrolcharactermap[0])) //Length couldn't be read?
+					{
+						result = 1; //Duscard!
+						goto ppp_finishpacketbufferqueue2; //Finish up!
+					}
+					if (!PPP_consumeStream(&pppstream_requestfield, &request_asynccontrolcharactermap[1])) //Length couldn't be read?
+					{
+						result = 1; //Duscard!
+						goto ppp_finishpacketbufferqueue2; //Finish up!
+					}
+					if (!PPP_consumeStream(&pppstream_requestfield, &request_asynccontrolcharactermap[2])) //Length couldn't be read?
+					{
+						result = 1; //Duscard!
+						goto ppp_finishpacketbufferqueue2; //Finish up!
+					}
+					if (!PPP_consumeStream(&pppstream_requestfield, &request_asynccontrolcharactermap[3])) //Length couldn't be read?
+					{
+						result = 1; //Duscard!
+						goto ppp_finishpacketbufferqueue2; //Finish up!
+					}
+					break;
 				case 4: //Quality protocol
 				default: //Unknown option?
 					if (!packetServerAddPacketBufferQueue(&pppRejectFields, common_TypeField)) //NAK it!
@@ -4623,6 +4676,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 					Packetserver_clients[connectedclient].PPP_MRU = request_pendingMRU; //MRU!
 					Packetserver_clients[connectedclient].PPP_headercompressed = request_pendingAddressAndControlFieldCompression; //Header compression!
 					Packetserver_clients[connectedclient].PPP_protocolcompressed = request_pendingProtocolFieldCompression; //Protocol compressed!
+					Packetserver_clients[connectedclient].asynccontrolcharactermap = SDL_SwapBE32((request_asynccontrolcharactermap[0]|(request_asynccontrolcharactermap[1]<<8)|(request_asynccontrolcharactermap[2]<<16)|(request_asynccontrolcharactermap[3]<<24)));
 					memcpy(&Packetserver_clients[connectedclient].magic_number, &request_magic_number, sizeof(request_magic_number)); //Magic number
 					Packetserver_clients[connectedclient].have_magic_number = request_magic_number_used; //Use magic number?
 					if (request_authenticationspecified) //Authentication specified?
@@ -6708,7 +6762,22 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 													}
 													else //Normal data?
 													{
-														writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, datatotransmit); //Unescaped!
+														if ((!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe) && (datatotransmit < 0x20)) //Might need to be escaped?
+														{
+															if (Packetserver_clients[connectedclient].asynccontrolcharactermap & (1 << (datatotransmit & 0x1F))) //To be escaped?
+															{
+																writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, PPP_ESC); //Escaped ...
+																writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, PPP_ENCODEESC(PPP_ESC)); //ESC raw data!
+															}
+															else //Not escaped!
+															{
+																writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, datatotransmit); //Unescaped!
+															}
+														}
+														else
+														{
+															writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, datatotransmit); //Unescaped!
+														}
 													}
 													Packetserver_clients[connectedclient].pppoe_lastrecvbytewasEND = 0; //Last wasn't END!
 												}
