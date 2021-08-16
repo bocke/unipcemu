@@ -5687,7 +5687,8 @@ byte inATA8(word port, byte *result)
 	case 7: //Status?
 		if (!(ATA_Drives[ATA_channel][0] || ATA_Drives[ATA_channel][1])) //Invalid controller?
 		{
-			return 0; //Float the bus: nothing is connected!
+			*result = 0x7F; //Busy is pulled down!
+			return 1; //Float the bus: nothing is connected!
 		}
 		ATA_updateStatus(ATA_channel); //Update the status register if needed!
 		ATA_removeIRQ(ATA_channel,ATA_activeDrive(ATA_channel)); //Acnowledge IRQ!
