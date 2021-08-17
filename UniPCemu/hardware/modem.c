@@ -7498,6 +7498,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 									Packetserver_clients[connectedclient].ppp_protocolreject_count = 0; //Default: 0!
 									Packetserver_clients[connectedclient].ppp_LCPstatus = Packetserver_clients[connectedclient].ppp_PAPstatus = Packetserver_clients[connectedclient].ppp_IPXCPstatus = 0; //Reset all protocols to init state!
 									Packetserver_clients[connectedclient].asynccontrolcharactermap = 0xFFFFFFFF; //Initialize the Async Control Character Map to init value!
+									packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].ppp_response); //Free the response that's queued for packets to be sent to the client if anything is left!
 								}
 							}
 						}
