@@ -6529,7 +6529,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 								}
 								if (fifobuffer_freesize(Packetserver_clients[connectedclient].packetserver_receivebuffer) >= 2) //Valid to produce more data?
 								{
-									if ((Packetserver_clients[connectedclient].packetserver_packetpos == 0) && (Packetserver_clients[connectedclient].packetserver_packetack == 0)) //New packet?
+									if ((Packetserver_clients[connectedclient].packetserver_packetpos == 0) && (Packetserver_clients[connectedclient].packetserver_packetack == 0) && (Packetserver_clients[connectedclient].packet)) //New packet?
 									{
 										if (Packetserver_clients[connectedclient].pktlen > (sizeof(ethernetheader.data) + ((Packetserver_clients[connectedclient].packetserver_slipprotocol!=3)?20:7))) //Length OK(at least one byte of data and complete IP header) or the PPP packet size?
 										{
