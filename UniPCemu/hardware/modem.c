@@ -6519,7 +6519,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 						//Handle packet server packet data transfers into the inputdatabuffer/outputbuffer to the network!
 						if (Packetserver_clients[connectedclient].packetserver_receivebuffer) //Properly allocated?
 						{
-							if (net.packet || Packetserver_clients[connectedclient].packet || (((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3)) && (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe) && (Packetserver_clients[connectedclient].ppp_response.buffer))) //Packet has been received or processing? Try to start transmit it!
+							if (net.packet || Packetserver_clients[connectedclient].packet || ((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) && (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe)) || (Packetserver_clients[connectedclient].ppp_response.buffer)) //Packet has been received or processing? Try to start transmit it!
 							{
 								if (Packetserver_clients[connectedclient].packet == NULL && (net.packet) && (!Packetserver_clients[connectedclient].packet)) //Ready to receive?
 								{
@@ -6541,7 +6541,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 								}
 								if (fifobuffer_freesize(Packetserver_clients[connectedclient].packetserver_receivebuffer) >= 2) //Valid to produce more data?
 								{
-									if ((Packetserver_clients[connectedclient].packetserver_packetpos == 0) && (Packetserver_clients[connectedclient].packetserver_packetack == 0) && (Packetserver_clients[connectedclient].packet)) //New packet?
+									if ((((Packetserver_clients[connectedclient].packetserver_packetpos == 0) && (Packetserver_clients[connectedclient].packetserver_packetack == 0)) || ((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) && (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe))) && (Packetserver_clients[connectedclient].packet)) //New packet?
 									{
 										if (Packetserver_clients[connectedclient].pktlen > (sizeof(ethernetheader.data) + ((Packetserver_clients[connectedclient].packetserver_slipprotocol!=3)?20:7))) //Length OK(at least one byte of data and complete IP header) or the PPP packet size?
 										{
@@ -6586,31 +6586,34 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 											{
 												goto invalidpacket; //Invalid packet!
 											}
-											if (Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) //PPP protocol used?
+											if (!(((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) && (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe)))) //Filtering header type?
 											{
-												if (ethernetheader.type == SDL_SwapBE16(0x8863)) //Are we a discovery packet?
+												if (Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) //PPP protocol used?
 												{
-													if (PPPOE_handlePADreceived(connectedclient)) //Handle the received PAD packet!
+													if (ethernetheader.type == SDL_SwapBE16(0x8863)) //Are we a discovery packet?
 													{
-														//Discard the received packet, so nobody else handles it too!
-														freez((void**)&net.packet, net.pktlen, "MODEM_PACKET");
-														net.packet = NULL; //Discard if failed to deallocate!
-														net.pktlen = 0; //Not allocated!
-														goto invalidpacket; //Invalid packet!
+														if (PPPOE_handlePADreceived(connectedclient)) //Handle the received PAD packet!
+														{
+															//Discard the received packet, so nobody else handles it too!
+															freez((void**)&net.packet, net.pktlen, "MODEM_PACKET");
+															net.packet = NULL; //Discard if failed to deallocate!
+															net.pktlen = 0; //Not allocated!
+															goto invalidpacket; //Invalid packet!
+														}
 													}
+													headertype = SDL_SwapBE16(0x8864); //Receiving uses normal PPP packets to transfer/receive on the receiver line only!
 												}
-												headertype = SDL_SwapBE16(0x8864); //Receiving uses normal PPP packets to transfer/receive on the receiver line only!
-											}
-											else if (Packetserver_clients[connectedclient].packetserver_slipprotocol==2) //IPX protocol used?
-											{
-												headertype = SDL_SwapBE16(0x8137); //We're an IPX packet!
-											}
-											else //IPv4?
-											{
-												headertype = SDL_SwapBE16(0x0800); //We're an IP packet!
+												else if (Packetserver_clients[connectedclient].packetserver_slipprotocol == 2) //IPX protocol used?
+												{
+													headertype = SDL_SwapBE16(0x8137); //We're an IPX packet!
+												}
+												else //IPv4?
+												{
+													headertype = SDL_SwapBE16(0x0800); //We're an IP packet!
+												}
 											}
 											if (Packetserver_clients[connectedclient].packetserver_stage != PACKETSTAGE_PACKETS) goto invalidpacket; //Don't handle SLIP/PPP/IPX yet!
-											if (ethernetheader.type != headertype) //Invalid type?
+											if ((ethernetheader.type != headertype) && (!((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) && (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe)))) //Invalid type?
 											{
 												if (ethernetheader.type == SDL_SwapBE16(0x0806)) //ARP?
 												{
