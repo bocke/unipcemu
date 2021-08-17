@@ -4418,7 +4418,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 						{
 							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
 						}
-						continue; //Next entry please!
+						goto performskipdata_lcp; //Skip the data please!
 					}
 					if (!PPP_consumeStreamBE16(&pppstream_requestfield, &request_pendingMRU)) //Pending MRU field!
 					{
@@ -4437,7 +4437,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 						{
 							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
 						}
-						continue; //Next entry please!
+						goto performskipdata_lcp; //Skip the data please!
 					}
 					request_pendingProtocolFieldCompression = 1; //Set the request!
 					break;
@@ -4452,7 +4452,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 						{
 							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
 						}
-						continue; //Next entry please!
+						goto performskipdata_lcp; //Skip the data please!
 					}
 					request_pendingAddressAndControlFieldCompression = 1; //Set the request!
 					break;
@@ -4483,7 +4483,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 						{
 							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
 						}
-						continue; //Next entry please!
+						goto performskipdata_lcp; //Skip the data please!
 					}
 					request_magic_number_used = 1; //Set the request!
 					if (!PPP_consumeStream(&pppstream_requestfield, &request_magic_number[0])) //Length couldn't be read?
@@ -4523,7 +4523,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 						{
 							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
 						}
-						continue; //Next entry please!
+						goto performskipdata_lcp; //Skip the data please!
 					}
 					request_magic_number_used = 1; //Set the request!
 					if (!PPP_consumeStreamBE16(&pppstream_requestfield, &request_authenticationprotocol)) //Length couldn't be read?
@@ -4564,7 +4564,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 						{
 							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
 						}
-						continue; //Next entry please!
+						goto performskipdata_lcp; //Skip the data please!
 					}
 					if (!PPP_consumeStream(&pppstream_requestfield, &request_asynccontrolcharactermap[0])) //Length couldn't be read?
 					{
@@ -4597,6 +4597,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 					{
 						goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
 					}
+					performskipdata_lcp:
 					if (common_OptionLengthField >= 2) //Enough length to skip?
 					{
 						skipdatacounter = common_OptionLengthField - 2; //How much to skip!
@@ -4606,6 +4607,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 							{
 								goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
 							}
+							--skipdatacounter;
 						}
 					}
 					else //Malformed parameter!
@@ -5212,7 +5214,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 						{
 							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
 						}
-						continue; //Next entry please!
+						goto performskipdata_ipx; //Skip the data please!
 					}
 					if (!PPP_consumeStream(&pppstream_requestfield, &data4[0])) //Pending Node Number field!
 					{
@@ -5268,7 +5270,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 						{
 							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
 						}
-						continue; //Next entry please!
+						goto performskipdata_ipx; //Skip the data please!
 					}
 					if (!PPP_consumeStream(&pppstream_requestfield, &data6[0])) //Pending Node Number field!
 					{
@@ -5318,7 +5320,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 						{
 							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
 						}
-						continue; //Next entry please!
+						goto performskipdata_ipx; //Skip the data please!
 					}
 					if (!PPP_consumeStreamBE16(&pppstream_requestfield, &dataw)) //Pending Node Number field!
 					{
@@ -5344,6 +5346,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 					{
 						goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
 					}
+					performskipdata_ipx:
 					if (common_OptionLengthField >= 2) //Enough length to skip?
 					{
 						skipdatacounter = common_OptionLengthField - 2; //How much to skip!
@@ -5353,6 +5356,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 							{
 								goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
 							}
+							--skipdatacounter;
 						}
 					}
 					else //Malformed parameter!
