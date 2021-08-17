@@ -6732,7 +6732,10 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 											//Discard the invalid packet!
 											freez((void **)&Packetserver_clients[connectedclient].packet, Packetserver_clients[connectedclient].pktlen, "SERVER_PACKET"); //Release the packet to receive new packets again!
 											Packetserver_clients[connectedclient].packet = NULL; //No packet!
-											Packetserver_clients[connectedclient].packetserver_packetpos = 0; //Reset packet position!
+											if (!((((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3)) && (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe)))) //Not PPP?
+											{
+												Packetserver_clients[connectedclient].packetserver_packetpos = 0; //Reset packet position for the new packets!
+											}
 											Packetserver_clients[connectedclient].packetserver_packetack = 0; //Not acnowledged yet!
 										}
 									}
