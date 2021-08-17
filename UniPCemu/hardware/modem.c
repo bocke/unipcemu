@@ -4630,7 +4630,8 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				//Apply the parameters to the session and send back an request-ACK!
 				memset(&response, 0, sizeof(response)); //Init the response!
 				//Build the PPP header first!
-				if (!Packetserver_clients[connectedclient].PPP_headercompressed) //Header isn't compressed?
+				//Don't compress the header yet, since it's still negotiating!
+				//if (!Packetserver_clients[connectedclient].PPP_headercompressed) //Header isn't compressed?
 				{
 					if (!packetServerAddPacketBufferQueue(&response, 0xFF)) //Start of PPP header!
 					{
