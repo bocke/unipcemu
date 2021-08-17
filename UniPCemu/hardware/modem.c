@@ -259,6 +259,7 @@ typedef struct
 	MODEM_PACKETBUFFER DHCP_acknowledgepacket; //Acknowledge packet that's sent!
 	MODEM_PACKETBUFFER DHCP_releasepacket; //Release packet that's sent!
 	//PPP data
+	byte PPP_packetstartsent; //Has a packet start been sent?
 	byte PPP_packetreadyforsending; //Is the PPP packet ready to be sent to the client? 1 when containing data for the client, 0 otherwise. Ignored for non-PPP clients!
 	byte PPP_packetpendingforsending; //Is the PPP packet pending processed for the client? 1 when pending to be processed for the client, 0 otherwise. Ignored for non-PPP clients!
 	//PPP CP packet processing
@@ -3862,6 +3863,7 @@ void ppp_responseforuser(sword connectedclient)
 	Packetserver_clients[connectedclient].packetserver_bytesleft = Packetserver_clients[connectedclient].ppp_response.length; //How much to send!
 	Packetserver_clients[connectedclient].PPP_packetreadyforsending = 1; //Ready, not pending anymore!
 	Packetserver_clients[connectedclient].PPP_packetpendingforsending = 0; //Ready, not pending anymore!
+	Packetserver_clients[connectedclient].PPP_packetstartsent = 0; //Packet hasn't been started yet!
 }
 
 //srcaddr should be 12 bytes in length.
@@ -6505,9 +6507,9 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 						//Handle packet server packet data transfers into the inputdatabuffer/outputbuffer to the network!
 						if (Packetserver_clients[connectedclient].packetserver_receivebuffer) //Properly allocated?
 						{
-							if (net.packet || Packetserver_clients[connectedclient].packet) //Packet has been received or processing? Try to start transmit it!
+							if (net.packet || Packetserver_clients[connectedclient].packet || (((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3)) && (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe) && (Packetserver_clients[connectedclient].ppp_response.buffer))) //Packet has been received or processing? Try to start transmit it!
 							{
-								if (Packetserver_clients[connectedclient].packet == NULL) //Ready to receive?
+								if (Packetserver_clients[connectedclient].packet == NULL && (net.packet) && (!Packetserver_clients[connectedclient].packet)) //Ready to receive?
 								{
 									Packetserver_clients[connectedclient].packet = zalloc(net.pktlen,"SERVER_PACKET",NULL); //Allocate a packet to receive!
 									if (Packetserver_clients[connectedclient].packet) //Allocated?
@@ -6747,6 +6749,13 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 										//Convert the buffer into transmittable bytes using the proper encoding!
 										if ((Packetserver_clients[connectedclient].packetserver_bytesleft)) //Not finished yet?
 										{
+											if ((Packetserver_clients[connectedclient].packetserver_packetpos == 0) && (!Packetserver_clients[connectedclient].PPP_packetstartsent) && (((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3)) && (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe))) //Packet hasn't been started yet and needs to be started properly?
+											{
+												writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, PPP_END); //END of frame!
+												Packetserver_clients[connectedclient].pppoe_lastrecvbytewasEND = 1; //Last was END!
+												Packetserver_clients[connectedclient].PPP_packetstartsent = 1; //Start has been sent!
+												goto doPPPtransmit; //Handle the tranmit of the PPP frame start!
+											}
 											//Start transmitting data into the buffer, according to the protocol!
 											--Packetserver_clients[connectedclient].packetserver_bytesleft;
 											if ((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) && (Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe == 0)) //PPP?
