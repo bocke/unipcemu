@@ -3809,10 +3809,12 @@ word PPP_calcFCS(byte* buffer, uint_32 length, byte isforpacket)
 	{
 		fcs = (fcs >> 8) ^ fcslookup[(fcs & 0xFF) ^ buffer[pos]]; //Calcalate FCS!
 	}
+	/*
 	if (isforpacket) //Unchanged?
 	{
 		return ~fcs; //Don't swap, as this is done by the write!
 	}
+	*/
 	return SDL_SwapBE16(~fcs); //One's complement value! This is to be swapped to Big-Endian order to work properly!
 }
 
