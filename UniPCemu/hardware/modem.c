@@ -5281,6 +5281,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				Packetserver_clients[connectedclient].ppp_rejectfields_ipxcp_identifier = common_IdentifierField; //Identifier!
 				memset(&pppNakFields, 0, sizeof(pppNakFields)); //Queued!
 				memset(&pppRejectFields, 0, sizeof(pppRejectFields)); //Queued!
+				result = 1; ///Discard!
 			}
 			else //OK! All parameters are fine!
 			{
@@ -5365,35 +5366,11 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				//Apply the parameters to the session and send back an request-ACK!
 				memset(&response, 0, sizeof(response)); //Init the response!
 				//Build the PPP header first!
-				if (!Packetserver_clients[connectedclient].PPP_headercompressed) //Header isn't compressed?
-				{
-					if (!packetServerAddPacketBufferQueue(&response, 0xFF)) //Start of PPP header!
-					{
-						goto ppp_finishpacketbufferqueue_ipxcp; //Finish up!
-					}
-					if (!packetServerAddPacketBufferQueue(&response, 0x03)) //Start of PPP header!
-					{
-						goto ppp_finishpacketbufferqueue_ipxcp; //Finish up!
-					}
-				}
-				if (!packetServerAddPacketBufferQueueBE16(&response, 0x802B)) //The protocol!
-				{
-					goto ppp_finishpacketbufferqueue_ipxcp; //Finish up!
-				}
-				//Request-Ack header!
-				if (!packetServerAddPacketBufferQueue(&response, 0x02)) //Request-Ack!
-				{
-					goto ppp_finishpacketbufferqueue_ipxcp; //Finish up!
-				}
-				if (!packetServerAddPacketBufferQueue(&response, common_IdentifierField)) //Identifier!
-				{
-					goto ppp_finishpacketbufferqueue_ipxcp; //Finish up!
-				}
 				if (!createPPPsubstream(&pppstream, &pppstream_requestfield, MAX(common_LengthField, 4) - 4)) //Not enough room for the data?
 				{
 					goto ppp_finishpacketbufferqueue_ipxcp; //Finish up!
 				}
-				if (!packetServerAddPacketBufferQueueBE16(&response, PPP_streamdataleft(&pppstream_requestfield)+4)) //How much data follows!
+				if (PPP_addLCPNCPResponseHeader(connectedclient, &response, 1, protocol, 0x02, common_IdentifierField, PPP_streamdataleft(&pppstream_requestfield)))
 				{
 					goto ppp_finishpacketbufferqueue_ipxcp; //Finish up!
 				}
@@ -5409,8 +5386,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 					}
 				}
 				//Calculate and add the checksum field!
-				checksumfield = PPP_calcFCS(response.buffer, response.length, 1); //The checksum field!
-				if (!packetServerAddPacketBufferQueueBE16(&response, checksumfield)) //Checksum failure?
+				if (PPP_addFCS(&response))
 				{
 					goto ppp_finishpacketbufferqueue_ipxcp;
 				}
@@ -5438,33 +5414,9 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			//Send a Code-Reject packet to the client!
 			memset(&response, 0, sizeof(response)); //Init the response!
 			//Build the PPP header first!
-			if (!Packetserver_clients[connectedclient].PPP_headercompressed) //Header isn't compressed?
+			if (PPP_addLCPNCPResponseHeader(connectedclient, &response, 1, protocol, 0x06, common_IdentifierField, PPP_streamdataleft(&pppstream)))
 			{
-				if (!packetServerAddPacketBufferQueue(&response, 0xFF)) //Start of PPP header!
-				{
-					goto ppp_finishpacketbufferqueue_ipxcp; //Finish up!
-				}
-				if (!packetServerAddPacketBufferQueue(&response, 0x03)) //Start of PPP header!
-				{
-					goto ppp_finishpacketbufferqueue_ipxcp; //Finish up!
-				}
-			}
-			if (!packetServerAddPacketBufferQueueBE16(&response, 0x802B)) //The protocol!
-			{
-				goto ppp_finishpacketbufferqueue_ipxcp; //Finish up!
-			}
-			//Code Reject header!
-			if (!packetServerAddPacketBufferQueue(&response, 0x06)) //Code-Reject!
-			{
-				goto ppp_finishpacketbufferqueue_ipxcp; //Finish up!
-			}
-			if (!packetServerAddPacketBufferQueue(&response, common_IdentifierField)) //Identifier!
-			{
-				goto ppp_finishpacketbufferqueue_ipxcp; //Finish up!
-			}
-			if (!packetServerAddPacketBufferQueueBE16(&response, PPP_streamdataleft(&pppstream)+4)) //How much data follows!
-			{
-				goto ppp_finishpacketbufferqueue_ipxcp; //Finish up!
+				goto ppp_finishpacketbufferqueue_ipxcp;
 			}
 			//Now, the rejected packet itself!
 			for (; PPP_consumeStream(&pppstream, &datab);) //The data field itself follows!
@@ -5475,8 +5427,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				}
 			}
 			//Calculate and add the checksum field!
-			checksumfield = PPP_calcFCS(response.buffer, response.length, 1); //The checksum field!
-			if (!packetServerAddPacketBufferQueueBE16(&response, checksumfield)) //Checksum failure?
+			if (PPP_addFCS(&response))
 			{
 				goto ppp_finishpacketbufferqueue_ipxcp;
 			}
@@ -5505,31 +5456,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			//Send a Code-Reject packet to the client!
 			memset(&response, 0, sizeof(response)); //Init the response!
 			//Build the PPP header first!
-			if (!Packetserver_clients[connectedclient].PPP_headercompressed) //Header isn't compressed?
-			{
-				if (!packetServerAddPacketBufferQueue(&response, 0xFF)) //Start of PPP header!
-				{
-					goto ppp_finishpacketbufferqueue_ipxcp; //Finish up!
-				}
-				if (!packetServerAddPacketBufferQueue(&response, 0x03)) //Start of PPP header!
-				{
-					goto ppp_finishpacketbufferqueue_ipxcp; //Finish up!
-				}
-			}
-			if (!packetServerAddPacketBufferQueueBE16(&response, 0x802B)) //The protocol!
-			{
-				goto ppp_finishpacketbufferqueue_ipxcp; //Finish up!
-			}
-			//Code Reject header!
-			if (!packetServerAddPacketBufferQueue(&response, 0x07)) //Code-Reject!
-			{
-				goto ppp_finishpacketbufferqueue_ipxcp; //Finish up!
-			}
-			if (!packetServerAddPacketBufferQueue(&response, common_IdentifierField)) //Identifier!
-			{
-				goto ppp_finishpacketbufferqueue_ipxcp; //Finish up!
-			}
-			if (!packetServerAddPacketBufferQueueBE16(&response, PPP_streamdataleft(&pppstream_informationfield)+4))
+			if (PPP_addLCPNCPResponseHeader(connectedclient, &response, 1, protocol, 0x07, common_IdentifierField, PPP_streamdataleft(&pppstream_informationfield)))
 			{
 				goto ppp_finishpacketbufferqueue_ipxcp; //Finish up!
 			}
@@ -5542,8 +5469,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				}
 			}
 			//Calculate and add the checksum field!
-			checksumfield = PPP_calcFCS(response.buffer, response.length, 1); //The checksum field!
-			if (!packetServerAddPacketBufferQueueBE16(&response, checksumfield)) //Checksum failure?
+			if (PPP_addFCS(&response))
 			{
 				goto ppp_finishpacketbufferqueue_ipxcp;
 			}
