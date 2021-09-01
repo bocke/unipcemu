@@ -262,25 +262,26 @@ typedef struct
 	byte PPP_packetstartsent; //Has a packet start been sent?
 	byte PPP_packetreadyforsending; //Is the PPP packet ready to be sent to the client? 1 when containing data for the client, 0 otherwise. Ignored for non-PPP clients!
 	byte PPP_packetpendingforsending; //Is the PPP packet pending processed for the client? 1 when pending to be processed for the client, 0 otherwise. Ignored for non-PPP clients!
+	//Most PPP statuses and numbers are sets of two values: index 0 is the receiver(the client), index 1 is the sender(the server).
 	//PPP CP packet processing
-	byte PPP_headercompressed; //Is the header compressed?
-	byte PPP_protocolcompressed; //Is the protocol compressed?
-	word PPP_MRU; //Pending MRU field for the request!
+	byte PPP_headercompressed[2]; //Is the header compressed?
+	byte PPP_protocolcompressed[2]; //Is the protocol compressed?
+	word PPP_MRU[2]; //Pending MRU field for the request!
 	MODEM_PACKETBUFFER ppp_response; //The PPP packet that's to be sent to the client!
 	MODEM_PACKETBUFFER ppp_nakfields, ppp_nakfields_ipxcp, ppp_rejectfields, ppp_rejectfields_ipxcp; //The NAK and Reject packet that's pending to be sent!
 	byte ppp_nakfields_identifier, ppp_nakfields_ipxcp_identifier, ppp_rejectfields_identifier, ppp_rejectfields_ipxcp_identifier; //The NAK and Reject packet identifier to be sent!
-	byte ppp_LCPstatus; //Current LCP status. 0=Init, 1=Open.
+	byte ppp_LCPstatus[2]; //Current LCP status. 0=Init, 1=Open.
 	byte ppp_protocolreject_count; //Protocol-Reject counter. From 0 onwards
-	byte magic_number[4];
-	byte have_magic_number;
-	byte ppp_PAPstatus; //0=Not authenticated, 1=Authenticated.
-	byte ppp_IPXCPstatus; //0=Not connected, 1=Connected
-	byte ipxcp_networknumber[4];
-	byte ipxcp_nodenumber[6];
-	word ipxcp_routingprotocol;
+	byte magic_number[2][4];
+	byte have_magic_number[2];
+	byte ppp_PAPstatus[2]; //0=Not authenticated, 1=Authenticated.
+	byte ppp_IPXCPstatus[2]; //0=Not connected, 1=Connected
+	byte ipxcp_networknumber[2][4];
+	byte ipxcp_nodenumber[2][6];
+	word ipxcp_routingprotocol[2];
 	byte ipxcp_negotiationstatus; //Negotiation status for the IPXCP login. 0=Ready for new negotiation. 1=Negotiation request has been sent. 2=Negotation has been given a reply and to NAK, 3=Negotiation has succeeded.
 	TicksHolder ipxcp_negotiationstatustimer; //Negotiation status timer for determining response time!
-	uint_32 asynccontrolcharactermap; //Async control character map, stored in little endian format!
+	uint_32 asynccontrolcharactermap[2]; //Async control character map, stored in little endian format!
 } PacketServer_client;
 
 PacketServer_client Packetserver_clients[0x100]; //Up to 100 clients!
@@ -3957,14 +3958,14 @@ byte sendIPXechoreply(sword connectedclient, PPP_Stream *echodata, PPP_Stream *s
 	//Now, the source address, which is our client address for the connected client!
 	for (skipdatacounter = 0; skipdatacounter < 4; ++skipdatacounter)
 	{
-		if (!packetServerAddPacketBufferQueue(&response, Packetserver_clients[connectedclient].ipxcp_networknumber[skipdatacounter])) //Our network number!
+		if (!packetServerAddPacketBufferQueue(&response, Packetserver_clients[connectedclient].ipxcp_networknumber[0][skipdatacounter])) //Our network number!
 		{
 			goto ppp_finishpacketbufferqueue_echo; //Keep pending!
 		}
 	}
 	for (skipdatacounter = 0; skipdatacounter < 6; ++skipdatacounter)
 	{
-		if (!packetServerAddPacketBufferQueue(&response, Packetserver_clients[connectedclient].ipxcp_nodenumber[skipdatacounter])) //Our network number!
+		if (!packetServerAddPacketBufferQueue(&response, Packetserver_clients[connectedclient].ipxcp_nodenumber[0][skipdatacounter])) //Our network number!
 		{
 			goto ppp_finishpacketbufferqueue_echo; //Keep pending!
 		}
@@ -4044,7 +4045,7 @@ byte sendIPXechorequest(sword connectedclient)
 	//Now, the destination address, which is the sender of the original request packet!
 	for (skipdatacounter = 0; skipdatacounter < 4; ++skipdatacounter)
 	{
-		if (!packetServerAddPacketBufferQueue(&response, Packetserver_clients[connectedclient].ipxcp_networknumber[skipdatacounter]))
+		if (!packetServerAddPacketBufferQueue(&response, Packetserver_clients[connectedclient].ipxcp_networknumber[0][skipdatacounter]))
 		{
 			goto ppp_finishpacketbufferqueue_echo;
 		}
@@ -4063,7 +4064,7 @@ byte sendIPXechorequest(sword connectedclient)
 	//Now, the source address, which is our client address for the connected client!
 	for (skipdatacounter = 0; skipdatacounter < 4; ++skipdatacounter)
 	{
-		if (!packetServerAddPacketBufferQueue(&response, Packetserver_clients[connectedclient].ipxcp_networknumber[skipdatacounter])) //Our network number!
+		if (!packetServerAddPacketBufferQueue(&response, Packetserver_clients[connectedclient].ipxcp_networknumber[0][skipdatacounter])) //Our network number!
 		{
 			goto ppp_finishpacketbufferqueue_echo; //Keep pending!
 		}
@@ -4191,7 +4192,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 	ETHERNETHEADER ppptransmitheader;
 	if (handleTransmit)
 	{
-		if (Packetserver_clients[connectedclient].packetserver_transmitlength < (3 + (Packetserver_clients[connectedclient].PPP_protocolcompressed ? 1U : 0U) + (Packetserver_clients[connectedclient].PPP_headercompressed ? 2U : 0U))) //Not enough for a full minimal PPP packet (with 1 byte of payload)?
+		if (Packetserver_clients[connectedclient].packetserver_transmitlength < (3 + (Packetserver_clients[connectedclient].PPP_protocolcompressed[0] ? 1U : 0U) + (Packetserver_clients[connectedclient].PPP_headercompressed[0] ? 2U : 0U))) //Not enough for a full minimal PPP packet (with 1 byte of payload)?
 		{
 			return 1; //Incorrect packet: discard it!
 		}
@@ -4312,7 +4313,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 	createPPPstream(&pppstream, &Packetserver_clients[connectedclient].packetserver_transmitbuffer[0], Packetserver_clients[connectedclient].packetserver_transmitlength-2); //Create a stream object for us to use, which goes until the end of the payload!
 	createPPPstream(&checksumppp, &Packetserver_clients[connectedclient].packetserver_transmitbuffer[Packetserver_clients[connectedclient].packetserver_transmitlength - 2], 2); //Create a stream object for us to use for the checksum!
 	memcpy(&pppstreambackup, &pppstream, sizeof(pppstream)); //Backup for checking again!
-	if (!Packetserver_clients[connectedclient].PPP_headercompressed) //Header present?
+	if (!Packetserver_clients[connectedclient].PPP_headercompressed[0]) //Header present?
 	{
 		if (!PPP_consumeStream(&pppstream, &datab))
 		{
@@ -4348,7 +4349,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		return 1; //incorrect packet: discard it!
 	}
 	dataw = (word)datab; //Store First byte, in little-endian!
-	if (((datab & 1)==0) || (!Packetserver_clients[connectedclient].PPP_protocolcompressed)) //2-byte protocol?
+	if (((datab & 1)==0) || (!Packetserver_clients[connectedclient].PPP_protocolcompressed[0])) //2-byte protocol?
 	{
 		if (!PPP_consumeStream(&pppstream, &datab)) //Second byte!
 		{
@@ -4697,22 +4698,22 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 					ppp_responseforuser(connectedclient); //A response is ready!
 					memset(&response, 0, sizeof(response)); //Parsed!
 					//Now, apply the request properly!
-					Packetserver_clients[connectedclient].ppp_LCPstatus = 1; //Open!
-					Packetserver_clients[connectedclient].PPP_MRU = request_pendingMRU; //MRU!
-					Packetserver_clients[connectedclient].PPP_headercompressed = request_pendingAddressAndControlFieldCompression; //Header compression!
-					Packetserver_clients[connectedclient].PPP_protocolcompressed = request_pendingProtocolFieldCompression; //Protocol compressed!
-					Packetserver_clients[connectedclient].asynccontrolcharactermap = SDL_SwapBE32((request_asynccontrolcharactermap[0]|(request_asynccontrolcharactermap[1]<<8)|(request_asynccontrolcharactermap[2]<<16)|(request_asynccontrolcharactermap[3]<<24)));
-					memcpy(&Packetserver_clients[connectedclient].magic_number, &request_magic_number, sizeof(request_magic_number)); //Magic number
-					Packetserver_clients[connectedclient].have_magic_number = request_magic_number_used; //Use magic number?
+					Packetserver_clients[connectedclient].ppp_LCPstatus[0] = 1; //Open!
+					Packetserver_clients[connectedclient].PPP_MRU[0] = request_pendingMRU; //MRU!
+					Packetserver_clients[connectedclient].PPP_headercompressed[0] = request_pendingAddressAndControlFieldCompression; //Header compression!
+					Packetserver_clients[connectedclient].PPP_protocolcompressed[0] = request_pendingProtocolFieldCompression; //Protocol compressed!
+					Packetserver_clients[connectedclient].asynccontrolcharactermap[0] = SDL_SwapBE32((request_asynccontrolcharactermap[0]|(request_asynccontrolcharactermap[1]<<8)|(request_asynccontrolcharactermap[2]<<16)|(request_asynccontrolcharactermap[3]<<24)));
+					memcpy(&Packetserver_clients[connectedclient].magic_number[0], &request_magic_number, sizeof(request_magic_number)); //Magic number
+					Packetserver_clients[connectedclient].have_magic_number[0] = request_magic_number_used; //Use magic number?
 					if (request_authenticationspecified) //Authentication specified?
 					{
-						Packetserver_clients[connectedclient].ppp_PAPstatus = 0; //Not Authenticated yet!
+						Packetserver_clients[connectedclient].ppp_PAPstatus[0] = 0; //Not Authenticated yet!
 					}
 					else
 					{
-						Packetserver_clients[connectedclient].ppp_PAPstatus = 1; //Authenticated automatically!
+						Packetserver_clients[connectedclient].ppp_PAPstatus[0] = 1; //Authenticated automatically!
 					}
-					Packetserver_clients[connectedclient].ppp_IPXCPstatus = 0; //Closed!
+					Packetserver_clients[connectedclient].ppp_IPXCPstatus[0] = 0; //Closed!
 					Packetserver_clients[connectedclient].ipxcp_negotiationstatus = 0; //No negotation yet!
 				}
 				result = 1; //Success!
@@ -4751,11 +4752,11 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				ppp_responseforuser(connectedclient); //A response is ready!
 				memset(&response, 0, sizeof(response)); //Parsed!
 				//Now, apply the request properly!
-				Packetserver_clients[connectedclient].ppp_LCPstatus = 0; //Closed!
-				Packetserver_clients[connectedclient].PPP_MRU = 1500; //Default: 1500
-				Packetserver_clients[connectedclient].PPP_headercompressed = 0; //Default: uncompressed
-				Packetserver_clients[connectedclient].PPP_protocolcompressed = 0; //Default: uncompressed
-				Packetserver_clients[connectedclient].have_magic_number = 0; //Default: no magic number yet
+				Packetserver_clients[connectedclient].ppp_LCPstatus[0] = 0; //Closed!
+				Packetserver_clients[connectedclient].PPP_MRU[0] = 1500; //Default: 1500
+				Packetserver_clients[connectedclient].PPP_headercompressed[0] = 0; //Default: uncompressed
+				Packetserver_clients[connectedclient].PPP_protocolcompressed[0] = 0; //Default: uncompressed
+				Packetserver_clients[connectedclient].have_magic_number[0] = 0; //Default: no magic number yet
 			}
 			goto ppp_finishpacketbufferqueue2; //Finish up!
 			break;
@@ -5013,11 +5014,11 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				//Now, apply the request properly!
 				if (pap_authenticated) //Authenticated?
 				{
-					Packetserver_clients[connectedclient].ppp_PAPstatus = 1; //Authenticated!
+					Packetserver_clients[connectedclient].ppp_PAPstatus[0] = 1; //Authenticated!
 				}
 				else
 				{
-					Packetserver_clients[connectedclient].ppp_PAPstatus = 0; //Not authenticated!
+					Packetserver_clients[connectedclient].ppp_PAPstatus[0] = 0; //Not authenticated!
 				}
 			}
 			goto ppp_finishpacketbufferqueue2_pap; //Finish up!
@@ -5401,11 +5402,11 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 					ppp_responseforuser(connectedclient); //A response is ready!
 					memset(&response, 0, sizeof(response)); //Parsed!
 					//Now, apply the request properly!
-					Packetserver_clients[connectedclient].ppp_IPXCPstatus = 1; //Open!
+					Packetserver_clients[connectedclient].ppp_IPXCPstatus[0] = 1; //Open!
 					Packetserver_clients[connectedclient].ipxcp_negotiationstatus = 0; //No negotation anymore!
-					memcpy(Packetserver_clients[connectedclient].ipxcp_networknumber,&ipxcp_pendingnetworknumber, sizeof(ipxcp_pendingnetworknumber)); //Network number specified or 0 for none!
-					memcpy(Packetserver_clients[connectedclient].ipxcp_nodenumber,&ipxcp_pendingnodenumber, sizeof(ipxcp_pendingnodenumber)); //Node number or 0 for none!
-					Packetserver_clients[connectedclient].ipxcp_routingprotocol = ipxcp_pendingroutingprotocol; //No routing protocol!
+					memcpy(Packetserver_clients[connectedclient].ipxcp_networknumber[0],&ipxcp_pendingnetworknumber, sizeof(ipxcp_pendingnetworknumber)); //Network number specified or 0 for none!
+					memcpy(Packetserver_clients[connectedclient].ipxcp_nodenumber[0],&ipxcp_pendingnodenumber, sizeof(ipxcp_pendingnodenumber)); //Node number or 0 for none!
+					Packetserver_clients[connectedclient].ipxcp_routingprotocol[0] = ipxcp_pendingroutingprotocol; //No routing protocol!
 				}
 			}
 			goto ppp_finishpacketbufferqueue2_ipxcp; //Finish up!
@@ -5442,7 +5443,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				ppp_responseforuser(connectedclient); //A response is ready!
 				memset(&response, 0, sizeof(response)); //Parsed!
 				//Now, apply the request properly!
-				Packetserver_clients[connectedclient].ppp_IPXCPstatus = 0; //Closed!
+				Packetserver_clients[connectedclient].ppp_IPXCPstatus[0] = 0; //Closed!
 				Packetserver_clients[connectedclient].ipxcp_negotiationstatus = 0; //No negotation yet!
 			}
 			goto ppp_finishpacketbufferqueue2_ipxcp; //Finish up!
@@ -6593,7 +6594,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 													{
 														if ((!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe) && (datatotransmit < 0x20)) //Might need to be escaped?
 														{
-															if (Packetserver_clients[connectedclient].asynccontrolcharactermap & (1 << (datatotransmit & 0x1F))) //To be escaped?
+															if (Packetserver_clients[connectedclient].asynccontrolcharactermap[1] & (1 << (datatotransmit & 0x1F))) //To be escaped?
 															{
 																writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, PPP_ESC); //Escaped ...
 																writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, PPP_ENCODEESC(PPP_ESC)); //ESC raw data!
@@ -7284,12 +7285,12 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 								PacketServer_startNextStage(connectedclient, PACKETSTAGE_PACKETS); //Start the SLIP service!
 								if ((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) && (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe)) //PPP?
 								{
-									Packetserver_clients[connectedclient].PPP_MRU = 1500; //Default: 1500
-									Packetserver_clients[connectedclient].PPP_headercompressed = 0; //Default: uncompressed
-									Packetserver_clients[connectedclient].PPP_protocolcompressed = 0; //Default: uncompressed
+									Packetserver_clients[connectedclient].PPP_MRU[0] = Packetserver_clients[connectedclient].PPP_MRU[1] = 1500; //Default: 1500
+									Packetserver_clients[connectedclient].PPP_headercompressed[0] = Packetserver_clients[connectedclient].PPP_headercompressed[1] = 0; //Default: uncompressed
+									Packetserver_clients[connectedclient].PPP_protocolcompressed[0] = Packetserver_clients[connectedclient].PPP_protocolcompressed[1] = 0; //Default: uncompressed
 									Packetserver_clients[connectedclient].ppp_protocolreject_count = 0; //Default: 0!
-									Packetserver_clients[connectedclient].ppp_LCPstatus = Packetserver_clients[connectedclient].ppp_PAPstatus = Packetserver_clients[connectedclient].ppp_IPXCPstatus = 0; //Reset all protocols to init state!
-									Packetserver_clients[connectedclient].asynccontrolcharactermap = 0xFFFFFFFF; //Initialize the Async Control Character Map to init value!
+									Packetserver_clients[connectedclient].ppp_LCPstatus[0] = Packetserver_clients[connectedclient].ppp_PAPstatus[0] = Packetserver_clients[connectedclient].ppp_IPXCPstatus[0] = 0; //Reset all protocols to init state!
+									Packetserver_clients[connectedclient].asynccontrolcharactermap[0] = Packetserver_clients[connectedclient].asynccontrolcharactermap[1] = 0xFFFFFFFF; //Initialize the Async Control Character Map to init value!
 									packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].ppp_response); //Free the response that's queued for packets to be sent to the client if anything is left!
 								}
 							}
