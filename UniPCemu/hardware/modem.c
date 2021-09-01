@@ -4197,6 +4197,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 	byte request_magic_number_used; //Default: none
 	byte request_magic_number[4]; //Set magic number
 	byte request_asynccontrolcharactermap[4]; //ASync-Control-Character-Map MSB to LSB (Big Endian)!
+	byte request_asynccontrolcharactermapspecified; //Default: none
 	word request_authenticationprotocol; //Authentication protocol requested!
 	byte request_authenticationspecified; //Authentication protocol used!
 	uint_32 skipdatacounter;
@@ -5368,6 +5369,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			request_magic_number_used = 0; //Default: not used!
 			request_authenticationspecified = 0; //Default: not used!
 			request_asynccontrolcharactermap[0] = request_asynccontrolcharactermap[1] = request_asynccontrolcharactermap[2] = request_asynccontrolcharactermap[3] = 0xFF; //All ones by default!
+			request_asynccontrolcharactermapspecified = 0; //Default: not used!
 
 			//Now, start parsing the options for the connection!
 			for (; PPP_peekStream(&pppstream_requestfield, &common_TypeField);) //Gotten a new option to parse?
@@ -5570,6 +5572,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 						result = 1; //Duscard!
 						goto ppp_finishpacketbufferqueue2; //Finish up!
 					}
+					request_asynccontrolcharactermapspecified = 1; //Used!
 					break;
 				case 4: //Quality protocol
 				default: //Unknown option?
@@ -5627,11 +5630,11 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				{
 					memcpy(&Packetserver_clients[connectedclient].ppp_serverLCP_pendingMagicNumber, request_magic_number, sizeof(request_magic_number)); //The magic number to use!
 				}
-				if (request_asynccontrolcharactermap && (common_CodeField == 4)) //Reject-Async control character map?
+				if (request_asynccontrolcharactermapspecified && (common_CodeField == 4)) //Reject-Async control character map?
 				{
 					Packetserver_clients[connectedclient].ppp_serverLCP_haveAsyncControlCharacterMap = 0; //Not anymore!
 				}
-				else if (request_asynccontrolcharactermap) //Async control character map requested?
+				else if (request_asynccontrolcharactermapspecified) //Async control character map requested?
 				{
 					memcpy(&Packetserver_clients[connectedclient].ppp_serverLCP_pendingASyncControlCharacterMap, request_asynccontrolcharactermap, sizeof(request_asynccontrolcharactermap)); //ASync-Control-Character-Map to use?
 				}
@@ -6407,7 +6410,6 @@ byte PPP_parseReceivedPacketForClient(sword connectedclient)
 	PPP_Stream pppstream, ipxechostream;
 	byte result;
 	byte datab;
-	word checksumfield;
 	result = 0; //Default: discard!
 	//Not handled yet. This is supposed to check the packet, parse it and send packets to the connected client in response when it's able to!
 	if (Packetserver_clients[connectedclient].ppp_PAPstatus && Packetserver_clients[connectedclient].ppp_LCPstatus) //Fully authenticated and logged in?
@@ -7334,7 +7336,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 										}
 										goto skipSLIP_PPP; //Don't handle SLIP/PPP because we're not ready yet!
 									}
-									if (((Packetserver_clients[connectedclient].packet && !(((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3)) && (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe)) || ((((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3)) && (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe) && (Packetserver_clients[connectedclient].ppp_response.size && Packetserver_clients[connectedclient].ppp_response.buffer))))) && ((Packetserver_clients[connectedclient].PPP_packetreadyforsending && (Packetserver_clients[connectedclient].PPP_packetpendingforsending==0)) || ((Packetserver_clients[connectedclient].packetserver_slipprotocol!=3) || (Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe && (Packetserver_clients[connectedclient].packetserver_slipprotocol==3))))) //Still a valid packet to send and allowed to send the packet that's stored?
+									if ((((Packetserver_clients[connectedclient].packet && (!(((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3)) && (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe)))) || ((((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3)) && (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe) && (Packetserver_clients[connectedclient].ppp_response.size && Packetserver_clients[connectedclient].ppp_response.buffer))))) && ((Packetserver_clients[connectedclient].PPP_packetreadyforsending && (Packetserver_clients[connectedclient].PPP_packetpendingforsending==0)) || ((Packetserver_clients[connectedclient].packetserver_slipprotocol!=3) || (Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe && (Packetserver_clients[connectedclient].packetserver_slipprotocol==3))))) //Still a valid packet to send and allowed to send the packet that's stored?
 									{
 										//Convert the buffer into transmittable bytes using the proper encoding!
 										if ((Packetserver_clients[connectedclient].packetserver_bytesleft)) //Not finished yet?
