@@ -5496,7 +5496,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		packetServerFreePacketBufferQueue(&pppRejectFields); //Free the queued response!
 		break;
 	case 0x2B: //IPX datagram?
-		if (Packetserver_clients[connectedclient].ppp_IPXCPstatus && Packetserver_clients[connectedclient].ppp_PAPstatus && Packetserver_clients[connectedclient].ppp_LCPstatus) //Fully authenticated and logged in?
+		if (Packetserver_clients[connectedclient].ppp_IPXCPstatus[0] && Packetserver_clients[connectedclient].ppp_PAPstatus && Packetserver_clients[connectedclient].ppp_LCPstatus[0]) //Fully authenticated and logged in?
 		{
 			//Handle the IPX packet to be sent!
 			if (!createPPPsubstream(&pppstream, &pppstream_requestfield, PPP_streamdataleft(&pppstream))) //Create a substream for the information field?
@@ -5645,7 +5645,7 @@ byte PPP_parseReceivedPacketForClient(sword connectedclient)
 						if (memcmp(&ipxheader.DestinationNodeNumber, &ipxbroadcastaddr, 6) == 0) //Destination node is the broadcast address?
 						{
 							//We're replying to the echo packet!
-							if (!Packetserver_clients[connectedclient].ppp_IPXCPstatus) //Not authenticated yet?
+							if (!Packetserver_clients[connectedclient].ppp_IPXCPstatus[0]) //Not authenticated yet?
 							{
 								return 0; //Handled, discard!
 							}
@@ -5663,7 +5663,7 @@ byte PPP_parseReceivedPacketForClient(sword connectedclient)
 						{
 							if (Packetserver_clients[connectedclient].ipxcp_negotiationstatus == 1) //Waiting for negotiation answers?
 							{
-								if (memcmp(&ipxheader.SourceNodeNumber, &Packetserver_clients[connectedclient].ipxcp_nodenumber, 6)) //The requested node number had been found already?
+								if (memcmp(&ipxheader.SourceNodeNumber, &Packetserver_clients[connectedclient].ipxcp_nodenumber[0], 6)) //The requested node number had been found already?
 								{
 									Packetserver_clients[connectedclient].ipxcp_negotiationstatus = 2; //NAK the connection, as the requested node number had been found in the network!
 								}
@@ -5672,11 +5672,11 @@ byte PPP_parseReceivedPacketForClient(sword connectedclient)
 					}
 				}
 				//Filter out unwanted IPX network/node numbers that aren't intended for us!
-				if (memcmp(&ipxheader.DestinationNetworkNumber, &Packetserver_clients[connectedclient].ipxcp_networknumber[0], 4) != 0) //Network number mismatch?
+				if (memcmp(&ipxheader.DestinationNetworkNumber, &Packetserver_clients[connectedclient].ipxcp_networknumber[0][0], 4) != 0) //Network number mismatch?
 				{
 					return 0; //Handled, discard!
 				}
-				if (memcmp(&ipxheader.DestinationNodeNumber, &Packetserver_clients[connectedclient].ipxcp_nodenumber[0], 6) != 0) //Node number mismatch?
+				if (memcmp(&ipxheader.DestinationNodeNumber, &Packetserver_clients[connectedclient].ipxcp_nodenumber[0][0], 6) != 0) //Node number mismatch?
 				{
 					return 0; //Handled, discard!
 				}
@@ -5687,7 +5687,7 @@ byte PPP_parseReceivedPacketForClient(sword connectedclient)
 			}
 
 			//PPP phase of handling the packet has been reached!
-			if (!Packetserver_clients[connectedclient].ppp_IPXCPstatus) //Not authenticated yet on the IPX protocol?
+			if (!Packetserver_clients[connectedclient].ppp_IPXCPstatus[0]) //Not authenticated yet on the IPX protocol?
 			{
 				return 0; //Handled, discard!
 			}
