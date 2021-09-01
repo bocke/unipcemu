@@ -271,6 +271,23 @@ typedef struct
 	MODEM_PACKETBUFFER ppp_nakfields, ppp_nakfields_ipxcp, ppp_rejectfields, ppp_rejectfields_ipxcp; //The NAK and Reject packet that's pending to be sent!
 	byte ppp_nakfields_identifier, ppp_nakfields_ipxcp_identifier, ppp_rejectfields_identifier, ppp_rejectfields_ipxcp_identifier; //The NAK and Reject packet identifier to be sent!
 	byte ppp_LCPstatus[2]; //Current LCP status. 0=Init, 1=Open.
+
+	//Some extra data for the server-client PPP LCP connection!
+	TicksHolder ppp_serverLCPrequesttimer; //Server LCP request timer until a response is gotten!
+	byte ppp_serverLCPstatus; //Server LCP status! 0=Not ready yet, 1=First requesting sent
+	byte ppp_servercurrentLCPidentifier; //Current Server LCP identifier!
+	byte ppp_serverLCPidentifier; //Server LCP identifier!
+	byte ppp_serverLCP_haveMRU; //MRU trying?
+	word ppp_serverLCP_pendingMRU; //MRU that's pending!
+	//authentication protocol unsupported atm.
+	//quality protocol unused
+	byte ppp_serverLCP_haveMagicNumber; //Magic number trying?
+	byte ppp_serverLCP_pendingMagicNumber[4]; //Magic number that's pending!
+	byte ppp_serverLCP_haveProtocolFieldCompression; //Protocol Field Compression trying?
+	byte ppp_serverLCP_haveAddressAndControlFieldCompression; //Address and Control Field Compression trying?
+	byte ppp_serverLCP_haveAsyncControlCharacterMap; //ASync Control Character Map enabled?
+	byte ppp_serverLCP_pendingASyncControlCharacterMap[4]; //ASync control character map that's pending!
+	//Normal connection data
 	byte ppp_protocolreject_count; //Protocol-Reject counter. From 0 onwards
 	byte magic_number[2][4];
 	byte have_magic_number[2];
@@ -4159,6 +4176,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 	MODEM_PACKETBUFFER pppNakRejectFields;
 	byte result; //The result for this function!
 	MODEM_PACKETBUFFER response, pppNakFields, pppRejectFields; //The normal response and Nak fields/Reject fields that are queued!
+	MODEM_PACKETBUFFER LCP_requestFields; //Request fields!
 	word checksum, checksumfield;
 	PPP_Stream pppstream, pppstreambackup, checksumppp, pppstream_informationfield, pppstream_requestfield /*, pppstream_optionfield*/;
 	byte datab; //byte data from the stream!
@@ -4172,6 +4190,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 	word common_LengthField; //Length field!
 	byte common_TypeField; //Type field
 	byte common_OptionLengthField; //Option Length field!
+	byte request_NakRejectpendingMRU; //Pending MTU field for the request!
 	word request_pendingMRU; //Pending MTU field for the request!
 	byte request_pendingProtocolFieldCompression; //Default: no protocol field compression!
 	byte request_pendingAddressAndControlFieldCompression; //Default: no address-and-control-field compression!
@@ -4309,6 +4328,206 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 	ppp_finishcorrectpacketbufferqueueNAKReject: //Correctly finished!
 		return result; //Keep pending, is selected!
 	}
+	else if ((!handleTransmit) && (!Packetserver_clients[connectedclient].ppp_LCPstatus[1])) //Not handling a transmitting of anything atm and LCP for the server-client is down?
+	{
+		//Use a simple nanosecond timer to determine if we're to send a 
+		if (getnspassed_k(&Packetserver_clients[connectedclient].ppp_serverLCPrequesttimer) >= ((!Packetserver_clients[connectedclient].ppp_serverLCPstatus)?3000000000.0f:500000000.0f)) //Starting it's timing every interval (first 3 seconds, then half a second)!
+		{
+			getnspassed(&Packetserver_clients[connectedclient].ppp_serverLCPrequesttimer); //Restart timing!
+		}
+		else
+		{
+			goto donthandleServerPPPLCPyet; //Don't handle the sending of a request from the server yet, because we're still timing!
+		}
+		if (!Packetserver_clients[connectedclient].ppp_serverLCPstatus) //Initializing?
+		{
+			retryServerLCPnegotiation:
+			Packetserver_clients[connectedclient].ppp_serverLCPidentifier = 0; //Init!
+			Packetserver_clients[connectedclient].ppp_serverLCPstatus = 1; //Have initialized!
+			Packetserver_clients[connectedclient].ppp_serverLCP_haveAddressAndControlFieldCompression = Packetserver_clients[connectedclient].ppp_serverLCP_haveMRU = Packetserver_clients[connectedclient].ppp_serverLCP_haveMagicNumber = Packetserver_clients[connectedclient].ppp_serverLCP_haveProtocolFieldCompression = Packetserver_clients[connectedclient].ppp_serverLCP_haveAsyncControlCharacterMap = 1; //Default by trying all!
+			Packetserver_clients[connectedclient].ppp_serverLCP_pendingMRU = 1500; //Default!
+			Packetserver_clients[connectedclient].ppp_serverLCP_pendingMagicNumber[0] = 0xFF; //Default!
+			Packetserver_clients[connectedclient].ppp_serverLCP_pendingMagicNumber[1] = 0xFF; //Default!
+			Packetserver_clients[connectedclient].ppp_serverLCP_pendingMagicNumber[2] = 0xFF; //Default!
+			Packetserver_clients[connectedclient].ppp_serverLCP_pendingMagicNumber[3] = 0xFF; //Default!
+			Packetserver_clients[connectedclient].ppp_serverLCP_haveAsyncControlCharacterMap = 1;
+			Packetserver_clients[connectedclient].ppp_serverLCP_pendingASyncControlCharacterMap[0] = Packetserver_clients[connectedclient].ppp_serverLCP_pendingASyncControlCharacterMap[1] = Packetserver_clients[connectedclient].ppp_serverLCP_pendingASyncControlCharacterMap[2] = Packetserver_clients[connectedclient].ppp_serverLCP_pendingASyncControlCharacterMap[3] = 0; //Default!
+		}
+		else if (Packetserver_clients[connectedclient].ppp_serverLCPstatus>1) //Resetting?
+		{
+			//Otherwise, it's a retry!
+			goto retryServerLCPnegotiation;
+		}
+		result = 1; //Default: handled!
+		//Now, formulate a request!
+		Packetserver_clients[connectedclient].ppp_servercurrentLCPidentifier = Packetserver_clients[connectedclient].ppp_serverLCPidentifier; //Load the identifier to try!
+		//case 1: //Maximum Receive Unit
+			if (Packetserver_clients[connectedclient].ppp_serverLCP_haveMRU) //Required?
+			{
+				if (!packetServerAddPacketBufferQueue(&LCP_requestFields, 0x01)) //Request it!
+				{
+					goto ppp_finishpacketbufferqueue_lcp; //Incorrect packet: discard it!
+				}
+				if (!packetServerAddPacketBufferQueue(&LCP_requestFields, 4)) //Correct length!
+				{
+					goto ppp_finishpacketbufferqueue_lcp; //Incorrect packet: discard it!
+				}
+				if (!packetServerAddPacketBufferQueueBE16(&LCP_requestFields, Packetserver_clients[connectedclient].ppp_serverLCP_pendingMRU)) //Requested data!
+				{
+					goto ppp_finishpacketbufferqueue_lcp; //Incorrect packet: discard it!
+				}
+			}
+			//Field is OK!
+		//case 7: //Protocol Field Compression
+			if (Packetserver_clients[connectedclient].ppp_serverLCP_haveProtocolFieldCompression) //To request?
+			{
+				if (!packetServerAddPacketBufferQueue(&LCP_requestFields, 0x07)) //NAK it!
+				{
+					goto ppp_finishpacketbufferqueue_lcp; //Incorrect packet: discard it!
+				}
+				if (!packetServerAddPacketBufferQueue(&LCP_requestFields, 2)) //Correct length!
+				{
+					goto ppp_finishpacketbufferqueue_lcp; //Incorrect packet: discard it!
+				}
+			}
+		//case 8: //Address-And-Control-Field-Compression
+			if (Packetserver_clients[connectedclient].ppp_serverLCP_haveAddressAndControlFieldCompression) //To request?
+			{
+				if (!packetServerAddPacketBufferQueue(&LCP_requestFields, 0x08)) //NAK it!
+				{
+					goto ppp_finishpacketbufferqueue_lcp; //Incorrect packet: discard it!
+				}
+				if (!packetServerAddPacketBufferQueue(&LCP_requestFields, 2)) //Correct length!
+				{
+					goto ppp_finishpacketbufferqueue_lcp; //Incorrect packet: discard it!
+				}
+			}
+			request_pendingAddressAndControlFieldCompression = 1; //Set the request!
+		//case 5: //Magic Number
+			if (Packetserver_clients[connectedclient].ppp_serverLCP_haveMagicNumber) //To request?
+			{
+				if (!packetServerAddPacketBufferQueue(&LCP_requestFields, 0x05)) //NAK it!
+				{
+					goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+				}
+				if (!packetServerAddPacketBufferQueue(&LCP_requestFields, 6)) //Correct length!
+				{
+					goto ppp_finishpacketbufferqueue_lcp; //Incorrect packet: discard it!
+				}
+				if (!packetServerAddPacketBufferQueue(&LCP_requestFields, Packetserver_clients[connectedclient].ppp_serverLCP_pendingMagicNumber[0])) //Correct length!
+				{
+					goto ppp_finishpacketbufferqueue_lcp; //Incorrect packet: discard it!
+				}
+				if (!packetServerAddPacketBufferQueue(&LCP_requestFields, Packetserver_clients[connectedclient].ppp_serverLCP_pendingMagicNumber[1])) //Correct length!
+				{
+					goto ppp_finishpacketbufferqueue_lcp; //Incorrect packet: discard it!
+				}
+				if (!packetServerAddPacketBufferQueue(&LCP_requestFields, Packetserver_clients[connectedclient].ppp_serverLCP_pendingMagicNumber[2])) //Correct length!
+				{
+					goto ppp_finishpacketbufferqueue_lcp; //Incorrect packet: discard it!
+				}
+				if (!packetServerAddPacketBufferQueue(&LCP_requestFields, Packetserver_clients[connectedclient].ppp_serverLCP_pendingMagicNumber[3])) //Correct length!
+				{
+					goto ppp_finishpacketbufferqueue_lcp; //Incorrect packet: discard it!
+				}
+			}
+		//case 3: //Authentication Protocol
+			/*
+			if (common_OptionLengthField != 4) //Unsupported length?
+			{
+			invalidauthenticationprotocol:
+				if (!packetServerAddPacketBufferQueue(&LCP_requestFields, 0x03)) //NAK it!
+				{
+					goto ppp_finishpacketbufferqueue_lcp; //Incorrect packet: discard it!
+				}
+				if (!packetServerAddPacketBufferQueue(&LCP_requestFields, 4)) //Correct length!
+				{
+					goto ppp_finishpacketbufferqueue_lcp; //Incorrect packet: discard it!
+				}
+				if (!packetServerAddPacketBufferQueueBE16(&LCP_requestFields, 0xC023)) //PAP!
+				{
+					goto ppp_finishpacketbufferqueue_lcp; //Incorrect packet: discard it!
+				}
+				goto performskipdata_lcp; //Skip the data please!
+			}
+			request_authenticationspecified = 1; //Request that authentication be used!
+			break;
+			*/
+		//case 2: //ASync-Control-Character-Map
+			if (Packetserver_clients[connectedclient].ppp_serverLCP_haveAsyncControlCharacterMap) //To request?
+			{
+				if (!packetServerAddPacketBufferQueue(&LCP_requestFields, 0x02)) //NAK it!
+				{
+					goto ppp_finishpacketbufferqueue_lcp; //Incorrect packet: discard it!
+				}
+				if (!packetServerAddPacketBufferQueue(&LCP_requestFields, 6)) //Correct length!
+				{
+					goto ppp_finishpacketbufferqueue_lcp; //Incorrect packet: discard it!
+				}
+				if (!packetServerAddPacketBufferQueue(&LCP_requestFields, Packetserver_clients[connectedclient].ppp_serverLCP_pendingASyncControlCharacterMap[0])) //Correct length!
+				{
+					goto ppp_finishpacketbufferqueue_lcp; //Incorrect packet: discard it!
+				}
+				if (!packetServerAddPacketBufferQueue(&LCP_requestFields, Packetserver_clients[connectedclient].ppp_serverLCP_pendingASyncControlCharacterMap[1])) //Correct length!
+				{
+					goto ppp_finishpacketbufferqueue_lcp; //Incorrect packet: discard it!
+				}
+				if (!packetServerAddPacketBufferQueue(&LCP_requestFields, Packetserver_clients[connectedclient].ppp_serverLCP_pendingASyncControlCharacterMap[2])) //Correct length!
+				{
+					goto ppp_finishpacketbufferqueue_lcp; //Incorrect packet: discard it!
+				}
+				if (!packetServerAddPacketBufferQueue(&LCP_requestFields, Packetserver_clients[connectedclient].ppp_serverLCP_pendingASyncControlCharacterMap[3])) //Correct length!
+				{
+					goto ppp_finishpacketbufferqueue_lcp; //Incorrect packet: discard it!
+				}
+			}
+
+		createPPPstream(&pppstream, LCP_requestFields.buffer, LCP_requestFields.length); //Create a stream object for us to use, which goes until the end of the payload!
+		if (PPP_addLCPNCPResponseHeader(connectedclient, &response, 0, 0xC021, 0x01, Packetserver_clients[connectedclient].ppp_serverLCPidentifier, PPP_streamdataleft(&pppstream))) //Configure-Request
+		{
+			goto ppp_finishpacketbufferqueue; //Finish up!
+		}
+
+		for (; PPP_streamdataleft(&pppstream);) //Data left?
+		{
+			if (!PPP_consumeStream(&pppstream, &datab))
+			{
+				goto ppp_finishpacketbufferqueue_lcp; //Incorrect packet: discard it!
+			}
+			if (!packetServerAddPacketBufferQueue(&response, datab)) //Add it!
+			{
+				goto ppp_finishpacketbufferqueue_lcp; //Finish up!
+			}
+		}
+
+		//Calculate and add the checksum field!
+		if (PPP_addFCS(&response))
+		{
+			goto ppp_finishpacketbufferqueue;
+		}
+
+		//Packet is fully built. Now send it!
+		if (Packetserver_clients[connectedclient].ppp_response.size) //Previous Response still valid?
+		{
+			goto ppp_finishpacketbufferqueue; //Keep pending!
+		}
+		if (response.buffer) //Any response to give?
+		{
+			memcpy(&Packetserver_clients[connectedclient].ppp_response, &response, sizeof(response)); //Give the response to the client!
+			ppp_responseforuser(connectedclient); //A response is ready!
+			memset(&response, 0, sizeof(response)); //Parsed!
+		}
+		goto ppp_finishpacketbufferqueue2_lcp; //Success!
+	ppp_finishpacketbufferqueue_lcp: //An error occurred during the response?
+		result = 0; //Keep pending until we can properly handle it!
+	ppp_finishpacketbufferqueue2_lcp:
+		packetServerFreePacketBufferQueue(&LCP_requestFields); //Free the queued response!
+		packetServerFreePacketBufferQueue(&response); //Free the queued response!
+		packetServerFreePacketBufferQueue(&pppNakFields); //Free the queued response!
+		packetServerFreePacketBufferQueue(&pppRejectFields); //Free the queued response!
+		return result; //Give the correct result!
+	}
+	donthandleServerPPPLCPyet: //Don't handle PPP LCP from server yet?
 	if (!handleTransmit) return 1; //Don't do anything more when not handling a transmit!
 	createPPPstream(&pppstream, &Packetserver_clients[connectedclient].packetserver_transmitbuffer[0], Packetserver_clients[connectedclient].packetserver_transmitlength-2); //Create a stream object for us to use, which goes until the end of the payload!
 	createPPPstream(&checksumppp, &Packetserver_clients[connectedclient].packetserver_transmitbuffer[Packetserver_clients[connectedclient].packetserver_transmitlength - 2], 2); //Create a stream object for us to use for the checksum!
@@ -4847,6 +5066,579 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			}
 			goto ppp_finishpacketbufferqueue2; //Finish up!
 			break;
+		case 2: //Configure-Ack (All options OK)
+			if (common_IdentifierField != Packetserver_clients[connectedclient].ppp_servercurrentLCPidentifier) //Identifier mismatch?
+			{
+				goto ppp_finishpacketbufferqueue; //Finish up!
+			}
+			if (!createPPPsubstream(&pppstream, &pppstream_requestfield, MAX(common_LengthField, 4) - 4)) //Not enough room for the data?
+			{
+				goto ppp_finishpacketbufferqueue; //Finish up!
+			}
+			request_pendingMRU = 1500; //Default MTU value to use!
+			request_pendingProtocolFieldCompression = 0; //Default: no protocol field compression!
+			request_pendingAddressAndControlFieldCompression = 0; //Default: no address-and-control-field compression!
+			memset(&request_magic_number, 0, sizeof(request_magic_number)); //Default: none
+			request_magic_number_used = 0; //Default: not used!
+			request_authenticationspecified = 0; //Default: not used!
+			request_asynccontrolcharactermap[0] = request_asynccontrolcharactermap[1] = request_asynccontrolcharactermap[2] = request_asynccontrolcharactermap[3] = 0xFF; //All ones by default!
+
+			//Now, start parsing the options for the connection!
+			for (; PPP_peekStream(&pppstream_requestfield, &common_TypeField);) //Gotten a new option to parse?
+			{
+				if (!PPP_consumeStream(&pppstream_requestfield, &common_TypeField))
+				{
+					goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+				}
+				if (!PPP_consumeStream(&pppstream_requestfield, &common_OptionLengthField))
+				{
+					goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+				}
+				if (PPP_streamdataleft(&pppstream_requestfield) < (MAX(common_OptionLengthField, 2U) - 2U)) //Not enough room left for the option data?
+				{
+					goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+				}
+				switch (common_TypeField) //What type is specified for the option?
+				{
+				case 1: //Maximum Receive Unit
+					if (common_OptionLengthField != 4) //Unsupported length?
+					{
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, common_TypeField)) //NAK it!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 4)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueueBE16(&pppNakFields, 1500)) //Correct data!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						goto performskipdata_lcpack; //Skip the data please!
+					}
+					if (!PPP_consumeStreamBE16(&pppstream_requestfield, &request_pendingMRU)) //Pending MRU field!
+					{
+						goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+					}
+					//Field is OK!
+					break;
+				case 7: //Protocol Field Compression
+					if (common_OptionLengthField != 2) //Unsupported length?
+					{
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, common_TypeField)) //NAK it!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 2)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						goto performskipdata_lcpack; //Skip the data please!
+					}
+					request_pendingProtocolFieldCompression = 1; //Set the request!
+					break;
+				case 8: //Address-And-Control-Field-Compression
+					if (common_OptionLengthField != 2) //Unsupported length?
+					{
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, common_TypeField)) //NAK it!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 2)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						goto performskipdata_lcpack; //Skip the data please!
+					}
+					request_pendingAddressAndControlFieldCompression = 1; //Set the request!
+					break;
+				case 5: //Magic Number
+					if (common_OptionLengthField != 6) //Unsupported length?
+					{
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, common_TypeField)) //NAK it!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 6)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						goto performskipdata_lcpack; //Skip the data please!
+					}
+					request_magic_number_used = 1; //Set the request!
+					if (!PPP_consumeStream(&pppstream_requestfield, &request_magic_number[0])) //Length couldn't be read?
+					{
+						result = 1; //Duscard!
+						goto ppp_finishpacketbufferqueue2; //Finish up!
+					}
+					if (!PPP_consumeStream(&pppstream_requestfield, &request_magic_number[1])) //Length couldn't be read?
+					{
+						result = 1; //Duscard!
+						goto ppp_finishpacketbufferqueue2; //Finish up!
+					}
+					if (!PPP_consumeStream(&pppstream_requestfield, &request_magic_number[2])) //Length couldn't be read?
+					{
+						result = 1; //Duscard!
+						goto ppp_finishpacketbufferqueue2; //Finish up!
+					}
+					if (!PPP_consumeStream(&pppstream_requestfield, &request_magic_number[3])) //Length couldn't be read?
+					{
+						result = 1; //Duscard!
+						goto ppp_finishpacketbufferqueue2; //Finish up!
+					}
+					break;
+				case 3: //Authentication Protocol
+					if (common_OptionLengthField != 4) //Unsupported length?
+					{
+					invalidauthenticationprotocol_lcpack:
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, common_TypeField)) //NAK it!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 4)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueueBE16(&pppNakFields, 0xC023)) //PAP!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						goto performskipdata_lcpack; //Skip the data please!
+					}
+					request_magic_number_used = 1; //Set the request!
+					if (!PPP_consumeStreamBE16(&pppstream_requestfield, &request_authenticationprotocol)) //Length couldn't be read?
+					{
+						result = 1; //Duscard!
+						goto ppp_finishpacketbufferqueue2; //Finish up!
+					}
+					if (request_authenticationprotocol != 0xC023) //Not a supported protocol?
+					{
+						goto invalidauthenticationprotocol_lcpack; //Count as invalid!
+					}
+					request_authenticationspecified = 1; //Request that authentication be used!
+					break;
+				case 2: //ASync-Control-Character-Map
+					if (common_OptionLengthField != 6) //Unsupported length?
+					{
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, common_TypeField)) //NAK it!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 6)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0xFF)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0xFF)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0xFF)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0xFF)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						goto performskipdata_lcpack; //Skip the data please!
+					}
+					if (!PPP_consumeStream(&pppstream_requestfield, &request_asynccontrolcharactermap[0])) //Length couldn't be read?
+					{
+						result = 1; //Duscard!
+						goto ppp_finishpacketbufferqueue2; //Finish up!
+					}
+					if (!PPP_consumeStream(&pppstream_requestfield, &request_asynccontrolcharactermap[1])) //Length couldn't be read?
+					{
+						result = 1; //Duscard!
+						goto ppp_finishpacketbufferqueue2; //Finish up!
+					}
+					if (!PPP_consumeStream(&pppstream_requestfield, &request_asynccontrolcharactermap[2])) //Length couldn't be read?
+					{
+						result = 1; //Duscard!
+						goto ppp_finishpacketbufferqueue2; //Finish up!
+					}
+					if (!PPP_consumeStream(&pppstream_requestfield, &request_asynccontrolcharactermap[3])) //Length couldn't be read?
+					{
+						result = 1; //Duscard!
+						goto ppp_finishpacketbufferqueue2; //Finish up!
+					}
+					break;
+				case 4: //Quality protocol
+				default: //Unknown option?
+					goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+					if (!packetServerAddPacketBufferQueue(&pppRejectFields, common_TypeField)) //NAK it!
+					{
+						goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+					}
+					if (!packetServerAddPacketBufferQueue(&pppRejectFields, 2)) //Correct length!
+					{
+						goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+					}
+				performskipdata_lcpack:
+					if (common_OptionLengthField >= 2) //Enough length to skip?
+					{
+						skipdatacounter = common_OptionLengthField - 2; //How much to skip!
+						for (; skipdatacounter;) //Skip it!
+						{
+							if (!PPP_consumeStream(&pppstream_requestfield, &datab)) //Failed to consume properly?
+							{
+								goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+							}
+							--skipdatacounter;
+						}
+					}
+					else //Malformed parameter!
+					{
+						goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+					}
+					break;
+				}
+			}
+
+			//TODO: Finish parsing properly
+			if (!(pppNakFields.buffer || pppRejectFields.buffer)) //NAK or Rejected any fields? Then don't process to the connected phase!
+			{
+				result = 1; //Discard it!
+			}
+			else //OK! All parameters are fine!
+			{
+				//Apply the parameters to the session and start the connection!
+				memcpy(&Packetserver_clients[connectedclient].ppp_response, &response, sizeof(response)); //Give the response to the client!
+				ppp_responseforuser(connectedclient); //A response is ready!
+				memset(&response, 0, sizeof(response)); //Parsed!
+				//Now, apply the request properly!
+				Packetserver_clients[connectedclient].ppp_LCPstatus[1] = 1; //Open!
+				Packetserver_clients[connectedclient].PPP_MRU[1] = request_pendingMRU; //MRU!
+				Packetserver_clients[connectedclient].PPP_headercompressed[1] = request_pendingAddressAndControlFieldCompression; //Header compression!
+				Packetserver_clients[connectedclient].PPP_protocolcompressed[1] = request_pendingProtocolFieldCompression; //Protocol compressed!
+				Packetserver_clients[connectedclient].asynccontrolcharactermap[1] = SDL_SwapBE32((request_asynccontrolcharactermap[0] | (request_asynccontrolcharactermap[1] << 8) | (request_asynccontrolcharactermap[2] << 16) | (request_asynccontrolcharactermap[3] << 24)));
+				memcpy(&Packetserver_clients[connectedclient].magic_number[1], &request_magic_number, sizeof(request_magic_number)); //Magic number
+				Packetserver_clients[connectedclient].have_magic_number[1] = request_magic_number_used; //Use magic number?
+				if (request_authenticationspecified) //Authentication specified?
+				{
+					Packetserver_clients[connectedclient].ppp_PAPstatus[1] = 0; //Not Authenticated yet!
+				}
+				else
+				{
+					Packetserver_clients[connectedclient].ppp_PAPstatus[1] = 1; //Authenticated automatically!
+				}
+				Packetserver_clients[connectedclient].ppp_IPXCPstatus[1] = 0; //Closed!
+				//Packetserver_clients[connectedclient].ipxcp_negotiationstatus = 0; //No negotation yet!
+				Packetserver_clients[connectedclient].ppp_serverLCPstatus = 0; //Reset the status check to try again afterwards if it's reset again!
+				result = 1; //Success!
+			}
+			goto ppp_finishpacketbufferqueue2; //Finish up!
+			break;
+		case 3: //Configure-Nak (Some options unacceptable)
+		case 4: //Configure-Reject (Some options not recognisable or acceptable for negotiation)
+			if (common_IdentifierField != Packetserver_clients[connectedclient].ppp_servercurrentLCPidentifier) //Identifier mismatch?
+			{
+				goto ppp_finishpacketbufferqueue; //Finish up!
+			}
+			if (!createPPPsubstream(&pppstream, &pppstream_requestfield, MAX(common_LengthField, 4) - 4)) //Not enough room for the data?
+			{
+				goto ppp_finishpacketbufferqueue; //Finish up!
+			}
+			request_NakRejectpendingMRU = 0; //Not used by default!
+			request_pendingMRU = 1500; //Default MTU value to use!
+			request_pendingProtocolFieldCompression = 0; //Default: no protocol field compression!
+			request_pendingAddressAndControlFieldCompression = 0; //Default: no address-and-control-field compression!
+			memset(&request_magic_number, 0, sizeof(request_magic_number)); //Default: none
+			request_magic_number_used = 0; //Default: not used!
+			request_authenticationspecified = 0; //Default: not used!
+			request_asynccontrolcharactermap[0] = request_asynccontrolcharactermap[1] = request_asynccontrolcharactermap[2] = request_asynccontrolcharactermap[3] = 0xFF; //All ones by default!
+
+			//Now, start parsing the options for the connection!
+			for (; PPP_peekStream(&pppstream_requestfield, &common_TypeField);) //Gotten a new option to parse?
+			{
+				if (!PPP_consumeStream(&pppstream_requestfield, &common_TypeField))
+				{
+					goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+				}
+				if (!PPP_consumeStream(&pppstream_requestfield, &common_OptionLengthField))
+				{
+					goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+				}
+				if (PPP_streamdataleft(&pppstream_requestfield) < (MAX(common_OptionLengthField, 2U) - 2U)) //Not enough room left for the option data?
+				{
+					goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+				}
+				switch (common_TypeField) //What type is specified for the option?
+				{
+				case 1: //Maximum Receive Unit
+					if (common_OptionLengthField != 4) //Unsupported length?
+					{
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, common_TypeField)) //NAK it!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 4)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueueBE16(&pppNakFields, 1500)) //Correct data!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						goto performskipdata_lcpnakreject; //Skip the data please!
+					}
+					if (!PPP_consumeStreamBE16(&pppstream_requestfield, &request_pendingMRU)) //Pending MRU field!
+					{
+						goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+					}
+					request_NakRejectpendingMRU = 1; //This was Nak/Rejected!
+					//Field is OK!
+					break;
+				case 7: //Protocol Field Compression
+					if (common_OptionLengthField != 2) //Unsupported length?
+					{
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, common_TypeField)) //NAK it!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 2)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						goto performskipdata_lcpnakreject; //Skip the data please!
+					}
+					request_pendingProtocolFieldCompression = 1; //Set the request!
+					break;
+				case 8: //Address-And-Control-Field-Compression
+					if (common_OptionLengthField != 2) //Unsupported length?
+					{
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, common_TypeField)) //NAK it!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 2)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						goto performskipdata_lcpnakreject; //Skip the data please!
+					}
+					request_pendingAddressAndControlFieldCompression = 1; //Set the request!
+					break;
+				case 5: //Magic Number
+					if (common_OptionLengthField != 6) //Unsupported length?
+					{
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, common_TypeField)) //NAK it!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 6)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						goto performskipdata_lcpnakreject; //Skip the data please!
+					}
+					request_magic_number_used = 1; //Set the request!
+					if (!PPP_consumeStream(&pppstream_requestfield, &request_magic_number[0])) //Length couldn't be read?
+					{
+						result = 1; //Duscard!
+						goto ppp_finishpacketbufferqueue2; //Finish up!
+					}
+					if (!PPP_consumeStream(&pppstream_requestfield, &request_magic_number[1])) //Length couldn't be read?
+					{
+						result = 1; //Duscard!
+						goto ppp_finishpacketbufferqueue2; //Finish up!
+					}
+					if (!PPP_consumeStream(&pppstream_requestfield, &request_magic_number[2])) //Length couldn't be read?
+					{
+						result = 1; //Duscard!
+						goto ppp_finishpacketbufferqueue2; //Finish up!
+					}
+					if (!PPP_consumeStream(&pppstream_requestfield, &request_magic_number[3])) //Length couldn't be read?
+					{
+						result = 1; //Duscard!
+						goto ppp_finishpacketbufferqueue2; //Finish up!
+					}
+					break;
+				case 3: //Authentication Protocol
+					if (common_OptionLengthField != 4) //Unsupported length?
+					{
+					invalidauthenticationprotocol_lcpnakreject:
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, common_TypeField)) //NAK it!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 4)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueueBE16(&pppNakFields, 0xC023)) //PAP!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						goto performskipdata_lcpnakreject; //Skip the data please!
+					}
+					//request_magic_number_used = 1; //Set the request!
+					if (!PPP_consumeStreamBE16(&pppstream_requestfield, &request_authenticationprotocol)) //Length couldn't be read?
+					{
+						result = 1; //Duscard!
+						goto ppp_finishpacketbufferqueue2; //Finish up!
+					}
+					if (request_authenticationprotocol != 0xC023) //Not a supported protocol?
+					{
+						goto invalidauthenticationprotocol_lcpnakreject; //Count as invalid!
+					}
+					request_authenticationspecified = 1; //Request that authentication be used!
+					break;
+				case 2: //ASync-Control-Character-Map
+					if (common_OptionLengthField != 6) //Unsupported length?
+					{
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, common_TypeField)) //NAK it!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 6)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0xFF)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0xFF)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0xFF)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0xFF)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+						}
+						goto performskipdata_lcpnakreject; //Skip the data please!
+					}
+					if (!PPP_consumeStream(&pppstream_requestfield, &request_asynccontrolcharactermap[0])) //Length couldn't be read?
+					{
+						result = 1; //Duscard!
+						goto ppp_finishpacketbufferqueue2; //Finish up!
+					}
+					if (!PPP_consumeStream(&pppstream_requestfield, &request_asynccontrolcharactermap[1])) //Length couldn't be read?
+					{
+						result = 1; //Duscard!
+						goto ppp_finishpacketbufferqueue2; //Finish up!
+					}
+					if (!PPP_consumeStream(&pppstream_requestfield, &request_asynccontrolcharactermap[2])) //Length couldn't be read?
+					{
+						result = 1; //Duscard!
+						goto ppp_finishpacketbufferqueue2; //Finish up!
+					}
+					if (!PPP_consumeStream(&pppstream_requestfield, &request_asynccontrolcharactermap[3])) //Length couldn't be read?
+					{
+						result = 1; //Duscard!
+						goto ppp_finishpacketbufferqueue2; //Finish up!
+					}
+					break;
+				case 4: //Quality protocol
+				default: //Unknown option?
+					if (!packetServerAddPacketBufferQueue(&pppRejectFields, common_TypeField)) //NAK it!
+					{
+						goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+					}
+					if (!packetServerAddPacketBufferQueue(&pppRejectFields, 2)) //Correct length!
+					{
+						goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+					}
+				performskipdata_lcpnakreject:
+					if (common_OptionLengthField >= 2) //Enough length to skip?
+					{
+						skipdatacounter = common_OptionLengthField - 2; //How much to skip!
+						for (; skipdatacounter;) //Skip it!
+						{
+							if (!PPP_consumeStream(&pppstream_requestfield, &datab)) //Failed to consume properly?
+							{
+								goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+							}
+							--skipdatacounter;
+						}
+					}
+					else //Malformed parameter!
+					{
+						goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+					}
+					break;
+				}
+			}
+			if ((pppNakFields.length == 0) && (pppRejectFields.length == 0)) //OK to process?
+			{
+				if (request_NakRejectpendingMRU && (common_CodeField == 4)) //Reject-MRU?
+				{
+					Packetserver_clients[connectedclient].ppp_serverLCP_haveMRU = 0; //Don't request anymore!
+				}
+				else if (request_NakRejectpendingMRU) //MRU change requested?
+				{
+					Packetserver_clients[connectedclient].ppp_serverLCP_pendingMRU = request_pendingMRU; //The request MRU to use!
+				}
+				if (request_pendingProtocolFieldCompression) //Protocol field compression Nak/Reject?
+				{
+					Packetserver_clients[connectedclient].ppp_serverLCP_haveProtocolFieldCompression = 0; //Not anymore!
+				}
+				if (request_pendingAddressAndControlFieldCompression) //Address and Control Field Compression Nak/Reject?
+				{
+					Packetserver_clients[connectedclient].ppp_serverLCP_haveAddressAndControlFieldCompression = 0; //Not anymore!
+				}
+				if (request_magic_number_used && (common_CodeField == 4)) //Reject-Magic number?
+				{
+					Packetserver_clients[connectedclient].ppp_serverLCP_haveMagicNumber = 0; //Not anymore!
+				}
+				else if (request_magic_number_used) //Magic number requested?
+				{
+					memcpy(&Packetserver_clients[connectedclient].ppp_serverLCP_pendingMagicNumber, request_magic_number, sizeof(request_magic_number)); //The magic number to use!
+				}
+				if (request_asynccontrolcharactermap && (common_CodeField == 4)) //Reject-Async control character map?
+				{
+					Packetserver_clients[connectedclient].ppp_serverLCP_haveAsyncControlCharacterMap = 0; //Not anymore!
+				}
+				else if (request_asynccontrolcharactermap) //Async control character map requested?
+				{
+					memcpy(&Packetserver_clients[connectedclient].ppp_serverLCP_pendingASyncControlCharacterMap, request_asynccontrolcharactermap, sizeof(request_asynccontrolcharactermap)); //ASync-Control-Character-Map to use?
+				}
+			}
+			result = 1; //Success!
+			goto ppp_finishpacketbufferqueue2; //Finish up!
+			break;
 		case 11: //Discard-Request
 			if (Packetserver_clients[connectedclient].ppp_LCPstatus) //LCP opened?
 			{
@@ -4857,9 +5649,6 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				break;
 			}
 			//Is LCP is closed, an Code-Reject is issued instead?
-		case 2: //Configure-Ack (All options OK)
-		case 3: //Configure-Nak (Some options unacceptable)
-		case 4: //Configure-Reject (Some options not recognisable or acceptable for negotiation)
 		case 6: //Terminate-Ack (Acnowledge termination of connection)
 		case 7: //Code-Reject (Code field is rejected because it's unknown)
 		case 8: //Protocol-Reject (Protocol field is rejected for an active connection)
@@ -7289,6 +8078,9 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 									Packetserver_clients[connectedclient].PPP_headercompressed[0] = Packetserver_clients[connectedclient].PPP_headercompressed[1] = 0; //Default: uncompressed
 									Packetserver_clients[connectedclient].PPP_protocolcompressed[0] = Packetserver_clients[connectedclient].PPP_protocolcompressed[1] = 0; //Default: uncompressed
 									Packetserver_clients[connectedclient].ppp_protocolreject_count = 0; //Default: 0!
+									Packetserver_clients[connectedclient].ppp_serverLCPstatus = 0; //Start out with initialized PPP LCP connection for the server to client connection!
+									initTicksHolder(&Packetserver_clients[connectedclient].ppp_serverLCPrequesttimer); //Initialize the timer!
+									getnspassed(&Packetserver_clients[connectedclient].ppp_serverLCPrequesttimer); //Starting it's timing!
 									Packetserver_clients[connectedclient].ppp_LCPstatus[0] = Packetserver_clients[connectedclient].ppp_PAPstatus[0] = Packetserver_clients[connectedclient].ppp_IPXCPstatus[0] = 0; //Reset all protocols to init state!
 									Packetserver_clients[connectedclient].asynccontrolcharactermap[0] = Packetserver_clients[connectedclient].asynccontrolcharactermap[1] = 0xFFFFFFFF; //Initialize the Async Control Character Map to init value!
 									packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].ppp_response); //Free the response that's queued for packets to be sent to the client if anything is left!
