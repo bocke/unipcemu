@@ -4511,7 +4511,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		//Packet is fully built. Now send it!
 		if (Packetserver_clients[connectedclient].ppp_response.size) //Previous Response still valid?
 		{
-			goto ppp_finishpacketbufferqueue; //Keep pending!
+			goto ppp_finishpacketbufferqueue_lcp; //Keep pending!
 		}
 		if (response.buffer) //Any response to give?
 		{
