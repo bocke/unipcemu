@@ -4362,6 +4362,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		result = 1; //Default: handled!
 		//Now, formulate a request!
 		Packetserver_clients[connectedclient].ppp_servercurrentLCPidentifier = Packetserver_clients[connectedclient].ppp_serverLCPidentifier; //Load the identifier to try!
+		memset(&LCP_requestFields, 0, sizeof(LCP_requestFields)); //Make sure it's ready for usage!
 		//case 1: //Maximum Receive Unit
 			if (Packetserver_clients[connectedclient].ppp_serverLCP_haveMRU) //Required?
 			{
