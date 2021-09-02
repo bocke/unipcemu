@@ -3819,8 +3819,7 @@ static const word fcslookup[256] =
 
 #define PPP_GOODFCS 0xf0b8
 
-//isforpacket: 1 when creating a checksum for the packet, 0 when checking a packet checksum with this function.
-word PPP_calcFCS(byte* buffer, uint_32 length, byte isforpacket)
+word PPP_calcFCS(byte* buffer, uint_32 length)
 {
 	uint_32 pos;
 	word fcs;
@@ -3828,10 +3827,6 @@ word PPP_calcFCS(byte* buffer, uint_32 length, byte isforpacket)
 	for (pos = 0; pos < length; ++pos)
 	{
 		fcs = (fcs >> 8) ^ fcslookup[(fcs & 0xFF) ^ buffer[pos]]; //Calcalate FCS!
-	}
-	if (isforpacket) //Unchanged?
-	{
-		return SDL_SwapBE16(~fcs); //One's complement value! This is to be swapped to Big-Endian order to work properly (which added to the stream as big-endian makes it proper little-endian)!
 	}
 	return fcs; //Don't swap, as this is done by the write only(to provide a little-endian value in the stream)! The result for a checksum is just in our native ordering to check against the good FCS value!
 }
@@ -4172,8 +4167,8 @@ byte PPP_addFCS(MODEM_PACKETBUFFER* response)
 {
 	word checksumfield;
 	//Calculate and add the checksum field!
-	checksumfield = PPP_calcFCS(response->buffer, response->length, 1); //The checksum field!
-	if (!packetServerAddPacketBufferQueueBE16(response, checksumfield)) //Checksum failure?
+	checksumfield = PPP_calcFCS(response->buffer, response->length); //The checksum field!
+	if (!packetServerAddPacketBufferQueueLE16(response, (checksumfield^0xFFFF))) //Checksum failure? For some reason this is in little-endian format and complemented.
 	{
 		return 1;
 	}
@@ -4599,7 +4594,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 	{
 		return 1; //Incorrect packet: discard it!
 	}
-	checksum = PPP_calcFCS(&Packetserver_clients[connectedclient].packetserver_transmitbuffer[0], Packetserver_clients[connectedclient].packetserver_transmitlength, 0); //Calculate the checksum!
+	checksum = PPP_calcFCS(&Packetserver_clients[connectedclient].packetserver_transmitbuffer[0], Packetserver_clients[connectedclient].packetserver_transmitlength); //Calculate the checksum!
 	if (checksum != PPP_GOODFCS) //Checksum error?
 	{
 		return 1; //Incorrect packet: discard it!
