@@ -3817,6 +3817,8 @@ static const word fcslookup[256] =
    0x7BC7, 0x6A4E, 0x58D5, 0x495C, 0x3DE3, 0x2C6A, 0x1EF1, 0x0F78
 };
 
+#define PPP_GOODFCS 0xf0b8
+
 //isforpacket: 1 when creating a checksum for the packet, 0 when checking a packet checksum with this function.
 word PPP_calcFCS(byte* buffer, uint_32 length, byte isforpacket)
 {
@@ -3827,13 +3829,11 @@ word PPP_calcFCS(byte* buffer, uint_32 length, byte isforpacket)
 	{
 		fcs = (fcs >> 8) ^ fcslookup[(fcs & 0xFF) ^ buffer[pos]]; //Calcalate FCS!
 	}
-	/*
 	if (isforpacket) //Unchanged?
 	{
-		return ~fcs; //Don't swap, as this is done by the write!
+		return SDL_SwapBE16(~fcs); //One's complement value! This is to be swapped to Big-Endian order to work properly (which added to the stream as big-endian makes it proper little-endian)!
 	}
-	*/
-	return SDL_SwapBE16(~fcs); //One's complement value! This is to be swapped to Big-Endian order to work properly!
+	return fcs; //Don't swap, as this is done by the write only(to provide a little-endian value in the stream)! The result for a checksum is just in our native ordering to check against the good FCS value!
 }
 
 byte ipxbroadcastaddr[6] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF}; //IPX Broadcast address
@@ -4589,8 +4589,8 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 	{
 		return 1; //Incorrect packet: discard it!
 	}
-	checksum = PPP_calcFCS(&Packetserver_clients[connectedclient].packetserver_transmitbuffer[0], Packetserver_clients[connectedclient].packetserver_transmitlength - 2, 0); //Calculate the checksum!
-	if (checksum != checksumfield) //Checksum mismatch? Checksum error!
+	checksum = PPP_calcFCS(&Packetserver_clients[connectedclient].packetserver_transmitbuffer[0], Packetserver_clients[connectedclient].packetserver_transmitlength, 0); //Calculate the checksum!
+	if (checksum != PPP_GOODFCS) //Checksum error?
 	{
 		return 1; //Incorrect packet: discard it!
 	}
