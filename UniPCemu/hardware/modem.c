@@ -4212,7 +4212,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 	ETHERNETHEADER ppptransmitheader;
 	if (handleTransmit)
 	{
-		if (Packetserver_clients[connectedclient].packetserver_transmitlength < (3 + (Packetserver_clients[connectedclient].PPP_protocolcompressed[0] ? 1U : 0U) + (Packetserver_clients[connectedclient].PPP_headercompressed[0] ? 2U : 0U))) //Not enough for a full minimal PPP packet (with 1 byte of payload)?
+		if (Packetserver_clients[connectedclient].packetserver_transmitlength < (3 + (!Packetserver_clients[connectedclient].PPP_protocolcompressed[0] ? 1U : 0U) + (!Packetserver_clients[connectedclient].PPP_headercompressed[0] ? 2U : 0U))) //Not enough for a full minimal PPP packet (with 1 byte of payload)?
 		{
 			return 1; //Incorrect packet: discard it!
 		}
