@@ -6453,7 +6453,7 @@ byte PPP_parseReceivedPacketForClient(sword connectedclient)
 	byte result;
 	byte datab;
 	result = 0; //Default: discard!
-	//Not handled yet. This is supposed to check the packet, parse it and send packets to the connected client in response when it's able to!
+	//This is supposed to check the packet, parse it and send packets to the connected client in response when it's able to!
 	if (Packetserver_clients[connectedclient].ppp_PAPstatus[0] && Packetserver_clients[connectedclient].ppp_PAPstatus[1] && Packetserver_clients[connectedclient].ppp_LCPstatus[0] && Packetserver_clients[connectedclient].ppp_LCPstatus[1]) //Fully authenticated and logged in?
 	{
 		if (Packetserver_clients[connectedclient].pktlen > sizeof(ethernetheader.data)) //Length might be fine?
