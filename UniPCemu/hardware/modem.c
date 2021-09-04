@@ -5335,8 +5335,6 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			else //OK! All parameters are fine!
 			{
 				//Apply the parameters to the session and start the connection!
-				memcpy(&Packetserver_clients[connectedclient].ppp_response, &response, sizeof(response)); //Give the response to the client!
-				ppp_responseforuser(connectedclient); //A response is ready!
 				memset(&response, 0, sizeof(response)); //Parsed!
 				//Now, apply the request properly!
 				Packetserver_clients[connectedclient].ppp_LCPstatus[1] = 1; //Open!
