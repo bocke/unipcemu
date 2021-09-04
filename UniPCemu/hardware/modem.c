@@ -5330,7 +5330,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			}
 
 			//TODO: Finish parsing properly
-			if (!(pppNakFields.buffer || pppRejectFields.buffer)) //NAK or Rejected any fields? Then don't process to the connected phase!
+			if (pppNakFields.buffer || pppRejectFields.buffer) //NAK or Rejected any fields? Then don't process to the connected phase!
 			{
 				result = 1; //Discard it!
 			}
