@@ -3088,8 +3088,12 @@ byte modem_writeData(byte value)
 	{
 		for (;modem.escaping;) //Process escape characters as data!
 		{
+			if (!modem_writeCommandData(modem.escapecharacter)) //Send it as data/command!
+			{
+				return 0; //Don't acnowledge the send yet!
+			}
 			--modem.escaping; //Handle one!
-			modem_writeCommandData(modem.escapecharacter); //Send it as data/command!
+			modem.timer = 0.0; //Reset the timer when anything is received!
 		}
 		if (!modem_writeCommandData(value)) //Send it as data/command! Not acnowledged?
 		{
