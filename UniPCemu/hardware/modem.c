@@ -262,7 +262,7 @@ typedef struct
 	byte PPP_packetstartsent; //Has a packet start been sent?
 	byte PPP_packetreadyforsending; //Is the PPP packet ready to be sent to the client? 1 when containing data for the client, 0 otherwise. Ignored for non-PPP clients!
 	byte PPP_packetpendingforsending; //Is the PPP packet pending processed for the client? 1 when pending to be processed for the client, 0 otherwise. Ignored for non-PPP clients!
-	//Most PPP statuses and numbers are sets of two values: index 0 is the receiver(the client), index 1 is the sender(the server).
+	//Most PPP statuses and numbers are sets of two values: index 0 is the receiver(the client) and used for sending data properly to the client(how to send to the client), index 1 is the sender(the server) and used for receiving data properly from the client(how to receive from the client).
 	//PPP CP packet processing
 	byte PPP_headercompressed[2]; //Is the header compressed?
 	byte PPP_protocolcompressed[2]; //Is the protocol compressed?
@@ -4115,7 +4115,7 @@ ppp_finishpacketbufferqueue2_echo:
 byte PPP_addPPPheader(sbyte connectedclient, MODEM_PACKETBUFFER* response, byte allowheadercompression, word protocol)
 {
 	//Don't compress the header yet, since it's still negotiating!
-	if ((!(Packetserver_clients[connectedclient].PPP_headercompressed[1] && allowheadercompression) || (protocol==0xC021))) //Header isn't compressed? LCP is never compressed!
+	if ((!(Packetserver_clients[connectedclient].PPP_headercompressed[0] && allowheadercompression) || (protocol==0xC021))) //Header isn't compressed? LCP is never compressed!
 	{
 		if (!packetServerAddPacketBufferQueue(response, 0xFF)) //Start of PPP header!
 		{
@@ -4126,7 +4126,7 @@ byte PPP_addPPPheader(sbyte connectedclient, MODEM_PACKETBUFFER* response, byte 
 			return 1; //Finish up!
 		}
 	}
-	if ((protocol == 0xC021) || (!Packetserver_clients[connectedclient].PPP_protocolcompressed[1]) || ((protocol & 0x100) == 0)) //Protocol isn't compressed or uncompressable?
+	if ((protocol == 0xC021) || (!Packetserver_clients[connectedclient].PPP_protocolcompressed[0]) || ((protocol & 0x100) == 0)) //Protocol isn't compressed or uncompressable?
 	{
 		if (!packetServerAddPacketBufferQueueBE16(response, protocol)) //The protocol!
 		{
@@ -4223,7 +4223,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 	ETHERNETHEADER ppptransmitheader;
 	if (handleTransmit)
 	{
-		if (Packetserver_clients[connectedclient].packetserver_transmitlength < (3 + (!Packetserver_clients[connectedclient].PPP_protocolcompressed[0] ? 1U : 0U) + (!Packetserver_clients[connectedclient].PPP_headercompressed[0] ? 2U : 0U))) //Not enough for a full minimal PPP packet (with 1 byte of payload)?
+		if (Packetserver_clients[connectedclient].packetserver_transmitlength < (3 + (!Packetserver_clients[connectedclient].PPP_protocolcompressed[1] ? 1U : 0U) + (!Packetserver_clients[connectedclient].PPP_headercompressed[1] ? 2U : 0U))) //Not enough for a full minimal PPP packet (with 1 byte of payload)?
 		{
 			return 1; //Incorrect packet: discard it!
 		}
@@ -4548,7 +4548,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 	createPPPstream(&pppstream, &Packetserver_clients[connectedclient].packetserver_transmitbuffer[0], Packetserver_clients[connectedclient].packetserver_transmitlength-2); //Create a stream object for us to use, which goes until the end of the payload!
 	createPPPstream(&checksumppp, &Packetserver_clients[connectedclient].packetserver_transmitbuffer[Packetserver_clients[connectedclient].packetserver_transmitlength - 2], 2); //Create a stream object for us to use for the checksum!
 	memcpy(&pppstreambackup, &pppstream, sizeof(pppstream)); //Backup for checking again!
-	if (!Packetserver_clients[connectedclient].PPP_headercompressed[0]) //Header present?
+	if (!Packetserver_clients[connectedclient].PPP_headercompressed[1]) //Header present?
 	{
 		if (!PPP_consumeStream(&pppstream, &datab))
 		{
@@ -4584,7 +4584,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		return 1; //incorrect packet: discard it!
 	}
 	dataw = (word)datab; //Store First byte, in little-endian!
-	if (((datab & 1)==0) || (!Packetserver_clients[connectedclient].PPP_protocolcompressed[0])) //2-byte protocol?
+	if (((datab & 1)==0) || (!Packetserver_clients[connectedclient].PPP_protocolcompressed[1])) //2-byte protocol?
 	{
 		if (!PPP_consumeStream(&pppstream, &datab)) //Second byte!
 		{
@@ -7427,7 +7427,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 													{
 														if ((!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe) && (datatotransmit < 0x20)) //Might need to be escaped?
 														{
-															if (Packetserver_clients[connectedclient].asynccontrolcharactermap[1] & (1 << (datatotransmit & 0x1F))) //To be escaped?
+															if (Packetserver_clients[connectedclient].asynccontrolcharactermap[0] & (1 << (datatotransmit & 0x1F))) //To be escaped?
 															{
 																writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, PPP_ESC); //Escaped ...
 																writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, PPP_ENCODEESC(datatotransmit)); //ESC raw data!
