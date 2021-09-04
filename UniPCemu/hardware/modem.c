@@ -6143,11 +6143,11 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 					{
 						Packetserver_clients[connectedclient].ipxcp_negotiationstatus = 2; //NAK it!
 					}
-					else if (memcmp(&ipxcp_pendingnodenumber, &ipxbroadcastaddr, 6)) //Broadcast address?
+					else if (!memcmp(&ipxcp_pendingnodenumber, &ipxbroadcastaddr, 6)) //Broadcast address?
 					{
 						Packetserver_clients[connectedclient].ipxcp_negotiationstatus = 2; //NAK it!
 					}
-					else if (memcmp(&ipxcp_pendingnodenumber, &ipxnegotiationnodeaddr, 6)) //Negotiation node address?
+					else if (!memcmp(&ipxcp_pendingnodenumber, &ipxnegotiationnodeaddr, 6)) //Negotiation node address?
 					{
 						Packetserver_clients[connectedclient].ipxcp_negotiationstatus = 2; //NAK it!
 					}
@@ -6513,7 +6513,7 @@ byte PPP_parseReceivedPacketForClient(sword connectedclient)
 						{
 							if (Packetserver_clients[connectedclient].ipxcp_negotiationstatus == 1) //Waiting for negotiation answers?
 							{
-								if (memcmp(&ipxheader.SourceNodeNumber, &Packetserver_clients[connectedclient].ipxcp_nodenumber[0], 6)) //The requested node number had been found already?
+								if (memcmp(&ipxheader.SourceNodeNumber, &Packetserver_clients[connectedclient].ipxcp_nodenumber[0], 6)==0) //The requested node number had been found already?
 								{
 									Packetserver_clients[connectedclient].ipxcp_negotiationstatus = 2; //NAK the connection, as the requested node number had been found in the network!
 								}
