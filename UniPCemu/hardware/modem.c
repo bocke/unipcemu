@@ -4112,7 +4112,7 @@ ppp_finishpacketbufferqueue2_echo:
 }
 
 //result: 0: success, 1: error
-byte PPP_addPPPheader(sbyte connectedclient, MODEM_PACKETBUFFER* response, byte allowheadercompression, word protocol)
+byte PPP_addPPPheader(sword connectedclient, MODEM_PACKETBUFFER* response, byte allowheadercompression, word protocol)
 {
 	//Don't compress the header yet, since it's still negotiating!
 	if ((!(Packetserver_clients[connectedclient].PPP_headercompressed[0] && allowheadercompression) || (protocol==0xC021))) //Header isn't compressed? LCP is never compressed!
@@ -4144,7 +4144,7 @@ byte PPP_addPPPheader(sbyte connectedclient, MODEM_PACKETBUFFER* response, byte 
 }
 
 //result: 0: success, 1: error
-byte PPP_addLCPNCPResponseHeader(sbyte connectedclient, MODEM_PACKETBUFFER* response, byte allowheadercompression, word protocol, byte responsetype, byte common_IdentifierField, word contentlength)
+byte PPP_addLCPNCPResponseHeader(sword connectedclient, MODEM_PACKETBUFFER* response, byte allowheadercompression, word protocol, byte responsetype, byte common_IdentifierField, word contentlength)
 {
 	if (PPP_addPPPheader(connectedclient, response, allowheadercompression, protocol))
 	{
