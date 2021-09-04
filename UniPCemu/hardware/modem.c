@@ -4227,6 +4227,8 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		}
 	}
 	memset(&response, 0, sizeof(response)); //Make sure it's ready for usage!
+	memset(&pppNakFields, 0, sizeof(pppNakFields)); //Make sure it's ready for usage!
+	memset(&pppRejectFields, 0, sizeof(pppRejectFields)); //Make sure it's ready for usage!
 	//TODO: ipxcp nakfields/rejectfields.
 	if (Packetserver_clients[connectedclient].ppp_nakfields.buffer || Packetserver_clients[connectedclient].ppp_rejectfields.buffer) //NAK or Reject packet pending?
 	{
