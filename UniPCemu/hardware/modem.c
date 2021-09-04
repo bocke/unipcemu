@@ -6162,7 +6162,10 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 							initTicksHolder(&Packetserver_clients[connectedclient].ipxcp_negotiationstatustimer); //Initialize the timer!
 							getnspassed(&Packetserver_clients[connectedclient].ipxcp_negotiationstatustimer); //Start the timer now!
 						}
-						//Otherwise, keep pending!
+						else //Otherwise, keep pending!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp;
+						}
 					}
 				}
 
@@ -6171,6 +6174,10 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 					if (getnspassed_k(&Packetserver_clients[connectedclient].ipxcp_negotiationstatustimer) >= 1500000000.0f) //Negotiation timeout?
 					{
 						Packetserver_clients[connectedclient].ipxcp_negotiationstatus = 3; //Timeout reached! No other client responded to the request! Take the network/node address specified! 
+					}
+					else //Still pending?
+					{
+						goto ppp_finishpacketbufferqueue_ipxcp;
 					}
 				}
 
