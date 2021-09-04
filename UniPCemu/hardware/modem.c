@@ -4519,7 +4519,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		//Calculate and add the checksum field!
 		if (PPP_addFCS(&response))
 		{
-			goto ppp_finishpacketbufferqueue;
+			goto ppp_finishpacketbufferqueue_lcp;
 		}
 
 		//Packet is fully built. Now send it!
@@ -4993,6 +4993,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				Packetserver_clients[connectedclient].PPP_protocolcompressed[0] = 0; //Default: uncompressed
 				Packetserver_clients[connectedclient].have_magic_number[0] = 0; //Default: no magic number yet
 			}
+			result = 1; //Discard it!
 			goto ppp_finishpacketbufferqueue2; //Finish up!
 			break;
 		case 9: //Echo-Request (Request Echo-Reply. Required for an open connection to reply).
@@ -5360,7 +5361,6 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			//TODO: Finish parsing properly
 			if (pppNakFields.buffer || pppRejectFields.buffer) //NAK or Rejected any fields? Then don't process to the connected phase!
 			{
-				result = 1; //Discard it!
 				++Packetserver_clients[connectedclient].ppp_serverLCPidentifier; //Increase the identifier for new packets!
 				Packetserver_clients[connectedclient].ppp_serverLCPstatus = 2; //Reset the status check to try again afterwards if it's reset again!
 			}
@@ -5387,8 +5387,8 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				//Packetserver_clients[connectedclient].ipxcp_negotiationstatus = 0; //No negotation yet!
 				Packetserver_clients[connectedclient].ppp_serverLCPstatus = 2; //Reset the status check to try again afterwards if it's reset again!
 				++Packetserver_clients[connectedclient].ppp_serverLCPidentifier; //Increase the identifier for new packets!
-				result = 1; //Success!
 			}
+			result = 1; //Discard it!
 			goto ppp_finishpacketbufferqueue2; //Finish up!
 			break;
 		case 3: //Configure-Nak (Some options unacceptable)
