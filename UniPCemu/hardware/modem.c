@@ -4353,8 +4353,8 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		}
 		if (!Packetserver_clients[connectedclient].ppp_serverLCPstatus) //Initializing?
 		{
-			retryServerLCPnegotiation:
 			Packetserver_clients[connectedclient].ppp_serverLCPidentifier = 0; //Init!
+			retryServerLCPnegotiation:
 			Packetserver_clients[connectedclient].ppp_serverLCPstatus = 1; //Have initialized!
 			Packetserver_clients[connectedclient].ppp_serverLCP_haveAddressAndControlFieldCompression = Packetserver_clients[connectedclient].ppp_serverLCP_haveMRU = Packetserver_clients[connectedclient].ppp_serverLCP_haveMagicNumber = Packetserver_clients[connectedclient].ppp_serverLCP_haveProtocolFieldCompression = Packetserver_clients[connectedclient].ppp_serverLCP_haveAsyncControlCharacterMap = 1; //Default by trying all!
 			Packetserver_clients[connectedclient].ppp_serverLCP_pendingMRU = 1500; //Default!
@@ -4367,6 +4367,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		}
 		else if (Packetserver_clients[connectedclient].ppp_serverLCPstatus>1) //Resetting?
 		{
+			++Packetserver_clients[connectedclient].ppp_serverLCPidentifier; //New identifier to start using!
 			//Otherwise, it's a retry!
 			goto retryServerLCPnegotiation;
 		}
@@ -5333,6 +5334,8 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			if (pppNakFields.buffer || pppRejectFields.buffer) //NAK or Rejected any fields? Then don't process to the connected phase!
 			{
 				result = 1; //Discard it!
+				++Packetserver_clients[connectedclient].ppp_serverLCPidentifier; //Increase the identifier for new packets!
+				Packetserver_clients[connectedclient].ppp_serverLCPstatus = 2; //Reset the status check to try again afterwards if it's reset again!
 			}
 			else //OK! All parameters are fine!
 			{
@@ -5356,7 +5359,8 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				}
 				Packetserver_clients[connectedclient].ppp_IPXCPstatus[1] = 0; //Closed!
 				//Packetserver_clients[connectedclient].ipxcp_negotiationstatus = 0; //No negotation yet!
-				Packetserver_clients[connectedclient].ppp_serverLCPstatus = 0; //Reset the status check to try again afterwards if it's reset again!
+				Packetserver_clients[connectedclient].ppp_serverLCPstatus = 2; //Reset the status check to try again afterwards if it's reset again!
+				++Packetserver_clients[connectedclient].ppp_serverLCPidentifier; //Increase the identifier for new packets!
 				result = 1; //Success!
 			}
 			goto ppp_finishpacketbufferqueue2; //Finish up!
@@ -5648,6 +5652,8 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				{
 					memcpy(&Packetserver_clients[connectedclient].ppp_serverLCP_pendingASyncControlCharacterMap, request_asynccontrolcharactermap, sizeof(request_asynccontrolcharactermap)); //ASync-Control-Character-Map to use?
 				}
+				++Packetserver_clients[connectedclient].ppp_serverLCPidentifier; //Increase the identifier for new packets!
+				Packetserver_clients[connectedclient].ppp_serverLCPstatus = 2; //Reset the status check to try again afterwards if it's reset again!
 			}
 			result = 1; //Success!
 			goto ppp_finishpacketbufferqueue2; //Finish up!
