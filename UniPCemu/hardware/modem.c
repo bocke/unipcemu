@@ -5709,7 +5709,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		packetServerFreePacketBufferQueue(&pppRejectFields); //Free the queued response!
 		break;
 	case 0xC023: //PAP?
-		if (!Packetserver_clients[connectedclient].ppp_LCPstatus) //LCP is closed?
+		if (!Packetserver_clients[connectedclient].ppp_LCPstatus[0]) //LCP is closed?
 		{
 			goto ppp_invalidprotocol; //Invalid protocol!
 		}
