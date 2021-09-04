@@ -6525,7 +6525,7 @@ byte PPP_parseReceivedPacketForClient(sword connectedclient)
 				return 0; //Handled, discard!
 			}
 
-			if (!Packetserver_clients[connectedclient].ppp_response.buffer) //Already receiving something?
+			if (Packetserver_clients[connectedclient].ppp_response.buffer) //Already receiving something?
 			{
 				return 1; //Keep pending until we can receive it!
 			}
