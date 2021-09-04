@@ -4181,7 +4181,7 @@ byte PPP_addFCS(MODEM_PACKETBUFFER* response)
 
 byte no_magic_number[4] = { 0,0,0,0 }; //No magic number used!
 
-//result: 1 on success, 0 on pending.
+//result: 1 on success, 0 on pending. When handleTransmit==1, false blocks the transmitter from handling new packets.
 byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 {
 	MODEM_PACKETBUFFER pppNakRejectFields;
@@ -4541,7 +4541,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		packetServerFreePacketBufferQueue(&response); //Free the queued response!
 		packetServerFreePacketBufferQueue(&pppNakFields); //Free the queued response!
 		packetServerFreePacketBufferQueue(&pppRejectFields); //Free the queued response!
-		return result; //Give the correct result!
+		return 1; //Give the correct result! Never block the transmitter inputs when this is the case: this is seperated from the normal transmitter handling!
 	}
 	donthandleServerPPPLCPyet: //Don't handle PPP LCP from server yet?
 	if (!handleTransmit) return 1; //Don't do anything more when not handling a transmit!
