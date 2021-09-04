@@ -4750,22 +4750,22 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 					request_magic_number_used = 1; //Set the request!
 					if (!PPP_consumeStream(&pppstream_requestfield, &request_magic_number[0])) //Length couldn't be read?
 					{
-						result = 1; //Duscard!
+						result = 1; //Discard!
 						goto ppp_finishpacketbufferqueue2; //Finish up!
 					}
 					if (!PPP_consumeStream(&pppstream_requestfield, &request_magic_number[1])) //Length couldn't be read?
 					{
-						result = 1; //Duscard!
+						result = 1; //Discard!
 						goto ppp_finishpacketbufferqueue2; //Finish up!
 					}
 					if (!PPP_consumeStream(&pppstream_requestfield, &request_magic_number[2])) //Length couldn't be read?
 					{
-						result = 1; //Duscard!
+						result = 1; //Discard!
 						goto ppp_finishpacketbufferqueue2; //Finish up!
 					}
 					if (!PPP_consumeStream(&pppstream_requestfield, &request_magic_number[3])) //Length couldn't be read?
 					{
-						result = 1; //Duscard!
+						result = 1; //Discard!
 						goto ppp_finishpacketbufferqueue2; //Finish up!
 					}
 					break;
@@ -4790,7 +4790,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 					request_magic_number_used = 1; //Set the request!
 					if (!PPP_consumeStreamBE16(&pppstream_requestfield, &request_authenticationprotocol)) //Length couldn't be read?
 					{
-						result = 1; //Duscard!
+						result = 1; //Discard!
 						goto ppp_finishpacketbufferqueue2; //Finish up!
 					}
 					if (request_authenticationprotocol != 0xC023) //Not a supported protocol?
@@ -4830,22 +4830,22 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 					}
 					if (!PPP_consumeStream(&pppstream_requestfield, &request_asynccontrolcharactermap[0])) //Length couldn't be read?
 					{
-						result = 1; //Duscard!
+						result = 1; //Discard!
 						goto ppp_finishpacketbufferqueue2; //Finish up!
 					}
 					if (!PPP_consumeStream(&pppstream_requestfield, &request_asynccontrolcharactermap[1])) //Length couldn't be read?
 					{
-						result = 1; //Duscard!
+						result = 1; //Discard!
 						goto ppp_finishpacketbufferqueue2; //Finish up!
 					}
 					if (!PPP_consumeStream(&pppstream_requestfield, &request_asynccontrolcharactermap[2])) //Length couldn't be read?
 					{
-						result = 1; //Duscard!
+						result = 1; //Discard!
 						goto ppp_finishpacketbufferqueue2; //Finish up!
 					}
 					if (!PPP_consumeStream(&pppstream_requestfield, &request_asynccontrolcharactermap[3])) //Length couldn't be read?
 					{
-						result = 1; //Duscard!
+						result = 1; //Discard!
 						goto ppp_finishpacketbufferqueue2; //Finish up!
 					}
 					break;
@@ -5029,7 +5029,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				}
 				if (memcmp(&request_magic_number, Packetserver_clients[connectedclient].magic_number[0], sizeof(request_magic_number)) != 0) //Magic number mismatch?
 				{
-					result = 1; //Duscard!
+					result = 1; //Discard!
 					goto ppp_finishpacketbufferqueue2; //Finish up!
 				}
 				if (!packetServerAddPacketBufferQueue(&response, Packetserver_clients[connectedclient].magic_number[1][0])) //Magic-number option!
@@ -5051,7 +5051,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			}
 			else //Magic-number option missing?
 			{
-				result = 1; //Duscard!
+				result = 1; //Discard!
 				goto ppp_finishpacketbufferqueue2; //Finish up!
 			}
 			//Now, the rejected packet itself!
@@ -5199,22 +5199,22 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 					request_magic_number_used = 1; //Set the request!
 					if (!PPP_consumeStream(&pppstream_requestfield, &request_magic_number[0])) //Length couldn't be read?
 					{
-						result = 1; //Duscard!
+						result = 1; //Discard!
 						goto ppp_finishpacketbufferqueue2; //Finish up!
 					}
 					if (!PPP_consumeStream(&pppstream_requestfield, &request_magic_number[1])) //Length couldn't be read?
 					{
-						result = 1; //Duscard!
+						result = 1; //Discard!
 						goto ppp_finishpacketbufferqueue2; //Finish up!
 					}
 					if (!PPP_consumeStream(&pppstream_requestfield, &request_magic_number[2])) //Length couldn't be read?
 					{
-						result = 1; //Duscard!
+						result = 1; //Discard!
 						goto ppp_finishpacketbufferqueue2; //Finish up!
 					}
 					if (!PPP_consumeStream(&pppstream_requestfield, &request_magic_number[3])) //Length couldn't be read?
 					{
-						result = 1; //Duscard!
+						result = 1; //Discard!
 						goto ppp_finishpacketbufferqueue2; //Finish up!
 					}
 					break;
@@ -5239,7 +5239,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 					request_magic_number_used = 1; //Set the request!
 					if (!PPP_consumeStreamBE16(&pppstream_requestfield, &request_authenticationprotocol)) //Length couldn't be read?
 					{
-						result = 1; //Duscard!
+						result = 1; //Discard!
 						goto ppp_finishpacketbufferqueue2; //Finish up!
 					}
 					if (request_authenticationprotocol != 0xC023) //Not a supported protocol?
@@ -5279,22 +5279,22 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 					}
 					if (!PPP_consumeStream(&pppstream_requestfield, &request_asynccontrolcharactermap[0])) //Length couldn't be read?
 					{
-						result = 1; //Duscard!
+						result = 1; //Discard!
 						goto ppp_finishpacketbufferqueue2; //Finish up!
 					}
 					if (!PPP_consumeStream(&pppstream_requestfield, &request_asynccontrolcharactermap[1])) //Length couldn't be read?
 					{
-						result = 1; //Duscard!
+						result = 1; //Discard!
 						goto ppp_finishpacketbufferqueue2; //Finish up!
 					}
 					if (!PPP_consumeStream(&pppstream_requestfield, &request_asynccontrolcharactermap[2])) //Length couldn't be read?
 					{
-						result = 1; //Duscard!
+						result = 1; //Discard!
 						goto ppp_finishpacketbufferqueue2; //Finish up!
 					}
 					if (!PPP_consumeStream(&pppstream_requestfield, &request_asynccontrolcharactermap[3])) //Length couldn't be read?
 					{
-						result = 1; //Duscard!
+						result = 1; //Discard!
 						goto ppp_finishpacketbufferqueue2; //Finish up!
 					}
 					break;
@@ -5488,22 +5488,22 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 					request_magic_number_used = 1; //Set the request!
 					if (!PPP_consumeStream(&pppstream_requestfield, &request_magic_number[0])) //Length couldn't be read?
 					{
-						result = 1; //Duscard!
+						result = 1; //Discard!
 						goto ppp_finishpacketbufferqueue2; //Finish up!
 					}
 					if (!PPP_consumeStream(&pppstream_requestfield, &request_magic_number[1])) //Length couldn't be read?
 					{
-						result = 1; //Duscard!
+						result = 1; //Discard!
 						goto ppp_finishpacketbufferqueue2; //Finish up!
 					}
 					if (!PPP_consumeStream(&pppstream_requestfield, &request_magic_number[2])) //Length couldn't be read?
 					{
-						result = 1; //Duscard!
+						result = 1; //Discard!
 						goto ppp_finishpacketbufferqueue2; //Finish up!
 					}
 					if (!PPP_consumeStream(&pppstream_requestfield, &request_magic_number[3])) //Length couldn't be read?
 					{
-						result = 1; //Duscard!
+						result = 1; //Discard!
 						goto ppp_finishpacketbufferqueue2; //Finish up!
 					}
 					break;
@@ -5528,7 +5528,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 					//request_magic_number_used = 1; //Set the request!
 					if (!PPP_consumeStreamBE16(&pppstream_requestfield, &request_authenticationprotocol)) //Length couldn't be read?
 					{
-						result = 1; //Duscard!
+						result = 1; //Discard!
 						goto ppp_finishpacketbufferqueue2; //Finish up!
 					}
 					if (request_authenticationprotocol != 0xC023) //Not a supported protocol?
@@ -5568,22 +5568,22 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 					}
 					if (!PPP_consumeStream(&pppstream_requestfield, &request_asynccontrolcharactermap[0])) //Length couldn't be read?
 					{
-						result = 1; //Duscard!
+						result = 1; //Discard!
 						goto ppp_finishpacketbufferqueue2; //Finish up!
 					}
 					if (!PPP_consumeStream(&pppstream_requestfield, &request_asynccontrolcharactermap[1])) //Length couldn't be read?
 					{
-						result = 1; //Duscard!
+						result = 1; //Discard!
 						goto ppp_finishpacketbufferqueue2; //Finish up!
 					}
 					if (!PPP_consumeStream(&pppstream_requestfield, &request_asynccontrolcharactermap[2])) //Length couldn't be read?
 					{
-						result = 1; //Duscard!
+						result = 1; //Discard!
 						goto ppp_finishpacketbufferqueue2; //Finish up!
 					}
 					if (!PPP_consumeStream(&pppstream_requestfield, &request_asynccontrolcharactermap[3])) //Length couldn't be read?
 					{
-						result = 1; //Duscard!
+						result = 1; //Discard!
 						goto ppp_finishpacketbufferqueue2; //Finish up!
 					}
 					request_asynccontrolcharactermapspecified = 1; //Used!
