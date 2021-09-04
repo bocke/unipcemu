@@ -6154,8 +6154,8 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 					else //Valid address to use? Start validation of existing clients!
 					{
 						//TODO: Check other clients for pending negotiations! Wait for other clients to complete first!
-						memcpy(Packetserver_clients[connectedclient].ipxcp_networknumber, &ipxcp_pendingnetworknumber, sizeof(ipxcp_pendingnetworknumber)); //Network number specified or 0 for none!
-						memcpy(Packetserver_clients[connectedclient].ipxcp_nodenumber, &ipxcp_pendingnodenumber, sizeof(ipxcp_pendingnodenumber)); //Node number or 0 for none!
+						memcpy(Packetserver_clients[connectedclient].ipxcp_networknumber[0], &ipxcp_pendingnetworknumber, sizeof(ipxcp_pendingnetworknumber)); //Network number specified or 0 for none!
+						memcpy(Packetserver_clients[connectedclient].ipxcp_nodenumber[0], &ipxcp_pendingnodenumber, sizeof(ipxcp_pendingnodenumber)); //Node number or 0 for none!
 						if (sendIPXechorequest(connectedclient)) //Properly sent an echo request?
 						{
 							Packetserver_clients[connectedclient].ipxcp_negotiationstatus = 1; //Start negotiating the IPX node number!
@@ -6490,7 +6490,7 @@ byte PPP_parseReceivedPacketForClient(sword connectedclient)
 				createPPPstream(&pppstream, &Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data+18)], 12); //Create a stream out of the IPX packet source address!
 				if (SDL_SwapBE16(ipxheader.DestinationSocketNumber) == 2) //Echo request?
 				{
-					if (memcmp(&ipxheader.DestinationNetworkNumber, &Packetserver_clients[connectedclient].ipxcp_networknumber, 4)==0) //Network number match?
+					if (memcmp(&ipxheader.DestinationNetworkNumber, &Packetserver_clients[connectedclient].ipxcp_networknumber[0], 4)==0) //Network number match?
 					{
 						if (memcmp(&ipxheader.DestinationNodeNumber, &ipxbroadcastaddr, 6) == 0) //Destination node is the broadcast address?
 						{
