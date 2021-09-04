@@ -6074,9 +6074,26 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 					//Field is OK!
 					break;
 					break;
-				case 3: //IPX-Compression-Protocol
 				case 5: //IPX-Router-Name
+					goto performskipdata_ipx; //Unused parameter! Simply skip it!
 				case 6: //IPX-Configuration-Complete
+					if (common_OptionLengthField != 2)
+					{
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, common_TypeField)) //NAK it!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 2)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						goto performskipdata_ipx; //Skip the data anyways!
+					}
+					else //OK to parse normally?
+					{
+						goto performskipdata_ipx; //Unused parameter! Simply skip it!
+					}
+				case 3: //IPX-Compression-Protocol
 				default: //Unknown option?
 					if (!packetServerAddPacketBufferQueue(&pppRejectFields, common_TypeField)) //NAK it!
 					{
