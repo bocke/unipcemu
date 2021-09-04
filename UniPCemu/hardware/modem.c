@@ -5877,7 +5877,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		packetServerFreePacketBufferQueue(&pppRejectFields); //Free the queued response!
 		break;
 	case 0x802B: //IPXCP?
-		if ((!Packetserver_clients[connectedclient].ppp_LCPstatus) || (!Packetserver_clients[connectedclient].ppp_PAPstatus)) //LCP is Closed or PAP isn't authenticated?
+		if ((!Packetserver_clients[connectedclient].ppp_LCPstatus[0]) || (!Packetserver_clients[connectedclient].ppp_PAPstatus[0])) //LCP is Closed or PAP isn't authenticated?
 		{
 			goto ppp_invalidprotocol; //Don't handle!
 		}
@@ -6382,7 +6382,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		//break;
 	default: //Unknown protocol?
 		ppp_invalidprotocol: //Invalid protocol used when not fully authenticated or verified?
-		if (Packetserver_clients[connectedclient].ppp_LCPstatus) //LCP is Open?
+		if (Packetserver_clients[connectedclient].ppp_LCPstatus[0]) //LCP is Open?
 		{
 			//Send a Code-Reject packet to the client!
 			memset(&response, 0, sizeof(response)); //Init the response!
@@ -6454,7 +6454,7 @@ byte PPP_parseReceivedPacketForClient(sword connectedclient)
 	byte datab;
 	result = 0; //Default: discard!
 	//Not handled yet. This is supposed to check the packet, parse it and send packets to the connected client in response when it's able to!
-	if (Packetserver_clients[connectedclient].ppp_PAPstatus && Packetserver_clients[connectedclient].ppp_LCPstatus) //Fully authenticated and logged in?
+	if (Packetserver_clients[connectedclient].ppp_PAPstatus[0] && Packetserver_clients[connectedclient].ppp_PAPstatus[1] && Packetserver_clients[connectedclient].ppp_LCPstatus[0] && Packetserver_clients[connectedclient].ppp_LCPstatus[1]) //Fully authenticated and logged in?
 	{
 		if (Packetserver_clients[connectedclient].pktlen > sizeof(ethernetheader.data)) //Length might be fine?
 		{
