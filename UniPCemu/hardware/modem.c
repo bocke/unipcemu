@@ -5027,24 +5027,24 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				{
 					goto ppp_finishpacketbufferqueue2; //Finish up!
 				}
-				if (memcmp(&request_magic_number, Packetserver_clients[connectedclient].magic_number, sizeof(request_magic_number)) != 0) //Maguc number mismatch?
+				if (memcmp(&request_magic_number, Packetserver_clients[connectedclient].magic_number[0], sizeof(request_magic_number)) != 0) //Magic number mismatch?
 				{
 					result = 1; //Duscard!
 					goto ppp_finishpacketbufferqueue2; //Finish up!
 				}
-				if (!packetServerAddPacketBufferQueue(&response, request_magic_number[0])) //Magic-number option!
+				if (!packetServerAddPacketBufferQueue(&response, Packetserver_clients[connectedclient].magic_number[1][0])) //Magic-number option!
 				{
 					goto ppp_finishpacketbufferqueue; //Finish up!
 				}
-				if (!packetServerAddPacketBufferQueue(&response, request_magic_number[1])) //Magic-number option!
+				if (!packetServerAddPacketBufferQueue(&response, Packetserver_clients[connectedclient].magic_number[1][1])) //Magic-number option!
 				{
 					goto ppp_finishpacketbufferqueue; //Finish up!
 				}
-				if (!packetServerAddPacketBufferQueue(&response, request_magic_number[2])) //Magic-number option!
+				if (!packetServerAddPacketBufferQueue(&response, Packetserver_clients[connectedclient].magic_number[1][2])) //Magic-number option!
 				{
 					goto ppp_finishpacketbufferqueue; //Finish up!
 				}
-				if (!packetServerAddPacketBufferQueue(&response, request_magic_number[3])) //Magic-number option!
+				if (!packetServerAddPacketBufferQueue(&response, Packetserver_clients[connectedclient].magic_number[1][3])) //Magic-number option!
 				{
 					goto ppp_finishpacketbufferqueue; //Finish up!
 				}
