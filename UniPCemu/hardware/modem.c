@@ -4857,7 +4857,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 					{
 						goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
 					}
-					if (!packetServerAddPacketBufferQueue(&pppRejectFields, 2)) //Correct length!
+					if (!packetServerAddPacketBufferQueue(&pppRejectFields, common_OptionLengthField)) //Correct length!
 					{
 						goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
 					}
@@ -4868,6 +4868,10 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 						for (; skipdatacounter;) //Skip it!
 						{
 							if (!PPP_consumeStream(&pppstream_requestfield, &datab)) //Failed to consume properly?
+							{
+								goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+							}
+							if (!packetServerAddPacketBufferQueue(&pppRejectFields, datab)) //Correct data!
 							{
 								goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
 							}
@@ -5333,7 +5337,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 					{
 						goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
 					}
-					if (!packetServerAddPacketBufferQueue(&pppRejectFields, 2)) //Correct length!
+					if (!packetServerAddPacketBufferQueue(&pppRejectFields, common_OptionLengthField)) //Correct length!
 					{
 						goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
 					}
@@ -5344,6 +5348,10 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 						for (; skipdatacounter;) //Skip it!
 						{
 							if (!PPP_consumeStream(&pppstream_requestfield, &datab)) //Failed to consume properly?
+							{
+								goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+							}
+							if (!packetServerAddPacketBufferQueue(&pppRejectFields, datab)) //Correct data!
 							{
 								goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
 							}
@@ -5620,7 +5628,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 					{
 						goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
 					}
-					if (!packetServerAddPacketBufferQueue(&pppRejectFields, 2)) //Correct length!
+					if (!packetServerAddPacketBufferQueue(&pppRejectFields, common_OptionLengthField)) //Correct length!
 					{
 						goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
 					}
@@ -5631,6 +5639,10 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 						for (; skipdatacounter;) //Skip it!
 						{
 							if (!PPP_consumeStream(&pppstream_requestfield, &datab)) //Failed to consume properly?
+							{
+								goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+							}
+							if (!packetServerAddPacketBufferQueue(&pppRejectFields, datab)) //Correct data!
 							{
 								goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
 							}
@@ -6099,7 +6111,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 					{
 						goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
 					}
-					if (!packetServerAddPacketBufferQueue(&pppRejectFields, 2)) //Correct length!
+					if (!packetServerAddPacketBufferQueue(&pppRejectFields, common_OptionLengthField)) //Correct length!
 					{
 						goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
 					}
@@ -6112,6 +6124,10 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 							if (!PPP_consumeStream(&pppstream_requestfield, &datab)) //Failed to consume properly?
 							{
 								goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+							}
+							if (!packetServerAddPacketBufferQueue(&pppRejectFields, datab)) //Correct length!
+							{
+								goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
 							}
 							--skipdatacounter;
 						}
