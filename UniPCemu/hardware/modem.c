@@ -5367,7 +5367,6 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			else //OK! All parameters are fine!
 			{
 				//Apply the parameters to the session and start the connection!
-				memset(&response, 0, sizeof(response)); //Parsed!
 				//Now, apply the request properly!
 				Packetserver_clients[connectedclient].ppp_LCPstatus[1] = 1; //Open!
 				Packetserver_clients[connectedclient].PPP_MRU[1] = request_pendingMRU; //MRU!
