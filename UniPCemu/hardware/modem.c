@@ -4179,6 +4179,8 @@ byte PPP_addFCS(MODEM_PACKETBUFFER* response)
 	return 0;
 }
 
+byte no_magic_number[4] = { 0,0,0,0 }; //No magic number used!
+
 //result: 1 on success, 0 on pending.
 byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 {
@@ -4995,7 +4997,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			break;
 		case 9: //Echo-Request (Request Echo-Reply. Required for an open connection to reply).
 			//Send a Code-Reject packet to the client!
-			if ((!Packetserver_clients[connectedclient].ppp_LCPstatus) || (!Packetserver_clients[connectedclient].have_magic_number))
+			if (!Packetserver_clients[connectedclient].ppp_LCPstatus[0])
 			{
 				result = 1;
 				goto ppp_finishpacketbufferqueue2; //Finish up!
@@ -5009,29 +5011,40 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			{
 				goto ppp_finishpacketbufferqueue; //Finish up!
 			}
-			if (Packetserver_clients[connectedclient].have_magic_number) //Magic number set?
+			if (!PPP_consumeStream(&pppstream_requestfield, &request_magic_number[0])) //Length couldn't be read?
 			{
-				if (!PPP_consumeStream(&pppstream_requestfield, &request_magic_number[0])) //Length couldn't be read?
-				{
-					goto ppp_finishpacketbufferqueue2; //Finish up!
-				}
-				if (!PPP_consumeStream(&pppstream_requestfield, &request_magic_number[1])) //Length couldn't be read?
-				{
-					goto ppp_finishpacketbufferqueue2; //Finish up!
-				}
-				if (!PPP_consumeStream(&pppstream_requestfield, &request_magic_number[2])) //Length couldn't be read?
-				{
-					goto ppp_finishpacketbufferqueue2; //Finish up!
-				}
-				if (!PPP_consumeStream(&pppstream_requestfield, &request_magic_number[3])) //Length couldn't be read?
-				{
-					goto ppp_finishpacketbufferqueue2; //Finish up!
-				}
+				goto ppp_finishpacketbufferqueue2; //Finish up!
+			}
+			if (!PPP_consumeStream(&pppstream_requestfield, &request_magic_number[1])) //Length couldn't be read?
+			{
+				goto ppp_finishpacketbufferqueue2; //Finish up!
+			}
+			if (!PPP_consumeStream(&pppstream_requestfield, &request_magic_number[2])) //Length couldn't be read?
+			{
+				goto ppp_finishpacketbufferqueue2; //Finish up!
+			}
+			if (!PPP_consumeStream(&pppstream_requestfield, &request_magic_number[3])) //Length couldn't be read?
+			{
+				goto ppp_finishpacketbufferqueue2; //Finish up!
+			}
+			if (Packetserver_clients[connectedclient].have_magic_number[0]) //Magic number set?
+			{
 				if (memcmp(&request_magic_number, Packetserver_clients[connectedclient].magic_number[0], sizeof(request_magic_number)) != 0) //Magic number mismatch?
 				{
 					result = 1; //Discard!
 					goto ppp_finishpacketbufferqueue2; //Finish up!
 				}
+			}
+			else //Magic-number option isn't set? Assume zeroed for the sending party to be correct only!
+			{
+				if (memcmp(&request_magic_number, &no_magic_number[0], sizeof(request_magic_number)) != 0) //Magic number mismatch?
+				{
+					result = 1; //Discard!
+					goto ppp_finishpacketbufferqueue2; //Finish up!
+				}
+			}
+			if (Packetserver_clients[connectedclient].magic_number[1]) //Have magic number?
+			{
 				if (!packetServerAddPacketBufferQueue(&response, Packetserver_clients[connectedclient].magic_number[1][0])) //Magic-number option!
 				{
 					goto ppp_finishpacketbufferqueue; //Finish up!
@@ -5049,10 +5062,24 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 					goto ppp_finishpacketbufferqueue; //Finish up!
 				}
 			}
-			else //Magic-number option missing?
+			else //Until the magic number is negotiated in LCP, it's zero!
 			{
-				result = 1; //Discard!
-				goto ppp_finishpacketbufferqueue2; //Finish up!
+				if (!packetServerAddPacketBufferQueue(&response, no_magic_number[0])) //Magic-number option!
+				{
+					goto ppp_finishpacketbufferqueue; //Finish up!
+				}
+				if (!packetServerAddPacketBufferQueue(&response, no_magic_number[1])) //Magic-number option!
+				{
+					goto ppp_finishpacketbufferqueue; //Finish up!
+				}
+				if (!packetServerAddPacketBufferQueue(&response, no_magic_number[2])) //Magic-number option!
+				{
+					goto ppp_finishpacketbufferqueue; //Finish up!
+				}
+				if (!packetServerAddPacketBufferQueue(&response, no_magic_number[3])) //Magic-number option!
+				{
+					goto ppp_finishpacketbufferqueue; //Finish up!
+				}
 			}
 			//Now, the rejected packet itself!
 			for (; PPP_consumeStream(&pppstream_requestfield, &datab);) //The data field itself follows!
