@@ -8127,6 +8127,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 									initTicksHolder(&Packetserver_clients[connectedclient].ppp_serverLCPrequesttimer); //Initialize the timer!
 									getnspassed(&Packetserver_clients[connectedclient].ppp_serverLCPrequesttimer); //Starting it's timing!
 									Packetserver_clients[connectedclient].ppp_LCPstatus[0] = Packetserver_clients[connectedclient].ppp_PAPstatus[0] = Packetserver_clients[connectedclient].ppp_IPXCPstatus[0] = 0; //Reset all protocols to init state!
+									Packetserver_clients[connectedclient].ppp_LCPstatus[1] = Packetserver_clients[connectedclient].ppp_PAPstatus[1] = Packetserver_clients[connectedclient].ppp_IPXCPstatus[1] = 0; //Reset all protocols to init state!
 									Packetserver_clients[connectedclient].asynccontrolcharactermap[0] = Packetserver_clients[connectedclient].asynccontrolcharactermap[1] = 0xFFFFFFFF; //Initialize the Async Control Character Map to init value!
 									packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].ppp_response); //Free the response that's queued for packets to be sent to the client if anything is left!
 								}
