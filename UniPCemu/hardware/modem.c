@@ -7398,7 +7398,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 															if (Packetserver_clients[connectedclient].asynccontrolcharactermap[1] & (1 << (datatotransmit & 0x1F))) //To be escaped?
 															{
 																writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, PPP_ESC); //Escaped ...
-																writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, PPP_ENCODEESC(PPP_ESC)); //ESC raw data!
+																writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, PPP_ENCODEESC(datatotransmit)); //ESC raw data!
 															}
 															else //Not escaped!
 															{
