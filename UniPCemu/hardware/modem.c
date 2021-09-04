@@ -6370,7 +6370,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		packetServerFreePacketBufferQueue(&pppRejectFields); //Free the queued response!
 		break;
 	case 0x2B: //IPX datagram?
-		if (Packetserver_clients[connectedclient].ppp_IPXCPstatus[0] && Packetserver_clients[connectedclient].ppp_PAPstatus && Packetserver_clients[connectedclient].ppp_LCPstatus[0]) //Fully authenticated and logged in?
+		if (Packetserver_clients[connectedclient].ppp_IPXCPstatus[0] && Packetserver_clients[connectedclient].ppp_PAPstatus[1] && Packetserver_clients[connectedclient].ppp_LCPstatus[0]) //Fully authenticated and logged in?
 		{
 			//Handle the IPX packet to be sent!
 			if (!createPPPsubstream(&pppstream, &pppstream_requestfield, PPP_streamdataleft(&pppstream))) //Create a substream for the information field?
