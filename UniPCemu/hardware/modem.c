@@ -4519,7 +4519,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			}
 
 		createPPPstream(&pppstream, LCP_requestFields.buffer, LCP_requestFields.length); //Create a stream object for us to use, which goes until the end of the payload!
-		if (PPP_addLCPNCPResponseHeader(connectedclient, &response, 0, 0xC021, 0x01, Packetserver_clients[connectedclient].ppp_serverLCPidentifier, PPP_streamdataleft(&pppstream))) //Configure-Request
+		if (PPP_addLCPNCPResponseHeader(connectedclient, &response, 0, 0xC021, 0x01, Packetserver_clients[connectedclient].ppp_servercurrentLCPidentifier, PPP_streamdataleft(&pppstream))) //Configure-Request
 		{
 			goto ppp_finishpacketbufferqueue_lcp; //Finish up!
 		}
@@ -4684,7 +4684,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				}
 
 			createPPPstream(&pppstream, LCP_requestFields.buffer, LCP_requestFields.length); //Create a stream object for us to use, which goes until the end of the payload!
-			if (PPP_addLCPNCPResponseHeader(connectedclient, &response, 0, 0x802B, 0x01, Packetserver_clients[connectedclient].ppp_serverLCPidentifier, PPP_streamdataleft(&pppstream))) //Configure-Request
+			if (PPP_addLCPNCPResponseHeader(connectedclient, &response, 0, 0x802B, 0x01, Packetserver_clients[connectedclient].ppp_servercurrentIPXCPidentifier, PPP_streamdataleft(&pppstream))) //Configure-Request
 			{
 				goto ppp_finishpacketbufferqueue_ipxcpserver; //Finish up!
 			}
@@ -5556,7 +5556,6 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			//TODO: Finish parsing properly
 			if (pppNakFields.buffer || pppRejectFields.buffer) //NAK or Rejected any fields? Then don't process to the connected phase!
 			{
-				++Packetserver_clients[connectedclient].ppp_serverLCPidentifier; //Increase the identifier for new packets!
 				Packetserver_clients[connectedclient].ppp_serverLCPstatus = 2; //Reset the status check to try again afterwards if it's reset again!
 			}
 			else //OK! All parameters are fine!
@@ -5581,7 +5580,6 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				Packetserver_clients[connectedclient].ppp_IPXCPstatus[1] = 0; //Closed!
 				//Packetserver_clients[connectedclient].ipxcp_negotiationstatus = 0; //No negotation yet!
 				Packetserver_clients[connectedclient].ppp_serverLCPstatus = 2; //Reset the status check to try again afterwards if it's reset again!
-				++Packetserver_clients[connectedclient].ppp_serverLCPidentifier; //Increase the identifier for new packets!
 
 				//Extra: prepare the IPXCP state for usage!
 				getnspassed(&Packetserver_clients[connectedclient].ppp_serverIPXCPrequesttimer); //Starting it's timing!
@@ -5881,7 +5879,6 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				{
 					memcpy(&Packetserver_clients[connectedclient].ppp_serverLCP_pendingASyncControlCharacterMap, request_asynccontrolcharactermap, sizeof(request_asynccontrolcharactermap)); //ASync-Control-Character-Map to use?
 				}
-				++Packetserver_clients[connectedclient].ppp_serverLCPidentifier; //Increase the identifier for new packets!
 				Packetserver_clients[connectedclient].ppp_serverLCPstatus = 2; //Reset the status check to try again afterwards if it's reset again!
 			}
 			result = 1; //Success!
@@ -6746,7 +6743,6 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			//TODO: Finish parsing properly
 			if (pppNakFields.buffer || pppRejectFields.buffer) //NAK or Rejected any fields? Then don't process to the connected phase!
 			{
-				++Packetserver_clients[connectedclient].ppp_serverLCPidentifier; //Increase the identifier for new packets!
 				Packetserver_clients[connectedclient].ppp_serverLCPstatus = 2; //Reset the status check to try again afterwards if it's reset again!
 			}
 			else //OK! All parameters are fine!
@@ -6763,7 +6759,6 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				Packetserver_clients[connectedclient].ipxcp_routingprotocol[1] = ipxcp_pendingroutingprotocol; //The routing protocol!
 		//Packetserver_clients[connectedclient].ipxcp_negotiationstatus = 0; //No negotation yet!
 				Packetserver_clients[connectedclient].ppp_serverIPXCPstatus = 2; //Reset the status check to try again afterwards if it's reset again!
-				++Packetserver_clients[connectedclient].ppp_serverIPXCPidentifier; //Increase the identifier for new packets!
 			}
 			result = 1; //Discard it!
 			goto ppp_finishpacketbufferqueue2; //Finish up!
@@ -7015,7 +7010,6 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				{
 					Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingroutingprotocol = ipxcp_pendingroutingprotocol; //The request node number to use!
 				}
-				++Packetserver_clients[connectedclient].ppp_serverIPXCPidentifier; //Increase the identifier for new packets!
 				Packetserver_clients[connectedclient].ppp_serverIPXCPstatus = 2; //Reset the status check to try again afterwards if it's reset again!
 			}
 			result = 1; //Success!
