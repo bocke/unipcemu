@@ -4520,7 +4520,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			}
 
 		createPPPstream(&pppstream, LCP_requestFields.buffer, LCP_requestFields.length); //Create a stream object for us to use, which goes until the end of the payload!
-		if (PPP_addLCPNCPResponseHeader(connectedclient, &response, 0, 0xC021, 0x01, Packetserver_clients[connectedclient].ppp_servercurrentLCPidentifier, PPP_streamdataleft(&pppstream))) //Configure-Request
+		if (PPP_addLCPNCPResponseHeader(connectedclient, &response, 1, 0xC021, 0x01, Packetserver_clients[connectedclient].ppp_servercurrentLCPidentifier, PPP_streamdataleft(&pppstream))) //Configure-Request
 		{
 			goto ppp_finishpacketbufferqueue_lcp; //Finish up!
 		}
@@ -4634,7 +4634,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			}
 
 			createPPPstream(&pppstream, LCP_requestFields.buffer, LCP_requestFields.length); //Create a stream object for us to use, which goes until the end of the payload!
-			if (PPP_addLCPNCPResponseHeader(connectedclient, &response, 0, 0x802B, 0x01, Packetserver_clients[connectedclient].ppp_servercurrentPAPidentifier, PPP_streamdataleft(&pppstream))) //Configure-Request
+			if (PPP_addLCPNCPResponseHeader(connectedclient, &response, 1, 0xC023, 0x01, Packetserver_clients[connectedclient].ppp_servercurrentPAPidentifier, PPP_streamdataleft(&pppstream))) //Authentication-Request
 			{
 				goto ppp_finishpacketbufferqueue_papserver; //Finish up!
 			}
@@ -4799,7 +4799,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				}
 
 				createPPPstream(&pppstream, LCP_requestFields.buffer, LCP_requestFields.length); //Create a stream object for us to use, which goes until the end of the payload!
-				if (PPP_addLCPNCPResponseHeader(connectedclient, &response, 0, 0x802B, 0x01, Packetserver_clients[connectedclient].ppp_servercurrentIPXCPidentifier, PPP_streamdataleft(&pppstream))) //Configure-Request
+				if (PPP_addLCPNCPResponseHeader(connectedclient, &response, 1, 0x802B, 0x01, Packetserver_clients[connectedclient].ppp_servercurrentIPXCPidentifier, PPP_streamdataleft(&pppstream))) //Configure-Request
 				{
 					goto ppp_finishpacketbufferqueue_ipxcpserver; //Finish up!
 				}
@@ -5208,7 +5208,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				{
 					goto ppp_finishpacketbufferqueue; //Finish up!
 				}
-				if (PPP_addLCPNCPResponseHeader(connectedclient, &response, 0, protocol, 0x02, common_IdentifierField, PPP_streamdataleft(&pppstream_requestfield)))
+				if (PPP_addLCPNCPResponseHeader(connectedclient, &response, 1, protocol, 0x02, common_IdentifierField, PPP_streamdataleft(&pppstream_requestfield)))
 				{
 					goto ppp_finishpacketbufferqueue; //Finish up!
 				}
