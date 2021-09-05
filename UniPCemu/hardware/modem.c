@@ -7260,7 +7260,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		packetServerFreePacketBufferQueue(&pppNakFields); //Free the queued response!
 		packetServerFreePacketBufferQueue(&pppRejectFields); //Free the queued response!
 		break;
-	case 0x2B: //IPX datagram?
+	case 0x2B: //IPX packet?
 		if (Packetserver_clients[connectedclient].ppp_IPXCPstatus[1] && Packetserver_clients[connectedclient].ppp_PAPstatus[1] && Packetserver_clients[connectedclient].ppp_LCPstatus[1]) //Fully authenticated and logged in for sending?
 		{
 			//Handle the IPX packet to be sent!
