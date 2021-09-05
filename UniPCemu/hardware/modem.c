@@ -7298,7 +7298,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				{
 					goto ppp_finishpacketbufferqueue; //Finish up!
 				}
-				if (!packetServerAddPacketBufferQueue(&response, 0)) //Start making room for the header!
+				if (!packetServerAddPacketBufferQueue(&response, datab)) //Start making room for the header!
 				{
 					goto ppp_finishpacketbufferqueue; //Keep pending!
 				}
