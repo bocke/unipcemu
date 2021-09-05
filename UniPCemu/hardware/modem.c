@@ -5301,7 +5301,8 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		case 2: //Configure-Ack (All options OK)
 			if (common_IdentifierField != Packetserver_clients[connectedclient].ppp_servercurrentLCPidentifier) //Identifier mismatch?
 			{
-				goto ppp_finishpacketbufferqueue; //Finish up!
+				result = 1; //Discard this packet!
+				goto ppp_finishpacketbufferqueue2; //Finish up!
 			}
 			if (!createPPPsubstream(&pppstream, &pppstream_requestfield, MAX(common_LengthField, 4) - 4)) //Not enough room for the data?
 			{
@@ -5592,7 +5593,8 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		case 4: //Configure-Reject (Some options not recognisable or acceptable for negotiation)
 			if (common_IdentifierField != Packetserver_clients[connectedclient].ppp_servercurrentLCPidentifier) //Identifier mismatch?
 			{
-				goto ppp_finishpacketbufferqueue; //Finish up!
+				result = 1; //Discard this packet!
+				goto ppp_finishpacketbufferqueue2; //Finish up!
 			}
 			if (!createPPPsubstream(&pppstream, &pppstream_requestfield, MAX(common_LengthField, 4) - 4)) //Not enough room for the data?
 			{
@@ -6513,7 +6515,8 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		case 2: //Configure-Ack (All options OK)
 			if (common_IdentifierField != Packetserver_clients[connectedclient].ppp_servercurrentIPXCPidentifier) //Identifier mismatch?
 			{
-				goto ppp_finishpacketbufferqueue; //Finish up!
+				result = 1; //Discard this packet!
+				goto ppp_finishpacketbufferqueue2; //Finish up!
 			}
 			if (!createPPPsubstream(&pppstream, &pppstream_requestfield, MAX(common_LengthField, 4) - 4)) //Not enough room for the data?
 			{
@@ -6769,7 +6772,8 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		case 4: //Configure-Reject (Some options not recognisable or acceptable for negotiation)
 			if (common_IdentifierField != Packetserver_clients[connectedclient].ppp_servercurrentIPXCPidentifier) //Identifier mismatch?
 			{
-				goto ppp_finishpacketbufferqueue; //Finish up!
+				result = 1; //Discard this packet!
+				goto ppp_finishpacketbufferqueue2; //Finish up!
 			}
 			if (!createPPPsubstream(&pppstream, &pppstream_requestfield, MAX(common_LengthField, 4) - 4)) //Not enough room for the data?
 			{
