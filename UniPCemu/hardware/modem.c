@@ -4213,7 +4213,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 	MODEM_PACKETBUFFER response, pppNakFields, pppRejectFields; //The normal response and Nak fields/Reject fields that are queued!
 	MODEM_PACKETBUFFER LCP_requestFields; //Request fields!
 	word checksum, checksumfield;
-	PPP_Stream pppstream, pppstreambackup, checksumppp, pppstream_informationfield, pppstream_requestfield /*, pppstream_optionfield*/;
+	PPP_Stream pppstream, pppstreambackup, pppstream_informationfield, pppstream_requestfield /*, pppstream_optionfield*/;
 	byte datab; //byte data from the stream!
 	word dataw; //word data from the stream!
 	byte data4[4]; //4-byte data!
