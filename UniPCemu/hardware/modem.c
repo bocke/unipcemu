@@ -4847,8 +4847,13 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 	}
 	donthandleServerPPPIPXCPyet: //Don't handle PPP IPXCP from server yet?
 	if (!handleTransmit) return 1; //Don't do anything more when not handling a transmit!
+	//Check the checksum first before doing anything with the data!
+	checksum = PPP_calcFCS(&Packetserver_clients[connectedclient].packetserver_transmitbuffer[0], Packetserver_clients[connectedclient].packetserver_transmitlength); //Calculate the checksum!
+	if (checksum != PPP_GOODFCS) //Checksum error?
+	{
+		return 1; //Incorrect packet: discard it!
+	}
 	createPPPstream(&pppstream, &Packetserver_clients[connectedclient].packetserver_transmitbuffer[0], Packetserver_clients[connectedclient].packetserver_transmitlength-2); //Create a stream object for us to use, which goes until the end of the payload!
-	createPPPstream(&checksumppp, &Packetserver_clients[connectedclient].packetserver_transmitbuffer[Packetserver_clients[connectedclient].packetserver_transmitlength - 2], 2); //Create a stream object for us to use for the checksum!
 	memcpy(&pppstreambackup, &pppstream, sizeof(pppstream)); //Backup for checking again!
 	if (!Packetserver_clients[connectedclient].PPP_headercompressed[1]) //Header present?
 	{
@@ -4900,16 +4905,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		return 1; //Incorrect packet: discard it!
 	}
 	//Otherwise, it's a 1-byte protocol!
-	//It might be a valid packet if we got here! Perform the checksum first to check!
-	if (!PPP_consumeStreamBE16(&checksumppp, &checksumfield)) //Gotten the checksum from the packet?
-	{
-		return 1; //Incorrect packet: discard it!
-	}
-	checksum = PPP_calcFCS(&Packetserver_clients[connectedclient].packetserver_transmitbuffer[0], Packetserver_clients[connectedclient].packetserver_transmitlength); //Calculate the checksum!
-	if (checksum != PPP_GOODFCS) //Checksum error?
-	{
-		return 1; //Incorrect packet: discard it!
-	}
+	//It might be a valid packet if we got here! Perform the checksum first to check? But the checksum is already done way above here.
 	memcpy(&pppstream_informationfield, &pppstream, sizeof(pppstream)); //The information field that's used, backed up!
 	//Now, the PPPstream contains the packet information field, which is the payload. The data has been checked out and is now ready for processing, according to the protocol!
 	result = 1; //Default result: finished up!
