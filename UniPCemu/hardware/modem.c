@@ -6161,11 +6161,15 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			{
 				goto ppp_finishpacketbufferqueue_pap; //Finish up!
 			}
-			if (PPP_addLCPNCPResponseHeader(connectedclient, &response, 1, protocol, pap_authenticated ? 0x02 : 0x03, common_IdentifierField, 0)) //Authentication-Ack/Nak. No message
+			if (PPP_addLCPNCPResponseHeader(connectedclient, &response, 1, protocol, pap_authenticated ? 0x02 : 0x03, common_IdentifierField, 1)) //Authentication-Ack/Nak. No message(only it's length)
 			{
 				goto ppp_finishpacketbufferqueue_pap; //Finish up!
 			}
 			//No message for now!
+			if (!packetServerAddPacketBufferQueue(&pppRejectFields, 0)) //Message length!
+			{
+				goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+			}
 			//Calculate and add the checksum field!
 			if (PPP_addFCS(&response))
 			{
