@@ -6138,7 +6138,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			{
 				pap_authenticated = 0; //Not authenticated!
 			}
-			for (pap_fieldcounter = 0; pap_fieldcounter < username_length; ++pap_fieldcounter) //Now the username follows (for the specified length)
+			for (pap_fieldcounter = 0; pap_fieldcounter < password_length; ++pap_fieldcounter) //Now the username follows (for the specified length)
 			{
 				if (!PPP_consumeStream(&pppstream_requestfield, &datab)) //Data to compare!
 				{
