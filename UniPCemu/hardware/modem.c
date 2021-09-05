@@ -4148,16 +4148,16 @@ byte PPP_addPPPheader(sword connectedclient, MODEM_PACKETBUFFER* response, byte 
 			return 1; //Finish up!
 		}
 	}
-	if ((protocol == 0xC021) || (!Packetserver_clients[connectedclient].PPP_protocolcompressed[0]) || ((protocol & 0x100) == 0)) //Protocol isn't compressed or uncompressable?
+	if ((protocol != 0xC021) && (Packetserver_clients[connectedclient].PPP_protocolcompressed[0]) && ((protocol & 0xFF) == protocol) && (protocol&1)) //Protocol can be compressed?
 	{
-		if (!packetServerAddPacketBufferQueueBE16(response, protocol)) //The protocol!
+		if (!packetServerAddPacketBufferQueue(response, (protocol & 0xFF))) //The protocol, compressed!
 		{
 			return 1; //Finish up!
 		}
 	}
-	else //Compressed protocol?
+	else //Uncompressed protocol?
 	{
-		if (!packetServerAddPacketBufferQueue(response, (protocol&0xFF))) //The protocol, compressed!
+		if (!packetServerAddPacketBufferQueueBE16(response, protocol)) //The protocol!
 		{
 			return 1; //Finish up!
 		}
@@ -4250,7 +4250,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 	ETHERNETHEADER ppptransmitheader;
 	if (handleTransmit)
 	{
-		if (Packetserver_clients[connectedclient].packetserver_transmitlength < (3 + (!Packetserver_clients[connectedclient].PPP_protocolcompressed[1] ? 1U : 0U) + (!Packetserver_clients[connectedclient].PPP_headercompressed[1] ? 2U : 0U))) //Not enough for a full minimal PPP packet (with 1 byte of payload)?
+		if (Packetserver_clients[connectedclient].packetserver_transmitlength < (3 + ((!Packetserver_clients[connectedclient].PPP_protocolcompressed[1]) ? 1U : 0U) + ((!Packetserver_clients[connectedclient].PPP_headercompressed[1]) ? 2U : 0U))) //Not enough for a full minimal PPP packet (with 1 byte of payload)?
 		{
 			return 1; //Incorrect packet: discard it!
 		}
