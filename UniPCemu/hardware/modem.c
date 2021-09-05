@@ -7408,6 +7408,7 @@ byte PPP_parseReceivedPacketForClient(sword connectedclient)
 				{
 					if (memcmp(&ipxheader.DestinationNetworkNumber, &Packetserver_clients[connectedclient].ipxcp_networknumber[0], 4)==0) //Network number match? Don't take the current network for this to prevent conflicts with it.
 					{
+						//Perform logic for determining what addresses are assigned here.
 						if (memcmp(&ipxheader.DestinationNodeNumber, &ipxbroadcastaddr, 6) == 0) //Destination node is the broadcast address?
 						{
 							//We're replying to the echo packet!
@@ -7444,7 +7445,7 @@ byte PPP_parseReceivedPacketForClient(sword connectedclient)
 				}
 				if (memcmp(&ipxheader.DestinationNetworkNumber, &Packetserver_clients[connectedclient].ipxcp_networknumber[0][0], 4) != 0) //Network number mismatch?
 				{
-					if (memcmp(&ipxheader.DestinationNetworkNumber, &ipx_currentnetworknumber, 4) == 0) //Current network mismatch?
+					if (memcmp(&ipxheader.DestinationNetworkNumber, &ipx_currentnetworknumber, 4) != 0) //Current network mismatch?
 					{
 						return 0; //Handled, discard!
 					}
