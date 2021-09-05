@@ -287,6 +287,19 @@ typedef struct
 	byte ppp_serverLCP_haveAddressAndControlFieldCompression; //Address and Control Field Compression trying?
 	byte ppp_serverLCP_haveAsyncControlCharacterMap; //ASync Control Character Map enabled?
 	byte ppp_serverLCP_pendingASyncControlCharacterMap[4]; //ASync control character map that's pending!
+
+	//Some extra data for the server-client PPP IPXCP connection
+	TicksHolder ppp_serverIPXCPrequesttimer; //Server LCP request timer until a response is gotten!
+	byte ppp_serverIPXCPstatus; //Server LCP status! 0=Not ready yet, 1=First requesting sent
+	byte ppp_servercurrentIPXCPidentifier; //Current Server LCP identifier!
+	byte ppp_serverIPXCPidentifier; //Server LCP identifier!
+	//all server-to-client settings for IPXCP
+	byte ppp_serverIPXCP_havenetworknumber;
+	byte ppp_serverIPXCP_pendingnetworknumber[4];
+	byte ppp_serverIPXCP_havenodenumber;
+	byte ppp_serverIPXCP_pendingnodenumber[6];
+	byte ppp_serverIPXCP_haveroutingprotocol;
+	word ppp_serverIPXCP_pendingroutingprotocol;
 	//Normal connection data
 	byte ppp_protocolreject_count; //Protocol-Reject counter. From 0 onwards
 	byte magic_number[2][4];
@@ -295,6 +308,8 @@ typedef struct
 	byte ppp_IPXCPstatus[2]; //0=Not connected, 1=Connected
 	byte ipxcp_networknumber[2][4];
 	byte ipxcp_nodenumber[2][6];
+	byte ipxcp_networknumberecho[4]; //Echo address during negotiation
+	byte ipxcp_nodenumberecho[6]; //Echo address negotiation
 	word ipxcp_routingprotocol[2];
 	byte ipxcp_negotiationstatus; //Negotiation status for the IPXCP login. 0=Ready for new negotiation. 1=Negotiation request has been sent. 2=Negotation has been given a reply and to NAK, 3=Negotiation has succeeded.
 	TicksHolder ipxcp_negotiationstatustimer; //Negotiation status timer for determining response time!
@@ -4061,7 +4076,7 @@ byte sendIPXechorequest(sword connectedclient)
 	//Now, the destination address, which is the sender of the original request packet!
 	for (skipdatacounter = 0; skipdatacounter < 4; ++skipdatacounter)
 	{
-		if (!packetServerAddPacketBufferQueue(&response, Packetserver_clients[connectedclient].ipxcp_networknumber[0][skipdatacounter]))
+		if (!packetServerAddPacketBufferQueue(&response, Packetserver_clients[connectedclient].ipxcp_networknumberecho[skipdatacounter]))
 		{
 			goto ppp_finishpacketbufferqueue_echo;
 		}
@@ -4080,7 +4095,7 @@ byte sendIPXechorequest(sword connectedclient)
 	//Now, the source address, which is our client address for the connected client!
 	for (skipdatacounter = 0; skipdatacounter < 4; ++skipdatacounter)
 	{
-		if (!packetServerAddPacketBufferQueue(&response, Packetserver_clients[connectedclient].ipxcp_networknumber[0][skipdatacounter])) //Our network number!
+		if (!packetServerAddPacketBufferQueue(&response, Packetserver_clients[connectedclient].ipxcp_networknumberecho[skipdatacounter])) //Our network number!
 		{
 			goto ppp_finishpacketbufferqueue_echo; //Keep pending!
 		}
@@ -4180,6 +4195,8 @@ byte PPP_addFCS(MODEM_PACKETBUFFER* response)
 }
 
 byte no_magic_number[4] = { 0,0,0,0 }; //No magic number used!
+byte no_network_number[4] = { 0,0,0,0 }; //No network number used!
+byte no_node_number[6] = { 0,0,0,0,0,0 }; //No node number used!
 
 //result: 1 on success, 0 on pending. When handleTransmit==1, false blocks the transmitter from handling new packets.
 byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
@@ -4217,8 +4234,11 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 	byte password_length; //Password length for PAP!
 	byte pap_authenticated; //Is the user authenticated properly?
 	byte nacreject_ipxcp;
+	byte request_NakRejectnetworknumber;
 	byte ipxcp_pendingnetworknumber[4];
+	byte request_NakRejectnodenumber;
 	byte ipxcp_pendingnodenumber[6];
+	byte request_NakRejectroutingprotocol;
 	word ipxcp_pendingroutingprotocol;
 	ETHERNETHEADER ppptransmitheader;
 	if (handleTransmit)
@@ -4424,7 +4444,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			{
 				if (!packetServerAddPacketBufferQueue(&LCP_requestFields, 0x05)) //NAK it!
 				{
-					goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+					goto ppp_finishpacketbufferqueue_lcp; //Incorrect packet: discard it!
 				}
 				if (!packetServerAddPacketBufferQueue(&LCP_requestFields, 6)) //Correct length!
 				{
@@ -4501,7 +4521,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		createPPPstream(&pppstream, LCP_requestFields.buffer, LCP_requestFields.length); //Create a stream object for us to use, which goes until the end of the payload!
 		if (PPP_addLCPNCPResponseHeader(connectedclient, &response, 0, 0xC021, 0x01, Packetserver_clients[connectedclient].ppp_serverLCPidentifier, PPP_streamdataleft(&pppstream))) //Configure-Request
 		{
-			goto ppp_finishpacketbufferqueue; //Finish up!
+			goto ppp_finishpacketbufferqueue_lcp; //Finish up!
 		}
 
 		for (; PPP_streamdataleft(&pppstream);) //Data left?
@@ -4543,7 +4563,173 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		packetServerFreePacketBufferQueue(&pppRejectFields); //Free the queued response!
 		return 1; //Give the correct result! Never block the transmitter inputs when this is the case: this is seperated from the normal transmitter handling!
 	}
-	donthandleServerPPPLCPyet: //Don't handle PPP LCP from server yet?
+	else
+	{
+		donthandleServerPPPLCPyet: //Don't handle PPP LCP from server yet?
+		if ((!handleTransmit) && (Packetserver_clients[connectedclient].ppp_LCPstatus[1]) && (!Packetserver_clients[connectedclient].ppp_IPXCPstatus[1])) //Not handling a transmitting of anything atm and LCP for the server-client is down?
+		{
+			//Use a simple nanosecond timer to determine if we're to send a 
+			if (getnspassed_k(&Packetserver_clients[connectedclient].ppp_serverIPXCPrequesttimer) >= ((!Packetserver_clients[connectedclient].ppp_serverIPXCPstatus) ? 3000000000.0f : 500000000.0f)) //Starting it's timing every interval (first 3 seconds, then half a second)!
+			{
+				getnspassed(&Packetserver_clients[connectedclient].ppp_serverIPXCPrequesttimer); //Restart timing!
+			}
+			else
+			{
+				goto donthandleServerPPPIPXCPyet; //Don't handle the sending of a request from the server yet, because we're still timing!
+			}
+			if (!Packetserver_clients[connectedclient].ppp_serverIPXCPstatus) //Initializing?
+			{
+				Packetserver_clients[connectedclient].ppp_serverIPXCPidentifier = 0; //Init!
+				if (!Packetserver_clients[connectedclient].ppp_IPXCPstatus[0])
+				{
+					goto donthandleServerPPPIPXCPyet; //Wait for the client to authenticate first, then we try authenticating back, hopefully getting valid data.
+				}
+			retryServerIPXCPnegotiation:
+				Packetserver_clients[connectedclient].ppp_serverIPXCPstatus = 1; //Have initialized!
+				Packetserver_clients[connectedclient].ppp_serverIPXCP_havenetworknumber = Packetserver_clients[connectedclient].ppp_serverIPXCP_havenodenumber = Packetserver_clients[connectedclient].ppp_serverIPXCP_haveroutingprotocol = 1; //Default by trying all!
+				memcpy(&Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingnetworknumber, Packetserver_clients[connectedclient].ipxcp_networknumber[0], sizeof(Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingnetworknumber)); //Initialize the network number
+				memcpy(&Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingnodenumber, Packetserver_clients[connectedclient].ipxcp_nodenumber[0], sizeof(Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingnodenumber)); //Initialize the node number
+				Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingroutingprotocol = 0; //No routing protocol by default!
+			}
+			else if (Packetserver_clients[connectedclient].ppp_serverIPXCPstatus > 1) //Resetting?
+			{
+				++Packetserver_clients[connectedclient].ppp_serverIPXCPidentifier; //New identifier to start using!
+				//Otherwise, it's a retry!
+				goto retryServerIPXCPnegotiation;
+			}
+			result = 1; //Default: handled!
+			//Now, formulate a request!
+			Packetserver_clients[connectedclient].ppp_servercurrentIPXCPidentifier = Packetserver_clients[connectedclient].ppp_serverIPXCPidentifier; //Load the identifier to try!
+			memset(&LCP_requestFields, 0, sizeof(LCP_requestFields)); //Make sure it's ready for usage!
+			
+			//case 1: //IPX-Network-Number
+			if (Packetserver_clients[connectedclient].ppp_serverIPXCP_havenetworknumber) //To request?
+			{
+				if (!packetServerAddPacketBufferQueue(&LCP_requestFields, 1)) //NAK it!
+				{
+					goto ppp_finishpacketbufferqueue_ipxcpserver; //Incorrect packet: discard it!
+				}
+				if (!packetServerAddPacketBufferQueue(&LCP_requestFields, 6)) //Correct length!
+				{
+					goto ppp_finishpacketbufferqueue_ipxcpserver; //Incorrect packet: discard it!
+				}
+				if (!packetServerAddPacketBufferQueue(&LCP_requestFields, Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingnetworknumber[0])) //Correct length!
+				{
+					goto ppp_finishpacketbufferqueue_ipxcpserver; //Incorrect packet: discard it!
+				}
+				if (!packetServerAddPacketBufferQueue(&LCP_requestFields, Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingnetworknumber[1])) //Correct length!
+				{
+					goto ppp_finishpacketbufferqueue_ipxcpserver; //Incorrect packet: discard it!
+				}
+				if (!packetServerAddPacketBufferQueue(&LCP_requestFields, Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingnetworknumber[2])) //Correct length!
+				{
+					goto ppp_finishpacketbufferqueue_ipxcpserver; //Incorrect packet: discard it!
+				}
+				if (!packetServerAddPacketBufferQueue(&LCP_requestFields, Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingnetworknumber[3])) //Correct length!
+				{
+					goto ppp_finishpacketbufferqueue_ipxcpserver; //Incorrect packet: discard it!
+				}
+			}
+			//case 2: //IPX-Node-Number
+				if (Packetserver_clients[connectedclient].ppp_serverIPXCP_havenodenumber) //To request?
+				{
+					if (!packetServerAddPacketBufferQueue(&pppNakFields, 2)) //NAK it!
+					{
+						goto ppp_finishpacketbufferqueue_ipxcpserver; //Incorrect packet: discard it!
+					}
+					if (!packetServerAddPacketBufferQueue(&pppNakFields, 8)) //Correct length!
+					{
+						goto ppp_finishpacketbufferqueue_ipxcpserver; //Incorrect packet: discard it!
+					}
+					if (!packetServerAddPacketBufferQueue(&pppNakFields, Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingnodenumber[0])) //None!
+					{
+						goto ppp_finishpacketbufferqueue_ipxcpserver; //Incorrect packet: discard it!
+					}
+					if (!packetServerAddPacketBufferQueue(&pppNakFields, Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingnodenumber[1])) //None!
+					{
+						goto ppp_finishpacketbufferqueue_ipxcpserver; //Incorrect packet: discard it!
+					}
+					if (!packetServerAddPacketBufferQueue(&pppNakFields, Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingnodenumber[2])) //None!
+					{
+						goto ppp_finishpacketbufferqueue_ipxcpserver; //Incorrect packet: discard it!
+					}
+					if (!packetServerAddPacketBufferQueue(&pppNakFields, Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingnodenumber[3])) //None!
+					{
+						goto ppp_finishpacketbufferqueue_ipxcpserver; //Incorrect packet: discard it!
+					}
+					if (!packetServerAddPacketBufferQueue(&pppNakFields, Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingnodenumber[4])) //None!
+					{
+						goto ppp_finishpacketbufferqueue_ipxcpserver; //Incorrect packet: discard it!
+					}
+					if (!packetServerAddPacketBufferQueue(&pppNakFields, Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingnodenumber[5])) //None!
+					{
+						goto ppp_finishpacketbufferqueue_ipxcpserver; //Incorrect packet: discard it!
+					}
+				}
+			//case 4: //IPX-Routing-Protocol
+				if (Packetserver_clients[connectedclient].ppp_serverIPXCP_haveroutingprotocol) //To request?
+				{
+					if (!packetServerAddPacketBufferQueue(&pppNakFields, 4)) //NAK it!
+					{
+						goto ppp_finishpacketbufferqueue_ipxcpserver; //Incorrect packet: discard it!
+					}
+					if (!packetServerAddPacketBufferQueue(&pppNakFields, 8)) //Correct length!
+					{
+						goto ppp_finishpacketbufferqueue_ipxcpserver; //Incorrect packet: discard it!
+					}
+					if (!packetServerAddPacketBufferQueueBE16(&pppNakFields,Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingroutingprotocol))
+					{
+						goto ppp_finishpacketbufferqueue_ipxcpserver; //Incorrect packet: discard it!
+					}
+				}
+
+			createPPPstream(&pppstream, LCP_requestFields.buffer, LCP_requestFields.length); //Create a stream object for us to use, which goes until the end of the payload!
+			if (PPP_addLCPNCPResponseHeader(connectedclient, &response, 0, 0x802B, 0x01, Packetserver_clients[connectedclient].ppp_serverLCPidentifier, PPP_streamdataleft(&pppstream))) //Configure-Request
+			{
+				goto ppp_finishpacketbufferqueue_ipxcpserver; //Finish up!
+			}
+
+			for (; PPP_streamdataleft(&pppstream);) //Data left?
+			{
+				if (!PPP_consumeStream(&pppstream, &datab))
+				{
+					goto ppp_finishpacketbufferqueue_ipxcpserver; //Incorrect packet: discard it!
+				}
+				if (!packetServerAddPacketBufferQueue(&response, datab)) //Add it!
+				{
+					goto ppp_finishpacketbufferqueue_ipxcpserver; //Finish up!
+				}
+			}
+
+			//Calculate and add the checksum field!
+			if (PPP_addFCS(&response))
+			{
+				goto ppp_finishpacketbufferqueue_ipxcpserver;
+			}
+
+			//Packet is fully built. Now send it!
+			if (Packetserver_clients[connectedclient].ppp_response.size) //Previous Response still valid?
+			{
+				goto ppp_finishpacketbufferqueue_ipxcpserver; //Keep pending!
+			}
+			if (response.buffer) //Any response to give?
+			{
+				memcpy(&Packetserver_clients[connectedclient].ppp_response, &response, sizeof(response)); //Give the response to the client!
+				ppp_responseforuser(connectedclient); //A response is ready!
+				memset(&response, 0, sizeof(response)); //Parsed!
+			}
+			goto ppp_finishpacketbufferqueue2_ipxcpserver; //Success!
+		ppp_finishpacketbufferqueue_ipxcpserver: //An error occurred during the response?
+			result = 0; //Keep pending until we can properly handle it!
+		ppp_finishpacketbufferqueue2_ipxcpserver:
+			packetServerFreePacketBufferQueue(&LCP_requestFields); //Free the queued response!
+			packetServerFreePacketBufferQueue(&response); //Free the queued response!
+			packetServerFreePacketBufferQueue(&pppNakFields); //Free the queued response!
+			packetServerFreePacketBufferQueue(&pppRejectFields); //Free the queued response!
+			return 1; //Give the correct result! Never block the transmitter inputs when this is the case: this is seperated from the normal transmitter handling!
+		}
+	}
+	donthandleServerPPPIPXCPyet: //Don't handle PPP IPXCP from server yet?
 	if (!handleTransmit) return 1; //Don't do anything more when not handling a transmit!
 	createPPPstream(&pppstream, &Packetserver_clients[connectedclient].packetserver_transmitbuffer[0], Packetserver_clients[connectedclient].packetserver_transmitlength-2); //Create a stream object for us to use, which goes until the end of the payload!
 	createPPPstream(&checksumppp, &Packetserver_clients[connectedclient].packetserver_transmitbuffer[Packetserver_clients[connectedclient].packetserver_transmitlength - 2], 2); //Create a stream object for us to use for the checksum!
@@ -6085,7 +6271,6 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 					ipxcp_pendingroutingprotocol = dataw; //Set the routing protocol to use!
 					//Field is OK!
 					break;
-					break;
 				case 5: //IPX-Router-Name
 					goto performskipdata_ipx; //Unused parameter! Simply skip it!
 				case 6: //IPX-Configuration-Complete
@@ -6127,7 +6312,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 							}
 							if (!packetServerAddPacketBufferQueue(&pppRejectFields, datab)) //Correct length!
 							{
-								goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+								goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
 							}
 							--skipdatacounter;
 						}
@@ -6170,8 +6355,8 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 					else //Valid address to use? Start validation of existing clients!
 					{
 						//TODO: Check other clients for pending negotiations! Wait for other clients to complete first!
-						memcpy(Packetserver_clients[connectedclient].ipxcp_networknumber[0], &ipxcp_pendingnetworknumber, sizeof(ipxcp_pendingnetworknumber)); //Network number specified or 0 for none!
-						memcpy(Packetserver_clients[connectedclient].ipxcp_nodenumber[0], &ipxcp_pendingnodenumber, sizeof(ipxcp_pendingnodenumber)); //Node number or 0 for none!
+						memcpy(&Packetserver_clients[connectedclient].ipxcp_networknumberecho[0], &ipxcp_pendingnetworknumber, sizeof(ipxcp_pendingnetworknumber)); //Network number specified or 0 for none!
+						memcpy(&Packetserver_clients[connectedclient].ipxcp_nodenumberecho[0], &ipxcp_pendingnodenumber, sizeof(ipxcp_pendingnodenumber)); //Node number or 0 for none!
 						if (sendIPXechorequest(connectedclient)) //Properly sent an echo request?
 						{
 							Packetserver_clients[connectedclient].ipxcp_negotiationstatus = 1; //Start negotiating the IPX node number!
@@ -6280,7 +6465,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 					Packetserver_clients[connectedclient].ipxcp_negotiationstatus = 0; //No negotation anymore!
 					memcpy(Packetserver_clients[connectedclient].ipxcp_networknumber[0],&ipxcp_pendingnetworknumber, sizeof(ipxcp_pendingnetworknumber)); //Network number specified or 0 for none!
 					memcpy(Packetserver_clients[connectedclient].ipxcp_nodenumber[0],&ipxcp_pendingnodenumber, sizeof(ipxcp_pendingnodenumber)); //Node number or 0 for none!
-					Packetserver_clients[connectedclient].ipxcp_routingprotocol[0] = ipxcp_pendingroutingprotocol; //No routing protocol!
+					Packetserver_clients[connectedclient].ipxcp_routingprotocol[0] = ipxcp_pendingroutingprotocol; //The routing protocol!
 				}
 			}
 			goto ppp_finishpacketbufferqueue2_ipxcp; //Finish up!
@@ -6323,8 +6508,512 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			goto ppp_finishpacketbufferqueue2_ipxcp; //Finish up!
 			break;
 		case 2: //Configure-Ack (All options OK)
+			if (common_IdentifierField != Packetserver_clients[connectedclient].ppp_servercurrentIPXCPidentifier) //Identifier mismatch?
+			{
+				goto ppp_finishpacketbufferqueue; //Finish up!
+			}
+			if (!createPPPsubstream(&pppstream, &pppstream_requestfield, MAX(common_LengthField, 4) - 4)) //Not enough room for the data?
+			{
+				goto ppp_finishpacketbufferqueue; //Finish up!
+			}
+			memset(&ipxcp_pendingnetworknumber, 0, sizeof(ipxcp_pendingnetworknumber)); //Default: none!
+			memset(&ipxcp_pendingnodenumber, 0, sizeof(ipxcp_pendingnodenumber)); //Node number!
+			ipxcp_pendingroutingprotocol = 0; //No routing protocol!
+
+			//Now, start parsing the options for the connection!
+			for (; PPP_peekStream(&pppstream_requestfield, &common_TypeField);) //Gotten a new option to parse?
+			{
+				if (!PPP_consumeStream(&pppstream_requestfield, &common_TypeField))
+				{
+					goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+				}
+				if (!PPP_consumeStream(&pppstream_requestfield, &common_OptionLengthField))
+				{
+					goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+				}
+				if (PPP_streamdataleft(&pppstream_requestfield) < (MAX(common_OptionLengthField, 2U) - 2U)) //Not enough room left for the option data?
+				{
+					goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+				}
+				switch (common_TypeField) //What type is specified for the option?
+				{
+				case 1: //IPX-Network-Number
+					if (common_OptionLengthField != 6) //Unsupported length?
+					{
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, common_TypeField)) //NAK it!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 6)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0)) //None!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0)) //None!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0)) //None!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0)) //None!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						goto performskipdata_ipxcp2; //Skip the data please!
+					}
+					if (!PPP_consumeStream(&pppstream_requestfield, &data4[0])) //Pending Node Number field!
+					{
+						goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+					}
+					if (!PPP_consumeStream(&pppstream_requestfield, &data4[1])) //Pending Node Number field!
+					{
+						goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+					}
+					if (!PPP_consumeStream(&pppstream_requestfield, &data4[2])) //Pending Node Number field!
+					{
+						goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+					}
+					if (!PPP_consumeStream(&pppstream_requestfield, &data4[3])) //Pending Node Number field!
+					{
+						goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+					}
+					memcpy(&ipxcp_pendingnetworknumber, &data4, 4); //Set the network number to use!
+					//Field is OK!
+					break;
+				case 2: //IPX-Node-Number
+					if (common_OptionLengthField != 8) //Unsupported length?
+					{
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, common_TypeField)) //NAK it!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 8)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0)) //None!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0)) //None!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0)) //None!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0)) //None!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0)) //None!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0)) //None!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						goto performskipdata_ipxcp2; //Skip the data please!
+					}
+					if (!PPP_consumeStream(&pppstream_requestfield, &data6[0])) //Pending Node Number field!
+					{
+						goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+					}
+
+					if (!PPP_consumeStream(&pppstream_requestfield, &data6[1])) //Pending Node Number field!
+					{
+						goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+					}
+					if (!PPP_consumeStream(&pppstream_requestfield, &data6[2])) //Pending Node Number field!
+					{
+						goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+					}
+					if (!PPP_consumeStream(&pppstream_requestfield, &data6[3])) //Pending Node Number field!
+					{
+						goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+					}
+					if (!PPP_consumeStream(&pppstream_requestfield, &data6[4])) //Pending Node Number field!
+					{
+						goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+					}
+					if (!PPP_consumeStream(&pppstream_requestfield, &data6[5])) //Pending Node Number field!
+					{
+						goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+					}
+					memcpy(&ipxcp_pendingnodenumber, &data6, 6); //Set the network number to use!
+					//Field is OK!
+					break;
+				case 4: //IPX-Routing-Protocol
+					if (common_OptionLengthField != 4) //Unsupported length?
+					{
+					ipxcp_unsupportedroutingprotocol2: //Unsupported routing protocol?
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, common_TypeField)) //NAK it!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 8)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0)) //None!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0)) //None!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						goto performskipdata_ipxcp2; //Skip the data please!
+					}
+					if (!PPP_consumeStreamBE16(&pppstream_requestfield, &dataw)) //Pending Node Number field!
+					{
+						goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+					}
+					if (dataw != 0) //Not supported?
+					{
+						goto ipxcp_unsupportedroutingprotocol2;
+					}
+					ipxcp_pendingroutingprotocol = dataw; //Set the routing protocol to use!
+					//Field is OK!
+					break;
+				case 5: //IPX-Router-Name
+					goto performskipdata_ipx; //Unused parameter! Simply skip it!
+				case 6: //IPX-Configuration-Complete
+					if (common_OptionLengthField != 2)
+					{
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, common_TypeField)) //NAK it!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 2)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						goto performskipdata_ipxcp2; //Skip the data anyways!
+					}
+					else //OK to parse normally?
+					{
+						goto performskipdata_ipxcp2; //Unused parameter! Simply skip it!
+					}
+				case 3: //IPX-Compression-Protocol
+				default: //Unknown option?
+					if (!packetServerAddPacketBufferQueue(&pppRejectFields, common_TypeField)) //NAK it!
+					{
+						goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+					}
+					if (!packetServerAddPacketBufferQueue(&pppRejectFields, common_OptionLengthField)) //Correct length!
+					{
+						goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+					}
+				performskipdata_ipxcp2:
+					if (common_OptionLengthField >= 2) //Enough length to skip?
+					{
+						skipdatacounter = common_OptionLengthField - 2; //How much to skip!
+						for (; skipdatacounter;) //Skip it!
+						{
+							if (!PPP_consumeStream(&pppstream_requestfield, &datab)) //Failed to consume properly?
+							{
+								goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+							}
+							if (!packetServerAddPacketBufferQueue(&pppRejectFields, datab)) //Correct length!
+							{
+								goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+							}
+							--skipdatacounter;
+						}
+					}
+					else //Malformed parameter!
+					{
+						goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+					}
+					break;
+				}
+			}
+
+			//TODO: Finish parsing properly
+			if (pppNakFields.buffer || pppRejectFields.buffer) //NAK or Rejected any fields? Then don't process to the connected phase!
+			{
+				++Packetserver_clients[connectedclient].ppp_serverLCPidentifier; //Increase the identifier for new packets!
+				Packetserver_clients[connectedclient].ppp_serverLCPstatus = 2; //Reset the status check to try again afterwards if it's reset again!
+			}
+			else //OK! All parameters are fine!
+			{
+				//Apply the parameters to the session and start the connection!
+				//Now, apply the request properly!
+				memcpy(&Packetserver_clients[connectedclient].ppp_response, &response, sizeof(response)); //Give the response to the client!
+				ppp_responseforuser(connectedclient); //A response is ready!
+				memset(&response, 0, sizeof(response)); //Parsed!
+				//Now, apply the request properly!
+				Packetserver_clients[connectedclient].ppp_IPXCPstatus[1] = 1; //Open!
+				memcpy(Packetserver_clients[connectedclient].ipxcp_networknumber[1], &ipxcp_pendingnetworknumber, sizeof(ipxcp_pendingnetworknumber)); //Network number specified or 0 for none!
+				memcpy(Packetserver_clients[connectedclient].ipxcp_nodenumber[1], &ipxcp_pendingnodenumber, sizeof(ipxcp_pendingnodenumber)); //Node number or 0 for none!
+				Packetserver_clients[connectedclient].ipxcp_routingprotocol[1] = ipxcp_pendingroutingprotocol; //The routing protocol!
+		//Packetserver_clients[connectedclient].ipxcp_negotiationstatus = 0; //No negotation yet!
+				Packetserver_clients[connectedclient].ppp_serverIPXCPstatus = 2; //Reset the status check to try again afterwards if it's reset again!
+				++Packetserver_clients[connectedclient].ppp_serverIPXCPidentifier; //Increase the identifier for new packets!
+			}
+			result = 1; //Discard it!
+			goto ppp_finishpacketbufferqueue2; //Finish up!
+			break;
 		case 3: //Configure-Nak (Some options unacceptable)
 		case 4: //Configure-Reject (Some options not recognisable or acceptable for negotiation)
+			if (common_IdentifierField != Packetserver_clients[connectedclient].ppp_servercurrentIPXCPidentifier) //Identifier mismatch?
+			{
+				goto ppp_finishpacketbufferqueue; //Finish up!
+			}
+			if (!createPPPsubstream(&pppstream, &pppstream_requestfield, MAX(common_LengthField, 4) - 4)) //Not enough room for the data?
+			{
+				goto ppp_finishpacketbufferqueue; //Finish up!
+			}
+
+			request_NakRejectnetworknumber = 0;
+			request_NakRejectnodenumber = 0;
+			request_NakRejectroutingprotocol = 0;
+			memcpy(&ipxcp_pendingnetworknumber,Packetserver_clients[connectedclient].ppp_serverIPXCP_havenetworknumber?&Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingnetworknumber:&no_network_number, sizeof(ipxcp_pendingnetworknumber)); //Default: none!
+			memcpy(&ipxcp_pendingnodenumber,Packetserver_clients[connectedclient].ppp_serverIPXCP_havenodenumber? &Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingnodenumber:&no_node_number, sizeof(ipxcp_pendingnodenumber)); //Node number!
+			ipxcp_pendingroutingprotocol = 0; //No routing protocol!
+
+			//Now, start parsing the options for the connection!
+			for (; PPP_peekStream(&pppstream_requestfield, &common_TypeField);) //Gotten a new option to parse?
+			{
+				if (!PPP_consumeStream(&pppstream_requestfield, &common_TypeField))
+				{
+					goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+				}
+				if (!PPP_consumeStream(&pppstream_requestfield, &common_OptionLengthField))
+				{
+					goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+				}
+				if (PPP_streamdataleft(&pppstream_requestfield) < (MAX(common_OptionLengthField, 2U) - 2U)) //Not enough room left for the option data?
+				{
+					goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+				}
+				switch (common_TypeField) //What type is specified for the option?
+				{
+				case 1: //IPX-Network-Number
+					if (common_OptionLengthField != 6) //Unsupported length?
+					{
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, common_TypeField)) //NAK it!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 6)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0)) //None!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0)) //None!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0)) //None!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0)) //None!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						goto performskipdata_ipxcpnakreject; //Skip the data please!
+					}
+					if (!PPP_consumeStream(&pppstream_requestfield, &data4[0])) //Pending Node Number field!
+					{
+						goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+					}
+					if (!PPP_consumeStream(&pppstream_requestfield, &data4[1])) //Pending Node Number field!
+					{
+						goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+					}
+					if (!PPP_consumeStream(&pppstream_requestfield, &data4[2])) //Pending Node Number field!
+					{
+						goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+					}
+					if (!PPP_consumeStream(&pppstream_requestfield, &data4[3])) //Pending Node Number field!
+					{
+						goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+					}
+					memcpy(&ipxcp_pendingnetworknumber, &data4, 4); //Set the network number to use!
+					request_NakRejectnetworknumber = 1; //This was Nak/Rejected!
+					//Field is OK!
+					break;
+				case 2: //IPX-Node-Number
+					if (common_OptionLengthField != 8) //Unsupported length?
+					{
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, common_TypeField)) //NAK it!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 8)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0)) //None!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0)) //None!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0)) //None!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0)) //None!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0)) //None!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0)) //None!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						goto performskipdata_ipxcpnakreject; //Skip the data please!
+					}
+					if (!PPP_consumeStream(&pppstream_requestfield, &data6[0])) //Pending Node Number field!
+					{
+						goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+					}
+
+					if (!PPP_consumeStream(&pppstream_requestfield, &data6[1])) //Pending Node Number field!
+					{
+						goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+					}
+					if (!PPP_consumeStream(&pppstream_requestfield, &data6[2])) //Pending Node Number field!
+					{
+						goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+					}
+					if (!PPP_consumeStream(&pppstream_requestfield, &data6[3])) //Pending Node Number field!
+					{
+						goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+					}
+					if (!PPP_consumeStream(&pppstream_requestfield, &data6[4])) //Pending Node Number field!
+					{
+						goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+					}
+					if (!PPP_consumeStream(&pppstream_requestfield, &data6[5])) //Pending Node Number field!
+					{
+						goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+					}
+					memcpy(&ipxcp_pendingnodenumber, &data6, 6); //Set the network number to use!
+					request_NakRejectnodenumber = 1; //This was Nak/Rejected!
+					//Field is OK!
+					break;
+				case 4: //IPX-Routing-Protocol
+					if (common_OptionLengthField != 4) //Unsupported length?
+					{
+					//ipxcp_unsupportedroutingprotocol3: //Unsupported routing protocol?
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, common_TypeField)) //NAK it!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 2)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0)) //None!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0)) //None!
+						{
+							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+						}
+						goto performskipdata_ipxcp2; //Skip the data please!
+					}
+					if (!PPP_consumeStreamBE16(&pppstream_requestfield, &dataw)) //Pending Node Number field!
+					{
+						goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+					}
+					/*
+					* Do we need to check this?
+					if (dataw != 0) //Not supported?
+					{
+						goto ipxcp_unsupportedroutingprotocol3;
+					}
+					*/
+					ipxcp_pendingroutingprotocol = dataw; //Set the routing protocol to use!
+					request_NakRejectroutingprotocol = 1; //This was Nak/Rejected!
+					//Field is OK!
+					break;
+				default: //Unknown option?
+					if (!packetServerAddPacketBufferQueue(&pppRejectFields, common_TypeField)) //NAK it!
+					{
+						goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+					}
+					if (!packetServerAddPacketBufferQueue(&pppRejectFields, common_OptionLengthField)) //Correct length!
+					{
+						goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+					}
+				performskipdata_ipxcpnakreject:
+					if (common_OptionLengthField >= 2) //Enough length to skip?
+					{
+						skipdatacounter = common_OptionLengthField - 2; //How much to skip!
+						for (; skipdatacounter;) //Skip it!
+						{
+							if (!PPP_consumeStream(&pppstream_requestfield, &datab)) //Failed to consume properly?
+							{
+								goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+							}
+							if (!packetServerAddPacketBufferQueue(&pppRejectFields, datab)) //Correct data!
+							{
+								goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+							}
+							--skipdatacounter;
+						}
+					}
+					else //Malformed parameter!
+					{
+						goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
+					}
+					break;
+				}
+			}
+			if ((pppNakFields.length == 0) && (pppRejectFields.length == 0)) //OK to process?
+			{
+				if (request_NakRejectnetworknumber && (common_CodeField == 4)) //Reject-Network-Number?
+				{
+					Packetserver_clients[connectedclient].ppp_serverIPXCP_havenetworknumber = 0; //Don't request anymore!
+				}
+				else if (request_NakRejectnetworknumber) //Network-Number change requested?
+				{
+					memcpy(&Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingnetworknumber, &ipxcp_pendingnetworknumber, sizeof(Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingnetworknumber)); //The request node number to use!
+				}
+				if (request_NakRejectnodenumber && (common_CodeField == 4)) //Reject-Node-Number?
+				{
+					Packetserver_clients[connectedclient].ppp_serverIPXCP_havenodenumber = 0; //Don't request anymore!
+				}
+				else if (request_NakRejectnodenumber) //Node-Number change requested?
+				{
+					memcpy(&Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingnodenumber, &ipxcp_pendingnodenumber, sizeof(Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingnodenumber)); //The request node number to use!
+				}
+				if (request_NakRejectroutingprotocol && (common_CodeField == 4)) //Reject-Routing-Protocol?
+				{
+					Packetserver_clients[connectedclient].ppp_serverIPXCP_haveroutingprotocol = 0; //Don't request anymore!
+				}
+				else if (request_NakRejectroutingprotocol) //Routing-Protocol change requested?
+				{
+					Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingroutingprotocol = ipxcp_pendingroutingprotocol; //The request node number to use!
+				}
+				++Packetserver_clients[connectedclient].ppp_serverIPXCPidentifier; //Increase the identifier for new packets!
+				Packetserver_clients[connectedclient].ppp_serverIPXCPstatus = 2; //Reset the status check to try again afterwards if it's reset again!
+			}
+			result = 1; //Success!
+			goto ppp_finishpacketbufferqueue2_ipxcp; //Finish up!
+			break;
 		case 6: //Terminate-Ack (Acnowledge termination of connection)
 		case 7: //Code-Reject (Code field is rejected because it's unknown)
 		default: //Unknown Code field?
