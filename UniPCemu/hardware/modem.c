@@ -7374,6 +7374,8 @@ typedef struct PACKED
 } IPXPACKETHEADER;
 #include "headers/endpacked.h"
 
+byte ipx_currentnetworknumber[4] = { 0,0,0,0 }; //Meaning: current network
+
 //result: 0 to discard the packet. 1 to start sending the packet to the client, 2 to keep it pending in this stage until we're ready to send it to the client.
 byte PPP_parseReceivedPacketForClient(sword connectedclient)
 {
@@ -7404,7 +7406,7 @@ byte PPP_parseReceivedPacketForClient(sword connectedclient)
 				createPPPstream(&pppstream, &Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data+18)], 12); //Create a stream out of the IPX packet source address!
 				if (SDL_SwapBE16(ipxheader.DestinationSocketNumber) == 2) //Echo request?
 				{
-					if (memcmp(&ipxheader.DestinationNetworkNumber, &Packetserver_clients[connectedclient].ipxcp_networknumber[0], 4)==0) //Network number match?
+					if (memcmp(&ipxheader.DestinationNetworkNumber, &Packetserver_clients[connectedclient].ipxcp_networknumber[0], 4)==0) //Network number match? Don't take the current network for this to prevent conflicts with it.
 					{
 						if (memcmp(&ipxheader.DestinationNodeNumber, &ipxbroadcastaddr, 6) == 0) //Destination node is the broadcast address?
 						{
@@ -7442,7 +7444,10 @@ byte PPP_parseReceivedPacketForClient(sword connectedclient)
 				}
 				if (memcmp(&ipxheader.DestinationNetworkNumber, &Packetserver_clients[connectedclient].ipxcp_networknumber[0][0], 4) != 0) //Network number mismatch?
 				{
-					return 0; //Handled, discard!
+					if (memcmp(&ipxheader.DestinationNetworkNumber, &ipx_currentnetworknumber, 4) == 0) //Current network mismatch?
+					{
+						return 0; //Handled, discard!
+					}
 				}
 				if (memcmp(&ipxheader.DestinationNodeNumber, &Packetserver_clients[connectedclient].ipxcp_nodenumber[0][0], 6) != 0) //Node number mismatch?
 				{
