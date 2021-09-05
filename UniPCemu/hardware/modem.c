@@ -6079,19 +6079,23 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 	case 0xC023: //PAP?
 		if (!PPP_consumeStream(&pppstream, &common_CodeField)) //Code couldn't be read?
 		{
-			return 1; //Incorrect packet: discard it!
+			result = 1; //Incorrect packet: discard it!
+			goto ppp_finishpacketbufferqueue2; //Incorrect packet: discard it!
 		}
 		if (!PPP_consumeStream(&pppstream, &common_IdentifierField)) //Identifier couldn't be read?
 		{
-			return 1; //Incorrect packet: discard it!
+			result = 1; //Incorrect packet: discard it!
+			goto ppp_finishpacketbufferqueue2; //Incorrect packet: discard it!
 		}
 		if (!PPP_consumeStreamBE16(&pppstream, &common_LengthField)) //Length couldn't be read?
 		{
-			return 1; //Incorrect packet: discard it!
+			result = 1; //Incorrect packet: discard it!
+			goto ppp_finishpacketbufferqueue2; //Incorrect packet: discard it!
 		}
-		if (common_LengthField < 6) //Not enough data?
+		if (common_LengthField < ((common_CodeField==1)?6:5)) //Not enough data?
 		{
-			return 1; //Incorrect packet: discard it!
+			result = 1; //Incorrect packet: discard it!
+			goto ppp_finishpacketbufferqueue2; //Incorrect packet: discard it!
 		}
 		switch (common_CodeField) //What operation code?
 		{
@@ -6166,7 +6170,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				goto ppp_finishpacketbufferqueue_pap; //Finish up!
 			}
 			//No message for now!
-			if (!packetServerAddPacketBufferQueue(&pppRejectFields, 0)) //Message length!
+			if (!packetServerAddPacketBufferQueue(&response, 0)) //Message length!
 			{
 				goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
 			}
