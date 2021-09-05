@@ -7261,7 +7261,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		packetServerFreePacketBufferQueue(&pppRejectFields); //Free the queued response!
 		break;
 	case 0x2B: //IPX datagram?
-		if (Packetserver_clients[connectedclient].ppp_IPXCPstatus[0] && Packetserver_clients[connectedclient].ppp_PAPstatus[1] && Packetserver_clients[connectedclient].ppp_LCPstatus[0]) //Fully authenticated and logged in?
+		if (Packetserver_clients[connectedclient].ppp_IPXCPstatus[1] && Packetserver_clients[connectedclient].ppp_PAPstatus[1] && Packetserver_clients[connectedclient].ppp_LCPstatus[1]) //Fully authenticated and logged in for sending?
 		{
 			//Handle the IPX packet to be sent!
 			if (!createPPPsubstream(&pppstream, &pppstream_requestfield, PPP_streamdataleft(&pppstream))) //Create a substream for the information field?
@@ -7385,7 +7385,7 @@ byte PPP_parseReceivedPacketForClient(sword connectedclient)
 	byte datab;
 	result = 0; //Default: discard!
 	//This is supposed to check the packet, parse it and send packets to the connected client in response when it's able to!
-	if (Packetserver_clients[connectedclient].ppp_PAPstatus[0] && Packetserver_clients[connectedclient].ppp_PAPstatus[1] && Packetserver_clients[connectedclient].ppp_LCPstatus[0] && Packetserver_clients[connectedclient].ppp_LCPstatus[1]) //Fully authenticated and logged in?
+	if (Packetserver_clients[connectedclient].ppp_LCPstatus[0] && Packetserver_clients[connectedclient].ppp_PAPstatus[0]) //Fully authenticated and logged in?
 	{
 		if (Packetserver_clients[connectedclient].pktlen > sizeof(ethernetheader.data)) //Length might be fine?
 		{
@@ -7436,13 +7436,20 @@ byte PPP_parseReceivedPacketForClient(sword connectedclient)
 					}
 				}
 				//Filter out unwanted IPX network/node numbers that aren't intended for us!
+				if (!Packetserver_clients[connectedclient].ppp_IPXCPstatus[0]) //Not authenticated yet?
+				{
+					return 0; //Handled, discard!
+				}
 				if (memcmp(&ipxheader.DestinationNetworkNumber, &Packetserver_clients[connectedclient].ipxcp_networknumber[0][0], 4) != 0) //Network number mismatch?
 				{
 					return 0; //Handled, discard!
 				}
 				if (memcmp(&ipxheader.DestinationNodeNumber, &Packetserver_clients[connectedclient].ipxcp_nodenumber[0][0], 6) != 0) //Node number mismatch?
 				{
-					return 0; //Handled, discard!
+					if (memcmp(&ipxheader.DestinationNodeNumber, &ipxbroadcastaddr, 6) != 0) //Also not a broadcast?
+					{
+						return 0; //Handled, discard!
+					}
 				}
 			}
 			else //Wrong length?
@@ -7450,11 +7457,7 @@ byte PPP_parseReceivedPacketForClient(sword connectedclient)
 				return 0; //Handled, discard!
 			}
 
-			//PPP phase of handling the packet has been reached!
-			if (!Packetserver_clients[connectedclient].ppp_IPXCPstatus[0]) //Not authenticated yet on the IPX protocol?
-			{
-				return 0; //Handled, discard!
-			}
+			//PPP phase of handling the packet has been reached! This packet is meant to be received by the connected client!
 
 			if (Packetserver_clients[connectedclient].ppp_response.buffer) //Already receiving something?
 			{
