@@ -5581,6 +5581,9 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				//Packetserver_clients[connectedclient].ipxcp_negotiationstatus = 0; //No negotation yet!
 				Packetserver_clients[connectedclient].ppp_serverLCPstatus = 2; //Reset the status check to try again afterwards if it's reset again!
 				++Packetserver_clients[connectedclient].ppp_serverLCPidentifier; //Increase the identifier for new packets!
+
+				//Extra: prepare the IPXCP state for usage!
+				getnspassed(&Packetserver_clients[connectedclient].ppp_serverIPXCPrequesttimer); //Starting it's timing!
 			}
 			result = 1; //Discard it!
 			goto ppp_finishpacketbufferqueue2; //Finish up!
@@ -8853,6 +8856,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 									Packetserver_clients[connectedclient].ppp_protocolreject_count = 0; //Default: 0!
 									Packetserver_clients[connectedclient].ppp_serverLCPstatus = 0; //Start out with initialized PPP LCP connection for the server to client connection!
 									initTicksHolder(&Packetserver_clients[connectedclient].ppp_serverLCPrequesttimer); //Initialize the timer!
+									initTicksHolder(&Packetserver_clients[connectedclient].ppp_serverIPXCPrequesttimer); //Initialize the timer!
 									getnspassed(&Packetserver_clients[connectedclient].ppp_serverLCPrequesttimer); //Starting it's timing!
 									Packetserver_clients[connectedclient].ppp_LCPstatus[0] = Packetserver_clients[connectedclient].ppp_PAPstatus[0] = Packetserver_clients[connectedclient].ppp_IPXCPstatus[0] = 0; //Reset all protocols to init state!
 									Packetserver_clients[connectedclient].ppp_LCPstatus[1] = Packetserver_clients[connectedclient].ppp_PAPstatus[1] = Packetserver_clients[connectedclient].ppp_IPXCPstatus[1] = 0; //Reset all protocols to init state!
