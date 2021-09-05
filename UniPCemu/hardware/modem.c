@@ -7376,7 +7376,7 @@ typedef struct PACKED
 
 byte ipx_currentnetworknumber[4] = { 0,0,0,0 }; //Meaning: current network
 
-//result: 0 to discard the packet. 1 to start sending the packet to the client, 2 to keep it pending in this stage until we're ready to send it to the client.
+//result: 0 to discard the packet. 1 to keep it pending in this stage until we're ready to send it to the client.
 byte PPP_parseReceivedPacketForClient(sword connectedclient)
 {
 	ETHERNETHEADER ethernetheader;
@@ -7403,7 +7403,7 @@ byte PPP_parseReceivedPacketForClient(sword connectedclient)
 			{
 				memcpy(&ipxheader, &Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data)], 30); //Get the IPX header from the packet!
 				createPPPstream(&ipxechostream, &Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data)+30], Packetserver_clients[connectedclient].pktlen - (sizeof(ethernetheader.data)+30)); //Create a stream out of the possible echo packet!
-				createPPPstream(&pppstream, &Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data+18)], 12); //Create a stream out of the IPX packet source address!
+				createPPPstream(&pppstream, &Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data)+18], 12); //Create a stream out of the IPX packet source address!
 				if (SDL_SwapBE16(ipxheader.DestinationSocketNumber) == 2) //Echo request?
 				{
 					if (memcmp(&ipxheader.DestinationNetworkNumber, &Packetserver_clients[connectedclient].ipxcp_networknumber[0], 4)==0) //Network number match? Don't take the current network for this to prevent conflicts with it.
@@ -7423,7 +7423,7 @@ byte PPP_parseReceivedPacketForClient(sword connectedclient)
 							}
 							else //Couldn't send a reply packet?
 							{
-								return 2; //Keep pending until we can send a reply!
+								return 1; //Keep pending until we can send a reply!
 							}
 						}
 						else if (memcmp(&ipxheader.DestinationNodeNumber, &ipxnegotiationnodeaddr, 6) == 0) //Negotiation address is being sent to?
@@ -7470,8 +7470,7 @@ byte PPP_parseReceivedPacketForClient(sword connectedclient)
 				return 1; //Keep pending until we can receive it!
 			}
 
-			//TODO: Determine if the packet is to be received or not deoending on the IPX packet header. Just receive all compatible IPX packets for now.
-
+			//Form the PPP packet to receive for the client!
 			memset(&response, 0, sizeof(response)); //Init the response!
 			//Build the PPP header first!
 			if (PPP_addPPPheader(connectedclient, &response, 1, 0x2B))
@@ -7493,10 +7492,7 @@ byte PPP_parseReceivedPacketForClient(sword connectedclient)
 				goto ppp_finishpacketbufferqueue_ppprecv;
 			}
 			//Packet is fully built. Now send it!
-			if (Packetserver_clients[connectedclient].ppp_response.size) //Previous Response still valid?
-			{
-				goto ppp_finishpacketbufferqueue_ppprecv; //Keep pending!
-			}
+			//Buffer being available is already checked before forming the response!
 			if (response.buffer) //Any response to give?
 			{
 				memcpy(&Packetserver_clients[connectedclient].ppp_response, &response, sizeof(response)); //Give the response to the client!
@@ -7506,7 +7502,7 @@ byte PPP_parseReceivedPacketForClient(sword connectedclient)
 			result = 0; //Success!
 			goto ppp_finishcorrectpacketbufferqueue2_ppprecv; //Success!
 		ppp_finishpacketbufferqueue_ppprecv: //An error occurred during the response?
-			result = 2; //Keep pending until we can properly handle it!
+			result = 1; //Keep pending until we can properly handle it!
 		ppp_finishcorrectpacketbufferqueue2_ppprecv: //Correctly finished!
 			packetServerFreePacketBufferQueue(&response); //Free the queued response!
 			return result; //Give the result!
@@ -8268,18 +8264,13 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 													}
 													else //Filter the packet depending on the packet type we're receiving!
 													{
-														switch (PPP_parseReceivedPacketForClient(connectedclient)) //Failed to receive the packet as proper to use?
+														if (PPP_parseReceivedPacketForClient(connectedclient)) //The packet is pending?
 														{
-														case 0: //Discard it!
-															goto invalidpacket; //Invalid packet!
-															break;
-														case 1: //Received it!
-															//Ready/pending is done by the PPP function!
-															goto invalidpacket; //Received the packet, so discard it!
-															break;
-														case 2: //Keep it pending!
 															Packetserver_clients[connectedclient].PPP_packetpendingforsending = 1; //Not ready, pending still!
-															break;
+														}
+														else //Processed, discard it!
+														{
+															goto invalidpacket; //Invalid packet!
 														}
 													}
 												}
