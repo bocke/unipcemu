@@ -8364,7 +8364,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 													{
 														if ((!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe) && (datatotransmit < 0x20)) //Might need to be escaped?
 														{
-															if (Packetserver_clients[connectedclient].asynccontrolcharactermap[0] & (1 << (datatotransmit & 0x1F))) //To be escaped?
+															if ((Packetserver_clients[connectedclient].asynccontrolcharactermap[0] & (1 << (datatotransmit & 0x1F)))||(!Packetserver_clients[connectedclient].ppp_LCPstatus[0])) //To be escaped?
 															{
 																writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, PPP_ESC); //Escaped ...
 																writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, PPP_ENCODEESC(datatotransmit)); //ESC raw data!
@@ -8697,7 +8697,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 								{
 									if ((!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe) && (datatotransmit < 0x20)) //Might need to be escaped?
 									{
-										if (Packetserver_clients[connectedclient].asynccontrolcharactermap[1] & (1 << (datatotransmit & 0x1F))) //To be escaped?
+										if ((Packetserver_clients[connectedclient].asynccontrolcharactermap[1] & (1 << (datatotransmit & 0x1F)))||(!Packetserver_clients[connectedclient].ppp_LCPstatus[1])) //To be escaped?
 										{
 											readfifobuffer(modem.inputdatabuffer[connectedclient], &datatotransmit); //Ignore the data, just discard the packet byte!
 										}
