@@ -8264,6 +8264,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 														}
 														else //Processed, discard it!
 														{
+															Packetserver_clients[connectedclient].PPP_packetpendingforsending = 0; //Ready, not pending!
 															goto invalidpacket; //Invalid packet!
 														}
 													}
