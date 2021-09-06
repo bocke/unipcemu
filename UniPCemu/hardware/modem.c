@@ -6938,7 +6938,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			//TODO: Finish parsing properly
 			if (pppNakFields.buffer || pppRejectFields.buffer) //NAK or Rejected any fields? Then don't process to the connected phase!
 			{
-				Packetserver_clients[connectedclient].ppp_serverIXPCPstatus = 2; //Reset the status check to try again afterwards if it's reset again!
+				Packetserver_clients[connectedclient].ppp_serverIPXCPstatus = 2; //Reset the status check to try again afterwards if it's reset again!
 			}
 			else //OK! All parameters are fine!
 			{
