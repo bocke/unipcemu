@@ -8304,7 +8304,18 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 										}
 										goto skipSLIP_PPP; //Don't handle SLIP/PPP because we're not ready yet!
 									}
-									if ((((Packetserver_clients[connectedclient].packet && (!(((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3)) && (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe)))) || ((((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3)) && (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe) && (Packetserver_clients[connectedclient].ppp_response.size && Packetserver_clients[connectedclient].ppp_response.buffer))))) && ((Packetserver_clients[connectedclient].PPP_packetreadyforsending) || ((Packetserver_clients[connectedclient].packetserver_slipprotocol!=3) || (Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe && (Packetserver_clients[connectedclient].packetserver_slipprotocol==3))))) //Still a valid packet to send and allowed to send the packet that's stored?
+									if (
+										(
+											(Packetserver_clients[connectedclient].packet && (!((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) && (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe)))) || //Direct packet to be received by the client in encrypted form?
+											((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) && (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe) && (Packetserver_clients[connectedclient].ppp_response.size && Packetserver_clients[connectedclient].ppp_response.buffer)) //Response ready for client in PPP form?
+										) //Packet might be ready for sending?
+										&& ( //Extra conditions for sending:
+											(Packetserver_clients[connectedclient].PPP_packetreadyforsending && (Packetserver_clients[connectedclient].ppp_response.size && Packetserver_clients[connectedclient].ppp_response.buffer)) || //PPP response ready for sending!
+											((Packetserver_clients[connectedclient].packetserver_slipprotocol!=3) || //Either not PPP? ...
+											(Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe && (Packetserver_clients[connectedclient].packetserver_slipprotocol==3)) //... or is using PPPOE?
+											)
+										)
+									) //Still a valid packet to send and allowed to send the packet that's stored?
 									{
 										//Convert the buffer into transmittable bytes using the proper encoding!
 										if ((Packetserver_clients[connectedclient].packetserver_bytesleft)) //Not finished yet?
