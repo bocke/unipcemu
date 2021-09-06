@@ -6218,7 +6218,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				--dataw; //One item consumed!
 			}
 			Packetserver_clients[connectedclient].ppp_PAPstatus[1] = 1; //We're authenticated!
-			Packetserver_clients[connectedclient].ppp_serverLCPstatus = 2; //Reset the status check to try again afterwards if it's reset again!
+			Packetserver_clients[connectedclient].ppp_serverPAPstatus = 2; //Reset the status check to try again afterwards if it's reset again!
 			Packetserver_clients[connectedclient].ppp_serverIPXCPrequesttimer = (DOUBLE)0.0f; //Restart timing!
 			goto ppp_finishpacketbufferqueue2_pap;
 			break;
@@ -6249,7 +6249,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				--dataw; //One item consumed!
 			}
 			//Don't authenticate, keep retrying?
-			Packetserver_clients[connectedclient].ppp_serverLCPstatus = 2; //Reset the status check to try again afterwards if it's reset again!
+			Packetserver_clients[connectedclient].ppp_serverPAPstatus = 2; //Reset the status check to try again afterwards if it's reset again!
 			goto ppp_finishpacketbufferqueue2_pap;
 			break;
 		default: //Unknown Code field?
@@ -6938,7 +6938,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			//TODO: Finish parsing properly
 			if (pppNakFields.buffer || pppRejectFields.buffer) //NAK or Rejected any fields? Then don't process to the connected phase!
 			{
-				Packetserver_clients[connectedclient].ppp_serverLCPstatus = 2; //Reset the status check to try again afterwards if it's reset again!
+				Packetserver_clients[connectedclient].ppp_serverIXPCPstatus = 2; //Reset the status check to try again afterwards if it's reset again!
 			}
 			else //OK! All parameters are fine!
 			{
