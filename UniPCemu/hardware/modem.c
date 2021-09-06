@@ -273,7 +273,7 @@ typedef struct
 	byte ppp_LCPstatus[2]; //Current LCP status. 0=Init, 1=Open.
 
 	//Some extra data for the server-client PPP LCP connection!
-	TicksHolder ppp_serverLCPrequesttimer; //Server LCP request timer until a response is gotten!
+	DOUBLE ppp_serverLCPrequesttimer; //Server LCP request timer until a response is gotten!
 	byte ppp_serverLCPstatus; //Server LCP status! 0=Not ready yet, 1=First requesting sent
 	byte ppp_servercurrentLCPidentifier; //Current Server LCP identifier!
 	byte ppp_serverLCPidentifier; //Server LCP identifier!
@@ -290,13 +290,13 @@ typedef struct
 	byte ppp_serverLCP_pendingASyncControlCharacterMap[4]; //ASync control character map that's pending!
 
 	//Some extra data for the server-client PPP PAP connection
-	TicksHolder ppp_serverPAPrequesttimer; //Server LCP request timer until a response is gotten!
+	DOUBLE ppp_serverPAPrequesttimer; //Server LCP request timer until a response is gotten!
 	byte ppp_serverPAPstatus; //Server LCP status! 0=Not ready yet, 1=First requesting sent
 	byte ppp_servercurrentPAPidentifier; //Current Server LCP identifier!
 	byte ppp_serverPAPidentifier; //Server LCP identifier!
 
 	//Some extra data for the server-client PPP IPXCP connection
-	TicksHolder ppp_serverIPXCPrequesttimer; //Server LCP request timer until a response is gotten!
+	DOUBLE ppp_serverIPXCPrequesttimer; //Server LCP request timer until a response is gotten!
 	byte ppp_serverIPXCPstatus; //Server LCP status! 0=Not ready yet, 1=First requesting sent
 	byte ppp_servercurrentIPXCPidentifier; //Current Server LCP identifier!
 	byte ppp_serverIPXCPidentifier; //Server LCP identifier!
@@ -319,7 +319,7 @@ typedef struct
 	byte ipxcp_nodenumberecho[6]; //Echo address negotiation
 	word ipxcp_routingprotocol[2];
 	byte ipxcp_negotiationstatus; //Negotiation status for the IPXCP login. 0=Ready for new negotiation. 1=Negotiation request has been sent. 2=Negotation has been given a reply and to NAK, 3=Negotiation has succeeded.
-	TicksHolder ipxcp_negotiationstatustimer; //Negotiation status timer for determining response time!
+	DOUBLE ipxcp_negotiationstatustimer; //Negotiation status timer for determining response time!
 	uint_32 asynccontrolcharactermap[2]; //Async control character map, stored in little endian format!
 } PacketServer_client;
 
@@ -4372,11 +4372,8 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 	else if ((!handleTransmit) && (!Packetserver_clients[connectedclient].ppp_LCPstatus[1])) //Not handling a transmitting of anything atm and LCP for the server-client is down?
 	{
 		//Use a simple nanosecond timer to determine if we're to send a 
-		if (getnspassed_k(&Packetserver_clients[connectedclient].ppp_serverLCPrequesttimer) >= ((!Packetserver_clients[connectedclient].ppp_serverLCPstatus)?3000000000.0f:500000000.0f)) //Starting it's timing every interval (first 3 seconds, then half a second)!
-		{
-			getnspassed(&Packetserver_clients[connectedclient].ppp_serverLCPrequesttimer); //Restart timing!
-		}
-		else
+		Packetserver_clients[connectedclient].ppp_serverLCPrequesttimer += modem.networkpolltick; //Time!
+		if (Packetserver_clients[connectedclient].ppp_serverLCPrequesttimer < ((!Packetserver_clients[connectedclient].ppp_serverLCPstatus) ? 3000000000.0f : 500000000.0f)) //Starting it's timing every interval (first 3 seconds, then half a second)!
 		{
 			goto donthandleServerPPPLCPyet; //Don't handle the sending of a request from the server yet, because we're still timing!
 		}
@@ -4553,6 +4550,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			memcpy(&Packetserver_clients[connectedclient].ppp_response, &response, sizeof(response)); //Give the response to the client!
 			ppp_responseforuser(connectedclient); //A response is ready!
 			memset(&response, 0, sizeof(response)); //Parsed!
+			Packetserver_clients[connectedclient].ppp_serverLCPrequesttimer = (DOUBLE)0.0f; //Restart timing!
 		}
 		goto ppp_finishpacketbufferqueue2_lcp; //Success!
 	ppp_finishpacketbufferqueue_lcp: //An error occurred during the response?
@@ -4570,11 +4568,8 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		if ((!handleTransmit) && (Packetserver_clients[connectedclient].ppp_LCPstatus[1]) && (!Packetserver_clients[connectedclient].ppp_PAPstatus[1])) //Not handling a transmitting of anything atm and LCP for the server-client is down?
 		{
 			//Use a simple nanosecond timer to determine if we're to send a 
-			if (getnspassed_k(&Packetserver_clients[connectedclient].ppp_serverPAPrequesttimer) >= ((!Packetserver_clients[connectedclient].ppp_serverPAPstatus) ? 3000000000.0f : 500000000.0f)) //Starting it's timing every interval (first 3 seconds, then half a second)!
-			{
-				getnspassed(&Packetserver_clients[connectedclient].ppp_serverPAPrequesttimer); //Restart timing!
-			}
-			else
+			Packetserver_clients[connectedclient].ppp_serverPAPrequesttimer += modem.networkpolltick; //Time!
+			if (Packetserver_clients[connectedclient].ppp_serverPAPrequesttimer < ((!Packetserver_clients[connectedclient].ppp_serverPAPstatus) ? 3000000000.0f : 500000000.0f)) //Starting it's timing every interval (first 3 seconds, then half a second)!
 			{
 				goto donthandleServerPPPPAPyet; //Don't handle the sending of a request from the server yet, because we're still timing!
 			}
@@ -4667,6 +4662,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				memcpy(&Packetserver_clients[connectedclient].ppp_response, &response, sizeof(response)); //Give the response to the client!
 				ppp_responseforuser(connectedclient); //A response is ready!
 				memset(&response, 0, sizeof(response)); //Parsed!
+				Packetserver_clients[connectedclient].ppp_serverPAPrequesttimer = (DOUBLE)0.0f; //Restart timing!
 			}
 			goto ppp_finishpacketbufferqueue2_papserver; //Success!
 		ppp_finishpacketbufferqueue_papserver: //An error occurred during the response?
@@ -4684,11 +4680,8 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			if ((!handleTransmit) && (Packetserver_clients[connectedclient].ppp_LCPstatus[1]) && (Packetserver_clients[connectedclient].ppp_PAPstatus[1]) && (!Packetserver_clients[connectedclient].ppp_IPXCPstatus[1])) //Not handling a transmitting of anything atm and LCP for the server-client is down?
 			{
 				//Use a simple nanosecond timer to determine if we're to send a 
-				if (getnspassed_k(&Packetserver_clients[connectedclient].ppp_serverIPXCPrequesttimer) >= ((!Packetserver_clients[connectedclient].ppp_serverIPXCPstatus) ? 3000000000.0f : 500000000.0f)) //Starting it's timing every interval (first 3 seconds, then half a second)!
-				{
-					getnspassed(&Packetserver_clients[connectedclient].ppp_serverIPXCPrequesttimer); //Restart timing!
-				}
-				else
+				Packetserver_clients[connectedclient].ppp_serverIPXCPrequesttimer += modem.networkpolltick; //Time!
+				if (Packetserver_clients[connectedclient].ppp_serverIPXCPrequesttimer < ((!Packetserver_clients[connectedclient].ppp_serverIPXCPstatus) ? 3000000000.0f : 500000000.0f)) //Starting it's timing every interval (first 3 seconds, then half a second)!
 				{
 					goto donthandleServerPPPIPXCPyet; //Don't handle the sending of a request from the server yet, because we're still timing!
 				}
@@ -4832,6 +4825,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 					memcpy(&Packetserver_clients[connectedclient].ppp_response, &response, sizeof(response)); //Give the response to the client!
 					ppp_responseforuser(connectedclient); //A response is ready!
 					memset(&response, 0, sizeof(response)); //Parsed!
+					Packetserver_clients[connectedclient].ppp_serverIPXCPrequesttimer = (DOUBLE)0.0f; //Restart timing!
 				}
 				goto ppp_finishpacketbufferqueue2_ipxcpserver; //Success!
 			ppp_finishpacketbufferqueue_ipxcpserver: //An error occurred during the response?
@@ -5694,8 +5688,9 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				Packetserver_clients[connectedclient].ppp_serverLCPstatus = 2; //Reset the status check to try again afterwards if it's reset again!
 
 				//Extra: prepare the IPXCP (if used immediately) and PAP state for usage!
-				getnspassed(&Packetserver_clients[connectedclient].ppp_serverPAPrequesttimer); //Starting it's timing!
-				getnspassed(&Packetserver_clients[connectedclient].ppp_serverIPXCPrequesttimer); //Starting it's timing!
+				Packetserver_clients[connectedclient].ppp_serverPAPrequesttimer = (DOUBLE)0.0f; //Restart timing!
+				Packetserver_clients[connectedclient].ppp_serverIPXCPrequesttimer = (DOUBLE)0.0f; //Restart timing!
+				Packetserver_clients[connectedclient].ppp_serverLCPrequesttimer = (DOUBLE)0.0f; //Restart timing!
 			}
 			result = 1; //Discard it!
 			goto ppp_finishpacketbufferqueue2; //Finish up!
@@ -6225,7 +6220,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			}
 			Packetserver_clients[connectedclient].ppp_PAPstatus[1] = 1; //We're authenticated!
 			Packetserver_clients[connectedclient].ppp_serverLCPstatus = 2; //Reset the status check to try again afterwards if it's reset again!
-			getnspassed(&Packetserver_clients[connectedclient].ppp_serverIPXCPrequesttimer); //Starting it's timing!
+			Packetserver_clients[connectedclient].ppp_serverIPXCPrequesttimer = (DOUBLE)0.0f; //Restart timing!
 			goto ppp_finishpacketbufferqueue2_pap;
 			break;
 		case 3: //Authentication-Nak
@@ -6563,8 +6558,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 						if (sendIPXechorequest(connectedclient)) //Properly sent an echo request?
 						{
 							Packetserver_clients[connectedclient].ipxcp_negotiationstatus = 1; //Start negotiating the IPX node number!
-							initTicksHolder(&Packetserver_clients[connectedclient].ipxcp_negotiationstatustimer); //Initialize the timer!
-							getnspassed(&Packetserver_clients[connectedclient].ipxcp_negotiationstatustimer); //Start the timer now!
+							Packetserver_clients[connectedclient].ipxcp_negotiationstatustimer = (DOUBLE)0.0f; //Restart timing!
 						}
 						else //Otherwise, keep pending!
 						{
@@ -6575,7 +6569,8 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 
 				if (Packetserver_clients[connectedclient].ipxcp_negotiationstatus == 1) //Timing the timer for negotiating the network/node address?
 				{
-					if (getnspassed_k(&Packetserver_clients[connectedclient].ipxcp_negotiationstatustimer) >= 1500000000.0f) //Negotiation timeout?
+					Packetserver_clients[connectedclient].ipxcp_negotiationstatustimer += modem.networkpolltick; //Time!
+					if (Packetserver_clients[connectedclient].ipxcp_negotiationstatustimer >= 1500000000.0f) //Negotiation timeout?
 					{
 						Packetserver_clients[connectedclient].ipxcp_negotiationstatus = 3; //Timeout reached! No other client responded to the request! Take the network/node address specified! 
 					}
@@ -9056,10 +9051,10 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 									Packetserver_clients[connectedclient].ppp_serverLCPstatus = 0; //Start out with initialized PPP LCP connection for the server to client connection!
 									Packetserver_clients[connectedclient].ppp_serverPAPstatus = 0; //Start out with initialized PPP PAP connection for the server to client connection!
 									Packetserver_clients[connectedclient].ppp_serverIPXCPstatus = 0; //Start out with initialized PPP IPXCP connection for the server to client connection!
-									initTicksHolder(&Packetserver_clients[connectedclient].ppp_serverLCPrequesttimer); //Initialize the timer!
-									initTicksHolder(&Packetserver_clients[connectedclient].ppp_serverPAPrequesttimer); //Initialize the timer!
-									initTicksHolder(&Packetserver_clients[connectedclient].ppp_serverIPXCPrequesttimer); //Initialize the timer!
-									getnspassed(&Packetserver_clients[connectedclient].ppp_serverLCPrequesttimer); //Starting it's timing!
+									Packetserver_clients[connectedclient].ppp_serverLCPrequesttimer = (DOUBLE)0.0f; //Restart timing!
+									Packetserver_clients[connectedclient].ppp_serverPAPrequesttimer = (DOUBLE)0.0f; //Restart timing!
+									Packetserver_clients[connectedclient].ppp_serverIPXCPrequesttimer = (DOUBLE)0.0f; //Restart timing!
+									Packetserver_clients[connectedclient].ipxcp_negotiationstatustimer = (DOUBLE)0.0f; //Restart timing!
 									Packetserver_clients[connectedclient].ppp_LCPstatus[0] = Packetserver_clients[connectedclient].ppp_PAPstatus[0] = Packetserver_clients[connectedclient].ppp_IPXCPstatus[0] = 0; //Reset all protocols to init state!
 									Packetserver_clients[connectedclient].ppp_LCPstatus[1] = Packetserver_clients[connectedclient].ppp_PAPstatus[1] = Packetserver_clients[connectedclient].ppp_IPXCPstatus[1] = 0; //Reset all protocols to init state!
 									Packetserver_clients[connectedclient].asynccontrolcharactermap[0] = Packetserver_clients[connectedclient].asynccontrolcharactermap[1] = 0xFFFFFFFF; //Initialize the Async Control Character Map to init value!
