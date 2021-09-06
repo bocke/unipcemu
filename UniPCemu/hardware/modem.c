@@ -5976,7 +5976,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				}
 				else if (request_magic_number_used) //Magic number requested?
 				{
-					memcpy(&Packetserver_clients[connectedclient].ppp_serverLCP_pendingMagicNumber, request_magic_number, sizeof(request_magic_number)); //The magic number to use!
+					memcpy(&Packetserver_clients[connectedclient].ppp_serverLCP_pendingMagicNumber, &request_magic_number, sizeof(request_magic_number)); //The magic number to use!
 				}
 				if (request_asynccontrolcharactermapspecified && (common_CodeField == 4)) //Reject-Async control character map?
 				{
@@ -5984,7 +5984,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				}
 				else if (request_asynccontrolcharactermapspecified) //Async control character map requested?
 				{
-					memcpy(&Packetserver_clients[connectedclient].ppp_serverLCP_pendingASyncControlCharacterMap, request_asynccontrolcharactermap, sizeof(request_asynccontrolcharactermap)); //ASync-Control-Character-Map to use?
+					memcpy(&Packetserver_clients[connectedclient].ppp_serverLCP_pendingASyncControlCharacterMap, &request_asynccontrolcharactermap, sizeof(request_asynccontrolcharactermap)); //ASync-Control-Character-Map to use?
 				}
 				if (request_authenticationspecified && (common_CodeField == 4)) //Reject-Authentication-Protocol?
 				{
@@ -7284,7 +7284,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				}
 			}
 
-			memcpy(&response.buffer[0], ppptransmitheader.data, sizeof(ppptransmitheader.data)); //The ethernet header!
+			memcpy(&response.buffer[0], &ppptransmitheader.data, sizeof(ppptransmitheader.data)); //The ethernet header!
 			//Now, add the entire packet as the content!
 			for (; PPP_peekStream(&pppstream_requestfield,&datab);) //Anything left to add?
 			{
