@@ -8695,7 +8695,21 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 							{
 								if (Packetserver_clients[connectedclient].packetserver_transmitlength || (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe)) //Gotten a valid packet?
 								{
-									goto addUnescapedValue; //Process an unescaped PPP value!
+									if ((!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe) && (datatotransmit < 0x20)) //Might need to be escaped?
+									{
+										if (Packetserver_clients[connectedclient].asynccontrolcharactermap[1] & (1 << (datatotransmit & 0x1F))) //To be escaped?
+										{
+											readfifobuffer(modem.inputdatabuffer[connectedclient], &datatotransmit); //Ignore the data, just discard the packet byte!
+										}
+										else //Not escaped!
+										{
+											goto addUnescapedValue; //Process an unescaped PPP value!
+										}
+									}
+									else
+									{
+										goto addUnescapedValue; //Process an unescaped PPP value!
+									}
 								}
 							}
 							else if (Packetserver_clients[connectedclient].packetserver_slipprotocol!=3) //Active SLIP data?
