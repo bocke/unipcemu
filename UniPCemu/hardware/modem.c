@@ -5238,12 +5238,12 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 					if (request_authenticationspecified) //Authentication specified?
 					{
 						Packetserver_clients[connectedclient].ppp_PAPstatus[0] = 0; //Not Authenticated yet!
+						Packetserver_clients[connectedclient].ppp_IPXCPstatus[0] = 0; //Closed!
 					}
 					else
 					{
 						Packetserver_clients[connectedclient].ppp_PAPstatus[0] = 1; //Authenticated automatically!
 					}
-					Packetserver_clients[connectedclient].ppp_IPXCPstatus[0] = 0; //Closed!
 					Packetserver_clients[connectedclient].ipxcp_negotiationstatus = 0; //No negotation yet!
 				}
 				result = 1; //Success!
@@ -5283,6 +5283,8 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				memset(&response, 0, sizeof(response)); //Parsed!
 				//Now, apply the request properly!
 				Packetserver_clients[connectedclient].ppp_LCPstatus[0] = 0; //Closed!
+				Packetserver_clients[connectedclient].ppp_PAPstatus[0] = 0; //Closed!
+				Packetserver_clients[connectedclient].ppp_IPXCPstatus[0] = 0; //Closed!
 				Packetserver_clients[connectedclient].PPP_MRU[0] = 1500; //Default: 1500
 				Packetserver_clients[connectedclient].PPP_headercompressed[0] = 0; //Default: uncompressed
 				Packetserver_clients[connectedclient].PPP_protocolcompressed[0] = 0; //Default: uncompressed
@@ -5677,12 +5679,12 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				if (request_authenticationspecified) //Authentication specified?
 				{
 					Packetserver_clients[connectedclient].ppp_PAPstatus[1] = 0; //Not Authenticated yet!
+					Packetserver_clients[connectedclient].ppp_IPXCPstatus[1] = 0; //Closed!
 				}
 				else
 				{
 					Packetserver_clients[connectedclient].ppp_PAPstatus[1] = 1; //Authenticated automatically!
 				}
-				Packetserver_clients[connectedclient].ppp_IPXCPstatus[1] = 0; //Closed!
 				//Packetserver_clients[connectedclient].ipxcp_negotiationstatus = 0; //No negotation yet!
 				Packetserver_clients[connectedclient].ppp_serverLCPstatus = 2; //Reset the status check to try again afterwards if it's reset again!
 
@@ -6187,6 +6189,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				else
 				{
 					Packetserver_clients[connectedclient].ppp_PAPstatus[0] = 0; //Not authenticated!
+					Packetserver_clients[connectedclient].ppp_IPXCPstatus[0] = 0; //Logoff!
 				}
 			}
 			goto ppp_finishpacketbufferqueue2_pap; //Finish up!
