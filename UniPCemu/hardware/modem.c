@@ -4401,7 +4401,14 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		{
 			++Packetserver_clients[connectedclient].ppp_serverLCPidentifier; //New identifier to start using!
 			//Otherwise, it's a retry!
-			goto retryServerLCPnegotiation;
+			if (Packetserver_clients[connectedclient].ppp_serverLCPstatus == 2) //Resetting?
+			{
+				goto retryServerLCPnegotiation;
+			}
+			else
+			{
+				Packetserver_clients[connectedclient].ppp_serverLCPstatus = 1; //Ready for use for now!
+			}
 		}
 		result = 1; //Default: handled!
 		//Now, formulate a request!
@@ -4709,7 +4716,14 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				{
 					++Packetserver_clients[connectedclient].ppp_serverIPXCPidentifier; //New identifier to start using!
 					//Otherwise, it's a retry!
-					goto retryServerIPXCPnegotiation;
+					if (Packetserver_clients[connectedclient].ppp_serverLCPstatus == 2) //Resetting?
+					{
+						goto retryServerIPXCPnegotiation;
+					}
+					else
+					{
+						Packetserver_clients[connectedclient].ppp_serverIPXCPstatus = 1; //Ready for use for now!
+					}
 				}
 				result = 1; //Default: handled!
 				//Now, formulate a request!
@@ -6030,7 +6044,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 						Packetserver_clients[connectedclient].ppp_serverLCP_haveAuthenticationProtocol = 1; //Use PAP!
 					}
 				}
-				Packetserver_clients[connectedclient].ppp_serverLCPstatus = 2; //Reset the status check to try again afterwards if it's reset again!
+				Packetserver_clients[connectedclient].ppp_serverLCPstatus = 3; //Reset the status check to try again afterwards if it's reset again!
 			}
 			result = 1; //Success!
 			goto ppp_finishpacketbufferqueue2; //Finish up!
@@ -7281,7 +7295,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 					Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingroutingprotocol = ipxcp_pendingroutingprotocol; //The request node number to use!
 					Packetserver_clients[connectedclient].ppp_serverIPXCP_haveroutingprotocol = 1; //Request now!
 				}
-				Packetserver_clients[connectedclient].ppp_serverIPXCPstatus = 2; //Reset the status check to try again afterwards if it's reset again!
+				Packetserver_clients[connectedclient].ppp_serverIPXCPstatus = 3; //Reset the status check to try again afterwards if it's reset again!
 			}
 			result = 1; //Success!
 			goto ppp_finishpacketbufferqueue2_ipxcp; //Finish up!
