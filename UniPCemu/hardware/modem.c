@@ -3861,10 +3861,11 @@ word PPP_calcFCS(byte* buffer, uint_32 length)
 	return fcs; //Don't swap, as this is done by the write only(to provide a little-endian value in the stream)! The result for a checksum is just in our native ordering to check against the good FCS value!
 }
 
+byte ipx_servernetworknumber[4] = { 0x01,0x00,0x00,0x00 }; //Server network number!
 byte ipxbroadcastaddr[6] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF}; //IPX Broadcast address
 byte ipxnulladdr[6] = {0x00,0x00,0x00,0x00,0x00,0x00 }; //IPX Forbidden NULL address
 byte ipxnegotiationnodeaddr[6] = { 0xFF,0xFF,0xFF,0xFF,0xFF,0xFE }; //IPX address negotiation address
-byte ipxservernodeaddr[6] = { 0xFF,0xFF,0xFF,0xFF,0xFF,0xFD }; //IPX server node address!
+byte ipx_servernodeaddr[6] = { 0x01,0x00,0x00,0x00,0x00,0x00 }; //IPX server node address!
 
 //result: 1 for OK address. 0 for overflow! NULL and Broadcast addresses are skipped automatically. addrsizeleft should be 6 (the size of an IPX address)
 byte incIPXaddr2(byte* ipxaddr, byte addrsizeleft) //addrsizeleft=6 for the address specified
@@ -3883,7 +3884,7 @@ byte incIPXaddr2(byte* ipxaddr, byte addrsizeleft) //addrsizeleft=6 for the addr
 	}
 	if (addrsizeleft == sizeof(ipxbroadcastaddr)) //No overflow for full address?
 	{
-		if (memcmp(ipxaddr - 5, &ipxservernodeaddr, sizeof(ipxnegotiationnodeaddr)) == 0) //Server address?
+		if (memcmp(ipxaddr - 5, &ipx_servernodeaddr, sizeof(ipxnegotiationnodeaddr)) == 0) //Server address?
 		{
 			return incIPXaddr2(ipxaddr, addrsizeleft); //Increase to the next possible address, which we'll use!
 		}
@@ -4712,8 +4713,8 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				retryServerIPXCPnegotiation:
 					Packetserver_clients[connectedclient].ppp_serverIPXCPstatus = 1; //Have initialized!
 					Packetserver_clients[connectedclient].ppp_serverIPXCP_havenetworknumber = Packetserver_clients[connectedclient].ppp_serverIPXCP_havenodenumber = Packetserver_clients[connectedclient].ppp_serverIPXCP_haveroutingprotocol = 0; //Default by trying none!
-					memcpy(&Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingnetworknumber, &ipx_currentnetworknumber, sizeof(Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingnetworknumber)); //Initialize the network number
-					memcpy(&Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingnodenumber, &ipxservernodeaddr, sizeof(Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingnodenumber)); //Initialize the node number for the server!
+					memcpy(&Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingnetworknumber, &ipx_servernetworknumber, sizeof(Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingnetworknumber)); //Initialize the network number
+					memcpy(&Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingnodenumber, &ipx_servernodeaddr, sizeof(Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingnodenumber)); //Initialize the node number for the server!
 					Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingroutingprotocol = 0; //No routing protocol by default!
 				}
 				else if (Packetserver_clients[connectedclient].ppp_serverIPXCPstatus > 1) //Resetting?
