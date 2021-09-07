@@ -5975,14 +5975,23 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				else if (request_NakRejectpendingMRU) //MRU change requested?
 				{
 					Packetserver_clients[connectedclient].ppp_serverLCP_pendingMRU = request_pendingMRU; //The request MRU to use!
+					Packetserver_clients[connectedclient].ppp_serverLCP_haveMRU = 1; //Request now!
 				}
-				if (request_pendingProtocolFieldCompression) //Protocol field compression Nak/Reject?
+				if (request_pendingProtocolFieldCompression && (common_CodeField == 4)) //Protocol field compression Nak/Reject?
 				{
 					Packetserver_clients[connectedclient].ppp_serverLCP_haveProtocolFieldCompression = 0; //Not anymore!
 				}
-				if (request_pendingAddressAndControlFieldCompression) //Address and Control Field Compression Nak/Reject?
+				else if (request_pendingProtocolFieldCompression)
+				{
+					Packetserver_clients[connectedclient].ppp_serverLCP_haveProtocolFieldCompression = 1; //Request now!
+				}
+				if (request_pendingAddressAndControlFieldCompression && (common_CodeField==4)) //Address and Control Field Compression Nak/Reject?
 				{
 					Packetserver_clients[connectedclient].ppp_serverLCP_haveAddressAndControlFieldCompression = 0; //Not anymore!
+				}
+				else
+				{
+					Packetserver_clients[connectedclient].ppp_serverLCP_haveAddressAndControlFieldCompression = 1; //Request now!
 				}
 				if (request_magic_number_used && (common_CodeField == 4)) //Reject-Magic number?
 				{
@@ -5991,6 +6000,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				else if (request_magic_number_used) //Magic number requested?
 				{
 					memcpy(&Packetserver_clients[connectedclient].ppp_serverLCP_pendingMagicNumber, &request_magic_number, sizeof(request_magic_number)); //The magic number to use!
+					Packetserver_clients[connectedclient].ppp_serverLCP_haveMagicNumber = 1; //Request now!
 				}
 				if (request_asynccontrolcharactermapspecified && (common_CodeField == 4)) //Reject-Async control character map?
 				{
@@ -5999,6 +6009,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				else if (request_asynccontrolcharactermapspecified) //Async control character map requested?
 				{
 					memcpy(&Packetserver_clients[connectedclient].ppp_serverLCP_pendingASyncControlCharacterMap, &request_asynccontrolcharactermap, sizeof(request_asynccontrolcharactermap)); //ASync-Control-Character-Map to use?
+					Packetserver_clients[connectedclient].ppp_serverLCP_haveAsyncControlCharacterMap = 1; //Request now!
 				}
 				if (request_authenticationspecified && (common_CodeField == 4)) //Reject-Authentication-Protocol?
 				{
@@ -7250,6 +7261,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				else if (request_NakRejectnetworknumber) //Network-Number change requested?
 				{
 					memcpy(&Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingnetworknumber, &ipxcp_pendingnetworknumber, sizeof(Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingnetworknumber)); //The request node number to use!
+					Packetserver_clients[connectedclient].ppp_serverIPXCP_havenetworknumber = 1; //Request now!
 				}
 				if (request_NakRejectnodenumber && (common_CodeField == 4)) //Reject-Node-Number?
 				{
@@ -7258,6 +7270,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				else if (request_NakRejectnodenumber) //Node-Number change requested?
 				{
 					memcpy(&Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingnodenumber, &ipxcp_pendingnodenumber, sizeof(Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingnodenumber)); //The request node number to use!
+					Packetserver_clients[connectedclient].ppp_serverIPXCP_havenodenumber = 1; //Request now!
 				}
 				if (request_NakRejectroutingprotocol && (common_CodeField == 4)) //Reject-Routing-Protocol?
 				{
@@ -7266,6 +7279,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				else if (request_NakRejectroutingprotocol) //Routing-Protocol change requested?
 				{
 					Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingroutingprotocol = ipxcp_pendingroutingprotocol; //The request node number to use!
+					Packetserver_clients[connectedclient].ppp_serverIPXCP_haveroutingprotocol = 1; //Request now!
 				}
 				Packetserver_clients[connectedclient].ppp_serverIPXCPstatus = 2; //Reset the status check to try again afterwards if it's reset again!
 			}
