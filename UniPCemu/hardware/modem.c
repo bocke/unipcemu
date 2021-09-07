@@ -5237,8 +5237,10 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 					Packetserver_clients[connectedclient].have_magic_number[0] = request_magic_number_used; //Use magic number?
 					if (request_authenticationspecified) //Authentication specified?
 					{
-						Packetserver_clients[connectedclient].ppp_PAPstatus[0] = 0; //Not Authenticated yet!
-						Packetserver_clients[connectedclient].ppp_IPXCPstatus[0] = 0; //Closed!
+						if (!Packetserver_clients[connectedclient].ppp_PAPstatus[0]) //Wasn't already authenticated?
+						{
+							Packetserver_clients[connectedclient].ppp_IPXCPstatus[0] = 0; //Closed!
+						}
 					}
 					else
 					{
@@ -5678,8 +5680,11 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				Packetserver_clients[connectedclient].have_magic_number[1] = request_magic_number_used; //Use magic number?
 				if (request_authenticationspecified) //Authentication specified?
 				{
-					Packetserver_clients[connectedclient].ppp_PAPstatus[1] = 0; //Not Authenticated yet!
-					Packetserver_clients[connectedclient].ppp_IPXCPstatus[1] = 0; //Closed!
+					if (!Packetserver_clients[connectedclient].ppp_PAPstatus[1]) //Not already verified?
+					{
+						Packetserver_clients[connectedclient].ppp_IPXCPstatus[1] = 0; //Closed!
+						Packetserver_clients[connectedclient].ppp_PAPstatus[1] = 0; //Not Authenticated yet!
+					}
 				}
 				else
 				{
@@ -6188,8 +6193,11 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				}
 				else
 				{
-					Packetserver_clients[connectedclient].ppp_PAPstatus[0] = 0; //Not authenticated!
-					Packetserver_clients[connectedclient].ppp_IPXCPstatus[0] = 0; //Logoff!
+					if (Packetserver_clients[connectedclient].ppp_PAPstatus[0]) //Was authenticated?
+					{
+						Packetserver_clients[connectedclient].ppp_PAPstatus[0] = 0; //Not authenticated!
+						Packetserver_clients[connectedclient].ppp_IPXCPstatus[0] = 0; //Logoff!
+					}
 				}
 			}
 			goto ppp_finishpacketbufferqueue2_pap; //Finish up!
