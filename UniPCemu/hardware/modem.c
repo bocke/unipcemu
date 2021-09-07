@@ -4112,7 +4112,7 @@ byte sendIPXechorequest(sword connectedclient)
 	//Now, the source address, which is our client address for the connected client!
 	for (skipdatacounter = 0; skipdatacounter < 4; ++skipdatacounter)
 	{
-		if (!packetServerAddPacketBufferQueue(&response, Packetserver_clients[connectedclient].ipxcp_networknumberecho[skipdatacounter])) //Our network number!
+		if (!packetServerAddPacketBufferQueue(&response, ipx_servernetworknumber[skipdatacounter])) //Our network number!
 		{
 			goto ppp_finishpacketbufferqueue_echo; //Keep pending!
 		}
@@ -6636,7 +6636,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 					{
 						Packetserver_clients[connectedclient].ipxcp_negotiationstatus = 2; //NAK it!
 					}
-					else if (!memcmp(&ipxcp_pendingnodenumber, &ipx_servernodeaddr, 6)) //Negotiation node address?
+					else if (!memcmp(&ipxcp_pendingnodenumber, &ipx_servernodeaddr, 6)) //Negotiation node server address?
 					{
 						Packetserver_clients[connectedclient].ipxcp_negotiationstatus = 2; //NAK it!
 					}
@@ -7493,15 +7493,19 @@ byte PPP_parseReceivedPacketForClient(sword connectedclient)
 				createPPPstream(&pppstream, &Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data)+18], 12); //Create a stream out of the IPX packet source address!
 				if (SDL_SwapBE16(ipxheader.DestinationSocketNumber) == 2) //Echo request?
 				{
-					if (memcmp(&ipxheader.DestinationNetworkNumber, &Packetserver_clients[connectedclient].ipxcp_networknumber[0], 4)==0) //Network number match? Don't take the current network for this to prevent conflicts with it.
+					if (memcmp(&ipxheader.DestinationNetworkNumber, &Packetserver_clients[connectedclient].ipxcp_networknumber[0], 4) == 0) //Network number match? Don't take the current network for this to prevent conflicts with it.
 					{
 						//Perform logic for determining what addresses are assigned here.
 						if (memcmp(&ipxheader.DestinationNodeNumber, &ipxbroadcastaddr, 6) == 0) //Destination node is the broadcast address?
 						{
 							//We're replying to the echo packet!
-							if (!(Packetserver_clients[connectedclient].ppp_IPXCPstatus[0]&&Packetserver_clients[connectedclient].ppp_IPXCPstatus[1])) //Not authenticated yet?
+							if (!(Packetserver_clients[connectedclient].ppp_IPXCPstatus[0] && Packetserver_clients[connectedclient].ppp_IPXCPstatus[1])) //Not authenticated yet?
 							{
 								return 0; //Handled, discard!
+							}
+							if (Packetserver_clients[connectedclient].ipxcp_negotiationstatus == 1) //We're opened and trying to renegotiate our own address?
+							{
+								return 0; //Discard: don't send any reply because that would mean invalidating our own address during renegotiation!
 							}
 							//We're authenticated, so send a reply!
 							if (sendIPXechoreply(connectedclient, &ipxechostream, &pppstream)) //Sent a reply?
@@ -7513,14 +7517,17 @@ byte PPP_parseReceivedPacketForClient(sword connectedclient)
 								return 1; //Keep pending until we can send a reply!
 							}
 						}
-						else if (memcmp(&ipxheader.DestinationNodeNumber, &ipx_servernodeaddr, 6) == 0) //Negotiation address is being sent to?
+					}
+					//Check for echo replies on our requests!
+					if ((memcmp(&ipxheader.DestinationNodeNumber, &ipx_servernodeaddr, 6) == 0) && (memcmp(&ipxheader.DestinationNetworkNumber,&ipx_servernetworknumber, 4) == 0)) //Negotiation address and network is being sent to?
+					{
+						if (Packetserver_clients[connectedclient].ipxcp_negotiationstatus == 1) //Waiting for negotiation answers?
 						{
-							if (Packetserver_clients[connectedclient].ipxcp_negotiationstatus == 1) //Waiting for negotiation answers?
+							if (
+								(memcmp(&ipxheader.SourceNodeNumber, &Packetserver_clients[connectedclient].ipxcp_nodenumberecho, 6)==0) &&
+								(memcmp(&ipxheader.SourceNetworkNumber, &Packetserver_clients[connectedclient].ipxcp_networknumberecho, 4) == 0)) //The requested node number had been found already?
 							{
-								if (memcmp(&ipxheader.SourceNodeNumber, &Packetserver_clients[connectedclient].ipxcp_nodenumber[0], 6)==0) //The requested node number had been found already?
-								{
-									Packetserver_clients[connectedclient].ipxcp_negotiationstatus = 2; //NAK the connection, as the requested node number had been found in the network!
-								}
+								Packetserver_clients[connectedclient].ipxcp_negotiationstatus = 2; //NAK the connection, as the requested node number had been found in the network!
 							}
 						}
 					}
