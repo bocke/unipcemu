@@ -3746,8 +3746,11 @@ void createPPPstream(PPP_Stream* stream, byte *data, uint_32 size)
 
 byte createPPPsubstream(PPP_Stream* stream, PPP_Stream * substream, uint_32 size)
 {
-	if ((stream->size==0) || (size==0)) return 0; //Fail when no size to allocate from or to!
-	if ((stream->size - stream->pos) < size) return 0; //Fail when no room left for the sub-stream!
+	if ((stream->size==0)) return 0; //Fail when no size to allocate from or to!
+	if (size) //Anything to use?
+	{
+		if ((stream->size - stream->pos) < size) return 0; //Fail when no room left for the sub-stream!
+	}
 	substream->data = &stream->data[stream->pos]; //Where to start the sub-stream!
 	substream->pos = 0; //Start of stream!
 	substream->size = size; //The size of the substream!
