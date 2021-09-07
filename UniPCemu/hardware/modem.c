@@ -4576,7 +4576,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		{
 			//Use a simple nanosecond timer to determine if we're to send a 
 			Packetserver_clients[connectedclient].ppp_serverPAPrequesttimer += modem.networkpolltick; //Time!
-			if (Packetserver_clients[connectedclient].ppp_serverPAPrequesttimer < ((!Packetserver_clients[connectedclient].ppp_serverPAPstatus) ? 3000000000.0f : 500000000.0f)) //Starting it's timing every interval (first 3 seconds, then half a second)!
+			if (Packetserver_clients[connectedclient].ppp_serverPAPrequesttimer < 500000000.0f) //Starting it's timing every interval (first 3 seconds, then half a second)!
 			{
 				goto donthandleServerPPPPAPyet; //Don't handle the sending of a request from the server yet, because we're still timing!
 			}
@@ -4686,7 +4686,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			{
 				//Use a simple nanosecond timer to determine if we're to send a 
 				Packetserver_clients[connectedclient].ppp_serverIPXCPrequesttimer += modem.networkpolltick; //Time!
-				if (Packetserver_clients[connectedclient].ppp_serverIPXCPrequesttimer < ((!Packetserver_clients[connectedclient].ppp_serverIPXCPstatus) ? 3000000000.0f : 500000000.0f)) //Starting it's timing every interval (first 3 seconds, then half a second)!
+				if (Packetserver_clients[connectedclient].ppp_serverIPXCPrequesttimer < 500000000.0f) //Starting it's timing every interval (first 3 seconds, then half a second)!
 				{
 					goto donthandleServerPPPIPXCPyet; //Don't handle the sending of a request from the server yet, because we're still timing!
 				}
