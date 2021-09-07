@@ -4707,7 +4707,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 					Packetserver_clients[connectedclient].ppp_serverIPXCPidentifier = 0; //Init!
 				retryServerIPXCPnegotiation:
 					Packetserver_clients[connectedclient].ppp_serverIPXCPstatus = 1; //Have initialized!
-					Packetserver_clients[connectedclient].ppp_serverIPXCP_havenetworknumber = Packetserver_clients[connectedclient].ppp_serverIPXCP_havenodenumber = Packetserver_clients[connectedclient].ppp_serverIPXCP_haveroutingprotocol = 1; //Default by trying all!
+					Packetserver_clients[connectedclient].ppp_serverIPXCP_havenetworknumber = Packetserver_clients[connectedclient].ppp_serverIPXCP_havenodenumber = Packetserver_clients[connectedclient].ppp_serverIPXCP_haveroutingprotocol = 0; //Default by trying none!
 					memcpy(&Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingnetworknumber, &ipx_currentnetworknumber, sizeof(Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingnetworknumber)); //Initialize the network number
 					memcpy(&Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingnodenumber, &ipxservernodeaddr, sizeof(Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingnodenumber)); //Initialize the node number for the server!
 					Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingroutingprotocol = 0; //No routing protocol by default!
