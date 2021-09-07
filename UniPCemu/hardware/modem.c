@@ -8470,17 +8470,6 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 							goto skipSLIP_PPP; //Don't handle SLIP/PPP because we're not ready yet!
 						}
 
-						if (Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) //PPP?
-						{
-							if (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe) //Not using PPPOE?
-							{
-								if (!PPP_parseSentPacketFromClient(connectedclient, 0)) //Parse PPP packets to their respective ethernet or IPv4 protocols for sending to the ethernet layer, as supported!
-								{
-									goto skipSLIP_PPP; //Keep the packet parsing pending!
-								}
-							}
-						}
-
 						//Handle transmitting packets(with automatically increasing buffer sizing, as a packet can be received of any size theoretically)!
 						if (peekfifobuffer(modem.inputdatabuffer[connectedclient], &datatotransmit)) //Is anything transmitted yet?
 						{
@@ -8766,8 +8755,18 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 								}
 							}
 						}
+						//Perform automatic packet handling with lower priority than the client!
+						if (Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) //PPP?
+						{
+							if (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe) //Not using PPPOE?
+							{
+								if (!PPP_parseSentPacketFromClient(connectedclient, 0)) //Parse PPP packets to their respective ethernet or IPv4 protocols for sending to the ethernet layer, as supported!
+								{
+									goto skipSLIP_PPP; //Keep the packet parsing pending!
+								}
+							}
+						}
 					skipSLIP_PPP: //SLIP isn't available?
-
 					//Handle an authentication stage
 						if (Packetserver_clients[connectedclient].packetserver_stage == PACKETSTAGE_REQUESTUSERNAME)
 						{
