@@ -3861,15 +3861,18 @@ word PPP_calcFCS(byte* buffer, uint_32 length)
 	return fcs; //Don't swap, as this is done by the write only(to provide a little-endian value in the stream)! The result for a checksum is just in our native ordering to check against the good FCS value!
 }
 
-byte ipx_servernetworknumber[4] = { 0x01,0x00,0x00,0x00 }; //Server network number!
+//Addresses are big-endian!
+byte ipx_servernetworknumber[4] = { 0x00,0x00,0x00,0x01 }; //Server network number!
 byte ipxbroadcastaddr[6] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF}; //IPX Broadcast address
 byte ipxnulladdr[6] = {0x00,0x00,0x00,0x00,0x00,0x00 }; //IPX Forbidden NULL address
-byte ipxnegotiationnodeaddr[6] = { 0xFF,0xFF,0xFF,0xFF,0xFF,0xFE }; //IPX address negotiation address
-byte ipx_servernodeaddr[6] = { 0x01,0x00,0x00,0x00,0x00,0x00 }; //IPX server node address!
+byte ipx_servernodeaddr[6] = { 0x00,0x00,0x00,0x00,0x00,0x01 }; //IPX server node address!
 
-//result: 1 for OK address. 0 for overflow! NULL and Broadcast addresses are skipped automatically. addrsizeleft should be 6 (the size of an IPX address)
+byte dummyaddress;
+//result: 1 for OK address. 0 for overflow! NULL and Broadcast and special addresses are skipped automatically. addrsizeleft should be 6 (the size of an IPX address)
 byte incIPXaddr2(byte* ipxaddr, byte addrsizeleft) //addrsizeleft=6 for the address specified
 {
+	byte originaladdrsize;
+	originaladdrsize = addrsizeleft; //How much is left?
 	++*ipxaddr; //Increase the address!
 	if (*ipxaddr == 0) //Overflow?
 	{
@@ -3882,24 +3885,22 @@ byte incIPXaddr2(byte* ipxaddr, byte addrsizeleft) //addrsizeleft=6 for the addr
 			return 0; //Error out!
 		}
 	}
-	if (addrsizeleft == sizeof(ipxbroadcastaddr)) //No overflow for full address?
+	if (addrsizeleft == 6) //No overflow for full address?
 	{
-		if (memcmp(ipxaddr - 5, &ipx_servernodeaddr, sizeof(ipxnegotiationnodeaddr)) == 0) //Server address?
+		if (memcmp(ipxaddr - 5, &ipxbroadcastaddr, sizeof(ipxbroadcastaddr)) == 0) //Broadcast address? all ones.
 		{
-			return incIPXaddr2(ipxaddr, addrsizeleft); //Increase to the next possible address, which we'll use!
+			dummyaddress = incIPXaddr2(ipxaddr, 6); //Increase to NULL address (forbidden), which we'll skip!
+			dummyaddress = incIPXaddr2(ipxaddr, 6); //Increase to server address (forbidden), which we'll skip!
+			return incIPXaddr2(ipxaddr, 6); //Increase to the first address, which we'll use!
 		}
-		if (memcmp(ipxaddr - 5, &ipxnegotiationnodeaddr, sizeof(ipxnegotiationnodeaddr)) == 0) //Negotiation address?
+		if (memcmp(ipxaddr - 5, &ipxnulladdr, sizeof(ipxnulladdr)) == 0) //Null address? all zeroes.
 		{
+			dummyaddress = incIPXaddr2(ipxaddr, 6); //Increase to server address (forbidden), which we'll skip!
 			return incIPXaddr2(ipxaddr, addrsizeleft); //Increase to the first address, which we'll use!
 		}
-		else if (memcmp(ipxaddr-5, &ipxbroadcastaddr, sizeof(ipxbroadcastaddr)) == 0) //Broadcast address?
+		if (memcmp(ipxaddr - 5, &ipx_servernodeaddr, sizeof(ipx_servernodeaddr)) == 0) //Server address? ~01
 		{
-			incIPXaddr2(ipxaddr, addrsizeleft); //Increase to NULL address (forbidden), which we'll skip!
-			return incIPXaddr2(ipxaddr, addrsizeleft); //Increase to the first address, which we'll use!
-		}
-		else if (memcmp(ipxaddr - 5, &ipxnulladdr, sizeof(ipxnulladdr)) == 0) //Null address?
-		{
-			return incIPXaddr2(ipxaddr, addrsizeleft); //Increase to the first address, which we'll use!
+			return incIPXaddr2(ipxaddr, 6); //Increase to the next possible address, which we'll use!
 		}
 	}
 	return 1; //Address is OK!
@@ -4118,7 +4119,7 @@ byte sendIPXechorequest(sword connectedclient)
 	}
 	for (skipdatacounter = 0; skipdatacounter < 6; ++skipdatacounter)
 	{
-		if (!packetServerAddPacketBufferQueue(&response, ipxnegotiationnodeaddr[skipdatacounter])) //Our node number to send back to!
+		if (!packetServerAddPacketBufferQueue(&response, ipx_servernodeaddr[skipdatacounter])) //Our node number to send back to!
 		{
 			goto ppp_finishpacketbufferqueue_echo; //Keep pending!
 		}
@@ -6635,7 +6636,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 					{
 						Packetserver_clients[connectedclient].ipxcp_negotiationstatus = 2; //NAK it!
 					}
-					else if (!memcmp(&ipxcp_pendingnodenumber, &ipxnegotiationnodeaddr, 6)) //Negotiation node address?
+					else if (!memcmp(&ipxcp_pendingnodenumber, &ipx_servernodeaddr, 6)) //Negotiation node address?
 					{
 						Packetserver_clients[connectedclient].ipxcp_negotiationstatus = 2; //NAK it!
 					}
@@ -7512,7 +7513,7 @@ byte PPP_parseReceivedPacketForClient(sword connectedclient)
 								return 1; //Keep pending until we can send a reply!
 							}
 						}
-						else if (memcmp(&ipxheader.DestinationNodeNumber, &ipxnegotiationnodeaddr, 6) == 0) //Negotiation address is being sent to?
+						else if (memcmp(&ipxheader.DestinationNodeNumber, &ipx_servernodeaddr, 6) == 0) //Negotiation address is being sent to?
 						{
 							if (Packetserver_clients[connectedclient].ipxcp_negotiationstatus == 1) //Waiting for negotiation answers?
 							{
