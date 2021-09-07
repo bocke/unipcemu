@@ -4787,7 +4787,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 					{
 						goto ppp_finishpacketbufferqueue_ipxcpserver; //Incorrect packet: discard it!
 					}
-					if (!packetServerAddPacketBufferQueue(&pppNakFields, 8)) //Correct length!
+					if (!packetServerAddPacketBufferQueue(&pppNakFields, 4)) //Correct length!
 					{
 						goto ppp_finishpacketbufferqueue_ipxcpserver; //Incorrect packet: discard it!
 					}
@@ -6503,7 +6503,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 						{
 							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
 						}
-						if (!packetServerAddPacketBufferQueue(&pppNakFields, 8)) //Correct length!
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 4)) //Correct length!
 						{
 							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
 						}
@@ -6917,7 +6917,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 						{
 							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
 						}
-						if (!packetServerAddPacketBufferQueue(&pppNakFields, 8)) //Correct length!
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 4)) //Correct length!
 						{
 							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
 						}
@@ -7179,7 +7179,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 						{
 							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
 						}
-						if (!packetServerAddPacketBufferQueue(&pppNakFields, 2)) //Correct length!
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 4)) //Correct length!
 						{
 							goto ppp_finishpacketbufferqueue_ipxcp; //Incorrect packet: discard it!
 						}
