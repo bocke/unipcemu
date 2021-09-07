@@ -4392,6 +4392,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			retryServerLCPnegotiation:
 			Packetserver_clients[connectedclient].ppp_serverLCPstatus = 1; //Have initialized!
 			Packetserver_clients[connectedclient].ppp_serverLCP_haveAddressAndControlFieldCompression = Packetserver_clients[connectedclient].ppp_serverLCP_haveMRU = Packetserver_clients[connectedclient].ppp_serverLCP_haveMagicNumber = Packetserver_clients[connectedclient].ppp_serverLCP_haveProtocolFieldCompression = Packetserver_clients[connectedclient].ppp_serverLCP_haveAsyncControlCharacterMap = Packetserver_clients[connectedclient].ppp_serverLCP_haveAuthenticationProtocol = 1; //Default by trying all!
+			Packetserver_clients[connectedclient].ppp_serverLCP_haveAuthenticationProtocol = 0; //No authentication protocol from the server!
 			Packetserver_clients[connectedclient].ppp_serverLCP_pendingMRU = 1500; //Default!
 			Packetserver_clients[connectedclient].ppp_serverLCP_pendingMagicNumber[0] = 0xFF; //Default!
 			Packetserver_clients[connectedclient].ppp_serverLCP_pendingMagicNumber[1] = 0xFF; //Default!
