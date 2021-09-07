@@ -4402,10 +4402,6 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			//Otherwise, it's a retry!
 			goto retryServerLCPnegotiation;
 		}
-		if (!Packetserver_clients[connectedclient].ppp_PAPstatus[0]) //Let the client authenticate first!
-		{
-			goto donthandleServerPPPLCPyet; //Don't handle the sending of a request from the server yet, because we're still timing!
-		}
 		result = 1; //Default: handled!
 		//Now, formulate a request!
 		Packetserver_clients[connectedclient].ppp_servercurrentLCPidentifier = Packetserver_clients[connectedclient].ppp_serverLCPidentifier; //Load the identifier to try!
