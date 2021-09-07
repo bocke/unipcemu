@@ -7033,10 +7033,6 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			{
 				//Apply the parameters to the session and start the connection!
 				//Now, apply the request properly!
-				memcpy(&Packetserver_clients[connectedclient].ppp_response, &response, sizeof(response)); //Give the response to the client!
-				ppp_responseforuser(connectedclient); //A response is ready!
-				memset(&response, 0, sizeof(response)); //Parsed!
-				//Now, apply the request properly!
 				Packetserver_clients[connectedclient].ppp_IPXCPstatus[1] = 1; //Open!
 				Packetserver_clients[connectedclient].ppp_suppressIPXCP &= ~2; //Default: not supressing as we're opened!
 				memcpy(Packetserver_clients[connectedclient].ipxcp_networknumber[1], &ipxcp_pendingnetworknumber, sizeof(ipxcp_pendingnetworknumber)); //Network number specified or 0 for none!
