@@ -3860,6 +3860,7 @@ word PPP_calcFCS(byte* buffer, uint_32 length)
 byte ipxbroadcastaddr[6] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF}; //IPX Broadcast address
 byte ipxnulladdr[6] = {0x00,0x00,0x00,0x00,0x00,0x00 }; //IPX Forbidden NULL address
 byte ipxnegotiationnodeaddr[6] = { 0xFF,0xFF,0xFF,0xFF,0xFF,0xFE }; //IPX address negotiation address
+byte ipxservernodeaddr[6] = { 0xFF,0xFF,0xFF,0xFF,0xFF,0xFD }; //IPX server node address!
 
 //result: 1 for OK address. 0 for overflow! NULL and Broadcast addresses are skipped automatically. addrsizeleft should be 6 (the size of an IPX address)
 byte incIPXaddr2(byte* ipxaddr, byte addrsizeleft) //addrsizeleft=6 for the address specified
@@ -3878,7 +3879,11 @@ byte incIPXaddr2(byte* ipxaddr, byte addrsizeleft) //addrsizeleft=6 for the addr
 	}
 	if (addrsizeleft == sizeof(ipxbroadcastaddr)) //No overflow for full address?
 	{
-		if (memcmp(ipxaddr - 5, &ipxnegotiationnodeaddr, sizeof(ipxnegotiationnodeaddr)) == 0) //Broadcast address?
+		if (memcmp(ipxaddr - 5, &ipxservernodeaddr, sizeof(ipxnegotiationnodeaddr)) == 0) //Server address?
+		{
+			return incIPXaddr2(ipxaddr, addrsizeleft); //Increase to the next possible address, which we'll use!
+		}
+		if (memcmp(ipxaddr - 5, &ipxnegotiationnodeaddr, sizeof(ipxnegotiationnodeaddr)) == 0) //Negotiation address?
 		{
 			return incIPXaddr2(ipxaddr, addrsizeleft); //Increase to the first address, which we'll use!
 		}
@@ -4203,6 +4208,7 @@ byte PPP_addFCS(MODEM_PACKETBUFFER* response)
 byte no_magic_number[4] = { 0,0,0,0 }; //No magic number used!
 byte no_network_number[4] = { 0,0,0,0 }; //No network number used!
 byte no_node_number[6] = { 0,0,0,0,0,0 }; //No node number used!
+byte ipx_currentnetworknumber[4] = { 0,0,0,0 }; //Meaning: current network
 
 //result: 1 on success, 0 on pending. When handleTransmit==1, false blocks the transmitter from handling new packets.
 byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
@@ -4564,7 +4570,9 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 	else
 	{
 		donthandleServerPPPLCPyet: //Don't handle PPP LCP from server yet?
-		if ((!handleTransmit) && (Packetserver_clients[connectedclient].ppp_LCPstatus[1]) && (!Packetserver_clients[connectedclient].ppp_PAPstatus[1])) //Not handling a transmitting of anything atm and LCP for the server-client is down?
+		if ((!handleTransmit) &&
+			//Also, don't handle PAP yet when both sides didn't do LCP open yet.
+			(Packetserver_clients[connectedclient].ppp_LCPstatus[1] && Packetserver_clients[connectedclient].ppp_LCPstatus[0]) && (!Packetserver_clients[connectedclient].ppp_PAPstatus[1])) //Not handling a transmitting of anything atm and LCP for the server-client is down?
 		{
 			//Use a simple nanosecond timer to determine if we're to send a 
 			Packetserver_clients[connectedclient].ppp_serverPAPrequesttimer += modem.networkpolltick; //Time!
@@ -4575,10 +4583,6 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			if (!Packetserver_clients[connectedclient].ppp_serverPAPstatus) //Initializing?
 			{
 				Packetserver_clients[connectedclient].ppp_serverPAPidentifier = 0; //Init!
-				if (!Packetserver_clients[connectedclient].ppp_PAPstatus[0])
-				{
-					goto donthandleServerPPPPAPyet; //Wait for the client to authenticate first, then we try authenticating back, hopefully getting valid data.
-				}
 			retryServerPAPnegotiation:
 				Packetserver_clients[connectedclient].ppp_serverPAPstatus = 1; //Have initialized!
 			}
@@ -4676,7 +4680,9 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		else
 		{
 			donthandleServerPPPPAPyet: //Don't handle PAP from the server yet?
-			if ((!handleTransmit) && (Packetserver_clients[connectedclient].ppp_LCPstatus[1]) && (Packetserver_clients[connectedclient].ppp_PAPstatus[1]) && (!Packetserver_clients[connectedclient].ppp_IPXCPstatus[1])) //Not handling a transmitting of anything atm and LCP for the server-client is down?
+			if ((!handleTransmit) &&
+				(Packetserver_clients[connectedclient].ppp_LCPstatus[1] && (Packetserver_clients[connectedclient].ppp_LCPstatus[0])) && (Packetserver_clients[connectedclient].ppp_PAPstatus[1] && Packetserver_clients[connectedclient].ppp_PAPstatus[0]) //Don't handle until the upper layers are open!
+				&& (!Packetserver_clients[connectedclient].ppp_IPXCPstatus[1])) //Not handling a transmitting of anything atm and LCP for the server-client is down?
 			{
 				//Use a simple nanosecond timer to determine if we're to send a 
 				Packetserver_clients[connectedclient].ppp_serverIPXCPrequesttimer += modem.networkpolltick; //Time!
@@ -4687,15 +4693,11 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				if (!Packetserver_clients[connectedclient].ppp_serverIPXCPstatus) //Initializing?
 				{
 					Packetserver_clients[connectedclient].ppp_serverIPXCPidentifier = 0; //Init!
-					if (!Packetserver_clients[connectedclient].ppp_IPXCPstatus[0])
-					{
-						goto donthandleServerPPPIPXCPyet; //Wait for the client to authenticate first, then we try authenticating back, hopefully getting valid data.
-					}
 				retryServerIPXCPnegotiation:
 					Packetserver_clients[connectedclient].ppp_serverIPXCPstatus = 1; //Have initialized!
 					Packetserver_clients[connectedclient].ppp_serverIPXCP_havenetworknumber = Packetserver_clients[connectedclient].ppp_serverIPXCP_havenodenumber = Packetserver_clients[connectedclient].ppp_serverIPXCP_haveroutingprotocol = 1; //Default by trying all!
-					memcpy(&Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingnetworknumber, Packetserver_clients[connectedclient].ipxcp_networknumber[0], sizeof(Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingnetworknumber)); //Initialize the network number
-					memcpy(&Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingnodenumber, Packetserver_clients[connectedclient].ipxcp_nodenumber[0], sizeof(Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingnodenumber)); //Initialize the node number
+					memcpy(&Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingnetworknumber, &ipx_currentnetworknumber, sizeof(Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingnetworknumber)); //Initialize the network number
+					memcpy(&Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingnodenumber, &ipxservernodeaddr, sizeof(Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingnodenumber)); //Initialize the node number for the server!
 					Packetserver_clients[connectedclient].ppp_serverIPXCP_pendingroutingprotocol = 0; //No routing protocol by default!
 				}
 				else if (Packetserver_clients[connectedclient].ppp_serverIPXCPstatus > 1) //Resetting?
@@ -7379,8 +7381,6 @@ typedef struct PACKED
 } IPXPACKETHEADER;
 #include "headers/endpacked.h"
 
-byte ipx_currentnetworknumber[4] = { 0,0,0,0 }; //Meaning: current network
-
 //result: 0 to discard the packet. 1 to keep it pending in this stage until we're ready to send it to the client.
 byte PPP_parseReceivedPacketForClient(sword connectedclient)
 {
@@ -7417,7 +7417,7 @@ byte PPP_parseReceivedPacketForClient(sword connectedclient)
 						if (memcmp(&ipxheader.DestinationNodeNumber, &ipxbroadcastaddr, 6) == 0) //Destination node is the broadcast address?
 						{
 							//We're replying to the echo packet!
-							if (!Packetserver_clients[connectedclient].ppp_IPXCPstatus[0]) //Not authenticated yet?
+							if (!(Packetserver_clients[connectedclient].ppp_IPXCPstatus[0]&&Packetserver_clients[connectedclient].ppp_IPXCPstatus[1])) //Not authenticated yet?
 							{
 								return 0; //Handled, discard!
 							}
