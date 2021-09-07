@@ -313,6 +313,7 @@ typedef struct
 	byte have_magic_number[2];
 	byte ppp_PAPstatus[2]; //0=Not authenticated, 1=Authenticated.
 	byte ppp_IPXCPstatus[2]; //0=Not connected, 1=Connected
+	byte ppp_suppressIPXCP; //IPXCP suppression requested by the client?
 	byte ipxcp_networknumber[2][4];
 	byte ipxcp_nodenumber[2][6];
 	byte ipxcp_networknumberecho[4]; //Echo address during negotiation
@@ -4684,6 +4685,10 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				(Packetserver_clients[connectedclient].ppp_LCPstatus[1] && (Packetserver_clients[connectedclient].ppp_LCPstatus[0])) && (Packetserver_clients[connectedclient].ppp_PAPstatus[1] && Packetserver_clients[connectedclient].ppp_PAPstatus[0]) //Don't handle until the upper layers are open!
 				&& (!Packetserver_clients[connectedclient].ppp_IPXCPstatus[1])) //Not handling a transmitting of anything atm and LCP for the server-client is down?
 			{
+				if (Packetserver_clients[connectedclient].ppp_suppressIPXCP) //Suppressing IPXCP packets requested from the client?
+				{
+					goto donthandleServerPPPIPXCPyet; //Don't handle the sending of a request from the server yet, because we're suppressed!
+				}
 				//Use a simple nanosecond timer to determine if we're to send a 
 				Packetserver_clients[connectedclient].ppp_serverIPXCPrequesttimer += modem.networkpolltick; //Time!
 				if (Packetserver_clients[connectedclient].ppp_serverIPXCPrequesttimer < 500000000.0f) //Starting it's timing every interval (first 3 seconds, then half a second)!
@@ -6019,6 +6024,45 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			result = 1; //Success!
 			goto ppp_finishpacketbufferqueue2; //Finish up!
 			break;
+		case 8: //Protocol-Reject (Protocol field is rejected for an active connection)
+			if (!Packetserver_clients[connectedclient].ppp_LCPstatus[0]) //LCP is closed?
+			{
+				goto ppp_finishpacketbufferqueue2_pap; //Invalid protocol!
+			}
+			//Identifier can be ignored for this!
+			if (!createPPPsubstream(&pppstream, &pppstream_requestfield, MAX(common_LengthField, 4) - 4)) //Not enough room for the data?
+			{
+				goto ppp_finishpacketbufferqueue_pap; //Finish up!
+			}
+			if (pppstream.size >= 2) //Long enough to parse?
+			{
+				if (!PPP_consumeStreamBE16(&pppstream_requestfield, &dataw)) //The protocoll
+				{
+					goto ppp_finishpacketbufferqueue_pap; //Incorrect packet: discard it!
+				}
+				switch (dataw) //What protocol was rejected?
+				{
+				case 0xC021: //LCP
+					//Huh? This is a mandatory protocol and should be ignored!
+					break;
+				case 0xC023: //PAP
+					//The same as LCP: This is a mandatory protocol?
+					break;
+				case 0x802B: //IPXCP
+					//This is apparently unsupported by the server. Suppress IPXCP packets until reaching the network phase again.
+					Packetserver_clients[connectedclient].ppp_suppressIPXCP = 3; //Suppress IPXCP from sending from the server unless requested again!
+					break;
+				case 0x2B: //IPX
+					//IPX is closed? This shouldn't happen?
+					break;
+				default: //Unknown protocol we're not using?
+					//Ignore it entirely!
+					break;
+				}
+			}
+			//Invalid sizes aren't handled!
+			goto ppp_finishpacketbufferqueue2;
+			break;
 		case 11: //Discard-Request
 			if (Packetserver_clients[connectedclient].ppp_LCPstatus) //LCP opened?
 			{
@@ -6030,9 +6074,11 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			}
 			//Is LCP is closed, an Code-Reject is issued instead?
 		case 6: //Terminate-Ack (Acnowledge termination of connection)
+			//Why would we need to handle this if the client can't have it's connection terminated by us!
 		case 7: //Code-Reject (Code field is rejected because it's unknown)
-		case 8: //Protocol-Reject (Protocol field is rejected for an active connection)
+			//Do anything with this?
 		case 10: //Echo-Reply
+			//Echo replies aren't done by us, so ignore them.
 		default: //Unknown Code field?
 			//Send a Code-Reject packet to the client!
 			memset(&response, 0, sizeof(response)); //Init the response!
@@ -6306,6 +6352,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		{
 			return 1; //Incorrect packet: discard it!
 		}
+		Packetserver_clients[connectedclient].ppp_suppressIPXCP &= ~3; //Don't suppress sending IPXCP packets to the client anymore now if we were suppressed!
 		switch (common_CodeField) //What operation code?
 		{
 		case 1: //Configure-Request
@@ -6672,6 +6719,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 					memset(&response, 0, sizeof(response)); //Parsed!
 					//Now, apply the request properly!
 					Packetserver_clients[connectedclient].ppp_IPXCPstatus[0] = 1; //Open!
+					Packetserver_clients[connectedclient].ppp_suppressIPXCP &= ~1; //Default: not supressing as we're opened!
 					Packetserver_clients[connectedclient].ipxcp_negotiationstatus = 0; //No negotation anymore!
 					memcpy(Packetserver_clients[connectedclient].ipxcp_networknumber[0],&ipxcp_pendingnetworknumber, sizeof(ipxcp_pendingnetworknumber)); //Network number specified or 0 for none!
 					memcpy(Packetserver_clients[connectedclient].ipxcp_nodenumber[0],&ipxcp_pendingnodenumber, sizeof(ipxcp_pendingnodenumber)); //Node number or 0 for none!
@@ -6962,6 +7010,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				memset(&response, 0, sizeof(response)); //Parsed!
 				//Now, apply the request properly!
 				Packetserver_clients[connectedclient].ppp_IPXCPstatus[1] = 1; //Open!
+				Packetserver_clients[connectedclient].ppp_suppressIPXCP &= ~2; //Default: not supressing as we're opened!
 				memcpy(Packetserver_clients[connectedclient].ipxcp_networknumber[1], &ipxcp_pendingnetworknumber, sizeof(ipxcp_pendingnetworknumber)); //Network number specified or 0 for none!
 				memcpy(Packetserver_clients[connectedclient].ipxcp_nodenumber[1], &ipxcp_pendingnodenumber, sizeof(ipxcp_pendingnodenumber)); //Node number or 0 for none!
 				Packetserver_clients[connectedclient].ipxcp_routingprotocol[1] = ipxcp_pendingroutingprotocol; //The routing protocol!
@@ -7224,7 +7273,9 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			goto ppp_finishpacketbufferqueue2_ipxcp; //Finish up!
 			break;
 		case 6: //Terminate-Ack (Acnowledge termination of connection)
+			//Why would we need to handle this if the client can't have it's connection terminated by us!
 		case 7: //Code-Reject (Code field is rejected because it's unknown)
+			//Do anything with this?
 		default: //Unknown Code field?
 			//Send a Code-Reject packet to the client!
 			memset(&response, 0, sizeof(response)); //Init the response!
@@ -7357,6 +7408,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				ppp_responseforuser(connectedclient); //A response is ready!
 				memset(&response, 0, sizeof(response)); //Parsed!
 				//This doesn't affect any state otherwise!
+				++Packetserver_clients[connectedclient].ppp_protocolreject_count; //Increase the counter for each packet received incorrectly!
 			}
 			goto ppp_finishpacketbufferqueue2; //Finish up!
 		}
