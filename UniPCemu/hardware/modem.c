@@ -8677,7 +8677,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 												goto skipSLIP_PPP; //Don't handle the sending of the packet yet: not ready!
 											}
 										}
-										goto discardPPPsentframe; //Discard the frame that's currently buffered, if there's any!
+										//goto discardPPPsentframe; //Discard the frame that's currently buffered, if there's any!
 									}
 								}
 								if (Packetserver_clients[connectedclient].packetserver_transmitstate == 0) //Ready to send the packet(not waiting for the buffer to free)?
