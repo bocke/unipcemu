@@ -4407,7 +4407,8 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			Packetserver_clients[connectedclient].ppp_serverLCP_pendingMagicNumber[2] = 0xFF; //Default!
 			Packetserver_clients[connectedclient].ppp_serverLCP_pendingMagicNumber[3] = 0xFF; //Default!
 			Packetserver_clients[connectedclient].ppp_serverLCP_haveAsyncControlCharacterMap = 1;
-			Packetserver_clients[connectedclient].ppp_serverLCP_pendingASyncControlCharacterMap[0] = Packetserver_clients[connectedclient].ppp_serverLCP_pendingASyncControlCharacterMap[1] = Packetserver_clients[connectedclient].ppp_serverLCP_pendingASyncControlCharacterMap[2] = Packetserver_clients[connectedclient].ppp_serverLCP_pendingASyncControlCharacterMap[3] = 0; //Default!
+			Packetserver_clients[connectedclient].ppp_serverLCP_pendingASyncControlCharacterMap[0] = Packetserver_clients[connectedclient].ppp_serverLCP_pendingASyncControlCharacterMap[2] = Packetserver_clients[connectedclient].ppp_serverLCP_pendingASyncControlCharacterMap[3] = 0; //Default!
+			Packetserver_clients[connectedclient].ppp_serverLCP_pendingASyncControlCharacterMap[1] = 0x0A; //Microsoft-defined: A0000 in the Control-Character map: characters 11h and 13h.
 		}
 		else if (Packetserver_clients[connectedclient].ppp_serverLCPstatus>1) //Resetting?
 		{
