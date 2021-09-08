@@ -8045,6 +8045,7 @@ void packetserver_initStartPPP(sword connectedclient, byte autodetected)
 
 void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 {
+	byte *LCPbuf;
 	uint_32 ppp_transmitasynccontrolcharactermap;
 	ARPpackettype ARPpacket, ARPresponse; //ARP packet to send/receive!
 	sword connectedclient;
@@ -8557,13 +8558,14 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 														if ((!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe) && (datatotransmit < 0x20)) //Might need to be escaped?
 														{
 															ppp_transmitasynccontrolcharactermap = Packetserver_clients[connectedclient].asynccontrolcharactermap[0]; //The map to use!
+															LCPbuf = Packetserver_clients[connectedclient].ppp_response.buffer; //What are we sending?
 															if ((
-																(Packetserver_clients[connectedclient].packet[0]==0xFF) && //All-stations
-																(Packetserver_clients[connectedclient].packet[1]==0x03) && //UI
-																(Packetserver_clients[connectedclient].packet[2]==0xC0) && //LCP ...
-																(Packetserver_clients[connectedclient].packet[3]==0x21) && //... protocol
-																((Packetserver_clients[connectedclient].packet[4]>=0x01) && //Codes 1 through ...
-																(Packetserver_clients[connectedclient].packet[4]<=0x07)) //... 7
+																(LCPbuf[0]==0xFF) && //All-stations
+																(LCPbuf[1]==0x03) && //UI
+																(LCPbuf[2]==0xC0) && //LCP ...
+																(LCPbuf[3]==0x21) && //... protocol
+																((LCPbuf[4]>=0x01) && //Codes 1 through ...
+																(LCPbuf[4]<=0x07)) //... 7
 																)
 																||(!Packetserver_clients[connectedclient].ppp_LCPstatus[0])) //LCP options not setup?
 															{
