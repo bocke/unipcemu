@@ -3415,12 +3415,14 @@ byte ppp_autodetect[3][8] =	{
 	{7,0x7E,0x7D,0xDF,0x7D,0x23,0xC0,0x21} //type 3
 	};
 
+void packetserver_initStartPPP(sword connectedclient, byte autodetected); //Prototype
+
 //result: 0: busy, 1: Finished, 2: goto sendoutputbuffer
 byte authstage_checkppp(sword connectedclient, byte datasent)
 {
 	byte x;
 	if (Packetserver_clients[connectedclient].ppp_autodetected) return 1; //Already autodetected!
-	if (Packetserver_clients[connectedclient].ppp_autodetectpos<NUMITEMS(Packetserver_clients[connectedclient].ppp_autodetect)) //Can fill?
+	if (Packetserver_clients[connectedclient].ppp_autodetectpos<NUMITEMS(Packetserver_clients[connectedclient].ppp_autodetectbuf)) //Can fill?
 	{
 		Packetserver_clients[connectedclient].ppp_autodetectbuf[Packetserver_clients[connectedclient].ppp_autodetectpos++] = datasent; //Check what's sent!
 	}
@@ -3428,7 +3430,7 @@ byte authstage_checkppp(sword connectedclient, byte datasent)
 	{
 		if (Packetserver_clients[connectedclient].ppp_autodetectpos>=ppp_autodetect[x][0]) //Enough buffered to check?
 		{
-			if (!memcmp(&ppp_autodetect[x][1],&Packetserver_clients[connectedclient].ppp_autodetectbuf,Packetserver_clients[connectedclient].ppp_autodetect[x][0])) //Autodetected?
+			if (!memcmp(&ppp_autodetect[x][1],&Packetserver_clients[connectedclient].ppp_autodetectbuf,ppp_autodetect[x][0])) //Autodetected?
 			{
 				Packetserver_clients[connectedclient].ppp_autodetected = 1; //Autodetected!
 				packetserver_initStartPPP(connectedclient,1); //Start PPP!
@@ -5260,7 +5262,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			//TODO: Finish parsing properly
 			if (pppNakFields.buffer || pppRejectFields.buffer) //NAK or Rejected any fields? Then don't process to the connected phase!
 			{
-				forcepapauth:
+				forcePAPauth:
 				memcpy(&Packetserver_clients[connectedclient].ppp_nakfields, &pppNakFields, sizeof(pppNakFields)); //Give the response to the client!
 				Packetserver_clients[connectedclient].ppp_nakfields_identifier = common_IdentifierField; //Identifier!
 				memcpy(&Packetserver_clients[connectedclient].ppp_rejectfields, &pppRejectFields, sizeof(pppRejectFields)); //Give the response to the client!
@@ -8555,15 +8557,15 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 														if ((!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe) && (datatotransmit < 0x20)) //Might need to be escaped?
 														{
 															ppp_transmitasynccontrolcharactermap = Packetserver_clients[connectedclient].asynccontrolcharactermap[0]; //The map to use!
-															if (
-																(Packetserver_clients[connectedclient].Packetserver_clients[connectedclient].packet[0]==0xFF) && //All-stations
-																(Packetserver_clients[connectedclient].Packetserver_clients[connectedclient].packet[1]==0x03) && //UI
-																(Packetserver_clients[connectedclient].Packetserver_clients[connectedclient].packet[2]==0xC0) && //LCP ...
-																(Packetserver_clients[connectedclient].Packetserver_clients[connectedclient].packet[3]==0x21) && //... protocol
-																((Packetserver_clients[connectedclient].Packetserver_clients[connectedclient].packet[4]>=0x01) && //Codes 1 through ...
-																(Packetserver_clients[connectedclient].Packetserver_clients[connectedclient].packet[4]<=0x07)) //... 7
+															if ((
+																(Packetserver_clients[connectedclient].packet[0]==0xFF) && //All-stations
+																(Packetserver_clients[connectedclient].packet[1]==0x03) && //UI
+																(Packetserver_clients[connectedclient].packet[2]==0xC0) && //LCP ...
+																(Packetserver_clients[connectedclient].packet[3]==0x21) && //... protocol
+																((Packetserver_clients[connectedclient].packet[4]>=0x01) && //Codes 1 through ...
+																(Packetserver_clients[connectedclient].packet[4]<=0x07)) //... 7
 																)
-																||(!Packetserver_clients[connectedclient].ppp_LCPstatus[0]) //LCP options not setup?
+																||(!Packetserver_clients[connectedclient].ppp_LCPstatus[0])) //LCP options not setup?
 															{
 																ppp_transmitasynccontrolcharactermap = 0xFFFFFFFFU; //Force-escape all control characters!
 															}
@@ -9262,7 +9264,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 								PacketServer_startNextStage(connectedclient, PACKETSTAGE_PACKETS); //Start the SLIP service!
 								if ((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) && (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe)) //PPP?
 								{
-									Packetserver_initStartPPP(connectedclient,0); //Init!
+									packetserver_initStartPPP(connectedclient,0); //Init!
 								}
 								if (Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) //PPP?
 								{
