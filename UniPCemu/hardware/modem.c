@@ -5273,7 +5273,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			}
 			else //OK! All parameters are fine!
 			{
-				if (Packetserver_clients[connectedclient].ppp_autodetected) //Autodetect requires PAP?
+				if (Packetserver_clients[connectedclient].ppp_autodetected && (!request_authenticationspecified)) //Autodetect requires PAP?
 				{
 					if (!packetServerAddPacketBufferQueue(&pppNakFields, common_TypeField)) //NAK it!
 					{
