@@ -4306,6 +4306,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 	byte request_NakRejectroutingprotocol;
 	word ipxcp_pendingroutingprotocol;
 	ETHERNETHEADER ppptransmitheader;
+	word c; //For user login.
 	if (handleTransmit)
 	{
 		if (Packetserver_clients[connectedclient].packetserver_transmitlength < (3 + ((!Packetserver_clients[connectedclient].PPP_protocolcompressed[1]) ? 1U : 0U) + ((!Packetserver_clients[connectedclient].PPP_headercompressed[1]) ? 2U : 0U))) //Not enough for a full minimal PPP packet (with 1 byte of payload)?
@@ -4539,7 +4540,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				}
 			}
 		//case 3: //Authentication Protocol
-			if (Packetserver_clients[connectedclient].ppp_serverLCP_haveAuthenticationProtocol) //Unsupported length?
+			if (Packetserver_clients[connectedclient].ppp_serverLCP_haveAuthenticationProtocol || Packetserver_clients[connectedclient].ppp_autodetected) //Autodetect requires PAP?
 			{
 				if (!packetServerAddPacketBufferQueue(&LCP_requestFields, 0x03)) //NAK it!
 				{
@@ -4634,7 +4635,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		donthandleServerPPPLCPyet: //Don't handle PPP LCP from server yet?
 		if ((!handleTransmit) &&
 			//Also, don't handle PAP yet when both sides didn't do LCP open yet.
-			(Packetserver_clients[connectedclient].ppp_LCPstatus[1] && Packetserver_clients[connectedclient].ppp_LCPstatus[0]) && (!Packetserver_clients[connectedclient].ppp_PAPstatus[1])) //Not handling a transmitting of anything atm and LCP for the server-client is down?
+			(Packetserver_clients[connectedclient].ppp_LCPstatus[1] && Packetserver_clients[connectedclient].ppp_LCPstatus[0]) && (!Packetserver_clients[connectedclient].ppp_PAPstatus[0])) //Not handling a transmitting of anything atm and LCP for the server-client is down?
 		{
 			//Use a simple nanosecond timer to determine if we're to send a 
 			Packetserver_clients[connectedclient].ppp_serverPAPrequesttimer += modem.networkpolltick; //Time!
@@ -5262,7 +5263,6 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			//TODO: Finish parsing properly
 			if (pppNakFields.buffer || pppRejectFields.buffer) //NAK or Rejected any fields? Then don't process to the connected phase!
 			{
-				forcePAPauth:
 				memcpy(&Packetserver_clients[connectedclient].ppp_nakfields, &pppNakFields, sizeof(pppNakFields)); //Give the response to the client!
 				Packetserver_clients[connectedclient].ppp_nakfields_identifier = common_IdentifierField; //Identifier!
 				memcpy(&Packetserver_clients[connectedclient].ppp_rejectfields, &pppRejectFields, sizeof(pppRejectFields)); //Give the response to the client!
@@ -5273,22 +5273,6 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			}
 			else //OK! All parameters are fine!
 			{
-				if (Packetserver_clients[connectedclient].ppp_autodetected && (!request_authenticationspecified)) //Autodetect requires PAP?
-				{
-					if (!packetServerAddPacketBufferQueue(&pppNakFields, 0x03)) //NAK it!
-					{
-						goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
-					}
-					if (!packetServerAddPacketBufferQueue(&pppNakFields, 4)) //Correct length!
-					{
-						goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
-					}
-					if (!packetServerAddPacketBufferQueueBE16(&pppNakFields, 0xC023)) //PAP!
-					{
-						goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
-					}
-					goto forcePAPauth; //Force it!
-				}
 				//Apply the parameters to the session and send back an request-ACK!
 				memset(&response, 0, sizeof(response)); //Init the response!
 				//Build the PPP header first!
@@ -5664,7 +5648,6 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 						}
 						goto performskipdata_lcpack; //Skip the data please!
 					}
-					request_magic_number_used = 1; //Set the request!
 					if (!PPP_consumeStreamBE16(&pppstream_requestfield, &request_authenticationprotocol)) //Length couldn't be read?
 					{
 						result = 1; //Discard!
@@ -6106,7 +6089,10 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				}
 				if (request_authenticationspecified && (common_CodeField == 4)) //Reject-Authentication-Protocol?
 				{
-					Packetserver_clients[connectedclient].ppp_serverLCP_haveAuthenticationProtocol = 0; //Not anymore!
+					if (!Packetserver_clients[connectedclient].ppp_autodetected) //Autodetect requires PAP, so don't remove it from our request to authenticate?
+					{
+						Packetserver_clients[connectedclient].ppp_serverLCP_haveAuthenticationProtocol = 0; //Not anymore!
+					}
 				}
 				else if (request_authenticationspecified) //Authentication-Protocol requested?
 				{
@@ -6253,6 +6239,44 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			{
 				goto ppp_invalidprotocol; //Invalid protocol!
 			}
+
+			//This depends on the verification type we're using. If the autodetect method of logging in is used, that's the specified user. Otherrwise, we're going to have to look up users in our database and find a valid user that matches (if any). If any does, authenticate them with said account and make it active.
+
+			c = 0; //When using multiple users, start with the very first user!
+			retrynextuser:
+			if (Packetserver_clients[connectedclient].ppp_autodetected) //Autodetect means we're going to have to check all users in our database for valid credentials to match.
+			{
+				if (!(BIOS_Settings.ethernetserver_settings.users[c].username[c] && BIOS_Settings.ethernetserver_settings.users[c].password[c])) //Gotten no credentials?
+				{
+					if (c < (NUMITEMS(BIOS_Settings.ethernetserver_settings.users) - 1)) //Not all done yet?
+					{
+						++c; //Next user!
+						goto retrynextuser; //Try the next available user!
+					}
+					else //All users done?
+					{
+						goto PAP_loginfailed; 
+					}
+				}
+				if (BIOS_Settings.ethernetserver_settings.users[c].username[0] && BIOS_Settings.ethernetserver_settings.users[c].password[0]) //Gotten credentials?
+				{
+					safestrcpy(Packetserver_clients[connectedclient].packetserver_username, sizeof(Packetserver_clients[connectedclient].packetserver_username), BIOS_Settings.ethernetserver_settings.users[c].username); //The username to try!
+					safestrcpy(Packetserver_clients[connectedclient].packetserver_password, sizeof(Packetserver_clients[connectedclient].packetserver_password), BIOS_Settings.ethernetserver_settings.users[c].password); //The username to try!
+				}
+				else //Invalid user?
+				{
+					if (c < (NUMITEMS(BIOS_Settings.ethernetserver_settings.users) - 1)) //Not all done yet?
+					{
+						++c; //Next user!
+						goto retrynextuser; //Try the next available user!
+					}
+					else //All users done?
+					{
+						goto PAP_loginfailed;
+					}
+				}
+			}
+			//Now, try the current or originally logged in user.
 			if (!createPPPsubstream(&pppstream, &pppstream_requestfield, MAX(common_LengthField, 4) - 4)) //Not enough room for the data?
 			{
 				goto ppp_finishpacketbufferqueue_pap; //Finish up!
@@ -6262,6 +6286,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			{
 				goto ppp_finishpacketbufferqueue_pap; //Incorrect packet: discard it!
 			}
+
 			pap_authenticated = 1; //Default: authenticated properly!
 			//First, the username!
 			if (username_length != safe_strlen(Packetserver_clients[connectedclient].packetserver_username, sizeof(Packetserver_clients[connectedclient].packetserver_username))) //Length mismatch?
@@ -6306,6 +6331,25 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				}
 			}
 
+			if ((!pap_authenticated) && Packetserver_clients[connectedclient].ppp_autodetected) //Login failed for this user? Try the next one if any is available.
+			{
+				if (c < (NUMITEMS(BIOS_Settings.ethernetserver_settings.users) - 1)) //Not all done yet?
+				{
+					++c; //Next user!
+					goto retrynextuser; //Try the next available user!
+				}
+				else //All users done?
+				{
+					goto PAP_loginfailed;
+				}
+			}
+		PAP_loginfailed: //The login has failed?
+			if (Packetserver_clients[connectedclient].ppp_autodetected && (!pap_authenticated)) //Autodetect has went through all records available and couldn't login?
+			{
+				memset(&Packetserver_clients[connectedclient].packetserver_username, 0, sizeof(&Packetserver_clients[connectedclient].packetserver_username)); //Clear it again!
+				memset(&Packetserver_clients[connectedclient].packetserver_password, 0, sizeof(&Packetserver_clients[connectedclient].packetserver_password)); //Clear it again!
+			}
+			//Otherwise, login succeeded and the username&password we're logged in as is stored in the client information now.
 
 			//Apply the parameters to the session and send back an request-ACK/NAK!
 			memset(&response, 0, sizeof(response)); //Init the response!
@@ -6341,14 +6385,14 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				//Now, apply the request properly!
 				if (pap_authenticated) //Authenticated?
 				{
-					Packetserver_clients[connectedclient].ppp_PAPstatus[0] = 1; //Authenticated!
+					Packetserver_clients[connectedclient].ppp_PAPstatus[1] = 1; //Authenticated!
 				}
 				else
 				{
-					if (Packetserver_clients[connectedclient].ppp_PAPstatus[0]) //Was authenticated?
+					if (Packetserver_clients[connectedclient].ppp_PAPstatus[1]) //Was authenticated?
 					{
-						Packetserver_clients[connectedclient].ppp_PAPstatus[0] = 0; //Not authenticated!
-						Packetserver_clients[connectedclient].ppp_IPXCPstatus[0] = 0; //Logoff!
+						Packetserver_clients[connectedclient].ppp_PAPstatus[1] = 0; //Not authenticated!
+						Packetserver_clients[connectedclient].ppp_IPXCPstatus[1] = 0; //Logoff!
 					}
 				}
 			}
@@ -6380,7 +6424,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				}
 				--dataw; //One item consumed!
 			}
-			Packetserver_clients[connectedclient].ppp_PAPstatus[1] = 1; //We're authenticated!
+			Packetserver_clients[connectedclient].ppp_PAPstatus[0] = 1; //We're authenticated!
 			Packetserver_clients[connectedclient].ppp_serverPAPstatus = 2; //Reset the status check to try again afterwards if it's reset again!
 			Packetserver_clients[connectedclient].ppp_serverIPXCPrequesttimer = (DOUBLE)0.0f; //Restart timing!
 			goto ppp_finishpacketbufferqueue2_pap;
