@@ -249,8 +249,6 @@ typedef struct
 	MODEM_PACKETBUFFER pppoe_discovery_PADS; //PADS(Received)!
 	MODEM_PACKETBUFFER pppoe_discovery_PADT; //PADT(Send final)!
 	//Disconnect clears all of the above packets(frees them if set) when receiving/sending a PADT packet!
-	byte pppoe_lastsentbytewasEND; //Last sent byte was END!
-	byte pppoe_lastrecvbytewasEND; //Last received byte was END!
 	//DHCP data
 	MODEM_PACKETBUFFER DHCP_discoverypacket; //Discovery packet that's sent!
 	MODEM_PACKETBUFFER DHCP_offerpacket; //Offer packet that's received!
@@ -258,7 +256,10 @@ typedef struct
 	MODEM_PACKETBUFFER DHCP_acknowledgepacket; //Acknowledge packet that's sent!
 	MODEM_PACKETBUFFER DHCP_releasepacket; //Release packet that's sent!
 	//PPP data
-	byte PPP_packetstartsent; //Has a packet start been sent?
+	byte ppp_sendframing; //Sender frame status. Gets toggled for each PPP flag received! 1=Frame active, 0=Frame inactive
+	byte PPP_packetstartsent; //Has a packet start been sent to the client?
+	//End of PPP framing information
+
 	byte PPP_packetreadyforsending; //Is the PPP packet ready to be sent to the client? 1 when containing data for the client, 0 otherwise. Ignored for non-PPP clients!
 	byte PPP_packetpendingforsending; //Is the PPP packet pending processed for the client? 1 when pending to be processed for the client, 0 otherwise. Ignored for non-PPP clients!
 	//Most PPP statuses and numbers are sets of two values: index 0 is the receiver(the client) and used for sending data properly to the client(how to send to the client), index 1 is the sender(the server) and used for receiving data properly from the client(how to receive from the client).
@@ -8429,10 +8430,9 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 										//Convert the buffer into transmittable bytes using the proper encoding!
 										if ((Packetserver_clients[connectedclient].packetserver_bytesleft)) //Not finished yet?
 										{
-											if ((Packetserver_clients[connectedclient].packetserver_packetpos == 0) && (!Packetserver_clients[connectedclient].PPP_packetstartsent) && (((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3)) && (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe))) //Packet hasn't been started yet and needs to be started properly?
+											if ((!Packetserver_clients[connectedclient].PPP_packetstartsent) && (Packetserver_clients[connectedclient].packetserver_slipprotocol == 3)) //Packet hasn't been started yet and needs to be started properly?
 											{
-												writefifobuffer(modem.blockoutputbuffer[connectedclient], PPP_END); //END of frame!
-												Packetserver_clients[connectedclient].pppoe_lastrecvbytewasEND = 1; //Last was END!
+												writefifobuffer(modem.blockoutputbuffer[connectedclient], PPP_END); //Start of frame!
 												Packetserver_clients[connectedclient].PPP_packetstartsent = 1; //Start has been sent!
 												goto doPPPtransmit; //Handle the tranmit of the PPP frame start!
 											}
@@ -8448,15 +8448,6 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 											}
 											if (Packetserver_clients[connectedclient].packetserver_slipprotocol==3) //PPP?
 											{
-												if (Packetserver_clients[connectedclient].packetserver_packetpos == ((!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe)?0:(sizeof(ethernetheader.data) + 0x8 + 1))) //Starting new packet?
-												{
-													if (!(Packetserver_clients[connectedclient].pppoe_lastrecvbytewasEND) || (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe)) //Not doubled END and used this way?
-													{
-														writefifobuffer(modem.blockoutputbuffer[connectedclient], PPP_END); //END of frame!
-														Packetserver_clients[connectedclient].pppoe_lastrecvbytewasEND = 1; //Last was END!
-													}
-												}
-
 												if (PPPOE_ENCODEDECODE || (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe)) //Encoding PPP?
 												{
 													if (datatotransmit == PPP_END) //End byte?
@@ -8488,15 +8479,10 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 															writefifobuffer(modem.blockoutputbuffer[connectedclient], datatotransmit); //Unescaped!
 														}
 													}
-													Packetserver_clients[connectedclient].pppoe_lastrecvbytewasEND = 0; //Last wasn't END!
 												}
 												else //Not encoding PPP?
 												{
-													if (!((Packetserver_clients[connectedclient].pppoe_lastrecvbytewasEND) && (datatotransmit == PPP_END))) //Not doubled END?
-													{
-														writefifobuffer(modem.blockoutputbuffer[connectedclient], datatotransmit); //Raw!
-													}
-													Packetserver_clients[connectedclient].pppoe_lastrecvbytewasEND = (datatotransmit == PPP_END); //Last was END?
+													writefifobuffer(modem.blockoutputbuffer[connectedclient], datatotransmit); //Raw!
 												}
 											}
 											else //SLIP?
@@ -8521,20 +8507,12 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 										{
 											if (Packetserver_clients[connectedclient].packetserver_slipprotocol==3) //PPP?
 											{
-												if ((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) && (Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe == 0)) //PPP?
+												if (Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) //PPP?
 												{
 													writefifobuffer(modem.blockoutputbuffer[connectedclient], PPP_END); //END of frame!
-													Packetserver_clients[connectedclient].pppoe_lastrecvbytewasEND = 0; //Last wasn't END! This is ignored for PPP frames (always send them)!
+													Packetserver_clients[connectedclient].PPP_packetstartsent = 0; //Last wasn't END! This is ignored for PPP frames (always send them)!
 													packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].ppp_response); //Free the response that's queued for packets to be sent to the client!
 													goto doPPPtransmit; //Don't perform normal receive buffer cleanup, as this isn't used here!
-												}
-												else //PPPOE?
-												{
-													if (!(Packetserver_clients[connectedclient].pppoe_lastrecvbytewasEND)) //Not doubled END?
-													{
-														writefifobuffer(modem.blockoutputbuffer[connectedclient], PPP_END); //END of frame!
-														Packetserver_clients[connectedclient].pppoe_lastrecvbytewasEND = 1; //Last was END!
-													}
 												}
 											}
 											else //SLIP?
@@ -8682,7 +8660,25 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 								}
 								else if (Packetserver_clients[connectedclient].packetserver_transmitstate) //Escaped with  PPP?
 								{
-									Packetserver_clients[connectedclient].packetserver_transmitstate = 0; //Stopmescaping!
+									Packetserver_clients[connectedclient].packetserver_transmitstate = 0; //Stop escaping!
+									//This seems to indicate that PPP is sending an incorrect frame? Accept it anyways, though?
+								}
+								if (Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) //PPP has a different concept of this than SLIP!
+								{
+									//PPP END is a toggle for active data!
+									Packetserver_clients[connectedclient].ppp_sendframing ^= 1; //Toggle sender framing!
+									if (Packetserver_clients[connectedclient].ppp_sendframing) //Was just toggled on? Discard the packet that was sending before, as it wasn't a packet!
+									{
+										if (Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe) //Using PPPOE?
+										{
+											if (!packetServerAddWriteQueue(connectedclient, PPP_END))
+											{
+												Packetserver_clients[connectedclient].ppp_sendframing ^= 1; //Untoggle sender framing: still pending!
+												goto skipSLIP_PPP; //Don't handle the sending of the packet yet: not ready!
+											}
+										}
+										goto discardPPPsentframe; //Discard the frame that's currently buffered, if there's any!
+									}
 								}
 								if (Packetserver_clients[connectedclient].packetserver_transmitstate == 0) //Ready to send the packet(not waiting for the buffer to free)?
 								{
@@ -8700,13 +8696,9 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 											{
 												if (Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe) //Using PPPOE?
 												{
-													if (!((Packetserver_clients[connectedclient].pppoe_lastsentbytewasEND))) //Not doubled END?
+													if (!packetServerAddWriteQueue(connectedclient, PPP_END))
 													{
-														if (!packetServerAddWriteQueue(connectedclient, PPP_END))
-														{
-															goto skipSLIP_PPP; //Don't handle the sending of the packet yet: not ready!
-														}
-														Packetserver_clients[connectedclient].pppoe_lastsentbytewasEND = 1; //Last was END!
+														goto skipSLIP_PPP; //Don't handle the sending of the packet yet: not ready!
 													}
 												}
 											}
@@ -8732,6 +8724,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 										{
 											dolog("ethernetcard", "Error: Can't send packet: packet is too large to send(size: %u)!", Packetserver_clients[connectedclient].packetserver_transmitlength);
 										}
+										discardPPPsentframe: //Discard a sent frame!
 										//Now, cleanup the buffered frame!
 										freez((void**)&Packetserver_clients[connectedclient].packetserver_transmitbuffer, Packetserver_clients[connectedclient].packetserver_transmitsize, "MODEM_SENDPACKET"); //Free 
 										Packetserver_clients[connectedclient].packetserver_transmitsize = 1024; //How large is out transmit buffer!
@@ -8749,7 +8742,6 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 								{
 									if (packetServerAddWriteQueue(connectedclient, PPP_DECODEESC(datatotransmit))) //Added to the queue?
 									{
-										Packetserver_clients[connectedclient].pppoe_lastsentbytewasEND = 0; //Last was not END!
 										readfifobuffer(modem.inputdatabuffer[connectedclient], &datatotransmit); //Ignore the data, just discard the packet byte!
 										Packetserver_clients[connectedclient].packetserver_transmitstate = 0; //We're not escaping something anymore!
 									}
@@ -8835,7 +8827,6 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 										{
 											if (packetServerAddWriteQueue(connectedclient, datatotransmit)) //Added to the queue?
 											{
-												Packetserver_clients[connectedclient].pppoe_lastsentbytewasEND = 0; //Last was not PPP_END!
 												readfifobuffer(modem.inputdatabuffer[connectedclient], &datatotransmit); //Ignore the data, just discard the packet byte!
 												Packetserver_clients[connectedclient].packetserver_transmitstate = 0; //We're not escaping something anymore!
 											}
@@ -9183,6 +9174,11 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 									Packetserver_clients[connectedclient].ppp_LCPstatus[1] = Packetserver_clients[connectedclient].ppp_PAPstatus[1] = Packetserver_clients[connectedclient].ppp_IPXCPstatus[1] = 0; //Reset all protocols to init state!
 									Packetserver_clients[connectedclient].asynccontrolcharactermap[0] = Packetserver_clients[connectedclient].asynccontrolcharactermap[1] = 0xFFFFFFFF; //Initialize the Async Control Character Map to init value!
 									packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].ppp_response); //Free the response that's queued for packets to be sent to the client if anything is left!
+								}
+								if (Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) //PPP?
+								{
+									Packetserver_clients[connectedclient].ppp_sendframing = 0; //Init: no sending active framing yet!
+									Packetserver_clients[connectedclient].PPP_packetstartsent = 0; //Init: no packet start has been sent yet!
 								}
 							}
 						}
