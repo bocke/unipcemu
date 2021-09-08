@@ -8842,6 +8842,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 												{
 													if (!packetServerAddWriteQueue(connectedclient, PPP_END))
 													{
+														Packetserver_clients[connectedclient].ppp_sendframing ^= 1; //Untoggle sender framing: still pending!
 														goto skipSLIP_PPP; //Don't handle the sending of the packet yet: not ready!
 													}
 												}
@@ -8856,6 +8857,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 											{
 												if (!PPP_parseSentPacketFromClient(connectedclient, 1)) //Parse PPP packets to their respective ethernet or IPv4 protocols for sending to the ethernet layer, as supported!
 												{
+													Packetserver_clients[connectedclient].ppp_sendframing ^= 1; //Toggle sender framing!
 													goto skipSLIP_PPP; //Keep the packet parsing pending!
 												}
 											}
