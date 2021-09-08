@@ -4879,6 +4879,18 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 	checksum = PPP_calcFCS(&Packetserver_clients[connectedclient].packetserver_transmitbuffer[0], Packetserver_clients[connectedclient].packetserver_transmitlength); //Calculate the checksum!
 	if (checksum != PPP_GOODFCS) //Checksum error?
 	{
+		if (Packetserver_clients[connectedclient].ppp_sendframing == 0) //Unframed packet? Probably an IPX frame!
+		{
+			if (Packetserver_clients[connectedclient].ppp_IPXCPstatus[1] && Packetserver_clients[connectedclient].ppp_PAPstatus[1] && Packetserver_clients[connectedclient].ppp_LCPstatus[1]) //Fully authenticated and logged in for sending?
+			{
+				//Handle IPX frames in a special way!
+				if (!createPPPstream(&pppstream, &Packetserver_clients[connectedclient].packetserver_transmitbuffer[0], Packetserver_clients[connectedclient].packetserver_transmitlength)) //Create a substream for the information field?
+				{
+					goto ppp_finishpacketbufferqueue; //Finish up!
+				}
+				goto handlePPPIPXframe; //Handle the frame for IPX to use!
+			}
+		}
 		return 1; //Incorrect packet: discard it!
 	}
 	createPPPstream(&pppstream, &Packetserver_clients[connectedclient].packetserver_transmitbuffer[0], Packetserver_clients[connectedclient].packetserver_transmitlength-2); //Create a stream object for us to use, which goes until the end of the payload!
@@ -7364,6 +7376,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			{
 				goto ppp_finishpacketbufferqueue; //Finish up!
 			}
+			handlePPPIPXframe:
 			//Now, pppstream_requestfield contains the packet we're trying to send!
 
 			//Now, construct the ethernet header!
