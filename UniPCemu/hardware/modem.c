@@ -7147,8 +7147,8 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				//Now, apply the request properly!
 				Packetserver_clients[connectedclient].ppp_IPXCPstatus[1] = 1; //Open!
 				Packetserver_clients[connectedclient].ppp_suppressIPXCP &= ~2; //Default: not supressing as we're opened!
-				memcpy(Packetserver_clients[connectedclient].ipxcp_networknumber[1], &ipxcp_pendingnetworknumber, sizeof(ipxcp_pendingnetworknumber)); //Network number specified or 0 for none!
-				memcpy(Packetserver_clients[connectedclient].ipxcp_nodenumber[1], &ipxcp_pendingnodenumber, sizeof(ipxcp_pendingnodenumber)); //Node number or 0 for none!
+				memcpy(&Packetserver_clients[connectedclient].ipxcp_networknumber[1], &ipxcp_pendingnetworknumber, sizeof(ipxcp_pendingnetworknumber)); //Network number specified or 0 for none!
+				memcpy(&Packetserver_clients[connectedclient].ipxcp_nodenumber[1], &ipxcp_pendingnodenumber, sizeof(ipxcp_pendingnodenumber)); //Node number or 0 for none!
 				Packetserver_clients[connectedclient].ipxcp_routingprotocol[1] = ipxcp_pendingroutingprotocol; //The routing protocol!
 		//Packetserver_clients[connectedclient].ipxcp_negotiationstatus = 0; //No negotation yet!
 				Packetserver_clients[connectedclient].ppp_serverIPXCPstatus = 2; //Reset the status check to try again afterwards if it's reset again!
