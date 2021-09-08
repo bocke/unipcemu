@@ -255,6 +255,9 @@ typedef struct
 	MODEM_PACKETBUFFER DHCP_requestpacket; //Request packet that's sent!
 	MODEM_PACKETBUFFER DHCP_acknowledgepacket; //Acknowledge packet that's sent!
 	MODEM_PACKETBUFFER DHCP_releasepacket; //Release packet that's sent!
+	byte ppp_autodetectpos;
+	byte ppp_autodetectbuf[7];
+	byte ppp_autodetected;
 	//PPP data
 	byte ppp_sendframing; //Sender frame status. Gets toggled for each PPP flag received! 1=Frame active, 0=Frame inactive
 	byte PPP_packetstartsent; //Has a packet start been sent to the client?
@@ -1009,6 +1012,8 @@ void initPacketServer(sword client) //Initialize the packet server for use when 
 	word c;
 #endif
 	terminatePacketServer(client); //First, make sure we're terminated properly!
+	Packetserver_clients[client].ppp_autodetected = 0; //PPP isn't detected yet!
+	Packetserver_clients[client].ppp_autodetectpos = 0; //PPP isn't detected yet!
 	Packetserver_clients[client].packetserver_transmitsize = 1024; //Initialize transmit buffer!
 	Packetserver_clients[client].packetserver_transmitbuffer = zalloc(Packetserver_clients[client].packetserver_transmitsize,"MODEM_SENDPACKET",NULL); //Initial transmit buffer!
 	Packetserver_clients[client].packetserver_transmitlength = 0; //Nothing buffered yet!
@@ -3404,7 +3409,36 @@ void authstage_startrequest(DOUBLE timepassed, sword connectedclient, char *requ
 	}
 }
 
+byte ppp_autodetect[3][8] =	{
+	{5,0x7E,0xFF,0x03,0xC0,0x21,0,0}, //type 1
+	{6,0x7E,0xFF,0x7D,0x23,0xC0,0x21}, //type 2
+	{7,0x7E,0x7D,0xDF,0x7D,0x23,0xC0,0x21} //type 3
+	};
+
 //result: 0: busy, 1: Finished, 2: goto sendoutputbuffer
+byte authstage_checkppp(sword connectedclient, byte datasent)
+{
+	byte x;
+	if (Packetserver_clients[connectedclient].ppp_autodetected) return 1; //Already autodetected!
+	if (Packetserver_clients[connectedclient].ppp_autodetectpos<NUMITEMS(Packetserver_clients[connectedclient].ppp_autodetect)) //Can fill?
+	{
+		Packetserver_clients[connectedclient].ppp_autodetectbuf[Packetserver_clients[connectedclient].ppp_autodetectpos++] = datasent; //Check what's sent!
+	}
+	for (x=0;x<NUMITEMS(ppp_autodetect);)
+	{
+		if (Packetserver_clients[connectedclient].ppp_autodetectpos>=ppp_autodetect[x][0]) //Enough buffered to check?
+		{
+			if (!memcmp(&ppp_autodetect[x][1],&Packetserver_clients[connectedclient].ppp_autodetectbuf,Packetserver_clients[connectedclient].ppp_autodetect[x][0])) //Autodetected?
+			{
+				Packetserver_clients[connectedclient].ppp_autodetected = 1; //Autodetected!
+				packetserver_initStartPPP(connectedclient,1); //Start PPP!
+				return 1; //Autodetected!
+			}
+		}
+		++x; //Try next!
+	}
+	return 0; //Not matched!
+}
 byte authstage_enterfield(DOUBLE timepassed, sword connectedclient, char* field, uint_32 size, byte specialinit, char charmask)
 {
 	byte textinputfield = 0;
@@ -3445,6 +3479,10 @@ byte authstage_enterfield(DOUBLE timepassed, sword connectedclient, char* field,
 			}
 		ignorebackspaceoutputfield: //Ignore the output part! Don't send back to the user!
 			readfifobuffer(modem.inputdatabuffer[connectedclient], &textinputfield); //Discard the input!
+			if (authstage_checkppp(connectedclient,textinputfield)) //PPP autodetected?
+			{
+				return 0; //Don't do anything! Leave it to the checkppp function!
+			}
 			if ((textinputfield == '\r') || (textinputfield == '\n')) //Finished?
 			{
 				if ((Packetserver_clients[connectedclient].lastreceivedCRLFinput == 0) || (textinputfield == Packetserver_clients[connectedclient].lastreceivedCRLFinput)) //Not received LF of CRLF or CR of LFCR?
@@ -5124,7 +5162,6 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 						}
 						goto performskipdata_lcp; //Skip the data please!
 					}
-					request_magic_number_used = 1; //Set the request!
 					if (!PPP_consumeStreamBE16(&pppstream_requestfield, &request_authenticationprotocol)) //Length couldn't be read?
 					{
 						result = 1; //Discard!
@@ -5223,6 +5260,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			//TODO: Finish parsing properly
 			if (pppNakFields.buffer || pppRejectFields.buffer) //NAK or Rejected any fields? Then don't process to the connected phase!
 			{
+				forcepapauth:
 				memcpy(&Packetserver_clients[connectedclient].ppp_nakfields, &pppNakFields, sizeof(pppNakFields)); //Give the response to the client!
 				Packetserver_clients[connectedclient].ppp_nakfields_identifier = common_IdentifierField; //Identifier!
 				memcpy(&Packetserver_clients[connectedclient].ppp_rejectfields, &pppRejectFields, sizeof(pppRejectFields)); //Give the response to the client!
@@ -5233,6 +5271,22 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			}
 			else //OK! All parameters are fine!
 			{
+				if (Packetserver_clients[connectedclient].ppp_autodetected) //Autodetect requires PAP?
+				{
+					if (!packetServerAddPacketBufferQueue(&pppNakFields, common_TypeField)) //NAK it!
+					{
+						goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+					}
+					if (!packetServerAddPacketBufferQueue(&pppNakFields, 4)) //Correct length!
+					{
+						goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+					}
+					if (!packetServerAddPacketBufferQueueBE16(&pppNakFields, 0xC023)) //PAP!
+					{
+						goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
+					}
+					goto forcePAPauth; //Force it!
+				}
 				//Apply the parameters to the session and send back an request-ACK!
 				memset(&response, 0, sizeof(response)); //Init the response!
 				//Build the PPP header first!
@@ -7962,6 +8016,31 @@ byte setUDPheaderChecksum(byte* ipheader, byte* udp_header_data, UDPheader *udph
 	return 1; //Gotten header and updated!
 }
 
+void packetserver_initStartPPP(sword connectedclient, byte autodetected)
+{
+	Packetserver_clients[connectedclient].packetserver_delay = (DOUBLE)0; //Finish the delay!
+	PacketServer_startNextStage(connectedclient, PACKETSTAGE_PACKETS); //Start the SLIP service!
+	Packetserver_clients[connectedclient].packetserver_slipprotocol = 3;
+	Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe = 0; //PPP?
+	Packetserver_clients[connectedclient].PPP_MRU[0] = Packetserver_clients[connectedclient].PPP_MRU[1] = 1500; //Default: 1500
+	Packetserver_clients[connectedclient].PPP_headercompressed[0] = Packetserver_clients[connectedclient].PPP_headercompressed[1] = 0; //Default: uncompressed
+	Packetserver_clients[connectedclient].PPP_protocolcompressed[0] = Packetserver_clients[connectedclient].PPP_protocolcompressed[1] = 0; //Default: uncompressed
+	Packetserver_clients[connectedclient].ppp_protocolreject_count = 0; //Default: 0!
+	Packetserver_clients[connectedclient].ppp_serverLCPstatus = 0; //Start out with initialized PPP LCP connection for the server to client connection!
+	Packetserver_clients[connectedclient].ppp_serverPAPstatus = 0; //Start out with initialized PPP PAP connection for the server to client connection!
+	Packetserver_clients[connectedclient].ppp_serverIPXCPstatus = 0; //Start out with initialized PPP IPXCP connection for the server to client connection!
+	Packetserver_clients[connectedclient].ppp_serverLCPrequesttimer = (DOUBLE)0.0f; //Restart timing!
+	Packetserver_clients[connectedclient].ppp_serverPAPrequesttimer = (DOUBLE)0.0f; //Restart timing!
+	Packetserver_clients[connectedclient].ppp_serverIPXCPrequesttimer = (DOUBLE)0.0f; //Restart timing!
+	Packetserver_clients[connectedclient].ipxcp_negotiationstatustimer = (DOUBLE)0.0f; //Restart timing!
+	Packetserver_clients[connectedclient].ppp_LCPstatus[0] = Packetserver_clients[connectedclient].ppp_PAPstatus[0] = Packetserver_clients[connectedclient].ppp_IPXCPstatus[0] = 0; //Reset all protocols to init state!
+	Packetserver_clients[connectedclient].ppp_LCPstatus[1] = Packetserver_clients[connectedclient].ppp_PAPstatus[1] = Packetserver_clients[connectedclient].ppp_IPXCPstatus[1] = 0; //Reset all protocols to init state!
+	Packetserver_clients[connectedclient].asynccontrolcharactermap[0] = Packetserver_clients[connectedclient].asynccontrolcharactermap[1] = 0xFFFFFFFF; //Initialize the Async Control Character Map to init value!
+	packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].ppp_response); //Free the response that's queued for packets to be sent to the client if anything is left!
+	Packetserver_clients[connectedclient].ppp_sendframing = 0; //Init: no sending active framing yet!
+	Packetserver_clients[connectedclient].PPP_packetstartsent = 0; //Init: no packet start has been sent yet!
+}
+
 void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 {
 	uint_32 ppp_transmitasynccontrolcharactermap;
@@ -9183,21 +9262,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 								PacketServer_startNextStage(connectedclient, PACKETSTAGE_PACKETS); //Start the SLIP service!
 								if ((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) && (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe)) //PPP?
 								{
-									Packetserver_clients[connectedclient].PPP_MRU[0] = Packetserver_clients[connectedclient].PPP_MRU[1] = 1500; //Default: 1500
-									Packetserver_clients[connectedclient].PPP_headercompressed[0] = Packetserver_clients[connectedclient].PPP_headercompressed[1] = 0; //Default: uncompressed
-									Packetserver_clients[connectedclient].PPP_protocolcompressed[0] = Packetserver_clients[connectedclient].PPP_protocolcompressed[1] = 0; //Default: uncompressed
-									Packetserver_clients[connectedclient].ppp_protocolreject_count = 0; //Default: 0!
-									Packetserver_clients[connectedclient].ppp_serverLCPstatus = 0; //Start out with initialized PPP LCP connection for the server to client connection!
-									Packetserver_clients[connectedclient].ppp_serverPAPstatus = 0; //Start out with initialized PPP PAP connection for the server to client connection!
-									Packetserver_clients[connectedclient].ppp_serverIPXCPstatus = 0; //Start out with initialized PPP IPXCP connection for the server to client connection!
-									Packetserver_clients[connectedclient].ppp_serverLCPrequesttimer = (DOUBLE)0.0f; //Restart timing!
-									Packetserver_clients[connectedclient].ppp_serverPAPrequesttimer = (DOUBLE)0.0f; //Restart timing!
-									Packetserver_clients[connectedclient].ppp_serverIPXCPrequesttimer = (DOUBLE)0.0f; //Restart timing!
-									Packetserver_clients[connectedclient].ipxcp_negotiationstatustimer = (DOUBLE)0.0f; //Restart timing!
-									Packetserver_clients[connectedclient].ppp_LCPstatus[0] = Packetserver_clients[connectedclient].ppp_PAPstatus[0] = Packetserver_clients[connectedclient].ppp_IPXCPstatus[0] = 0; //Reset all protocols to init state!
-									Packetserver_clients[connectedclient].ppp_LCPstatus[1] = Packetserver_clients[connectedclient].ppp_PAPstatus[1] = Packetserver_clients[connectedclient].ppp_IPXCPstatus[1] = 0; //Reset all protocols to init state!
-									Packetserver_clients[connectedclient].asynccontrolcharactermap[0] = Packetserver_clients[connectedclient].asynccontrolcharactermap[1] = 0xFFFFFFFF; //Initialize the Async Control Character Map to init value!
-									packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].ppp_response); //Free the response that's queued for packets to be sent to the client if anything is left!
+									Packetserver_initStartPPP(connectedclient,0); //Init!
 								}
 								if (Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) //PPP?
 								{
