@@ -7964,6 +7964,7 @@ byte setUDPheaderChecksum(byte* ipheader, byte* udp_header_data, UDPheader *udph
 
 void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 {
+	uint_32 ppp_transmitasynccontrolcharactermap;
 	ARPpackettype ARPpacket, ARPresponse; //ARP packet to send/receive!
 	sword connectedclient;
 	sword connectionid;
@@ -8474,7 +8475,20 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 													{
 														if ((!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe) && (datatotransmit < 0x20)) //Might need to be escaped?
 														{
-															if ((Packetserver_clients[connectedclient].asynccontrolcharactermap[0] & (1 << (datatotransmit & 0x1F)))||(!Packetserver_clients[connectedclient].ppp_LCPstatus[0])) //To be escaped?
+															ppp_transmitasynccontrolcharactermap = Packetserver_clients[connectedclient].asynccontrolcharactermap[0]; //The map to use!
+															if (
+																(Packetserver_clients[connectedclient].Packetserver_clients[connectedclient].packet[0]==0xFF) && //All-stations
+																(Packetserver_clients[connectedclient].Packetserver_clients[connectedclient].packet[1]==0x03) && //UI
+																(Packetserver_clients[connectedclient].Packetserver_clients[connectedclient].packet[2]==0xC0) && //LCP ...
+																(Packetserver_clients[connectedclient].Packetserver_clients[connectedclient].packet[3]==0x21) && //... protocol
+																((Packetserver_clients[connectedclient].Packetserver_clients[connectedclient].packet[4]>=0x01) && //Codes 1 through ...
+																(Packetserver_clients[connectedclient].Packetserver_clients[connectedclient].packet[4]<=0x07)) //... 7
+																)
+																||(!Packetserver_clients[connectedclient].ppp_LCPstatus[0]) //LCP options not setup?
+															{
+																ppp_transmitasynccontrolcharactermap = 0xFFFFFFFFU; //Force-escape all control characters!
+															}
+															if ((ppp_transmitasynccontrolcharactermap & (1 << (datatotransmit & 0x1F)))) //To be escaped?
 															{
 																writefifobuffer(modem.blockoutputbuffer[connectedclient], PPP_ESC); //Escaped ...
 																writefifobuffer(modem.blockoutputbuffer[connectedclient], PPP_ENCODEESC(datatotransmit)); //ESC raw data!
