@@ -8746,6 +8746,11 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 									readfifobuffer(modem.inputdatabuffer[connectedclient], &datatotransmit); //Ignore the data, just discard the packet END!
 								}
 							}
+							else if ((datatotransmit==PPP_ESC) && (Packetserver_clients[connectedclient].packetserver_slipprotocol==3) && ((!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe) || PPPOE_ENCODEDECODE)) //PPP ESC?
+							{
+								readfifobuffer(modem.inputdatabuffer[connectedclient], &datatotransmit); //Discard, as it's processed!
+								Packetserver_clients[connectedclient].packetserver_transmitstate = 1; //We're escaping something! Multiple escapes are ignored and not sent!
+							}
 							else if ((Packetserver_clients[connectedclient].packetserver_transmitstate) && (Packetserver_clients[connectedclient].packetserver_slipprotocol==3) && ((!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe) || PPPOE_ENCODEDECODE)) //PPP ESCaped value?
 							{
 								if (Packetserver_clients[connectedclient].packetserver_transmitlength || ((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) && ((!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe)))) //Gotten a valid packet to start adding an escaped value to?
@@ -8761,11 +8766,6 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 									readfifobuffer(modem.inputdatabuffer[connectedclient], &datatotransmit); //Ignore the data, just discard the packet byte!
 									Packetserver_clients[connectedclient].packetserver_transmitstate = 0; //We're not escaping something anymore!
 								}
-							}
-							else if ((datatotransmit==PPP_ESC) && (Packetserver_clients[connectedclient].packetserver_slipprotocol==3) && ((!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe) || PPPOE_ENCODEDECODE)) //PPP ESC?
-							{
-								readfifobuffer(modem.inputdatabuffer[connectedclient], &datatotransmit); //Discard, as it's processed!
-								Packetserver_clients[connectedclient].packetserver_transmitstate = 1; //We're escaping something! Multiple escapes are ignored and not sent!
 							}
 							else if ((datatotransmit == SLIP_ESC) && (Packetserver_clients[connectedclient].packetserver_slipprotocol!=3)) //Escaped something?
 							{
