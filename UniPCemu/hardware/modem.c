@@ -217,7 +217,6 @@ typedef struct
 {
 	uint16_t pktlen;
 	byte *packet; //Current packet received!
-	FIFOBUFFER *packetserver_receivebuffer; //When receiving anything!
 	byte *packetserver_transmitbuffer; //When sending a packet, this contains the currently built decoded data, which is already decoded!
 	uint_32 packetserver_bytesleft;
 	uint_32 packetserver_transmitlength; //How much has been built?
@@ -411,7 +410,8 @@ typedef union PACKED
 #include "headers/endpacked.h"
 
 //Normal modem operations!
-#define MODEM_BUFFERSIZE 256
+//Text buffer size for transmitting text to the DTE.
+#define MODEM_TEXTBUFFERSIZE 256
 
 //Server polling speed
 #define MODEM_SERVERPOLLFREQUENCY 1000
@@ -428,6 +428,7 @@ struct
 	FIFOBUFFER *inputbuffer; //The input buffer!
 	FIFOBUFFER *inputdatabuffer[0x100]; //The input buffer, data mode only!
 	FIFOBUFFER *outputbuffer[0x100]; //The output buffer!
+	FIFOBUFFER* blockoutputbuffer[0x100]; //The block output buffer! For sending whole blocks of data at once! Using this must wait for the buffer to be empty before writing blocks of (encoded) data to it.
 	byte datamode; //1=Data mode, 0=Command mode!
 	byte connected; //Are we connected?
 	word connectionport; //What port to connect to by default?
@@ -680,8 +681,7 @@ void initPcap() {
 	}
 
 	for (i = 0; i < NUMITEMS(Packetserver_clients); ++i) //Initialize client data!
-	{
-		Packetserver_clients[i].packetserver_receivebuffer = allocfifobuffer(3, 0); //Simple receive buffer, the size of a packet byte(when encoded) to be able to buffer any packet(since any byte can be doubled)! This is 2 bytes required for SLIP, while 3 bytes for PPP(for the extra PPP_END character at the start of a first packet)
+	{		
 		Packetserver_clients[i].packetserver_transmitlength = 0; //We're at the start of this buffer, nothing is sent yet!
 	}
 
@@ -922,10 +922,6 @@ void termPcap()
 		{
 			freez((void **)&Packetserver_clients[client].packet, Packetserver_clients[client].pktlen, "SERVER_PACKET"); //Cleanup!
 		}
-		if (Packetserver_clients[client].packetserver_receivebuffer)
-		{
-			free_fifobuffer(&Packetserver_clients[client].packetserver_receivebuffer); //Cleanup!
-		}
 		if (Packetserver_clients[client].packetserver_transmitbuffer && Packetserver_clients[client].packetserver_transmitsize) //Gotten a send buffer allocated?
 		{
 			freez((void **)&Packetserver_clients[client].packetserver_transmitbuffer, Packetserver_clients[client].packetserver_transmitsize, "MODEM_SENDPACKET"); //Clear the transmit buffer!
@@ -964,7 +960,7 @@ sword allocPacketserver_client()
 	for (i = 0; i < NUMITEMS(Packetserver_clients); ++i) //Find an unused one!
 	{
 		if (Packetserver_clients[i].used) continue; //Take unused only!
-		if (!Packetserver_clients[i].packetserver_receivebuffer) continue; //Required to receive properly!
+		if (!modem.blockoutputbuffer[i]) continue; //Required to receive properly!
 		Packetserver_clients[i].used = 1; //We're used now!
 		return i; //Give the ID!
 	}
@@ -995,7 +991,7 @@ void normalFreeDHCP(sword connectedclient)
 
 void terminatePacketServer(sword client) //Cleanup the packet server after being disconnected!
 {
-	fifobuffer_clear(Packetserver_clients[client].packetserver_receivebuffer); //Clear the receive buffer!
+	fifobuffer_clear(modem.blockoutputbuffer[client]); //Clear the receive buffer!
 	freez((void **)&Packetserver_clients[client].packetserver_transmitbuffer,Packetserver_clients[client].packetserver_transmitsize,"MODEM_SENDPACKET"); //Clear the transmit buffer!
 	if (Packetserver_clients[client].packetserver_transmitbuffer==NULL) Packetserver_clients[client].packetserver_transmitsize = 0; //Clear!
 }
@@ -1037,6 +1033,7 @@ void initPacketServer(sword client) //Initialize the packet server for use when 
 	Packetserver_clients[client].packetserver_packetack = 0; //Not acnowledged yet!
 	fifobuffer_clear(modem.inputdatabuffer[client]); //Nothing is received yet!
 	fifobuffer_clear(modem.outputbuffer[client]); //Nothing is sent yet!
+	fifobuffer_clear(modem.blockoutputbuffer[client]); //Nothing is sent to the client yet!
 	Packetserver_clients[client].packetserver_slipprotocol = 0; //Initialize the protocol to the default value, which is unused!
 	Packetserver_clients[client].lastreceivedCRLFinput = 0; //Reset last received input to none of CR and LF!
 }
@@ -1236,6 +1233,10 @@ byte modem_sendData(byte value) //Send data to the connected device!
 {
 	//Handle sent data!
 	if (PacketServer_running) return 0; //Not OK to send data this way!
+	if (!(fifobuffer_freesize(modem.blockoutputbuffer[0]) == fifobuffer_size(modem.blockoutputbuffer[0])))
+	{
+		return 0; //Not ready!
+	}
 	if (modem.supported >= 3) //Might need to be escaped?
 	{
 		if (modem.passthroughlinestatusdirty & 7) //Still pending to send the last line status?
@@ -1244,15 +1245,11 @@ byte modem_sendData(byte value) //Send data to the connected device!
 		}
 		if (value == 0xFF) //Needs to be escaped?
 		{
-			if (fifobuffer_freesize(modem.outputbuffer[0]) < 2) //Not enough room to send?
-			{
-				return 0; //Don't send yet!
-			}
-			writefifobuffer(modem.outputbuffer[0], 0xFF); //Escape the value to write to make it to the other side!
+			writefifobuffer(modem.blockoutputbuffer[0], 0xFF); //Escape the value to write to make it to the other side!
 		}
 		//Doesn't need to be escaped for any other value!
 	}
-	return writefifobuffer(modem.outputbuffer[0],value); //Try to write to the output buffer!
+	return writefifobuffer(modem.blockoutputbuffer[0],value); //Try to write to the output buffer!
 }
 
 byte readIPnumber(char **x, byte *number)
@@ -1305,6 +1302,7 @@ byte modem_connect(char *phonenumber)
 			modem.connectionid = -1; //Not connected anymore if succeeded!
 			fifobuffer_clear(modem.inputdatabuffer[0]); //Clear the output buffer for the next client!
 			fifobuffer_clear(modem.outputbuffer[0]); //Clear the output buffer for the next client!
+			fifobuffer_clear(modem.blockoutputbuffer[0]); //Clear the output buffer for the next client!
 			modem.connected = 0; //Not connected anymore!
 		}
 	}
@@ -1402,12 +1400,14 @@ void modem_hangup() //Hang up, if possible!
 		modem.connectionid = -1; //Not connected anymore
 		fifobuffer_clear(modem.inputdatabuffer[0]); //Clear the output buffer for the next client!
 		fifobuffer_clear(modem.outputbuffer[0]); //Clear the output buffer for the next client!
+		fifobuffer_clear(modem.blockoutputbuffer[0]); //Clear the output buffer for the next client!
 	}
 	modem.connected &= ~1; //Not connected anymore!
 	modem.ringing = 0; //Not ringing anymore!
 	modem.offhook = 0; //We're on-hook!
 	fifobuffer_clear(modem.inputdatabuffer[0]); //Clear anything we still received!
 	fifobuffer_clear(modem.outputbuffer[0]); //Clear anything we still need to send!
+	fifobuffer_clear(modem.blockoutputbuffer[0]); //Clear anything we still need to send!
 }
 
 void modem_updateRegister(byte reg)
@@ -1559,6 +1559,7 @@ byte resetModem(byte state)
 		modem.connectionid = -1; //Not connected anymore!
 		fifobuffer_clear(modem.inputdatabuffer[0]); //Clear the output buffer for the next client!
 		fifobuffer_clear(modem.outputbuffer[0]); //Clear the output buffer for the next client!
+		fifobuffer_clear(modem.blockoutputbuffer[0]); //Clear the output buffer for the next client!
 	}
 
 
@@ -1832,7 +1833,7 @@ byte modem_getstatus()
 	//0: Clear to Send(Can we buffer data to be sent), 1: Data Set Ready(Not hang up, are we ready for use), 2: Ring Indicator, 3: Carrrier detect, 4: Break
 	if (modem.supported >= 2) //CTS depends on the outgoing buffer in passthrough mode!
 	{
-		result |= ((modem.datamode == 1) ? ((modem.connectionid >= 0) ? (fifobuffer_freesize(modem.outputbuffer[modem.connectionid]) ? 1 : 0) : 0) : 0); //Can we send to the modem?
+		result |= ((modem.datamode == 1) ? ((modem.connectionid >= 0) ? ((fifobuffer_freesize(modem.blockoutputbuffer[0]) == fifobuffer_size(modem.blockoutputbuffer[0])) ? 1 : 0) : 0) : 0); //Can we send to the modem?
 		if (modem.supported >= 3) //Also depend on the received line!
 		{
 			result = (result & ~1) | ((modem.passthroughlines >> 1) & 1); //Mask CTS with received RTS!
@@ -1846,7 +1847,7 @@ byte modem_getstatus()
 			result |= ((modem.outputline >> 1) & 1); //Track RTS, undelayed!
 			break;
 		case 1: //Depends on the buffers! Only drop when required by flow control!
-			result |= ((modem.datamode == 1) ? ((modem.connectionid >= 0) ? (fifobuffer_freesize(modem.outputbuffer[modem.connectionid]) ? 1 : 0) : 1) : 1); //Can we send to the modem?
+			result |= ((modem.datamode == 1) ? ((modem.connectionid >= 0) ? ((fifobuffer_freesize(modem.blockoutputbuffer[0]) == fifobuffer_size(modem.blockoutputbuffer[0])) ? 1 : 0) : 1) : 1); //Can we send to the modem?
 			break;
 		case 2: //Always on?
 			result |= 1; //Always on!
@@ -1929,7 +1930,7 @@ byte modem_getstatus()
 
 	if (modem.supported >= 3) //Break is implemented?
 	{
-		result |= (((((modem.passthroughlines & 4) >> 2)&(fifobuffer_freesize(modem.inputdatabuffer[0])==MODEM_BUFFERSIZE))&1)<<4); //Set the break output when needed and not receiving anything anymore on the UART!
+		result |= (((((modem.passthroughlines & 4) >> 2)&(fifobuffer_freesize(modem.inputdatabuffer[0])))&1)<<4); //Set the break output when needed and not receiving anything anymore on the UART!
 		if (likely(modem.breakPending == 0)) //Not break pending or pending anymore (preventing re-triggering without raising it again)?
 		{
 			result &= ~0x10; //Clear break signalling, as it's not pending yet or anymore!
@@ -1942,7 +1943,7 @@ byte modem_getstatus()
 byte modem_readData()
 {
 	byte result,emptycheck;
-	if (modem.breakPending && (fifobuffer_freesize(modem.inputbuffer) == MODEM_BUFFERSIZE) && (fifobuffer_freesize(modem.inputdatabuffer[0]) == MODEM_BUFFERSIZE)) //Break acnowledged by reading the result data?
+	if (modem.breakPending && (fifobuffer_freesize(modem.inputbuffer) == MODEM_TEXTBUFFERSIZE) && (fifobuffer_freesize(modem.inputdatabuffer[0])==fifobuffer_size(modem.inputdatabuffer[0]))) //Break acnowledged by reading the result data?
 	{
 		modem.breakPending = 0; //Not pending anymore, acnowledged!
 		return 0; //A break has this value (00h) read on it's data lines!
@@ -3141,16 +3142,18 @@ void initModem(byte enabled) //Initialise modem!
 			goto unsupportedUARTModem;
 		}
 		modem.connectionid = -1; //Default: not connected!
-		modem.inputbuffer = allocfifobuffer(MIN(MODEM_BUFFERSIZE,NUMITEMS(modem.ATcommand)*3),0); //Small input buffer! Make sure it's large enough to contain all command buffer items in backspaces(3 for each character)!
+		modem.inputbuffer = allocfifobuffer(MIN(MODEM_TEXTBUFFERSIZE,NUMITEMS(modem.ATcommand)*3),0); //Small input buffer! Make sure it's large enough to contain all command buffer items in backspaces(3 for each character)!
 		initPacketServerClients(); //Prepare the clients for use!
 		Packetserver_availableClients = 0; //Init: 0 clients available!
 		for (i = 0; i < MIN(MIN(NUMITEMS(modem.inputdatabuffer),NUMITEMS(modem.outputbuffer)),(Packetserver_totalClients?Packetserver_totalClients:1)); ++i) //Allocate buffers for server and client purposes!
 		{
-			modem.inputdatabuffer[i] = allocfifobuffer(MODEM_BUFFERSIZE, 0); //Small input buffer!
-			modem.outputbuffer[i] = allocfifobuffer(MODEM_BUFFERSIZE, 0); //Small input buffer!
+			//A simple 1-byte FIFO for the transmit and receive buffers. This causes the FIFO to become asynchronous like a real modem and not start to buffer entire packets of data that can disrupt the state machines (required for PPP to function).
+			modem.inputdatabuffer[i] = allocfifobuffer(1, 0); //Small input buffer!
+			modem.outputbuffer[i] = allocfifobuffer(1, 0); //Small input buffer!
+			modem.blockoutputbuffer[i] = allocfifobuffer(5, 0); //Buffers for sending block data.
 			if (modem.inputdatabuffer[i] && modem.outputbuffer[i]) //Both allocated?
 			{
-				if (Packetserver_clients[i].packetserver_receivebuffer) //Packet server buffers allocated?
+				if (modem.blockoutputbuffer[i]) //Packet server buffers allocated?
 				{
 					++Packetserver_availableClients; //One more client available!
 				}
@@ -3158,7 +3161,7 @@ void initModem(byte enabled) //Initialise modem!
 			else break; //Failed to allocate? Not available client anymore!
 		}
 		Packetserver_totalClients = Packetserver_availableClients; //Init: n clients available in total!
-		if (modem.inputbuffer && modem.inputdatabuffer[0] && modem.outputbuffer[0]) //Gotten buffers?
+		if (modem.inputbuffer && modem.inputdatabuffer[0] && modem.outputbuffer[0] && modem.blockoutputbuffer[0]) //Gotten buffers?
 		{
 			modem.connectionport = BIOS_Settings.modemlistenport; //Default port to connect to if unspecified!
 			if (modem.connectionport==0) //Invalid?
@@ -3183,6 +3186,7 @@ void initModem(byte enabled) //Initialise modem!
 			{
 				if (modem.outputbuffer[i]) free_fifobuffer(&modem.outputbuffer[i]);
 				if (modem.inputdatabuffer[i]) free_fifobuffer(&modem.inputdatabuffer[i]);
+				if (modem.blockoutputbuffer[i]) free_fifobuffer(&modem.blockoutputbuffer[i]);
 			}
 		}
 	}
@@ -3192,6 +3196,7 @@ void initModem(byte enabled) //Initialise modem!
 		modem.inputbuffer = NULL; //No buffer present!
 		memset(&modem.inputdatabuffer,0,sizeof(modem.inputdatabuffer)); //No buffer present!
 		memset(&modem.outputbuffer, 0, sizeof(modem.outputbuffer)); //No buffer present!
+		memset(&modem.blockoutputbuffer, 0, sizeof(modem.blockoutputbuffer)); //No buffer present!
 	}
 }
 
@@ -3247,9 +3252,10 @@ void doneModem() //Finish modem!
 	}
 	if (modem.outputbuffer[0] && modem.inputdatabuffer[0]) //Allocated?
 	{
-		for (i = 0; i < MIN(NUMITEMS(modem.inputdatabuffer), NUMITEMS(modem.outputbuffer)); ++i) //Allocate buffers for server and client purposes!
+		for (i = 0; i < MIN(MIN(NUMITEMS(modem.inputdatabuffer), NUMITEMS(modem.outputbuffer)), NUMITEMS(modem.blockoutputbuffer)); ++i) //Allocate buffers for server and client purposes!
 		{
 			free_fifobuffer(&modem.outputbuffer[i]); //Free our buffer!
+			free_fifobuffer(&modem.blockoutputbuffer[i]); //Free our buffer!
 			free_fifobuffer(&modem.inputdatabuffer[i]); //Free our buffer!
 		}
 	}
@@ -3387,7 +3393,7 @@ void authstage_startrequest(DOUBLE timepassed, sword connectedclient, char *requ
 	if ((Packetserver_clients[connectedclient].packetserver_delay <= 0.0) || (!Packetserver_clients[connectedclient].packetserver_delay)) //Finished?
 	{
 		Packetserver_clients[connectedclient].packetserver_delay = (DOUBLE)0; //Finish the delay!
-		if (writefifobuffer(modem.outputbuffer[connectedclient], Packetserver_clients[connectedclient].packetserver_stage_str[Packetserver_clients[connectedclient].packetserver_stage_byte])) //Transmitted?
+		if (writefifobuffer(modem.blockoutputbuffer[connectedclient], Packetserver_clients[connectedclient].packetserver_stage_str[Packetserver_clients[connectedclient].packetserver_stage_byte])) //Transmitted?
 		{
 			if (++Packetserver_clients[connectedclient].packetserver_stage_byte == safestrlen(Packetserver_clients[connectedclient].packetserver_stage_str, sizeof(Packetserver_clients[connectedclient].packetserver_stage_str))) //Finished?
 			{
@@ -3424,17 +3430,17 @@ byte authstage_enterfield(DOUBLE timepassed, sword connectedclient, char* field,
 		{
 			if (Packetserver_clients[connectedclient].packetserver_stage_byte == 0) goto ignorebackspaceoutputfield; //To ignore?
 			//We're a valid backspace!
-			if (fifobuffer_freesize(modem.outputbuffer[connectedclient]) < 3) //Not enough to contain backspace result?
+			if ((fifobuffer_freesize(modem.blockoutputbuffer[connectedclient]) < 3) || (!(fifobuffer_freesize(modem.blockoutputbuffer[connectedclient]) == fifobuffer_size(modem.blockoutputbuffer[connectedclient])))) //Not enough to contain backspace result?
 			{
 				return 2; //Not ready to process the writes!
 			}
 		}
-		if (writefifobuffer(modem.outputbuffer[connectedclient], (isbackspace || (textinputfield == '\r') || (textinputfield == '\n') || (!charmask)) ? textinputfield : charmask)) //Echo back to user, encrypted if needed!
+		if (writefifobuffer(modem.blockoutputbuffer[connectedclient], (isbackspace || (textinputfield == '\r') || (textinputfield == '\n') || (!charmask)) ? textinputfield : charmask)) //Echo back to user, encrypted if needed!
 		{
 			if (isbackspace) //Backspace requires extra data?
 			{
-				if (!writefifobuffer(modem.outputbuffer[connectedclient], ' ')) return 2; //Clear previous input!
-				if (!writefifobuffer(modem.outputbuffer[connectedclient], textinputfield)) return 2; //Another backspace to end up where we need to be!
+				if (!writefifobuffer(modem.blockoutputbuffer[connectedclient], ' ')) return 2; //Clear previous input!
+				if (!writefifobuffer(modem.blockoutputbuffer[connectedclient], textinputfield)) return 2; //Another backspace to end up where we need to be!
 			}
 		ignorebackspaceoutputfield: //Ignore the output part! Don't send back to the user!
 			readfifobuffer(modem.inputdatabuffer[connectedclient], &textinputfield); //Discard the input!
@@ -8036,11 +8042,11 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 
 	if ((modem.supported >= 3) && (modem.passthroughlinestatusdirty & 7)) //Dirty lines to handle in passthrough mode?
 	{
-		if (fifobuffer_freesize(modem.outputbuffer[0]) >= 2) //Enough to send a packet to describe our status change?
+		if (fifobuffer_freesize(modem.blockoutputbuffer[0])==fifobuffer_size(modem.blockoutputbuffer[0])) //Enough to send a packet to describe our status change?
 		{
 			//Send a break(bit 2)/DTR(bit 1)/RTS(bit 0) packet!
-			writefifobuffer(modem.outputbuffer[0], 0xFF); //Escape!
-			writefifobuffer(modem.outputbuffer[0], ((modem.outputline & 1) << 1) | ((modem.outputline & 2) >> 1) | ((modem.outputline & 0x20)>>3)); //Send DTR, RTS and Break!
+			writefifobuffer(modem.blockoutputbuffer[0], 0xFF); //Escape!
+			writefifobuffer(modem.blockoutputbuffer[0], ((modem.outputline & 1) << 1) | ((modem.outputline & 2) >> 1) | ((modem.outputline & 0x20) >> 3)); //Send DTR, RTS and Break!
 			modem.passthroughlinestatusdirty &= ~7; //Acknowledge the new lines!
 		}
 	}
@@ -8096,6 +8102,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 					modem.connectionid = -1; //Not connected anymore!
 					fifobuffer_clear(modem.inputdatabuffer[0]); //Clear the output buffer for the next client!
 					fifobuffer_clear(modem.outputbuffer[0]); //Clear the output buffer for the next client!
+					fifobuffer_clear(modem.blockoutputbuffer[0]); //Clear the output buffer for the next client!
 				}
 			}
 		}
@@ -8164,7 +8171,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 					{
 						if (Packetserver_clients[connectedclient].used == 0) continue; //Skip unused clients!
 						//Handle packet server packet data transfers into the inputdatabuffer/outputbuffer to the network!
-						if (Packetserver_clients[connectedclient].packetserver_receivebuffer) //Properly allocated?
+						if (modem.blockoutputbuffer[connectedclient]) //Properly allocated?
 						{
 							if (net.packet || Packetserver_clients[connectedclient].packet || ((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) && (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe)) || (Packetserver_clients[connectedclient].ppp_response.buffer)) //Packet has been received or processing? Try to start transmit it!
 							{
@@ -8186,7 +8193,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 										Packetserver_clients[connectedclient].PPP_packetpendingforsending = 0; //Not pending for sending by default!
 									}
 								}
-								if (fifobuffer_freesize(Packetserver_clients[connectedclient].packetserver_receivebuffer) >= 2) //Valid to produce more data?
+								if (fifobuffer_freesize(modem.blockoutputbuffer[connectedclient]) == fifobuffer_size(modem.blockoutputbuffer[connectedclient])) //Valid to produce more data?
 								{
 									if ((((Packetserver_clients[connectedclient].packetserver_packetpos == 0) && (Packetserver_clients[connectedclient].packetserver_packetack == 0)) || ((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) && (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe))) && (Packetserver_clients[connectedclient].packet)) //New packet?
 									{
@@ -8423,7 +8430,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 										{
 											if ((Packetserver_clients[connectedclient].packetserver_packetpos == 0) && (!Packetserver_clients[connectedclient].PPP_packetstartsent) && (((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3)) && (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe))) //Packet hasn't been started yet and needs to be started properly?
 											{
-												writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, PPP_END); //END of frame!
+												writefifobuffer(modem.blockoutputbuffer[connectedclient], PPP_END); //END of frame!
 												Packetserver_clients[connectedclient].pppoe_lastrecvbytewasEND = 1; //Last was END!
 												Packetserver_clients[connectedclient].PPP_packetstartsent = 1; //Start has been sent!
 												goto doPPPtransmit; //Handle the tranmit of the PPP frame start!
@@ -8444,7 +8451,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 												{
 													if (!(Packetserver_clients[connectedclient].pppoe_lastrecvbytewasEND) || (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe)) //Not doubled END and used this way?
 													{
-														writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, PPP_END); //END of frame!
+														writefifobuffer(modem.blockoutputbuffer[connectedclient], PPP_END); //END of frame!
 														Packetserver_clients[connectedclient].pppoe_lastrecvbytewasEND = 1; //Last was END!
 													}
 												}
@@ -8453,13 +8460,13 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 												{
 													if (datatotransmit == PPP_END) //End byte?
 													{
-														writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, PPP_ESC); //Escaped ...
-														writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, PPP_ENCODEESC(PPP_END)); //END raw data!
+														writefifobuffer(modem.blockoutputbuffer[connectedclient], PPP_ESC); //Escaped ...
+														writefifobuffer(modem.blockoutputbuffer[connectedclient], PPP_ENCODEESC(PPP_END)); //END raw data!
 													}
 													else if (datatotransmit == PPP_ESC) //ESC byte?
 													{
-														writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, PPP_ESC); //Escaped ...
-														writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, PPP_ENCODEESC(PPP_ESC)); //ESC raw data!
+														writefifobuffer(modem.blockoutputbuffer[connectedclient], PPP_ESC); //Escaped ...
+														writefifobuffer(modem.blockoutputbuffer[connectedclient], PPP_ENCODEESC(PPP_ESC)); //ESC raw data!
 													}
 													else //Normal data?
 													{
@@ -8467,17 +8474,17 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 														{
 															if ((Packetserver_clients[connectedclient].asynccontrolcharactermap[0] & (1 << (datatotransmit & 0x1F)))||(!Packetserver_clients[connectedclient].ppp_LCPstatus[0])) //To be escaped?
 															{
-																writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, PPP_ESC); //Escaped ...
-																writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, PPP_ENCODEESC(datatotransmit)); //ESC raw data!
+																writefifobuffer(modem.blockoutputbuffer[connectedclient], PPP_ESC); //Escaped ...
+																writefifobuffer(modem.blockoutputbuffer[connectedclient], PPP_ENCODEESC(datatotransmit)); //ESC raw data!
 															}
 															else //Not escaped!
 															{
-																writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, datatotransmit); //Unescaped!
+																writefifobuffer(modem.blockoutputbuffer[connectedclient], datatotransmit); //Unescaped!
 															}
 														}
 														else
 														{
-															writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, datatotransmit); //Unescaped!
+															writefifobuffer(modem.blockoutputbuffer[connectedclient], datatotransmit); //Unescaped!
 														}
 													}
 													Packetserver_clients[connectedclient].pppoe_lastrecvbytewasEND = 0; //Last wasn't END!
@@ -8486,7 +8493,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 												{
 													if (!((Packetserver_clients[connectedclient].pppoe_lastrecvbytewasEND) && (datatotransmit == PPP_END))) //Not doubled END?
 													{
-														writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, datatotransmit); //Raw!
+														writefifobuffer(modem.blockoutputbuffer[connectedclient], datatotransmit); //Raw!
 													}
 													Packetserver_clients[connectedclient].pppoe_lastrecvbytewasEND = (datatotransmit == PPP_END); //Last was END?
 												}
@@ -8495,17 +8502,17 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 											{
 												if (datatotransmit == SLIP_END) //End byte?
 												{
-													writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, SLIP_ESC); //Escaped ...
-													writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, SLIP_ESC_END); //END raw data!
+													writefifobuffer(modem.blockoutputbuffer[connectedclient], SLIP_ESC); //Escaped ...
+													writefifobuffer(modem.blockoutputbuffer[connectedclient], SLIP_ESC_END); //END raw data!
 												}
 												else if (datatotransmit == SLIP_ESC) //ESC byte?
 												{
-													writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, SLIP_ESC); //Escaped ...
-													writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, SLIP_ESC_ESC); //ESC raw data!
+													writefifobuffer(modem.blockoutputbuffer[connectedclient], SLIP_ESC); //Escaped ...
+													writefifobuffer(modem.blockoutputbuffer[connectedclient], SLIP_ESC_ESC); //ESC raw data!
 												}
 												else //Normal data?
 												{
-													writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, datatotransmit); //Unescaped!
+													writefifobuffer(modem.blockoutputbuffer[connectedclient], datatotransmit); //Unescaped!
 												}
 											}
 										}
@@ -8515,7 +8522,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 											{
 												if ((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) && (Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe == 0)) //PPP?
 												{
-													writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, PPP_END); //END of frame!
+													writefifobuffer(modem.blockoutputbuffer[connectedclient], PPP_END); //END of frame!
 													Packetserver_clients[connectedclient].pppoe_lastrecvbytewasEND = 0; //Last wasn't END! This is ignored for PPP frames (always send them)!
 													packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].ppp_response); //Free the response that's queued for packets to be sent to the client!
 													goto doPPPtransmit; //Don't perform normal receive buffer cleanup, as this isn't used here!
@@ -8524,14 +8531,14 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 												{
 													if (!(Packetserver_clients[connectedclient].pppoe_lastrecvbytewasEND)) //Not doubled END?
 													{
-														writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, PPP_END); //END of frame!
+														writefifobuffer(modem.blockoutputbuffer[connectedclient], PPP_END); //END of frame!
 														Packetserver_clients[connectedclient].pppoe_lastrecvbytewasEND = 1; //Last was END!
 													}
 												}
 											}
 											else //SLIP?
 											{
-												writefifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, SLIP_END); //END of frame!
+												writefifobuffer(modem.blockoutputbuffer[connectedclient], SLIP_END); //END of frame!
 											}
 											freez((void **)&Packetserver_clients[connectedclient].packet, Packetserver_clients[connectedclient].pktlen, "SERVER_PACKET"); //Release the packet to receive new packets again!
 											Packetserver_clients[connectedclient].packet = NULL; //Discard the packet anyway, no matter what!
@@ -8541,19 +8548,10 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 									}
 								}
 							}
-							doPPPtransmit: //NOP operation for the PPP packet that's transmitted!
-							//Transmit the encoded packet buffer to the client!
-							if (fifobuffer_freesize(modem.outputbuffer[connectedclient]) && peekfifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, &datatotransmit)) //Able to transmit something?
-							{
-								for (; fifobuffer_freesize(modem.outputbuffer[connectedclient]) && peekfifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, &datatotransmit);) //Can we still transmit something more?
-								{
-									if (writefifobuffer(modem.outputbuffer[connectedclient], datatotransmit)) //Transmitted?
-									{
-										datatotransmit = readfifobuffer(Packetserver_clients[connectedclient].packetserver_receivebuffer, &datatotransmit); //Discard the data that's being transmitted!
-									}
-								}
-							}
 						}
+
+						doPPPtransmit: //NOP operation for the PPP packet that's transmitted!
+						//Transmit the encoded buffer to the client at the used speed!
 
 						if (Packetserver_clients[connectedclient].packetserver_stage != PACKETSTAGE_PACKETS)
 						{
@@ -9117,7 +9115,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 							if ((Packetserver_clients[connectedclient].packetserver_delay <= 0.0) || (!Packetserver_clients[connectedclient].packetserver_delay)) //Finished?
 							{
 								Packetserver_clients[connectedclient].packetserver_delay = (DOUBLE)0; //Finish the delay!
-								if (writefifobuffer(modem.outputbuffer[connectedclient], Packetserver_clients[connectedclient].packetserver_stage_str[Packetserver_clients[connectedclient].packetserver_stage_byte])) //Transmitted?
+								if (writefifobuffer(modem.blockoutputbuffer[connectedclient], Packetserver_clients[connectedclient].packetserver_stage_str[Packetserver_clients[connectedclient].packetserver_stage_byte])) //Transmitted?
 								{
 									if (++Packetserver_clients[connectedclient].packetserver_stage_byte == safestrlen(Packetserver_clients[connectedclient].packetserver_stage_str, sizeof(Packetserver_clients[connectedclient].packetserver_stage_str))) //Finished?
 									{
@@ -9144,7 +9142,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 									if ((Packetserver_clients[connectedclient].pppoe_discovery_PADS.length && Packetserver_clients[connectedclient].pppoe_discovery_PADS.buffer) == 0) goto sendoutputbuffer; //Don't finish connecting yet! We're requiring an active PADS packet to have been received(PPPOE connection setup)!
 								}
 								Packetserver_clients[connectedclient].packetserver_delay = (DOUBLE)0; //Finish the delay!
-								if (writefifobuffer(modem.outputbuffer[connectedclient], Packetserver_clients[connectedclient].packetserver_stage_str[Packetserver_clients[connectedclient].packetserver_stage_byte])) //Transmitted?
+								if (writefifobuffer(modem.blockoutputbuffer[connectedclient], Packetserver_clients[connectedclient].packetserver_stage_str[Packetserver_clients[connectedclient].packetserver_stage_byte])) //Transmitted?
 								{
 									if (++Packetserver_clients[connectedclient].packetserver_stage_byte == safestrlen(Packetserver_clients[connectedclient].packetserver_stage_str, sizeof(Packetserver_clients[connectedclient].packetserver_stage_str))) //Finished?
 									{
@@ -9190,9 +9188,20 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 					}
 				}
 
-			sendoutputbuffer:
+			sendoutputbuffer: //Send the output buffer to the client or other side, as required!
+				//Transfer the data, one byte at a time if required!
 				if ((modem.connected == 1) && (modem.connectionid>=0)) //Normal connection?
 				{
+					if (fifobuffer_freesize(modem.outputbuffer[0]) && peekfifobuffer(modem.blockoutputbuffer[0], &datatotransmit)) //Able to transmit something?
+					{
+						for (; fifobuffer_freesize(modem.outputbuffer[0]) && peekfifobuffer(modem.blockoutputbuffer[0], &datatotransmit);) //Can we still transmit something more?
+						{
+							if (writefifobuffer(modem.outputbuffer[0], datatotransmit)) //Transmitted?
+							{
+								datatotransmit = readfifobuffer(modem.blockoutputbuffer[0], &datatotransmit); //Discard the data that's being transmitted!
+							}
+						}
+					}
 					if (peekfifobuffer(modem.outputbuffer[0], &datatotransmit)) //Byte available to send?
 					{
 						switch (TCP_SendData(modem.connectionid, datatotransmit)) //Send the data?
@@ -9206,6 +9215,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 								modem.connectionid = -1;
 								fifobuffer_clear(modem.inputdatabuffer[0]); //Clear the output buffer for the next client!
 								fifobuffer_clear(modem.outputbuffer[0]); //Clear the output buffer for the next client!
+								fifobuffer_clear(modem.blockoutputbuffer[0]); //Clear the output buffer for the next client!
 								modem.connected = 0; //Not connected anymore!
 								if (modem.supported < 2) //Normal mode?
 								{
@@ -9219,6 +9229,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 								terminatePacketServer(modem.connectionid); //Clean up the packet server!
 								fifobuffer_clear(modem.inputdatabuffer[0]); //Clear the output buffer for the next client!
 								fifobuffer_clear(modem.outputbuffer[0]); //Clear the output buffer for the next client!
+								fifobuffer_clear(modem.blockoutputbuffer[0]); //Clear the output buffer for the next client!
 							}
 							break; //Abort!
 						case 1: //Sent?
@@ -9283,6 +9294,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 									modem.connectionid = -1;
 									fifobuffer_clear(modem.inputdatabuffer[0]); //Clear the output buffer for the next client!
 									fifobuffer_clear(modem.outputbuffer[0]); //Clear the output buffer for the next client!
+									fifobuffer_clear(modem.blockoutputbuffer[0]); //Clear the output buffer for the next client!
 									modem.connected = 0; //Not connected anymore!
 									if (modem.supported < 2) //Not in passthrough mode?
 									{
@@ -9296,6 +9308,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 									terminatePacketServer(modem.connectionid); //Clean up the packet server!
 									fifobuffer_clear(modem.inputdatabuffer[0]); //Clear the output buffer for the next client!
 									fifobuffer_clear(modem.outputbuffer[0]); //Clear the output buffer for the next client!
+									fifobuffer_clear(modem.blockoutputbuffer[0]); //Clear the output buffer for the next client!
 								}
 								break;
 							default: //Unknown function?
@@ -9310,6 +9323,16 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 					for (connectedclient = 0; connectedclient < Packetserver_totalClients; ++connectedclient) //Check all connected clients!
 					{
 						if (Packetserver_clients[connectedclient].used == 0) continue; //Skip unused clients!
+						if (fifobuffer_freesize(modem.outputbuffer[connectedclient]) && peekfifobuffer(modem.blockoutputbuffer[connectedclient], &datatotransmit)) //Able to transmit something?
+						{
+							for (; fifobuffer_freesize(modem.outputbuffer[connectedclient]) && peekfifobuffer(modem.blockoutputbuffer[connectedclient], &datatotransmit);) //Can we still transmit something more?
+							{
+								if (writefifobuffer(modem.outputbuffer[connectedclient], datatotransmit)) //Transmitted?
+								{
+									datatotransmit = readfifobuffer(modem.blockoutputbuffer[connectedclient], &datatotransmit); //Discard the data that's being transmitted!
+								}
+							}
+						}
 						if (peekfifobuffer(modem.outputbuffer[connectedclient], &datatotransmit)) //Byte available to send?
 						{
 							switch (TCP_SendData(Packetserver_clients[connectedclient].connectionid, datatotransmit)) //Send the data?
@@ -9324,6 +9347,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 									modem.connectionid = -1;
 									fifobuffer_clear(modem.inputdatabuffer[connectedclient]); //Clear the output buffer for the next client!
 									fifobuffer_clear(modem.outputbuffer[connectedclient]); //Clear the output buffer for the next client!
+									fifobuffer_clear(modem.blockoutputbuffer[connectedclient]); //Clear the output buffer for the next client!
 									modem.connected = 0; //Not connected anymore!
 									modem_responseResult(MODEMRESULT_NOCARRIER);
 									modem.datamode = 0; //Drop out of data mode!
@@ -9348,6 +9372,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 									}
 									fifobuffer_clear(modem.inputdatabuffer[connectedclient]); //Clear the output buffer for the next client!
 									fifobuffer_clear(modem.outputbuffer[connectedclient]); //Clear the output buffer for the next client!
+									fifobuffer_clear(modem.blockoutputbuffer[connectedclient]); //Clear the output buffer for the next client!
 									if (Packetserver_availableClients == Packetserver_totalClients) //All cleared?
 									{
 										modem.connected = 0; //Not connected anymore!
@@ -9377,6 +9402,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 									modem.connectionid = -1;
 									fifobuffer_clear(modem.inputdatabuffer[connectedclient]); //Clear the output buffer for the next client!
 									fifobuffer_clear(modem.outputbuffer[connectedclient]); //Clear the output buffer for the next client!
+									fifobuffer_clear(modem.blockoutputbuffer[connectedclient]); //Clear the output buffer for the next client!
 									modem.connected = 0; //Not connected anymore!
 									modem_responseResult(MODEMRESULT_NOCARRIER);
 									modem.datamode = 0; //Drop out of data mode!
@@ -9401,6 +9427,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 										}
 										fifobuffer_clear(modem.inputdatabuffer[connectedclient]); //Clear the output buffer for the next client!
 										fifobuffer_clear(modem.outputbuffer[connectedclient]); //Clear the output buffer for the next client!
+										fifobuffer_clear(modem.blockoutputbuffer[connectedclient]); //Clear the output buffer for the next client!
 										if (Packetserver_availableClients == Packetserver_totalClients) //All cleared?
 										{
 											modem.connected = 0; //Not connected anymore!
