@@ -5275,7 +5275,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			{
 				if (Packetserver_clients[connectedclient].ppp_autodetected && (!request_authenticationspecified)) //Autodetect requires PAP?
 				{
-					if (!packetServerAddPacketBufferQueue(&pppNakFields, common_TypeField)) //NAK it!
+					if (!packetServerAddPacketBufferQueue(&pppNakFields, 0x03)) //NAK it!
 					{
 						goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
 					}
