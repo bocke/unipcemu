@@ -4884,10 +4884,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			if (Packetserver_clients[connectedclient].ppp_IPXCPstatus[1] && Packetserver_clients[connectedclient].ppp_PAPstatus[1] && Packetserver_clients[connectedclient].ppp_LCPstatus[1]) //Fully authenticated and logged in for sending?
 			{
 				//Handle IPX frames in a special way!
-				if (!createPPPstream(&pppstream, &Packetserver_clients[connectedclient].packetserver_transmitbuffer[0], Packetserver_clients[connectedclient].packetserver_transmitlength)) //Create a substream for the information field?
-				{
-					goto ppp_finishpacketbufferqueue; //Finish up!
-				}
+				createPPPstream(&pppstream, &Packetserver_clients[connectedclient].packetserver_transmitbuffer[0], Packetserver_clients[connectedclient].packetserver_transmitlength); //Create a stream for the information field?
 				goto handlePPPIPXframe; //Handle the frame for IPX to use!
 			}
 		}
