@@ -8154,6 +8154,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 	{
 		for (;modem.networkdatatimer>=modem.networkpolltick;) //While polling!
 		{
+			fetchpackets_pcap(); //Handle any packets that need fetching!
 			modem.networkdatatimer -= modem.networkpolltick; //Timing this byte by byte!
 			if (modem.connected || modem.ringing) //Are we connected?
 			{
@@ -9421,8 +9422,6 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 				net.packet = NULL; //Discard if failed to deallocate!
 				net.pktlen = 0; //Not allocated!
 			}
-
-			fetchpackets_pcap(); //Handle any packets that need fetching!
 		} //While polling?
 	} //To poll?
 }
