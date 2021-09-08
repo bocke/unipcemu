@@ -3434,6 +3434,7 @@ byte authstage_checkppp(sword connectedclient, byte datasent)
 			{
 				Packetserver_clients[connectedclient].ppp_autodetected = 1; //Autodetected!
 				packetserver_initStartPPP(connectedclient,1); //Start PPP!
+				Packetserver_clients[connectedclient].ppp_sendframing = 3; //The frame was already started, so continue reading it until it ends! Discard it then!
 				return 1; //Autodetected!
 			}
 		}
@@ -8809,7 +8810,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 								{
 									//PPP END is a toggle for active data!
 									Packetserver_clients[connectedclient].ppp_sendframing ^= 1; //Toggle sender framing!
-									if (Packetserver_clients[connectedclient].ppp_sendframing) //Was just toggled on? Discard the packet that was sending before, as it wasn't a packet!
+									if (Packetserver_clients[connectedclient].ppp_sendframing) //Was just toggled on? Discard the packet that was sending before, as it wasn't a packet! If only bit 2 is set at this point, it's a packet discard instead (and bit 2 needs to be cleared).
 									{
 										if (Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe) //Using PPPOE?
 										{
@@ -8819,6 +8820,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 												goto skipSLIP_PPP; //Don't handle the sending of the packet yet: not ready!
 											}
 										}
+										Packetserver_clients[connectedclient].ppp_sendframing &= 1; //Ignore the discard frame flag, which is bit 1 being set to cause a discard only once for the end-of-frame! The value here is 2(discard) instead of 0(transmit/process). So to make future packets behave again, clear bit 1.
 										goto discardPPPsentframe; //Discard the frame that's currently buffered, if there's any!
 									}
 								}
