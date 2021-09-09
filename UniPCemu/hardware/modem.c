@@ -9324,7 +9324,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 												}
 											}
 											if (Packetserver_clients[connectedclient].packetserver_stage != PACKETSTAGE_PACKETS) goto invalidpacket; //Don't handle SLIP/PPP/IPX yet!
-											if ((ethernetheader.type != headertype) && (!((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) && (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe)))) //Invalid type?
+											if ((ethernetheader.type != headertype) && ((!((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) && (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe))))) //Invalid type?
 											{
 												if (ethernetheader.type == SDL_SwapBE16(0x0806)) //ARP?
 												{
@@ -9378,10 +9378,6 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 															}
 														}
 													}
-												}
-												if ((!((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) && (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe)))) //Applying a filter on the type at all? PPP type handles this itself!
-												{
-													goto invalidpacket; //Invalid packet!
 												}
 											}
 											//Valid packet! Receive it!
