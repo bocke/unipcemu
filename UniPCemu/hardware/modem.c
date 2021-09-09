@@ -9273,7 +9273,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 								{
 									if ((((Packetserver_clients[connectedclient].packetserver_packetpos == 0) && (Packetserver_clients[connectedclient].packetserver_packetack == 0)) || ((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) && (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe))) && (Packetserver_clients[connectedclient].packet)) //New packet?
 									{
-										if (Packetserver_clients[connectedclient].pktlen > (sizeof(ethernetheader.data) + ((Packetserver_clients[connectedclient].packetserver_slipprotocol!=3)?20:(Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe?7:1)))) //Length OK(at least one byte of data and complete IP header) or the PPP packet size (7 extra bytes for PPPOE, 1 byte minimal for PPP)?
+										if (Packetserver_clients[connectedclient].pktlen >= (sizeof(ethernetheader.data) + ((Packetserver_clients[connectedclient].packetserver_slipprotocol!=3)?20:(Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe?7:1)))) //Length OK(at least one byte of data and complete IP header) or the PPP packet size (7 extra bytes for PPPOE, 1 byte minimal for PPP)?
 										{
 											memcpy(&ethernetheader.data, Packetserver_clients[connectedclient].packet, sizeof(ethernetheader.data)); //Copy to the client buffer for inspection!
 											//Next, check for supported packet types!
