@@ -4355,6 +4355,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			result = 1; //Default: handled!
 		}
 		nakreject_ipxcp = 0; //Not IPXCP by default!
+		nakreject_ipcp = 0; //Not IPCP by default!
 		if (Packetserver_clients[connectedclient].ppp_nakfields.buffer) //Gotten NAK fields to send?
 		{
 			memcpy(&pppNakRejectFields, &Packetserver_clients[connectedclient].ppp_nakfields, sizeof(pppNakRejectFields)); //Which one to use!
