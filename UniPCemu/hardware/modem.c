@@ -4314,7 +4314,8 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 	byte username_length; //Username length for PAP!
 	byte password_length; //Password length for PAP!
 	byte pap_authenticated; //Is the user authenticated properly?
-	byte nacreject_ipxcp;
+	byte nakreject_ipxcp;
+	byte nakreject_ipcp;
 	byte request_NakRejectnetworknumber;
 	byte ipxcp_pendingnetworknumber[4];
 	byte request_NakRejectnodenumber;
@@ -4349,7 +4350,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		{
 			result = 1; //Default: handled!
 		}
-		nacreject_ipxcp = 0; //Not IPXCP by default!
+		nakreject_ipxcp = 0; //Not IPXCP by default!
 		if (Packetserver_clients[connectedclient].ppp_nakfields.buffer) //Gotten NAK fields to send?
 		{
 			memcpy(&pppNakRejectFields, &Packetserver_clients[connectedclient].ppp_nakfields, sizeof(pppNakRejectFields)); //Which one to use!
@@ -4361,7 +4362,14 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			memcpy(&pppNakRejectFields, &Packetserver_clients[connectedclient].ppp_nakfields_ipxcp, sizeof(pppNakRejectFields)); //Which one to use!
 			common_CodeField = 3; //NAK!
 			common_IdentifierField = Packetserver_clients[connectedclient].ppp_nakfields_ipxcp_identifier; //The identifier!
-			nacreject_ipxcp = 1; //IPXCP!
+			nakreject_ipxcp = 1; //IPXCP!
+		}
+		else if (Packetserver_clients[connectedclient].ppp_nakfields_ipcp.buffer) //Gotten NAK fields to send?
+		{
+			memcpy(&pppNakRejectFields, &Packetserver_clients[connectedclient].ppp_nakfields_ipcp, sizeof(pppNakRejectFields)); //Which one to use!
+			common_CodeField = 3; //NAK!
+			common_IdentifierField = Packetserver_clients[connectedclient].ppp_nakfields_ipcp_identifier; //The identifier!
+			nakreject_ipcp = 1; //IPCP!
 		}
 		else if (Packetserver_clients[connectedclient].ppp_rejectfields.buffer) //Gotten Reject fields to send?
 		{
@@ -4369,19 +4377,26 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			common_CodeField = 4; //Reject!
 			common_IdentifierField = Packetserver_clients[connectedclient].ppp_rejectfields_identifier; //The identifier!
 		}
-		else
+		else if (Packetserver_clients[connectedclient].ppp_rejectfields_ipxcp.buffer) //Gotten NAK fields to send?
 		{
 			memcpy(&pppNakRejectFields, &Packetserver_clients[connectedclient].ppp_rejectfields_ipxcp, sizeof(pppNakRejectFields)); //Which one to use!
 			common_CodeField = 4; //Reject!
 			common_IdentifierField = Packetserver_clients[connectedclient].ppp_rejectfields_ipxcp_identifier; //The identifier!
-			nacreject_ipxcp = 1; //IPXCP!
+			nakreject_ipxcp = 1; //IPXCP!
+		}
+		else //Gotten NAK fields to send?
+		{
+			memcpy(&pppNakRejectFields, &Packetserver_clients[connectedclient].ppp_rejectfields_ipcp, sizeof(pppNakRejectFields)); //Which one to use!
+			common_CodeField = 4; //Reject!
+			common_IdentifierField = Packetserver_clients[connectedclient].ppp_rejectfields_ipcp_identifier; //The identifier!
+			nakreject_ipcp = 1; //IPXCP!
 		}
 
 		createPPPstream(&pppstream, &pppNakRejectFields.buffer[0], pppNakRejectFields.length); //Create a stream object for us to use, which goes until the end of the payload!
 
 		//Send a Reject/NAK packet to the client!
 		memset(&response, 0, sizeof(response)); //Init the response!
-		if (PPP_addLCPNCPResponseHeader(connectedclient, &response, 1, nacreject_ipxcp?0x802B:0xC021, common_CodeField, common_IdentifierField, PPP_streamdataleft(&pppstream)))
+		if (PPP_addLCPNCPResponseHeader(connectedclient, &response, 1, (nakreject_ipcp?0x8021:(nakreject_ipxcp?0x802B:0xC021)), common_CodeField, common_IdentifierField, PPP_streamdataleft(&pppstream)))
 		{
 			goto ppp_finishpacketbufferqueueNAKReject;
 		}
@@ -4412,7 +4427,11 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			memset(&response, 0, sizeof(response)); //Parsed!
 			if (common_CodeField == 3) //NAK?
 			{
-				if (nacreject_ipxcp) //IPXCP?
+				if (nakreject_ipcp) //IPCP?
+				{
+					packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].ppp_nakfields_ipcp); //Free the queued response!
+				}
+				else if (nakreject_ipxcp) //IPXCP?
 				{
 					packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].ppp_nakfields_ipxcp); //Free the queued response!
 				}
@@ -4423,7 +4442,11 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			}
 			else //Reject?
 			{
-				if (nacreject_ipxcp) //IPXCP?
+				if (nakreject_ipcp) //IPCP?
+				{
+					packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].ppp_rejectfields_ipcp); //Free the queued response!
+				}
+				else if (nakreject_ipxcp) //IPXCP?
 				{
 					packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].ppp_rejectfields_ipxcp); //Free the queued response!
 				}
