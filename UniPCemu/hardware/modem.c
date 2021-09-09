@@ -9249,7 +9249,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 						//Handle packet server packet data transfers into the inputdatabuffer/outputbuffer to the network!
 						if (modem.blockoutputbuffer[connectedclient]) //Properly allocated?
 						{
-							if (net.packet || Packetserver_clients[connectedclient].packet || ((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) && (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe)) || (Packetserver_clients[connectedclient].ppp_response.buffer)) //Packet has been received or processing? Try to start transmit it!
+							if (net.packet || Packetserver_clients[connectedclient].packet || ((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) && (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe))) //Packet has been received or processing? Try to start transmit it!
 							{
 								if (Packetserver_clients[connectedclient].packet == NULL && (net.packet) && (!Packetserver_clients[connectedclient].packet)) //Ready to receive?
 								{
