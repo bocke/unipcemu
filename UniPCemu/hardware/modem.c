@@ -9251,7 +9251,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 						{
 							if (net.packet || Packetserver_clients[connectedclient].packet || ((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) && (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe))) //Packet has been received or processing? Try to start transmit it!
 							{
-								if (Packetserver_clients[connectedclient].packet == NULL && (net.packet) && (!Packetserver_clients[connectedclient].packet)) //Ready to receive?
+								if ((Packetserver_clients[connectedclient].packet == NULL) && (net.packet) && (!Packetserver_clients[connectedclient].packet)) //Ready to receive?
 								{
 									Packetserver_clients[connectedclient].packet = zalloc(net.pktlen,"SERVER_PACKET",NULL); //Allocate a packet to receive!
 									if (Packetserver_clients[connectedclient].packet) //Allocated?
