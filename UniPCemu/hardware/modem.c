@@ -8570,7 +8570,7 @@ byte PPP_parseReceivedPacketForClient(sword connectedclient)
 				}
 				packettype = 0x2B; //IPX packet for PPP!
 			}
-			else if (ethernetheader.type == SDL_SwapBE16(0x8137)) //IP packet?
+			else if (ethernetheader.type == SDL_SwapBE16(0x0800)) //IP packet?
 			{
 				if (!Packetserver_clients[connectedclient].ppp_IPCPstatus[0]) //Not authenticated yet?
 				{
