@@ -7890,12 +7890,12 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 
 				if (memcmp(&ipcp_pendingipaddress, &ipnulladdr, 4) == 0) //0.0.0.0 specified? The client asks for an IP address!
 				{
-					if (!packetServerAddPacketBufferQueue(&pppNakFields, 0x02)) //IPX node number!
+					if (!packetServerAddPacketBufferQueue(&pppNakFields, 0x03)) //IP address!
 					{
 						goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
 					}
 					incIPXaddr(&ipxcp_pendingnodenumber[0]); //Increase the address to the first next valid address to use!
-					if (!packetServerAddPacketBufferQueue(&pppNakFields, 8)) //Correct length!
+					if (!packetServerAddPacketBufferQueue(&pppNakFields, 6)) //Correct length!
 					{
 						goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
 					}
@@ -7912,14 +7912,6 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 						goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
 					}
 					if (!packetServerAddPacketBufferQueue(&pppNakFields, Packetserver_clients[connectedclient].packetserver_staticIP[3])) //None!
-					{
-						goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
-					}
-					if (!packetServerAddPacketBufferQueue(&pppNakFields, ipxcp_pendingnodenumber[4])) //None!
-					{
-						goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
-					}
-					if (!packetServerAddPacketBufferQueue(&pppNakFields, ipxcp_pendingnodenumber[5])) //None!
 					{
 						goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
 					}
