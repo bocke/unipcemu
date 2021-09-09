@@ -4944,8 +4944,6 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				(Packetserver_clients[connectedclient].ppp_LCPstatus[1] && (Packetserver_clients[connectedclient].ppp_LCPstatus[0])) && (Packetserver_clients[connectedclient].ppp_PAPstatus[1] && Packetserver_clients[connectedclient].ppp_PAPstatus[0]) //Don't handle until the upper layers are open!
 				&& (!Packetserver_clients[connectedclient].ppp_IPCPstatus[1])) //Not handling a transmitting of anything atm and LCP for the server-client is down?
 			{
-				//TODO: IPCP
-				goto donthandleServerPPPprotocolyet; //Don't handle the sending of a request from the server yet, because we're suppressed!
 				if (Packetserver_clients[connectedclient].ppp_suppressIPCP) //Suppressing IPCP packets requested from the client?
 				{
 					goto donthandleServerPPPprotocolyet; //Don't handle the sending of a request from the server yet, because we're suppressed!
@@ -7675,7 +7673,6 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		{
 			goto ppp_invalidprotocol; //Don't handle!
 		}
-		goto ppp_invalidprotocol; //Not implemented yet!
 
 		if (!PPP_consumeStream(&pppstream, &common_CodeField)) //Code couldn't be read?
 		{
@@ -8343,12 +8340,56 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			goto ppp_finishpacketbufferqueue2;
 			break;
 		}
+		goto ppp_invalidprotocol; //Passthrough to invalid protocol!
 		//TODO
 		//break;
 	case 0x21: //IP packet?
 		if (Packetserver_clients[connectedclient].ppp_IPXCPstatus[1] && Packetserver_clients[connectedclient].ppp_PAPstatus[1] && Packetserver_clients[connectedclient].ppp_LCPstatus[1]) //Fully authenticated and logged in for sending?
 		{
-			break; //TODO: Sending IP packets. Ignore for now
+			//Handle the IP packet to be sent!
+			if (!createPPPsubstream(&pppstream, &pppstream_requestfield, PPP_streamdataleft(&pppstream))) //Create a substream for the information field?
+			{
+				goto ppp_finishpacketbufferqueue; //Finish up!
+			}
+			//Now, pppstream_requestfield contains the packet we're trying to send!
+
+			//Now, construct the ethernet header!
+			memcpy(&ppptransmitheader.src, &maclocal, 6); //From us!
+			ppptransmitheader.dst[0] = 0xFF;
+			ppptransmitheader.dst[1] = 0xFF;
+			ppptransmitheader.dst[2] = 0xFF;
+			ppptransmitheader.dst[3] = 0xFF;
+			ppptransmitheader.dst[4] = 0xFF;
+			ppptransmitheader.dst[5] = 0xFF; //To a broadcast!
+			ppptransmitheader.type = SDL_SwapBE16(0x0800); //We're an IP packet!
+
+			packetServerFreePacketBufferQueue(&response); //Clear the response to start filling it!
+
+			for (skipdatacounter = 0; skipdatacounter < 14; ++skipdatacounter)
+			{
+				if (!packetServerAddPacketBufferQueue(&response, 0)) //Start making room for the header!
+				{
+					goto ppp_finishpacketbufferqueue; //Keep pending!
+				}
+			}
+
+			memcpy(&response.buffer[0], &ppptransmitheader.data, sizeof(ppptransmitheader.data)); //The ethernet header!
+			//Now, add the entire packet as the content!
+			for (; PPP_peekStream(&pppstream_requestfield, &datab);) //Anything left to add?
+			{
+				if (!PPP_consumeStream(&pppstream_requestfield, &datab)) //Data failed to read?
+				{
+					goto ppp_finishpacketbufferqueue; //Finish up!
+				}
+				if (!packetServerAddPacketBufferQueue(&response, datab)) //Start making room for the header!
+				{
+					goto ppp_finishpacketbufferqueue; //Keep pending!
+				}
+			}
+
+			//Now, the packet we've stored has become the packet to send!
+			sendpkt_pcap(response.buffer, response.length); //Send the response on the network!
+			goto ppp_finishpacketbufferqueue2;
 		}
 	default: //Unknown protocol?
 		ppp_invalidprotocol: //Invalid protocol used when not fully authenticated or verified?
@@ -8423,6 +8464,7 @@ byte PPP_parseReceivedPacketForClient(sword connectedclient)
 	PPP_Stream pppstream, ipxechostream;
 	byte result;
 	byte datab;
+	word packettype; //What PPP packet type to send!
 	result = 0; //Default: discard!
 	//This is supposed to check the packet, parse it and send packets to the connected client in response when it's able to!
 	if (Packetserver_clients[connectedclient].ppp_LCPstatus[0] && Packetserver_clients[connectedclient].ppp_PAPstatus[0]) //Fully authenticated and logged in?
@@ -8433,80 +8475,104 @@ byte PPP_parseReceivedPacketForClient(sword connectedclient)
 
 			//TODO: Receiving IP packets. Ignore for now.
 			memcpy(&ethernetheader.data, Packetserver_clients[connectedclient].packet, sizeof(ethernetheader.data)); //Take a look at the ethernet header!
-			if (ethernetheader.type != SDL_SwapBE16(0x8137)) //We're not an IPX packet!
+			if ((ethernetheader.type != SDL_SwapBE16(0x8137)) && (ethernetheader.type != SDL_SwapBE16(0x0800))) //We're not an IPX or IP packet!
 			{
 				return 0; //Unsupported packet type, discard!
 			}
-
-			if (Packetserver_clients[connectedclient].pktlen >= (30 + sizeof(ethernetheader.data))) //Proper IPX packet received?
+			
+			if (ethernetheader.type == SDL_SwapBE16(0x8137)) //IPX packet?
 			{
-				memcpy(&ipxheader, &Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data)], 30); //Get the IPX header from the packet!
-				createPPPstream(&ipxechostream, &Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data)+30], Packetserver_clients[connectedclient].pktlen - (sizeof(ethernetheader.data)+30)); //Create a stream out of the possible echo packet!
-				createPPPstream(&pppstream, &Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data)+18], 12); //Create a stream out of the IPX packet source address!
-				if (SDL_SwapBE16(ipxheader.DestinationSocketNumber) == 2) //Echo request?
+				if (Packetserver_clients[connectedclient].pktlen >= (30 + sizeof(ethernetheader.data))) //Proper IPX packet received?
 				{
-					if (memcmp(&ipxheader.DestinationNetworkNumber, &Packetserver_clients[connectedclient].ipxcp_networknumber[0], 4) == 0) //Network number match? Don't take the current network for this to prevent conflicts with it.
+					memcpy(&ipxheader, &Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data)], 30); //Get the IPX header from the packet!
+					createPPPstream(&ipxechostream, &Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data) + 30], Packetserver_clients[connectedclient].pktlen - (sizeof(ethernetheader.data) + 30)); //Create a stream out of the possible echo packet!
+					createPPPstream(&pppstream, &Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data) + 18], 12); //Create a stream out of the IPX packet source address!
+					if (SDL_SwapBE16(ipxheader.DestinationSocketNumber) == 2) //Echo request?
 					{
-						//Perform logic for determining what addresses are assigned here.
-						if (memcmp(&ipxheader.DestinationNodeNumber, &ipxbroadcastaddr, 6) == 0) //Destination node is the broadcast address?
+						if (memcmp(&ipxheader.DestinationNetworkNumber, &Packetserver_clients[connectedclient].ipxcp_networknumber[0], 4) == 0) //Network number match? Don't take the current network for this to prevent conflicts with it.
 						{
-							//We're replying to the echo packet!
-							if (!(Packetserver_clients[connectedclient].ppp_IPXCPstatus[0] && Packetserver_clients[connectedclient].ppp_IPXCPstatus[1])) //Not authenticated yet?
+							//Perform logic for determining what addresses are assigned here.
+							if (memcmp(&ipxheader.DestinationNodeNumber, &ipxbroadcastaddr, 6) == 0) //Destination node is the broadcast address?
 							{
-								return 0; //Handled, discard!
+								//We're replying to the echo packet!
+								if (!(Packetserver_clients[connectedclient].ppp_IPXCPstatus[0] && Packetserver_clients[connectedclient].ppp_IPXCPstatus[1])) //Not authenticated yet?
+								{
+									return 0; //Handled, discard!
+								}
+								if (Packetserver_clients[connectedclient].ipxcp_negotiationstatus == 1) //We're opened and trying to renegotiate our own address?
+								{
+									return 0; //Discard: don't send any reply because that would mean invalidating our own address during renegotiation!
+								}
+								//We're authenticated, so send a reply!
+								if (sendIPXechoreply(connectedclient, &ipxechostream, &pppstream)) //Sent a reply?
+								{
+									return 0; //Handled, discard!
+								}
+								else //Couldn't send a reply packet?
+								{
+									return 1; //Keep pending until we can send a reply!
+								}
 							}
-							if (Packetserver_clients[connectedclient].ipxcp_negotiationstatus == 1) //We're opened and trying to renegotiate our own address?
+						}
+						//Check for echo replies on our requests!
+						if ((memcmp(&ipxheader.DestinationNodeNumber, &ipx_servernodeaddr, 6) == 0) && (memcmp(&ipxheader.DestinationNetworkNumber, &ipx_servernetworknumber, 4) == 0)) //Negotiation address and network is being sent to?
+						{
+							if (Packetserver_clients[connectedclient].ipxcp_negotiationstatus == 1) //Waiting for negotiation answers?
 							{
-								return 0; //Discard: don't send any reply because that would mean invalidating our own address during renegotiation!
-							}
-							//We're authenticated, so send a reply!
-							if (sendIPXechoreply(connectedclient, &ipxechostream, &pppstream)) //Sent a reply?
-							{
-								return 0; //Handled, discard!
-							}
-							else //Couldn't send a reply packet?
-							{
-								return 1; //Keep pending until we can send a reply!
+								if (
+									(memcmp(&ipxheader.SourceNodeNumber, &Packetserver_clients[connectedclient].ipxcp_nodenumberecho, 6) == 0) &&
+									(memcmp(&ipxheader.SourceNetworkNumber, &Packetserver_clients[connectedclient].ipxcp_networknumberecho, 4) == 0)) //The requested node number had been found already?
+								{
+									Packetserver_clients[connectedclient].ipxcp_negotiationstatus = 2; //NAK the connection, as the requested node number had been found in the network!
+								}
 							}
 						}
 					}
-					//Check for echo replies on our requests!
-					if ((memcmp(&ipxheader.DestinationNodeNumber, &ipx_servernodeaddr, 6) == 0) && (memcmp(&ipxheader.DestinationNetworkNumber,&ipx_servernetworknumber, 4) == 0)) //Negotiation address and network is being sent to?
+					//Filter out unwanted IPX network/node numbers that aren't intended for us!
+					if (!Packetserver_clients[connectedclient].ppp_IPXCPstatus[0]) //Not authenticated yet?
 					{
-						if (Packetserver_clients[connectedclient].ipxcp_negotiationstatus == 1) //Waiting for negotiation answers?
+						return 0; //Handled, discard!
+					}
+					if (memcmp(&ipxheader.DestinationNetworkNumber, &Packetserver_clients[connectedclient].ipxcp_networknumber[0][0], 4) != 0) //Network number mismatch?
+					{
+						if (memcmp(&ipxheader.DestinationNetworkNumber, &ipx_currentnetworknumber, 4) != 0) //Current network mismatch?
 						{
-							if (
-								(memcmp(&ipxheader.SourceNodeNumber, &Packetserver_clients[connectedclient].ipxcp_nodenumberecho, 6)==0) &&
-								(memcmp(&ipxheader.SourceNetworkNumber, &Packetserver_clients[connectedclient].ipxcp_networknumberecho, 4) == 0)) //The requested node number had been found already?
-							{
-								Packetserver_clients[connectedclient].ipxcp_negotiationstatus = 2; //NAK the connection, as the requested node number had been found in the network!
-							}
+							return 0; //Handled, discard!
+						}
+					}
+					if (memcmp(&ipxheader.DestinationNodeNumber, &Packetserver_clients[connectedclient].ipxcp_nodenumber[0][0], 6) != 0) //Node number mismatch?
+					{
+						if (memcmp(&ipxheader.DestinationNodeNumber, &ipxbroadcastaddr, 6) != 0) //Also not a broadcast?
+						{
+							return 0; //Handled, discard!
 						}
 					}
 				}
-				//Filter out unwanted IPX network/node numbers that aren't intended for us!
-				if (!Packetserver_clients[connectedclient].ppp_IPXCPstatus[0]) //Not authenticated yet?
+				else //Wrong length?
 				{
 					return 0; //Handled, discard!
 				}
-				if (memcmp(&ipxheader.DestinationNetworkNumber, &Packetserver_clients[connectedclient].ipxcp_networknumber[0][0], 4) != 0) //Network number mismatch?
-				{
-					if (memcmp(&ipxheader.DestinationNetworkNumber, &ipx_currentnetworknumber, 4) != 0) //Current network mismatch?
-					{
-						return 0; //Handled, discard!
-					}
-				}
-				if (memcmp(&ipxheader.DestinationNodeNumber, &Packetserver_clients[connectedclient].ipxcp_nodenumber[0][0], 6) != 0) //Node number mismatch?
-				{
-					if (memcmp(&ipxheader.DestinationNodeNumber, &ipxbroadcastaddr, 6) != 0) //Also not a broadcast?
-					{
-						return 0; //Handled, discard!
-					}
-				}
+				packettype = 0x2B; //IPX packet for PPP!
 			}
-			else //Wrong length?
+			else if (ethernetheader.type == SDL_SwapBE16(0x8137)) //IP packet?
 			{
-				return 0; //Handled, discard!
+				if (!Packetserver_clients[connectedclient].ppp_IPCPstatus[0]) //Not authenticated yet?
+				{
+					return 0; //Handled, discard!
+				}
+				if (Packetserver_clients[connectedclient].pktlen < (sizeof(ethernetheader.data) + 16 + 4)) //Not enough length?
+				{
+					return 0; //Incorrect packet: discard!
+				}
+				if ((memcmp(&Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data) + 16], &Packetserver_clients[connectedclient].ipcp_ipaddress[0], 4) != 0) && (memcmp(&Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data) + 16], packetserver_broadcastIP, 4) != 0)) //Static IP mismatch?
+				{
+					return 0; //Invalid packet!
+				}
+				packettype = 0x21; //IP packet for PPP!
+			}
+			else //Unknown packet type?
+			{
+				return 0; //Don't handle it, discard it!
 			}
 
 			//PPP phase of handling the packet has been reached! This packet is meant to be received by the connected client!
