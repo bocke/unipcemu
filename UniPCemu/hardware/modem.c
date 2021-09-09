@@ -8370,13 +8370,8 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			//Now, pppstream_requestfield contains the packet we're trying to send!
 
 			//Now, construct the ethernet header!
-			memcpy(&ppptransmitheader.src, &maclocal, 6); //From us!
-			ppptransmitheader.dst[0] = 0xFF;
-			ppptransmitheader.dst[1] = 0xFF;
-			ppptransmitheader.dst[2] = 0xFF;
-			ppptransmitheader.dst[3] = 0xFF;
-			ppptransmitheader.dst[4] = 0xFF;
-			ppptransmitheader.dst[5] = 0xFF; //To a broadcast!
+			memcpy(&ppptransmitheader.src, &packetserver_sourceMAC, 6); //From us!
+			memcpy(&ppptransmitheader.dst, &packetserver_gatewayMAC, 6); //Gateway MAC is the destination!
 			ppptransmitheader.type = SDL_SwapBE16(0x0800); //We're an IP packet!
 
 			packetServerFreePacketBufferQueue(&response); //Clear the response to start filling it!
