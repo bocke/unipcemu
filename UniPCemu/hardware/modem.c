@@ -8596,7 +8596,7 @@ byte PPP_parseReceivedPacketForClient(sword connectedclient)
 			//Form the PPP packet to receive for the client!
 			memset(&response, 0, sizeof(response)); //Init the response!
 			//Build the PPP header first!
-			if (PPP_addPPPheader(connectedclient, &response, 1, 0x2B))
+			if (PPP_addPPPheader(connectedclient, &response, 1, packettype)) //Sending the packet type header to the client!
 			{
 				goto ppp_finishpacketbufferqueue_ppprecv;
 			}
