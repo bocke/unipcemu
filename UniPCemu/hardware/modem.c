@@ -3929,6 +3929,7 @@ byte ipx_servernetworknumber[4] = { 0x00,0x00,0x00,0x01 }; //Server network numb
 byte ipxbroadcastaddr[6] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF}; //IPX Broadcast address
 byte ipxnulladdr[6] = {0x00,0x00,0x00,0x00,0x00,0x00 }; //IPX Forbidden NULL address
 byte ipx_servernodeaddr[6] = { 0x00,0x00,0x00,0x00,0x00,0x01 }; //IPX server node address!
+byte ipnulladdr[6] = { 0x00,0x00,0x00,0x00 }; //IP requesting address when we're to NAK it with the specified address.
 
 byte dummyaddress;
 //result: 1 for OK address. 0 for overflow! NULL and Broadcast and special addresses are skipped automatically. addrsizeleft should be 6 (the size of an IPX address)
@@ -7757,19 +7758,19 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 						{
 							goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
 						}
-						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0)) //None!
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, Packetserver_clients[connectedclient].packetserver_staticIP[0])) //None!
 						{
 							goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
 						}
-						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0)) //None!
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, Packetserver_clients[connectedclient].packetserver_staticIP[1])) //None!
 						{
 							goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
 						}
-						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0)) //None!
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, Packetserver_clients[connectedclient].packetserver_staticIP[2])) //None!
 						{
 							goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
 						}
-						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0)) //None!
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, Packetserver_clients[connectedclient].packetserver_staticIP[3])) //None!
 						{
 							goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
 						}
@@ -7887,48 +7888,43 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				}
 				*/
 
-				/*
-				if (Packetserver_clients[connectedclient].ipxcp_negotiationstatus != 3) //Not ready yet?
+				if (memcmp(&ipcp_pendingipaddress, &ipnulladdr, 4) == 0) //0.0.0.0 specified? The client asks for an IP address!
 				{
-					if (Packetserver_clients[connectedclient].ipxcp_negotiationstatus == 2) //NAK has been reached?
+					if (!packetServerAddPacketBufferQueue(&pppNakFields, 0x02)) //IPX node number!
 					{
-						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0x02)) //IPX node number!
-						{
-							goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
-						}
-						incIPXaddr(&ipxcp_pendingnodenumber[0]); //Increase the address to the first next valid address to use!
-						if (!packetServerAddPacketBufferQueue(&pppNakFields, 8)) //Correct length!
-						{
-							goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
-						}
-						if (!packetServerAddPacketBufferQueue(&pppNakFields, ipxcp_pendingnodenumber[0])) //None!
-						{
-							goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
-						}
-						if (!packetServerAddPacketBufferQueue(&pppNakFields, ipxcp_pendingnodenumber[1])) //None!
-						{
-							goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
-						}
-						if (!packetServerAddPacketBufferQueue(&pppNakFields, ipxcp_pendingnodenumber[2])) //None!
-						{
-							goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
-						}
-						if (!packetServerAddPacketBufferQueue(&pppNakFields, ipxcp_pendingnodenumber[3])) //None!
-						{
-							goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
-						}
-						if (!packetServerAddPacketBufferQueue(&pppNakFields, ipxcp_pendingnodenumber[4])) //None!
-						{
-							goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
-						}
-						if (!packetServerAddPacketBufferQueue(&pppNakFields, ipxcp_pendingnodenumber[5])) //None!
-						{
-							goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
-						}
-						goto ipcp_requestfixnodenumber; //Request a fix for the node number!
+						goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
 					}
+					incIPXaddr(&ipxcp_pendingnodenumber[0]); //Increase the address to the first next valid address to use!
+					if (!packetServerAddPacketBufferQueue(&pppNakFields, 8)) //Correct length!
+					{
+						goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+					}
+					if (!packetServerAddPacketBufferQueue(&pppNakFields, Packetserver_clients[connectedclient].packetserver_staticIP[0])) //None!
+					{
+						goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+					}
+					if (!packetServerAddPacketBufferQueue(&pppNakFields, Packetserver_clients[connectedclient].packetserver_staticIP[1])) //None!
+					{
+						goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+					}
+					if (!packetServerAddPacketBufferQueue(&pppNakFields, Packetserver_clients[connectedclient].packetserver_staticIP[2])) //None!
+					{
+						goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+					}
+					if (!packetServerAddPacketBufferQueue(&pppNakFields, Packetserver_clients[connectedclient].packetserver_staticIP[3])) //None!
+					{
+						goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+					}
+					if (!packetServerAddPacketBufferQueue(&pppNakFields, ipxcp_pendingnodenumber[4])) //None!
+					{
+						goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+					}
+					if (!packetServerAddPacketBufferQueue(&pppNakFields, ipxcp_pendingnodenumber[5])) //None!
+					{
+						goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+					}
+					goto ipcp_requestfixnodenumber; //Request a fix for the node number!
 				}
-				*/
 
 				//Apply the parameters to the session and send back an request-ACK!
 				memset(&response, 0, sizeof(response)); //Init the response!
