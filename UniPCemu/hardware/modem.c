@@ -9003,12 +9003,14 @@ void packetserver_initStartPPP(sword connectedclient, byte autodetected)
 	Packetserver_clients[connectedclient].ppp_serverLCPstatus = 0; //Start out with initialized PPP LCP connection for the server to client connection!
 	Packetserver_clients[connectedclient].ppp_serverPAPstatus = 0; //Start out with initialized PPP PAP connection for the server to client connection!
 	Packetserver_clients[connectedclient].ppp_serverIPXCPstatus = 0; //Start out with initialized PPP IPXCP connection for the server to client connection!
+	Packetserver_clients[connectedclient].ppp_serverIPCPstatus = 0; //Start out with initialized PPP IPCP connection for the server to client connection!
 	Packetserver_clients[connectedclient].ppp_serverLCPrequesttimer = (DOUBLE)0.0f; //Restart timing!
 	Packetserver_clients[connectedclient].ppp_serverPAPrequesttimer = (DOUBLE)0.0f; //Restart timing!
 	Packetserver_clients[connectedclient].ppp_serverIPXCPrequesttimer = (DOUBLE)0.0f; //Restart timing!
+	Packetserver_clients[connectedclient].ppp_serverIPCPrequesttimer = (DOUBLE)0.0f; //Restart timing!
 	Packetserver_clients[connectedclient].ipxcp_negotiationstatustimer = (DOUBLE)0.0f; //Restart timing!
-	Packetserver_clients[connectedclient].ppp_LCPstatus[0] = Packetserver_clients[connectedclient].ppp_PAPstatus[0] = Packetserver_clients[connectedclient].ppp_IPXCPstatus[0] = 0; //Reset all protocols to init state!
-	Packetserver_clients[connectedclient].ppp_LCPstatus[1] = Packetserver_clients[connectedclient].ppp_PAPstatus[1] = Packetserver_clients[connectedclient].ppp_IPXCPstatus[1] = 0; //Reset all protocols to init state!
+	Packetserver_clients[connectedclient].ppp_LCPstatus[0] = Packetserver_clients[connectedclient].ppp_PAPstatus[0] = Packetserver_clients[connectedclient].ppp_IPXCPstatus[0] = Packetserver_clients[connectedclient].ppp_IPCPstatus[0] = 0; //Reset all protocols to init state!
+	Packetserver_clients[connectedclient].ppp_LCPstatus[1] = Packetserver_clients[connectedclient].ppp_PAPstatus[1] = Packetserver_clients[connectedclient].ppp_IPXCPstatus[1] = Packetserver_clients[connectedclient].ppp_IPCPstatus[1] = 0; //Reset all protocols to init state!
 	Packetserver_clients[connectedclient].asynccontrolcharactermap[0] = Packetserver_clients[connectedclient].asynccontrolcharactermap[1] = 0xFFFFFFFF; //Initialize the Async Control Character Map to init value!
 	packetServerFreePacketBufferQueue(&Packetserver_clients[connectedclient].ppp_response); //Free the response that's queued for packets to be sent to the client if anything is left!
 	Packetserver_clients[connectedclient].ppp_sendframing = 0; //Init: no sending active framing yet!
