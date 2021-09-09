@@ -8360,7 +8360,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		//TODO
 		//break;
 	case 0x21: //IP packet?
-		if (Packetserver_clients[connectedclient].ppp_IPXCPstatus[1] && Packetserver_clients[connectedclient].ppp_PAPstatus[1] && Packetserver_clients[connectedclient].ppp_LCPstatus[1]) //Fully authenticated and logged in for sending?
+		if (Packetserver_clients[connectedclient].ppp_IPCPstatus[1] && Packetserver_clients[connectedclient].ppp_PAPstatus[1] && Packetserver_clients[connectedclient].ppp_LCPstatus[1]) //Fully authenticated and logged in for sending?
 		{
 			//Handle the IP packet to be sent!
 			if (!createPPPsubstream(&pppstream, &pppstream_requestfield, PPP_streamdataleft(&pppstream))) //Create a substream for the information field?
