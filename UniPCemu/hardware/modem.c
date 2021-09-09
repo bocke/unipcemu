@@ -9328,7 +9328,9 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 											{
 												if (ethernetheader.type == SDL_SwapBE16(0x0806)) //ARP?
 												{
-													if (Packetserver_clients[connectedclient].packetserver_slipprotocol == 1) //IPv4 protocol used?
+													if ((Packetserver_clients[connectedclient].packetserver_slipprotocol == 1) || //IPv4 used?
+														((Packetserver_clients[connectedclient].packetserver_slipprotocol==3) && (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe) && (Packetserver_clients[connectedclient].ppp_IPCPstatus[0])) //IPv4 used on PPP?
+														) //IPv4 protocol used?
 													{
 														//Always handle ARP packets, if we're IPv4 type!
 														//TODO: Check if it's a request for us. If so, reply with our IPv4 address!
@@ -9343,7 +9345,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 																{
 																	goto handleserverARP; //Default server packet!
 																}
-																if (memcmp(&ARPpacket.TPA, &Packetserver_clients[connectedclient].packetserver_staticIP, 4) != 0) //Static IP mismatch?
+																if (memcmp(&ARPpacket.TPA, ((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) && (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe) && (Packetserver_clients[connectedclient].ppp_IPCPstatus[0]))?&Packetserver_clients[connectedclient].ipcp_ipaddress[0]:&Packetserver_clients[connectedclient].packetserver_staticIP, 4) != 0) //Static IP mismatch?
 																{
 																	goto invalidpacket; //Invalid packet!
 																}
