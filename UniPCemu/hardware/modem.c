@@ -201,6 +201,8 @@ uint8_t packetserver_broadcastMAC[6] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF }; /
 byte packetserver_sourceMAC[6]; //Our MAC to send from!
 byte packetserver_gatewayMAC[6]; //Gateway MAC to send to!
 byte packetserver_defaultstaticIP[4] = { 0,0,0,0 }; //Static IP to use?
+byte packetserver_defaultgatewayIP = 0; //Gotten a default gateway IP?
+byte packetserver_defaultgatewayIPaddr[4] = { 0,0,0,0 }; //Default gateway IP to use?
 byte packetserver_broadcastIP[4] = { 0xFF,0xFF,0xFF,0xFF }; //Broadcast IP to use?
 byte packetserver_usedefaultStaticIP = 0; //Use static IP?
 char packetserver_defaultstaticIPstr[256] = ""; //Static IP, string format
@@ -685,9 +687,33 @@ void initPcap() {
 			}
 		}
 	}
+	if (safestrlen(&BIOS_Settings.ethernetserver_settings.gatewayIPaddress[0], 256) >= 12) //Valid length to convert IP addresses?
+	{
+		p = &BIOS_Settings.ethernetserver_settings.gatewayIPaddress[0]; //For scanning the IP!
+		if (readIPnumber(&p, &IPnumbers[0]))
+		{
+			if (readIPnumber(&p, &IPnumbers[1]))
+			{
+				if (readIPnumber(&p, &IPnumbers[2]))
+				{
+					if (readIPnumber(&p, &IPnumbers[3]))
+					{
+						if (*p == '\0') //EOS?
+						{
+							//Automatic port?
+							memcpy(&packetserver_defaultgatewayIPaddr, &IPnumbers, 4); //Set read IP!
+							packetserver_defaultgatewayIP = 1; //Static IP set!
+						}
+					}
+				}
+			}
+		}
+	}
 #else
 	memset(&maclocal, 0, sizeof(maclocal));
 	memset(&packetserver_gatewayMAC, 0, sizeof(packetserver_gatewayMAC));
+	memset(&packetserver_defaultgatewayIPaddr, 0, sizeof(packetserver_defaultgatewayIPaddr));
+	packetserver_defaultgatewayIP = 0; //No gateway IP!
 #endif
 
 	dolog("ethernetcard","Receiver MAC address: %02x:%02x:%02x:%02x:%02x:%02x",maclocal[0],maclocal[1],maclocal[2],maclocal[3],maclocal[4],maclocal[5]);
@@ -4994,8 +5020,8 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 					Packetserver_clients[connectedclient].ppp_serverIPCPidentifier = 0; //Init!
 				retryServerIPCPnegotiation:
 					Packetserver_clients[connectedclient].ppp_serverIPCPstatus = 1; //Have initialized!
-					Packetserver_clients[connectedclient].ppp_serverIPCP_haveipaddress = 1; //Default by trying none!
-					memcpy(&Packetserver_clients[connectedclient].ppp_serverIPCP_pendingipaddress, &ip_serveripaddress, sizeof(Packetserver_clients[connectedclient].ppp_serverIPCP_pendingipaddress)); //Initialize the network number
+					Packetserver_clients[connectedclient].ppp_serverIPCP_haveipaddress = packetserver_defaultgatewayIP; //Gotten a default gateway IP to send to the client? If so, try to let the client know!
+					memcpy(&Packetserver_clients[connectedclient].ppp_serverIPCP_pendingipaddress, &packetserver_defaultgatewayIPaddr, sizeof(Packetserver_clients[connectedclient].ppp_serverIPCP_pendingipaddress)); //Initialize the network number
 				}
 				else if (Packetserver_clients[connectedclient].ppp_serverIPCPstatus > 1) //Resetting?
 				{
