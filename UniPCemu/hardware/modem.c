@@ -6574,7 +6574,6 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				if (pap_authenticated) //Authenticated?
 				{
 					Packetserver_clients[connectedclient].ppp_PAPstatus[1] = 1; //Authenticated!
-					if (Packetserver_clients[connectedclient].ppp_autodetected) //Requires setting it's IP?
 					//Determine the IP address!
 					memcpy(&Packetserver_clients[connectedclient].packetserver_staticIP, &packetserver_defaultstaticIP, sizeof(Packetserver_clients[connectedclient].packetserver_staticIP)); //Use the default IP!
 					safestrcpy(Packetserver_clients[connectedclient].packetserver_staticIPstr, sizeof(Packetserver_clients[connectedclient].packetserver_staticIPstr), packetserver_defaultstaticIPstr); //Formulate the address!
