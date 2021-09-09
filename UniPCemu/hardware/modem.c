@@ -8580,7 +8580,7 @@ byte PPP_parseReceivedPacketForClient(sword connectedclient)
 				{
 					return 0; //Incorrect packet: discard!
 				}
-				if ((memcmp(&Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data) + 16], &Packetserver_clients[connectedclient].ipcp_ipaddress[0], 4) != 0) && (memcmp(&Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data) + 16], packetserver_broadcastIP, 4) != 0)) //Static IP mismatch?
+				if ((memcmp(&Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data) + 16], &Packetserver_clients[connectedclient].ipcp_ipaddress[0], 4) != 0) && (memcmp(&Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data) + 16], &packetserver_broadcastIP, 4) != 0)) //Static IP mismatch?
 				{
 					return 0; //Invalid packet!
 				}
@@ -9288,7 +9288,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 											//Now, check the normal receive parameters!
 											if (Packetserver_clients[connectedclient].packetserver_useStaticIP && (headertype == SDL_SwapBE16(0x0800)) && (ethernetheader.type==headertype) && (!((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) && (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe)))) //IP filter to apply?
 											{
-												if ((memcmp(&Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data) + 16], Packetserver_clients[connectedclient].packetserver_staticIP, 4) != 0) && (memcmp(&Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data) + 16], packetserver_broadcastIP, 4) != 0)) //Static IP mismatch?
+												if ((memcmp(&Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data) + 16], Packetserver_clients[connectedclient].packetserver_staticIP, 4) != 0) && (memcmp(&Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data) + 16], &packetserver_broadcastIP, 4) != 0)) //Static IP mismatch?
 												{
 													goto invalidpacket; //Invalid packet!
 												}
