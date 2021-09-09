@@ -6236,8 +6236,6 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 
 			c = 0; //When using multiple users, start with the very first user!
 			retrynextuser:
-			if (Packetserver_clients[connectedclient].ppp_autodetected) //Autodetect means we're going to have to check all users in our database for valid credentials to match.
-			{
 				if (!(BIOS_Settings.ethernetserver_settings.users[c].username[c] && BIOS_Settings.ethernetserver_settings.users[c].password[c])) //Gotten no credentials?
 				{
 					if (c < (NUMITEMS(BIOS_Settings.ethernetserver_settings.users) - 1)) //Not all done yet?
@@ -6267,7 +6265,6 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 						goto PAP_loginfailed;
 					}
 				}
-			}
 			//Now, try the current or originally logged in user.
 			if (!createPPPsubstream(&pppstream, &pppstream_requestfield, MAX(common_LengthField, 4) - 4)) //Not enough room for the data?
 			{
@@ -6323,7 +6320,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				}
 			}
 
-			if ((!pap_authenticated) && Packetserver_clients[connectedclient].ppp_autodetected) //Login failed for this user? Try the next one if any is available.
+			if ((!pap_authenticated)) //Login failed for this user? Try the next one if any is available.
 			{
 				if (c < (NUMITEMS(BIOS_Settings.ethernetserver_settings.users) - 1)) //Not all done yet?
 				{
@@ -6336,7 +6333,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				}
 			}
 		PAP_loginfailed: //The login has failed?
-			if (Packetserver_clients[connectedclient].ppp_autodetected && (!pap_authenticated)) //Autodetect has went through all records available and couldn't login?
+			if (!pap_authenticated) //Went through all records available and couldn't login?
 			{
 				memset(&Packetserver_clients[connectedclient].packetserver_username, 0, sizeof(&Packetserver_clients[connectedclient].packetserver_username)); //Clear it again!
 				memset(&Packetserver_clients[connectedclient].packetserver_password, 0, sizeof(&Packetserver_clients[connectedclient].packetserver_password)); //Clear it again!
@@ -6378,6 +6375,48 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				if (pap_authenticated) //Authenticated?
 				{
 					Packetserver_clients[connectedclient].ppp_PAPstatus[1] = 1; //Authenticated!
+					if (Packetserver_clients[connectedclient].ppp_autodetected) //Requires setting it's IP?
+					//Determine the IP address!
+					memcpy(&Packetserver_clients[connectedclient].packetserver_staticIP, &packetserver_defaultstaticIP, sizeof(Packetserver_clients[connectedclient].packetserver_staticIP)); //Use the default IP!
+					safestrcpy(Packetserver_clients[connectedclient].packetserver_staticIPstr, sizeof(Packetserver_clients[connectedclient].packetserver_staticIPstr), packetserver_defaultstaticIPstr); //Formulate the address!
+					Packetserver_clients[connectedclient].packetserver_useStaticIP = 0; //Default: not detected!
+					if (safestrlen(&BIOS_Settings.ethernetserver_settings.users[c].IPaddress[0], 256) >= 12) //Valid length to convert IP addresses?
+					{
+						p = &BIOS_Settings.ethernetserver_settings.users[c].IPaddress[0]; //For scanning the IP!
+
+						if (readIPnumber(&p, &IPnumbers[0]))
+						{
+							if (readIPnumber(&p, &IPnumbers[1]))
+							{
+								if (readIPnumber(&p, &IPnumbers[2]))
+								{
+									if (readIPnumber(&p, &IPnumbers[3]))
+									{
+										if (*p == '\0') //EOS?
+										{
+											//Automatic port?
+											snprintf(Packetserver_clients[connectedclient].packetserver_staticIPstr, sizeof(Packetserver_clients[connectedclient].packetserver_staticIPstr), "%u.%u.%u.%u", IPnumbers[0], IPnumbers[1], IPnumbers[2], IPnumbers[3]); //Formulate the address!
+											memcpy(&Packetserver_clients[connectedclient].packetserver_staticIP, &IPnumbers, 4); //Set read IP!
+											Packetserver_clients[connectedclient].packetserver_useStaticIP = 1; //Static IP set!
+										}
+									}
+								}
+							}
+						}
+					}
+					else if (safestrlen(&BIOS_Settings.ethernetserver_settings.users[c].IPaddress[0], 256) == 4) //Might be DHCP?
+					{
+						if ((strcmp(BIOS_Settings.ethernetserver_settings.users[c].IPaddress, "DHCP") == 0) || (strcmp(BIOS_Settings.ethernetserver_settings.users[0].IPaddress, "DHCP") == 0)) //DHCP used for this user or all users?
+						{
+							//Packetserver_clients[connectedclient].packetserver_useStaticIP = 2; //DHCP requested instead of static IP! Not used yet!
+						}
+					}
+					if (!Packetserver_clients[connectedclient].packetserver_useStaticIP) //Not specified? Use default!
+					{
+						safestrcpy(Packetserver_clients[connectedclient].packetserver_staticIPstr, sizeof(Packetserver_clients[connectedclient].packetserver_staticIPstr), packetserver_defaultstaticIPstr); //Default!
+						memcpy(&Packetserver_clients[connectedclient].packetserver_staticIP, &packetserver_defaultstaticIP, 4); //Set read IP!
+						Packetserver_clients[connectedclient].packetserver_useStaticIP = packetserver_usedefaultStaticIP; //Static IP set!
+					}
 				}
 				else
 				{
