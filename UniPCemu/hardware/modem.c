@@ -3929,7 +3929,7 @@ byte ipx_servernetworknumber[4] = { 0x00,0x00,0x00,0x01 }; //Server network numb
 byte ipxbroadcastaddr[6] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF}; //IPX Broadcast address
 byte ipxnulladdr[6] = {0x00,0x00,0x00,0x00,0x00,0x00 }; //IPX Forbidden NULL address
 byte ipx_servernodeaddr[6] = { 0x00,0x00,0x00,0x00,0x00,0x01 }; //IPX server node address!
-byte ipnulladdr[6] = { 0x00,0x00,0x00,0x00 }; //IP requesting address when we're to NAK it with the specified address.
+byte ipnulladdr[4] = { 0x00,0x00,0x00,0x00 }; //IP requesting address when we're to NAK it with the specified address.
 
 byte dummyaddress;
 //result: 1 for OK address. 0 for overflow! NULL and Broadcast and special addresses are skipped automatically. addrsizeleft should be 6 (the size of an IPX address)
