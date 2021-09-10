@@ -842,9 +842,6 @@ void fetchpackets_pcap() { //Handle any packets to process!
 #if defined(PACKETSERVER_ENABLED) && !defined(NOPCAP)
 	//Filter parameters to apply!
 	ETHERNETHEADER ethernetheader; //The header to inspect!
-	uint_32 detselfrelpos;
-	uint_32 detselfdataleft;
-	byte IP_useIHL;
 
 	if (pcap_enabled) //Enabled?
 	{
@@ -885,39 +882,7 @@ void fetchpackets_pcap() { //Handle any packets to process!
 				}
 
 				//Check for the client first! Don't receive anything that is our own traffic (the connected client)!
-				if (ethernetheader.type == SDL_SwapBE16(0x0800)) //IP packet?
-				{
-					//Check for TCP packet in the IP packet!
-					detselfrelpos = sizeof(ethernetheader.data); //Start of the IP packet!
-					detselfdataleft = hdr->len - detselfrelpos; //Data left to parse as subpackets!
-					if (detselfdataleft >= 20) //Enough data left to parse?
-					{
-						if (pktdata[detselfrelpos + 9] == 6) //TCP protocol?
-						{
-							if ((memcmp(&pktdata[detselfrelpos + 0xC], &packetserver_defaultstaticIP[0], 4) == 0) || (memcmp(&pktdata[detselfrelpos + 0x10], &packetserver_defaultstaticIP[0], 4) == 0)) //Our  own IP in source or destination?
-							{
-								IP_useIHL = ((pktdata[detselfrelpos] & 0xF) << 5); //IHL field, in bytes!
-								if ((detselfdataleft > IP_useIHL) && (IP_useIHL)) //Enough left for the subpacket?
-								{
-									detselfrelpos += IP_useIHL; //TCP Data position!
-									detselfdataleft -= IP_useIHL; //How much data if left!
-									//Now we're at the start of the TCP packet!
-									if (detselfdataleft >= 4) //Valid to filter the port?
-									{
-										if ((SDL_SwapBE16(*((word*)&pktdata[detselfrelpos])) == modem.connectionport) || //Own source port?
-											(SDL_SwapBE16(*((word*)&pktdata[detselfrelpos + 2])) == modem.connectionport) //Own destination port?
-											)
-										{
-											//Discard the received packet, so nobody else handles it too!
-											goto invalidpacket_receivefilter; //Ignore this packet and check for more!
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-				else if (ethernetheader.type == SDL_SwapBE16(0x0806)) //ARP?
+				if (ethernetheader.type == SDL_SwapBE16(0x0806)) //ARP?
 				{
 					if ((hdr->len - sizeof(ethernetheader.data)) != 28) //Wrong length?
 					{
@@ -8763,9 +8728,9 @@ typedef struct PACKED
 {
 	byte version_IHL; //Low 4 bits=Version, High 4 bits is size in 32-bit dwords.
 	byte DSCP_ECN;
-	word totallength;
+	word totallength; //Total length of allocation for the entire packet to be received.
 	word identification;
-	byte flags0_2_fragmentoffsethigh7_3; //flags 2:0, fragment offset high 7:3(bits 4:0 of the high byte)
+	byte flags7_5_fragmentoffsethigh4_0; //flags 2:0, fragment offset high 7:3(bits 4:0 of the high byte)
 	byte fragmentoffset; //Remainder of fragment offset low byte
 	byte TTL;
 	byte protocol;
@@ -8975,7 +8940,7 @@ byte getIPv4header(byte* data, IPv4header* IPv4_header, word dataleft, byte perf
 		return 0; //Failed: invalid header!
 	}
 	memcpy(IPv4_header, data, 20); //Set the header directly from the data!
-	currentheaderlength = ((IPv4_header->version_IHL >> 4) << 2); //Header length, in doublewords!
+	currentheaderlength = ((IPv4_header->version_IHL & 0xF) << 2); //Header length, in doublewords!
 	if (dataleft < currentheaderlength) //Not enough data for the full header?
 	{
 		return 0; //Failed: invalid header!
@@ -9004,7 +8969,7 @@ byte setIPv4headerChecksum(byte* data, IPv4header* IPv4_header)
 {
 	word checksum;
 	word headerlength;
-	headerlength = ((IPv4_header->version_IHL >> 4) << 2); //Header length, in doublewords!
+	headerlength = ((IPv4_header->version_IHL & 0xF) << 2); //Header length, in doublewords!
 	memcpy(data, IPv4_header, 20); //Update the IP packet as requested!
 	if (!doIPv4_checksum(data, headerlength, 0, &checksum)) //Failed checksum creation?
 	{
