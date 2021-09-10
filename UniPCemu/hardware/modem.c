@@ -328,7 +328,9 @@ typedef struct
 	byte ppp_IPXCPstatus[2]; //0=Not connected, 1=Connected
 	byte ppp_IPCPstatus[2]; //0=Not connected, 1=Connected
 	byte ppp_suppressIPXCP; //IPXCP suppression requested by the client?
+	byte ppp_suppressIPX; //IPX suppression requested by the client?
 	byte ppp_suppressIPCP; //IPXCP suppression requested by the client?
+	byte ppp_suppressIP; //IP suppression requested by the client?
 	byte ipxcp_networknumber[2][4];
 	byte ipxcp_nodenumber[2][6];
 	byte ipxcp_networknumberecho[4]; //Echo address during negotiation
@@ -6373,9 +6375,11 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 					break;
 				case 0x2B: //IPX
 					//IPX is closed? This shouldn't happen?
+					Packetserver_clients[connectedclient].ppp_suppressIPX = 3; //Suppress IPXCP from sending from the server unless requested again!
 					break;
 				case 0x21: //IP
 					//IP is closed? This shouldn't happen?
+					Packetserver_clients[connectedclient].ppp_suppressIP = 3; //Suppress IPXCP from sending from the server unless requested again!
 					break;
 				default: //Unknown protocol we're not using?
 					//Ignore it entirely!
@@ -7151,6 +7155,10 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 					Packetserver_clients[connectedclient].ppp_IPXCPstatus[0] = 1; //Open!
 					Packetserver_clients[connectedclient].ppp_suppressIPXCP &= ~1; //Default: not supressing as we're opened!
 					Packetserver_clients[connectedclient].ipxcp_negotiationstatus = 0; //No negotation anymore!
+					if (Packetserver_clients[connectedclient].ppp_IPXCPstatus[1]) //Open?
+					{
+						Packetserver_clients[connectedclient].ppp_suppressIPX = 0; //Default: not supressing as we're opened!
+					}
 					memcpy(&Packetserver_clients[connectedclient].ipxcp_networknumber[0],&ipxcp_pendingnetworknumber, sizeof(ipxcp_pendingnetworknumber)); //Network number specified or 0 for none!
 					memcpy(&Packetserver_clients[connectedclient].ipxcp_nodenumber[0],&ipxcp_pendingnodenumber, sizeof(ipxcp_pendingnodenumber)); //Node number or 0 for none!
 					Packetserver_clients[connectedclient].ipxcp_routingprotocol[0] = ipxcp_pendingroutingprotocol; //The routing protocol!
@@ -7437,6 +7445,10 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				//Now, apply the request properly!
 				Packetserver_clients[connectedclient].ppp_IPXCPstatus[1] = 1; //Open!
 				Packetserver_clients[connectedclient].ppp_suppressIPXCP &= ~2; //Default: not supressing as we're opened!
+				if (Packetserver_clients[connectedclient].ppp_IPXCPstatus[0]) //Open?
+				{
+					Packetserver_clients[connectedclient].ppp_suppressIPX = 0; //Default: not supressing as we're opened!
+				}
 				memcpy(&Packetserver_clients[connectedclient].ipxcp_networknumber[1], &ipxcp_pendingnetworknumber, sizeof(ipxcp_pendingnetworknumber)); //Network number specified or 0 for none!
 				memcpy(&Packetserver_clients[connectedclient].ipxcp_nodenumber[1], &ipxcp_pendingnodenumber, sizeof(ipxcp_pendingnodenumber)); //Node number or 0 for none!
 				Packetserver_clients[connectedclient].ipxcp_routingprotocol[1] = ipxcp_pendingroutingprotocol; //The routing protocol!
@@ -8012,6 +8024,10 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 					//Now, apply the request properly!
 					Packetserver_clients[connectedclient].ppp_IPCPstatus[0] = 1; //Open!
 					Packetserver_clients[connectedclient].ppp_suppressIPCP &= ~1; //Default: not supressing as we're opened!
+					if (Packetserver_clients[connectedclient].ppp_IPCPstatus[1]) //Open?
+					{
+						Packetserver_clients[connectedclient].ppp_suppressIP = 0; //Default: not supressing as we're opened!
+					}
 					//Packetserver_clients[connectedclient].ipxcp_negotiationstatus = 0; //No negotation anymore!
 					memcpy(&Packetserver_clients[connectedclient].ipcp_ipaddress[0],&ipcp_pendingipaddress, sizeof(ipcp_pendingipaddress)); //Network number specified or 0 for none!
 				}
@@ -8177,6 +8193,10 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				//Now, apply the request properly!
 				Packetserver_clients[connectedclient].ppp_IPCPstatus[1] = 1; //Open!
 				Packetserver_clients[connectedclient].ppp_suppressIPCP &= ~2; //Default: not supressing as we're opened!
+				if (Packetserver_clients[connectedclient].ppp_IPCPstatus[0]) //Open?
+				{
+					Packetserver_clients[connectedclient].ppp_suppressIP = 0; //Default: not supressing as we're opened!
+				}
 				memcpy(&Packetserver_clients[connectedclient].ipcp_ipaddress[1], &ipcp_pendingipaddress, sizeof(ipcp_pendingipaddress)); //Network number specified or 0 for none!
 		//Packetserver_clients[connectedclient].ipxcp_negotiationstatus = 0; //No negotation yet!
 				Packetserver_clients[connectedclient].ppp_serverIPCPstatus = 2; //Reset the status check to try again afterwards if it's reset again!
