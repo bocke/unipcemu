@@ -4999,6 +4999,17 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				packetServerFreePacketBufferQueue(&response); //Free the queued response!
 				packetServerFreePacketBufferQueue(&pppNakFields); //Free the queued response!
 				packetServerFreePacketBufferQueue(&pppRejectFields); //Free the queued response!
+				//Make sure that the timer at least updates correctly on the other protocols!
+				//Below is a copy of the IPCP version!
+				if ((!handleTransmit) &&
+					(Packetserver_clients[connectedclient].ppp_LCPstatus[1] && (Packetserver_clients[connectedclient].ppp_LCPstatus[0])) && (Packetserver_clients[connectedclient].ppp_PAPstatus[1] && Packetserver_clients[connectedclient].ppp_PAPstatus[0]) //Don't handle until the upper layers are open!
+					&& (!Packetserver_clients[connectedclient].ppp_IPCPstatus[1])) //Not handling a transmitting of anything atm and LCP for the server-client is down?
+				{
+					if (!Packetserver_clients[connectedclient].ppp_suppressIPCP) //Suppressing IPCP packets requested from the client?
+					{
+						Packetserver_clients[connectedclient].ppp_serverIPCPrequesttimer += modem.networkpolltick; //Time!
+					}
+				}
 				return 1; //Give the correct result! Never block the transmitter inputs when this is the case: this is seperated from the normal transmitter handling!
 			}
 			donthandleServerPPPIPXCPyet: //Don't handle PPP IPXCP from server yet?
@@ -5122,6 +5133,16 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				packetServerFreePacketBufferQueue(&response); //Free the queued response!
 				packetServerFreePacketBufferQueue(&pppNakFields); //Free the queued response!
 				packetServerFreePacketBufferQueue(&pppRejectFields); //Free the queued response!
+				if ((!handleTransmit) &&
+					(Packetserver_clients[connectedclient].ppp_LCPstatus[1] && (Packetserver_clients[connectedclient].ppp_LCPstatus[0])) && (Packetserver_clients[connectedclient].ppp_PAPstatus[1] && Packetserver_clients[connectedclient].ppp_PAPstatus[0]) //Don't handle until the upper layers are open!
+					&& (!Packetserver_clients[connectedclient].ppp_IPXCPstatus[1])) //Not handling a transmitting of anything atm and LCP for the server-client is down?
+				{
+					if (!Packetserver_clients[connectedclient].ppp_suppressIPXCP) //Suppressing IPXCP packets requested from the client?
+					{
+						//Use a simple nanosecond timer to determine if we're to send a 
+						Packetserver_clients[connectedclient].ppp_serverIPXCPrequesttimer += modem.networkpolltick; //Time!
+					}
+				}
 				return 1; //Give the correct result! Never block the transmitter inputs when this is the case: this is seperated from the normal transmitter handling!
 			}
 			donthandleServerPPPprotocolyet: //Don't handle PPP protocol from server yet?
