@@ -4107,14 +4107,14 @@ byte sendIPXechoreply(sword connectedclient, PPP_Stream *echodata, PPP_Stream *s
 	//Now, the source address, which is our client address for the connected client!
 	for (skipdatacounter = 0; skipdatacounter < 4; ++skipdatacounter)
 	{
-		if (!packetServerAddPacketBufferQueue(&response, Packetserver_clients[connectedclient].ipxcp_networknumber[0][skipdatacounter])) //Our network number!
+		if (!packetServerAddPacketBufferQueue(&response, Packetserver_clients[connectedclient].ipxcp_networknumber[PPP_RECVCONF][skipdatacounter])) //Our network number!
 		{
 			goto ppp_finishpacketbufferqueue_echo; //Keep pending!
 		}
 	}
 	for (skipdatacounter = 0; skipdatacounter < 6; ++skipdatacounter)
 	{
-		if (!packetServerAddPacketBufferQueue(&response, Packetserver_clients[connectedclient].ipxcp_nodenumber[0][skipdatacounter])) //Our network number!
+		if (!packetServerAddPacketBufferQueue(&response, Packetserver_clients[connectedclient].ipxcp_nodenumber[PPP_RECVCONF][skipdatacounter])) //Our network number!
 		{
 			goto ppp_finishpacketbufferqueue_echo; //Keep pending!
 		}
@@ -4248,7 +4248,7 @@ ppp_finishpacketbufferqueue2_echo:
 byte PPP_addPPPheader(sword connectedclient, MODEM_PACKETBUFFER* response, byte allowheadercompression, word protocol)
 {
 	//Don't compress the header yet, since it's still negotiating!
-	if ((!(Packetserver_clients[connectedclient].PPP_headercompressed[0] && allowheadercompression) || (protocol==0xC021))) //Header isn't compressed? LCP is never compressed!
+	if ((!(Packetserver_clients[connectedclient].PPP_headercompressed[PPP_SENDCONF] && allowheadercompression) || (protocol==0xC021))) //Header isn't compressed? LCP is never compressed!
 	{
 		if (!packetServerAddPacketBufferQueue(response, 0xFF)) //Start of PPP header!
 		{
@@ -4259,7 +4259,7 @@ byte PPP_addPPPheader(sword connectedclient, MODEM_PACKETBUFFER* response, byte 
 			return 1; //Finish up!
 		}
 	}
-	if ((protocol != 0xC021) && (Packetserver_clients[connectedclient].PPP_protocolcompressed[0]) && ((protocol & 0xFF) == protocol) && (protocol&1)) //Protocol can be compressed?
+	if ((protocol != 0xC021) && (Packetserver_clients[connectedclient].PPP_protocolcompressed[PPP_SENDCONF]) && ((protocol & 0xFF) == protocol) && (protocol&1)) //Protocol can be compressed?
 	{
 		if (!packetServerAddPacketBufferQueue(response, (protocol & 0xFF))) //The protocol, compressed!
 		{
@@ -4369,7 +4369,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 	byte performskipdataNak;
 	if (handleTransmit)
 	{
-		if (Packetserver_clients[connectedclient].packetserver_transmitlength < (3 + ((!Packetserver_clients[connectedclient].PPP_protocolcompressed[1]) ? 1U : 0U) + ((!Packetserver_clients[connectedclient].PPP_headercompressed[1]) ? 2U : 0U))) //Not enough for a full minimal PPP packet (with 1 byte of payload)?
+		if (Packetserver_clients[connectedclient].packetserver_transmitlength < (3 + ((!Packetserver_clients[connectedclient].PPP_protocolcompressed[PPP_RECVCONF]) ? 1U : 0U) + ((!Packetserver_clients[connectedclient].PPP_headercompressed[PPP_RECVCONF]) ? 2U : 0U))) //Not enough for a full minimal PPP packet (with 1 byte of payload)?
 		{
 			return 1; //Incorrect packet: discard it!
 		}
@@ -5172,7 +5172,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 	}
 	createPPPstream(&pppstream, &Packetserver_clients[connectedclient].packetserver_transmitbuffer[0], Packetserver_clients[connectedclient].packetserver_transmitlength-2); //Create a stream object for us to use, which goes until the end of the payload!
 	memcpy(&pppstreambackup, &pppstream, sizeof(pppstream)); //Backup for checking again!
-	if (!Packetserver_clients[connectedclient].PPP_headercompressed[1]) //Header present?
+	if (!Packetserver_clients[connectedclient].PPP_headercompressed[PPP_RECVCONF]) //Header present?
 	{
 		if (!PPP_consumeStream(&pppstream, &datab))
 		{
@@ -5208,7 +5208,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		return 1; //incorrect packet: discard it!
 	}
 	dataw = (word)datab; //Store First byte, in little-endian!
-	if (((datab & 1)==0) || (!Packetserver_clients[connectedclient].PPP_protocolcompressed[1])) //2-byte protocol?
+	if (((datab & 1)==0) || (!Packetserver_clients[connectedclient].PPP_protocolcompressed[PPP_RECVCONF])) //2-byte protocol?
 	{
 		if (!PPP_consumeStream(&pppstream, &datab)) //Second byte!
 		{
@@ -5632,7 +5632,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			break;
 		case 9: //Echo-Request (Request Echo-Reply. Required for an open connection to reply).
 			//Send a Code-Reject packet to the client!
-			if (!Packetserver_clients[connectedclient].ppp_LCPstatus[0])
+			if (!Packetserver_clients[connectedclient].ppp_LCPstatus[PPP_RECVCONF])
 			{
 				result = 1;
 				goto ppp_finishpacketbufferqueue2; //Finish up!
@@ -5664,7 +5664,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			}
 			if (Packetserver_clients[connectedclient].have_magic_number[0]) //Magic number set?
 			{
-				if (memcmp(&request_magic_number, Packetserver_clients[connectedclient].magic_number[0], sizeof(request_magic_number)) != 0) //Magic number mismatch?
+				if (memcmp(&request_magic_number, Packetserver_clients[connectedclient].magic_number[PPP_RECVCONF], sizeof(request_magic_number)) != 0) //Magic number mismatch?
 				{
 					result = 1; //Discard!
 					goto ppp_finishpacketbufferqueue2; //Finish up!
@@ -5678,21 +5678,21 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 					goto ppp_finishpacketbufferqueue2; //Finish up!
 				}
 			}
-			if (Packetserver_clients[connectedclient].magic_number[1]) //Have magic number?
+			if (Packetserver_clients[connectedclient].magic_number[PPP_SENDCONF]) //Have magic number?
 			{
-				if (!packetServerAddPacketBufferQueue(&response, Packetserver_clients[connectedclient].magic_number[1][0])) //Magic-number option!
+				if (!packetServerAddPacketBufferQueue(&response, Packetserver_clients[connectedclient].magic_number[PPP_SENDCONF][0])) //Magic-number option!
 				{
 					goto ppp_finishpacketbufferqueue; //Finish up!
 				}
-				if (!packetServerAddPacketBufferQueue(&response, Packetserver_clients[connectedclient].magic_number[1][1])) //Magic-number option!
+				if (!packetServerAddPacketBufferQueue(&response, Packetserver_clients[connectedclient].magic_number[PPP_SENDCONF][1])) //Magic-number option!
 				{
 					goto ppp_finishpacketbufferqueue; //Finish up!
 				}
-				if (!packetServerAddPacketBufferQueue(&response, Packetserver_clients[connectedclient].magic_number[1][2])) //Magic-number option!
+				if (!packetServerAddPacketBufferQueue(&response, Packetserver_clients[connectedclient].magic_number[PPP_SENDCONF][2])) //Magic-number option!
 				{
 					goto ppp_finishpacketbufferqueue; //Finish up!
 				}
-				if (!packetServerAddPacketBufferQueue(&response, Packetserver_clients[connectedclient].magic_number[1][3])) //Magic-number option!
+				if (!packetServerAddPacketBufferQueue(&response, Packetserver_clients[connectedclient].magic_number[PPP_SENDCONF][3])) //Magic-number option!
 				{
 					goto ppp_finishpacketbufferqueue; //Finish up!
 				}
@@ -6368,7 +6368,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			goto ppp_finishpacketbufferqueue2; //Finish up!
 			break;
 		case 8: //Protocol-Reject (Protocol field is rejected for an active connection)
-			if (!Packetserver_clients[connectedclient].ppp_LCPstatus[0]) //LCP is closed?
+			if (!Packetserver_clients[connectedclient].ppp_LCPstatus[PPP_RECVCONF]) //LCP is closed?
 			{
 				goto ppp_finishpacketbufferqueue2_pap; //Invalid protocol!
 			}
@@ -6497,7 +6497,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		switch (common_CodeField) //What operation code?
 		{
 		case 1: //Authentication-Request
-			if (!Packetserver_clients[connectedclient].ppp_LCPstatus[0]) //LCP is closed?
+			if (!Packetserver_clients[connectedclient].ppp_LCPstatus[PPP_RECVCONF]) //LCP is closed?
 			{
 				goto ppp_invalidprotocol; //Invalid protocol!
 			}
@@ -6700,7 +6700,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			goto ppp_finishpacketbufferqueue2_pap; //Finish up!
 			break;
 		case 2: //Authentication-Ack
-			if (!Packetserver_clients[connectedclient].ppp_LCPstatus[1]) //LCP is closed?
+			if (!Packetserver_clients[connectedclient].ppp_LCPstatus[PPP_SENDCONF]) //LCP is closed?
 			{
 				goto ppp_finishpacketbufferqueue2_pap; //Invalid protocol!
 			}
@@ -6732,7 +6732,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			goto ppp_finishpacketbufferqueue2_pap;
 			break;
 		case 3: //Authentication-Nak
-			if (!Packetserver_clients[connectedclient].ppp_LCPstatus[1]) //LCP is closed?
+			if (!Packetserver_clients[connectedclient].ppp_LCPstatus[PPP_SENDCONF]) //LCP is closed?
 			{
 				goto ppp_finishpacketbufferqueue2_pap; //Invalid protocol!
 			}
@@ -6781,7 +6781,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		packetServerFreePacketBufferQueue(&pppRejectFields); //Free the queued response!
 		break;
 	case 0x802B: //IPXCP?
-		if ((!Packetserver_clients[connectedclient].ppp_LCPstatus[0]) || (!Packetserver_clients[connectedclient].ppp_PAPstatus[0])) //LCP is Closed or PAP isn't authenticated?
+		if ((!Packetserver_clients[connectedclient].ppp_LCPstatus[PPP_RECVCONF]) || (!Packetserver_clients[connectedclient].ppp_PAPstatus[PPP_RECVCONF])) //LCP is Closed or PAP isn't authenticated?
 		{
 			goto ppp_invalidprotocol; //Don't handle!
 		}
@@ -7786,7 +7786,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		packetServerFreePacketBufferQueue(&pppRejectFields); //Free the queued response!
 		break;
 	case 0x8021: //IPCP?
-		if ((!Packetserver_clients[connectedclient].ppp_LCPstatus[0]) || (!Packetserver_clients[connectedclient].ppp_PAPstatus[0])) //LCP is Closed or PAP isn't authenticated?
+		if ((!Packetserver_clients[connectedclient].ppp_LCPstatus[PPP_RECVCONF]) || (!Packetserver_clients[connectedclient].ppp_PAPstatus[PPP_RECVCONF])) //LCP is Closed or PAP isn't authenticated?
 		{
 			goto ppp_invalidprotocol; //Don't handle!
 		}
@@ -8407,7 +8407,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		packetServerFreePacketBufferQueue(&pppRejectFields); //Free the queued response!
 		break;
 	case 0x2B: //IPX packet?
-		if (Packetserver_clients[connectedclient].ppp_IPXCPstatus[1] && Packetserver_clients[connectedclient].ppp_PAPstatus[1] && Packetserver_clients[connectedclient].ppp_LCPstatus[1]) //Fully authenticated and logged in for sending on the peer?
+		if (Packetserver_clients[connectedclient].ppp_IPXCPstatus[PPP_RECVCONF] && Packetserver_clients[connectedclient].ppp_PAPstatus[PPP_RECVCONF] && Packetserver_clients[connectedclient].ppp_LCPstatus[PPP_RECVCONF]) //Fully authenticated and logged in for sending on the peer?
 		{
 			//Handle the IPX packet to be sent!
 			if (!createPPPsubstream(&pppstream, &pppstream_requestfield, PPP_streamdataleft(&pppstream))) //Create a substream for the information field?
@@ -8460,7 +8460,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		//TODO
 		//break;
 	case 0x21: //IP packet?
-		if (Packetserver_clients[connectedclient].ppp_IPCPstatus[1] && Packetserver_clients[connectedclient].ppp_PAPstatus[1] && Packetserver_clients[connectedclient].ppp_LCPstatus[1]) //Fully authenticated and logged in for sending on the peer?
+		if (Packetserver_clients[connectedclient].ppp_IPCPstatus[PPP_RECVCONF] && Packetserver_clients[connectedclient].ppp_PAPstatus[PPP_RECVCONF] && Packetserver_clients[connectedclient].ppp_LCPstatus[PPP_RECVCONF]) //Fully authenticated and logged in for sending on the peer?
 		{
 			//Handle the IP packet to be sent!
 			if (!createPPPsubstream(&pppstream, &pppstream_requestfield, PPP_streamdataleft(&pppstream))) //Create a substream for the information field?
@@ -8504,7 +8504,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		}
 	default: //Unknown protocol?
 		ppp_invalidprotocol: //Invalid protocol used when not fully authenticated or verified?
-		if (Packetserver_clients[connectedclient].ppp_LCPstatus[0]) //LCP is Open?
+		if (Packetserver_clients[connectedclient].ppp_LCPstatus[PPP_RECVCONF]) //LCP is Open?
 		{
 			//Send a Code-Reject packet to the client!
 			memset(&response, 0, sizeof(response)); //Init the response!
@@ -8578,7 +8578,7 @@ byte PPP_parseReceivedPacketForClient(sword connectedclient)
 	word packettype; //What PPP packet type to send!
 	result = 0; //Default: discard!
 	//This is supposed to check the packet, parse it and send packets to the connected client in response when it's able to!
-	if (Packetserver_clients[connectedclient].ppp_LCPstatus[0] && Packetserver_clients[connectedclient].ppp_PAPstatus[0]) //Fully authenticated and logged in?
+	if (Packetserver_clients[connectedclient].ppp_LCPstatus[PPP_SENDCONF] && Packetserver_clients[connectedclient].ppp_PAPstatus[PPP_SENDCONF]) //Fully authenticated and logged in?
 	{
 		if (Packetserver_clients[connectedclient].pktlen > sizeof(ethernetheader.data)) //Length might be fine?
 		{
@@ -8600,13 +8600,13 @@ byte PPP_parseReceivedPacketForClient(sword connectedclient)
 					createPPPstream(&pppstream, &Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data) + 18], 12); //Create a stream out of the IPX packet source address!
 					if (SDL_SwapBE16(ipxheader.DestinationSocketNumber) == 2) //Echo request?
 					{
-						if (memcmp(&ipxheader.DestinationNetworkNumber, &Packetserver_clients[connectedclient].ipxcp_networknumber[0], 4) == 0) //Network number match? Don't take the current network for this to prevent conflicts with it.
+						if (memcmp(&ipxheader.DestinationNetworkNumber, &Packetserver_clients[connectedclient].ipxcp_networknumber[PPP_RECVCONF], 4) == 0) //Network number match? Don't take the current network for this to prevent conflicts with it.
 						{
 							//Perform logic for determining what addresses are assigned here.
 							if (memcmp(&ipxheader.DestinationNodeNumber, &ipxbroadcastaddr, 6) == 0) //Destination node is the broadcast address?
 							{
 								//We're replying to the echo packet!
-								if (!(Packetserver_clients[connectedclient].ppp_IPXCPstatus[0] && Packetserver_clients[connectedclient].ppp_IPXCPstatus[1])) //Not authenticated yet?
+								if (!(Packetserver_clients[connectedclient].ppp_IPXCPstatus[PPP_RECVCONF] && Packetserver_clients[connectedclient].ppp_IPXCPstatus[PPP_SENDCONF])) //Not authenticated yet?
 								{
 									return 0; //Handled, discard!
 								}
@@ -8640,11 +8640,11 @@ byte PPP_parseReceivedPacketForClient(sword connectedclient)
 						}
 					}
 					//Filter out unwanted IPX network/node numbers that aren't intended for us!
-					if ((!Packetserver_clients[connectedclient].ppp_IPXCPstatus[0]) || (!Packetserver_clients[connectedclient].ppp_IPXCPstatus[1])) //Not open yet?
+					if ((!Packetserver_clients[connectedclient].ppp_IPXCPstatus[PPP_RECVCONF]) || (!Packetserver_clients[connectedclient].ppp_IPXCPstatus[PPP_SENDCONF])) //Not open yet?
 					{
 						return 0; //Handled, discard!
 					}
-					if (memcmp(&ipxheader.DestinationNetworkNumber, &Packetserver_clients[connectedclient].ipxcp_networknumber[0][0], 4) != 0) //Network number mismatch?
+					if (memcmp(&ipxheader.DestinationNetworkNumber, &Packetserver_clients[connectedclient].ipxcp_networknumber[PPP_RECVCONF][0], 4) != 0) //Network number mismatch?
 					{
 						if (memcmp(&ipxheader.DestinationNetworkNumber, &ipx_currentnetworknumber, 4) != 0) //Current network mismatch?
 						{
@@ -8671,7 +8671,7 @@ byte PPP_parseReceivedPacketForClient(sword connectedclient)
 			}
 			else if (ethernetheader.type == SDL_SwapBE16(0x0800)) //IP packet?
 			{
-				if ((!Packetserver_clients[connectedclient].ppp_IPCPstatus[0]) || (!Packetserver_clients[connectedclient].ppp_IPCPstatus[1])) //Not open yet?
+				if ((!Packetserver_clients[connectedclient].ppp_IPCPstatus[PPP_RECVCONF]) || (!Packetserver_clients[connectedclient].ppp_IPCPstatus[PPP_SENDCONF])) //Not open yet?
 				{
 					return 0; //Handled, discard!
 				}
@@ -8679,7 +8679,7 @@ byte PPP_parseReceivedPacketForClient(sword connectedclient)
 				{
 					return 0; //Incorrect packet: discard!
 				}
-				if ((memcmp(&Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data) + 16], &Packetserver_clients[connectedclient].ipcp_ipaddress[0], 4) != 0) && (memcmp(&Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data) + 16], &packetserver_broadcastIP, 4) != 0)) //Static IP mismatch?
+				if ((memcmp(&Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data) + 16], &Packetserver_clients[connectedclient].ipcp_ipaddress[PPP_RECVCONF], 4) != 0) && (memcmp(&Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data) + 16], &packetserver_broadcastIP, 4) != 0)) //Static IP mismatch?
 				{
 					return 0; //Invalid packet!
 				}
@@ -9439,7 +9439,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 												if (ethernetheader.type == SDL_SwapBE16(0x0806)) //ARP?
 												{
 													if ((Packetserver_clients[connectedclient].packetserver_slipprotocol == 1) || //IPv4 used?
-														((Packetserver_clients[connectedclient].packetserver_slipprotocol==3) && (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe) && (Packetserver_clients[connectedclient].ppp_IPCPstatus[0])) //IPv4 used on PPP?
+														((Packetserver_clients[connectedclient].packetserver_slipprotocol==3) && (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe) && (Packetserver_clients[connectedclient].ppp_IPCPstatus[PPP_RECVCONF])) //IPv4 used on PPP?
 														) //IPv4 protocol used?
 													{
 														//Always handle ARP packets, if we're IPv4 type!
@@ -9455,7 +9455,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 																{
 																	goto handleserverARP; //Default server packet!
 																}
-																if (memcmp(&ARPpacket.TPA, ((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) && (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe) && (Packetserver_clients[connectedclient].ppp_IPCPstatus[0]))?&Packetserver_clients[connectedclient].ipcp_ipaddress[0]:&Packetserver_clients[connectedclient].packetserver_staticIP, 4) != 0) //Static IP mismatch?
+																if (memcmp(&ARPpacket.TPA, ((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) && (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe) && (Packetserver_clients[connectedclient].ppp_IPCPstatus[PPP_RECVCONF]))?&Packetserver_clients[connectedclient].ipcp_ipaddress[PPP_SENDCONF]:&Packetserver_clients[connectedclient].packetserver_staticIP, 4) != 0) //Static IP mismatch?
 																{
 																	goto invalidpacket; //Invalid packet!
 																}
@@ -9629,7 +9629,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 													{
 														if ((!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe) && (datatotransmit < 0x20)) //Might need to be escaped?
 														{
-															ppp_transmitasynccontrolcharactermap = Packetserver_clients[connectedclient].asynccontrolcharactermap[0]; //The map to use!
+															ppp_transmitasynccontrolcharactermap = Packetserver_clients[connectedclient].asynccontrolcharactermap[PPP_SENDCONF]; //The map to use!
 															LCPbuf = Packetserver_clients[connectedclient].ppp_response.buffer; //What are we sending?
 															if ((
 																(LCPbuf[0]==0xFF) && //All-stations
@@ -9639,7 +9639,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 																((LCPbuf[4]>=0x01) && //Codes 1 through ...
 																(LCPbuf[4]<=0x07)) //... 7
 																)
-																||(!Packetserver_clients[connectedclient].ppp_LCPstatus[0])) //LCP options not setup?
+																||(!Packetserver_clients[connectedclient].ppp_LCPstatus[PPP_SENDCONF])) //LCP options not setup?
 															{
 																ppp_transmitasynccontrolcharactermap = 0xFFFFFFFFU; //Force-escape all control characters!
 															}
@@ -9964,7 +9964,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 								{
 									if ((!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe) && (datatotransmit < 0x20)) //Might need to be escaped?
 									{
-										if ((Packetserver_clients[connectedclient].asynccontrolcharactermap[1] & (1 << (datatotransmit & 0x1F)))||(!Packetserver_clients[connectedclient].ppp_LCPstatus[1])) //To be escaped?
+										if ((Packetserver_clients[connectedclient].asynccontrolcharactermap[PPP_RECVCONF] & (1 << (datatotransmit & 0x1F)))||(!Packetserver_clients[connectedclient].ppp_LCPstatus[PPP_RECVCONF])) //To be escaped?
 										{
 											readfifobuffer(modem.inputdatabuffer[connectedclient], &datatotransmit); //Ignore the data, just discard the packet byte!
 										}
