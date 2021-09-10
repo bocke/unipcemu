@@ -8637,6 +8637,10 @@ byte PPP_parseReceivedPacketForClient(sword connectedclient)
 				{
 					return 0; //Handled, discard!
 				}
+				if (Packetserver_clients[connectedclient].ppp_suppressIPX) //IPX suppressed?
+				{
+					return 0; //Suppressed type!
+				}
 				packettype = 0x2B; //IPX packet for PPP!
 			}
 			else if (ethernetheader.type == SDL_SwapBE16(0x0800)) //IP packet?
@@ -8652,6 +8656,10 @@ byte PPP_parseReceivedPacketForClient(sword connectedclient)
 				if ((memcmp(&Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data) + 16], &Packetserver_clients[connectedclient].ipcp_ipaddress[0], 4) != 0) && (memcmp(&Packetserver_clients[connectedclient].packet[sizeof(ethernetheader.data) + 16], &packetserver_broadcastIP, 4) != 0)) //Static IP mismatch?
 				{
 					return 0; //Invalid packet!
+				}
+				if (Packetserver_clients[connectedclient].ppp_suppressIP) //IP suppressed?
+				{
+					return 0; //Suppressed type!
 				}
 				packettype = 0x21; //IP packet for PPP!
 			}
