@@ -77,6 +77,7 @@ typedef unsigned short u_short;
 #include "headers/support/tcphelper.h" //TCP support!
 #include "headers/support/log.h" //Logging support for errors!
 #include "headers/support/highrestimer.h" //High resolution timing support for cleaning up DHCP!
+#include "headers/emu/threads.h" //Thread support for pcap!
 
 #if defined(PACKETSERVER_ENABLED)
 #include <stdint.h>
@@ -836,6 +837,7 @@ void initPcap() {
 	PacketServer_running = 1; //We're using the packet server emulation, disable normal modem(we don't connect to other systems ourselves)!
 }
 
+byte pcap_capture = 0; //A flag asking for the pcap to quit!
 void fetchpackets_pcap() { //Handle any packets to process!
 #if defined(PACKETSERVER_ENABLED) && !defined(NOPCAP)
 	//Filter parameters to apply!
@@ -846,62 +848,33 @@ void fetchpackets_pcap() { //Handle any packets to process!
 
 	if (pcap_enabled) //Enabled?
 	{
-		//Check for new packets arriving and filter them as needed!
-		if (pcap_receiverstate == 0) //Ready to receive a new packet?
+		lock(LOCK_PCAPFLAG);
+		for (; (!shuttingdown()) && (pcap_capture);) //Keep looping until exit is detected!
 		{
-		invalidpacket_receivefilter:
-			if (pcap_next_ex(adhandle, &hdr, &pktdata) <= 0) return; //Nothing valid to process?
-			if (hdr->len == 0) goto invalidpacket_receivefilter; //Try again on invalid 
-
-			//Packet received!
-			memcpy(&ethernetheader.data, &pktdata[0], sizeof(ethernetheader.data)); //Copy to the client buffer for inspection!
-			//Check for the packet type first! Don't receive anything that is our unsupported (the connected client)!
-			if (ethernetheader.type != SDL_SwapBE16(0x0800)) //Not IP packet?
+			unlock(LOCK_PCAPFLAG);
+			//Check for new packets arriving and filter them as needed!
+			if (pcap_receiverstate == 0) //Ready to receive a new packet?
 			{
-				if (ethernetheader.type != SDL_SwapBE16(0x8863)) //Are we not a discovery packet?
+			invalidpacket_receivefilter:
+				if (pcap_next_ex(adhandle, &hdr, &pktdata) <= 0) goto trynexttime; //Nothing valid to process?
+				if (hdr->len == 0) goto invalidpacket_receivefilter; //Try again on invalid 
+
+				//Packet received!
+				memcpy(&ethernetheader.data, &pktdata[0], sizeof(ethernetheader.data)); //Copy to the client buffer for inspection!
+				//Check for the packet type first! Don't receive anything that is our unsupported (the connected client)!
+				if (ethernetheader.type != SDL_SwapBE16(0x0800)) //Not IP packet?
 				{
-					if (ethernetheader.type != SDL_SwapBE16(0x8864)) //Not Receiving uses normal PPP packets to transfer/receive on the receiver line only!
+					if (ethernetheader.type != SDL_SwapBE16(0x8863)) //Are we not a discovery packet?
 					{
 						if (ethernetheader.type != SDL_SwapBE16(0x8864)) //Not Receiving uses normal PPP packets to transfer/receive on the receiver line only!
 						{
-							if (ethernetheader.type != SDL_SwapBE16(0x8137)) //Not an IPX packet!
+							if (ethernetheader.type != SDL_SwapBE16(0x8864)) //Not Receiving uses normal PPP packets to transfer/receive on the receiver line only!
 							{
-								if (ethernetheader.type != SDL_SwapBE16(0x0806)) //Not ARP?
+								if (ethernetheader.type != SDL_SwapBE16(0x8137)) //Not an IPX packet!
 								{
-									//This is an unsupported packet type discard it fully and don't look at it anymore!
-									//Discard the received packet, so nobody else handles it too!
-									goto invalidpacket_receivefilter; //Ignore this packet and check for more!
-								}
-							}
-						}
-					}
-				}
-			}
-
-			//Check for the client first! Don't receive anything that is our own traffic (the connected client)!
-			if (ethernetheader.type == SDL_SwapBE16(0x0800)) //IP packet?
-			{
-				//Check for TCP packet in the IP packet!
-				detselfrelpos = sizeof(ethernetheader.data); //Start of the IP packet!
-				detselfdataleft = hdr->len - detselfrelpos; //Data left to parse as subpackets!
-				if (detselfdataleft >= 20) //Enough data left to parse?
-				{
-					if (pktdata[detselfrelpos + 9] == 6) //TCP protocol?
-					{
-						if ((memcmp(&pktdata[detselfrelpos + 0xC], &packetserver_defaultstaticIP[0], 4) == 0) || (memcmp(&pktdata[detselfrelpos + 0x10], &packetserver_defaultstaticIP[0], 4) == 0)) //Our  own IP in source or destination?
-						{
-							IP_useIHL = (((pktdata[detselfrelpos] & 0xF0) >> 4) << 5); //IHL field, in bytes!
-							if ((detselfdataleft > IP_useIHL) && (IP_useIHL)) //Enough left for the subpacket?
-							{
-								detselfrelpos += IP_useIHL; //TCP Data position!
-								detselfdataleft -= IP_useIHL; //How much data if left!
-								//Now we're at the start of the TCP packet!
-								if (detselfdataleft >= 4) //Valid to filter the port?
-								{
-									if ((SDL_SwapBE16(*((word*)&pktdata[detselfrelpos])) == modem.connectionport) || //Own source port?
-										(SDL_SwapBE16(*((word*)&pktdata[detselfrelpos + 2])) == modem.connectionport) //Own destination port?
-										)
+									if (ethernetheader.type != SDL_SwapBE16(0x0806)) //Not ARP?
 									{
+										//This is an unsupported packet type discard it fully and don't look at it anymore!
 										//Discard the received packet, so nobody else handles it too!
 										goto invalidpacket_receivefilter; //Ignore this packet and check for more!
 									}
@@ -910,35 +883,74 @@ void fetchpackets_pcap() { //Handle any packets to process!
 						}
 					}
 				}
-			}
-			else if (ethernetheader.type == SDL_SwapBE16(0x0806)) //ARP?
-			{
-				if ((hdr->len - sizeof(ethernetheader.data))!=28) //Wrong length?
+
+				//Check for the client first! Don't receive anything that is our own traffic (the connected client)!
+				if (ethernetheader.type == SDL_SwapBE16(0x0800)) //IP packet?
 				{
-					goto invalidpacket_receivefilter; //Ignore this packet and check for more!
+					//Check for TCP packet in the IP packet!
+					detselfrelpos = sizeof(ethernetheader.data); //Start of the IP packet!
+					detselfdataleft = hdr->len - detselfrelpos; //Data left to parse as subpackets!
+					if (detselfdataleft >= 20) //Enough data left to parse?
+					{
+						if (pktdata[detselfrelpos + 9] == 6) //TCP protocol?
+						{
+							if ((memcmp(&pktdata[detselfrelpos + 0xC], &packetserver_defaultstaticIP[0], 4) == 0) || (memcmp(&pktdata[detselfrelpos + 0x10], &packetserver_defaultstaticIP[0], 4) == 0)) //Our  own IP in source or destination?
+							{
+								IP_useIHL = (((pktdata[detselfrelpos] & 0xF0) >> 4) << 5); //IHL field, in bytes!
+								if ((detselfdataleft > IP_useIHL) && (IP_useIHL)) //Enough left for the subpacket?
+								{
+									detselfrelpos += IP_useIHL; //TCP Data position!
+									detselfdataleft -= IP_useIHL; //How much data if left!
+									//Now we're at the start of the TCP packet!
+									if (detselfdataleft >= 4) //Valid to filter the port?
+									{
+										if ((SDL_SwapBE16(*((word*)&pktdata[detselfrelpos])) == modem.connectionport) || //Own source port?
+											(SDL_SwapBE16(*((word*)&pktdata[detselfrelpos + 2])) == modem.connectionport) //Own destination port?
+											)
+										{
+											//Discard the received packet, so nobody else handles it too!
+											goto invalidpacket_receivefilter; //Ignore this packet and check for more!
+										}
+									}
+								}
+							}
+						}
+					}
 				}
+				else if (ethernetheader.type == SDL_SwapBE16(0x0806)) //ARP?
+				{
+					if ((hdr->len - sizeof(ethernetheader.data)) != 28) //Wrong length?
+					{
+						goto invalidpacket_receivefilter; //Ignore this packet and check for more!
+					}
+				}
+
+				//Packet ready to receive!
+				pcap_receiverstate = 1; //Packet is loaded and ready to parse by the receiver algorithm!
 			}
 
-			//Packet ready to receive!
-			pcap_receiverstate = 1; //Packet is loaded and ready to parse by the receiver algorithm!
-		}
-
-		if ((net.packet == NULL) && (pcap_receiverstate==1)) //Can we receive anything and receiver is loaded?
-		{
-			//Packet acnowledged for clients to receive!
-			net.packet = zalloc(hdr->len, "MODEM_PACKET", NULL);
-			if (net.packet) //Allocated?
+			lock(LOCK_PCAP);
+			if ((net.packet == NULL) && (pcap_receiverstate == 1)) //Can we receive anything and receiver is loaded?
 			{
-				memcpy(net.packet, &pktdata[0], hdr->len);
-				net.pktlen = (uint16_t)hdr->len;
-				if (pcap_verbose) {
-					dolog("ethernetcard", "Received packet of %u bytes.", net.pktlen);
+				//Packet acnowledged for clients to receive!
+				net.packet = zalloc(hdr->len, "MODEM_PACKET", NULL);
+				if (net.packet) //Allocated?
+				{
+					memcpy(net.packet, &pktdata[0], hdr->len);
+					net.pktlen = (uint16_t)hdr->len;
+					unlock(LOCK_PCAP);
+					if (pcap_verbose) {
+						dolog("ethernetcard", "Received packet of %u bytes.", net.pktlen);
+					}
+					//Packet received!
+					pcap_receiverstate = 0; //Start scanning for incoming packets again, since the receiver is cleared again!
 				}
-				//Packet received!
-				pcap_receiverstate = 0; //Start scanning for incoming packets again, since the receiver is cleared again!
-				return;
 			}
+			unlock(LOCK_PCAP);
+			trynexttime: //Try the next time?
+			lock(LOCK_PCAPFLAG); //Start to use the flag!
 		}
+		unlock(LOCK_PCAPFLAG);
 	}
 #endif
 }
@@ -954,10 +966,12 @@ void sendpkt_pcap (uint8_t *src, uint16_t len) {
 
 void termPcap()
 {
+	lock(LOCK_PCAP);
 	if (net.packet)
 	{
 		freez((void **)&net.packet,net.pktlen,"MODEM_PACKET"); //Cleanup!
 	}
+	unlock(LOCK_PCAP);
 	word client;
 	for (client = 0; client < NUMITEMS(Packetserver_clients); ++client) //Process all clients!
 	{
@@ -3173,6 +3187,7 @@ byte modem_writeData(byte value)
 	return 1; //Acnowledged and sent!
 }
 
+ThreadParams_p pcapthread = NULL; //The pcap thread to use!
 void initModem(byte enabled) //Initialise modem!
 {
 	word i;
@@ -3208,6 +3223,21 @@ void initModem(byte enabled) //Initialise modem!
 		Packetserver_totalClients = Packetserver_availableClients; //Init: n clients available in total!
 		if (modem.inputbuffer && modem.inputdatabuffer[0] && modem.outputbuffer[0] && modem.blockoutputbuffer[0]) //Gotten buffers?
 		{
+			lock(LOCK_PCAPFLAG);
+			if (pcap_enabled) //Required to actually start the pcap capture?
+			{
+				pcap_capture = 1; //Make sure that capture is active now!
+			}
+			else
+			{
+				pcap_capture = 0; //Make sure that capture is inactive now!
+			}
+			unlock(LOCK_PCAPFLAG);
+			pcapthread = startThread(&fetchpackets_pcap, "pcapfetch", NULL); //Start the pcap thread for packet capture, if possible!
+			if (!pcapthread) //Unavailable?
+			{
+				goto unsupportedUARTModem;
+			}
 			modem.connectionport = BIOS_Settings.modemlistenport; //Default port to connect to if unspecified!
 			if (modem.connectionport==0) //Invalid?
 			{
@@ -3311,6 +3341,15 @@ void doneModem() //Finish modem!
 		//The buffers are already released!
 	}
 	stopTCPServer(); //Stop the TCP server!
+	if (pcapthread) //Thread is started?
+	{
+		lock(LOCK_PCAPFLAG);
+		pcap_capture = 0; //Request for the thread to stop!
+		unlock(LOCK_PCAPFLAG);
+		delay(1000000); //Wait just a bit for the thread to end!
+		waitThreadEnd(pcapthread); //Wait for the capture thread to end!
+		pcapthread = NULL; //The pcap thread is stopped!
+	}
 }
 
 void cleanModem()
@@ -9232,12 +9271,13 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 		}
 	}
 
+
+
 	modem.networkdatatimer += timepassed;
 	if ((modem.networkdatatimer>=modem.networkpolltick) && modem.networkpolltick) //To poll?
 	{
 		for (;modem.networkdatatimer>=modem.networkpolltick;) //While polling!
 		{
-			fetchpackets_pcap(); //Handle any packets that need fetching!
 			modem.networkdatatimer -= modem.networkpolltick; //Timing this byte by byte!
 			if (modem.connected || modem.ringing) //Are we connected?
 			{
@@ -9249,6 +9289,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 						//Handle packet server packet data transfers into the inputdatabuffer/outputbuffer to the network!
 						if (modem.blockoutputbuffer[connectedclient]) //Properly allocated?
 						{
+							lock(LOCK_PCAP); //Lock for pcap!
 							if (net.packet || Packetserver_clients[connectedclient].packet || ((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) && (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe))) //Packet has been received or processing? Try to start transmit it!
 							{
 								if ((Packetserver_clients[connectedclient].packet == NULL) && (net.packet) && (!Packetserver_clients[connectedclient].packet)) //Ready to receive?
@@ -9269,6 +9310,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 										Packetserver_clients[connectedclient].PPP_packetpendingforsending = 0; //Not pending for sending by default!
 									}
 								}
+								unlock(LOCK_PCAP);
 								if (fifobuffer_freesize(modem.blockoutputbuffer[connectedclient]) == fifobuffer_size(modem.blockoutputbuffer[connectedclient])) //Valid to produce more data?
 								{
 									if ((((Packetserver_clients[connectedclient].packetserver_packetpos == 0) && (Packetserver_clients[connectedclient].packetserver_packetack == 0)) || ((Packetserver_clients[connectedclient].packetserver_slipprotocol == 3) && (!Packetserver_clients[connectedclient].packetserver_slipprotocol_pppoe))) && (Packetserver_clients[connectedclient].packet)) //New packet?
@@ -9286,9 +9328,11 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 														if (PPPOE_handlePADreceived(connectedclient)) //Handle the received PAD packet!
 														{
 															//Discard the received packet, so nobody else handles it too!
+															lock(LOCK_PCAP);
 															freez((void**)&net.packet, net.pktlen, "MODEM_PACKET");
 															net.packet = NULL; //Discard if failed to deallocate!
 															net.pktlen = 0; //Not allocated!
+															unlock(LOCK_PCAP);
 															goto invalidpacket; //Invalid packet!
 														}
 													}
@@ -9325,9 +9369,11 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 														if (PPPOE_handlePADreceived(connectedclient)) //Handle the received PAD packet!
 														{
 															//Discard the received packet, so nobody else handles it too!
+															lock(LOCK_PCAP);
 															freez((void**)&net.packet, net.pktlen, "MODEM_PACKET");
 															net.packet = NULL; //Discard if failed to deallocate!
 															net.pktlen = 0; //Not allocated!
+															unlock(LOCK_PCAP);
 															goto invalidpacket; //Invalid packet!
 														}
 													}
@@ -9391,9 +9437,11 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 																sendpkt_pcap(Packetserver_clients[connectedclient].packet, (28+sizeof(ethernetheader.data))); //Send the response back to the originator!
 																
 																 //Discard the received packet, so nobody else handles it too!
+																lock(LOCK_PCAP);
 																freez((void**)&net.packet, net.pktlen, "MODEM_PACKET");
 																net.packet = NULL; //Discard if failed to deallocate!
 																net.pktlen = 0; //Not allocated!
+																unlock(LOCK_PCAP);
 															}
 														}
 													}
@@ -9612,6 +9660,10 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 										}
 									}
 								}
+							}
+							else
+							{
+								unlock(LOCK_PCAP); //Finished with pcap!
 							}
 						}
 
@@ -10031,6 +10083,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 									//Timeout has occurred! Disconnect!
 									goto packetserver_autherror; //Disconnect the client: we can't help it!
 								}
+								lock(LOCK_PCAP);
 								if (net.packet) //Packet has been received before the timeout?
 								{
 									if (0) //Gottten a DHCP packet?
@@ -10054,6 +10107,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 										}
 									}
 								}
+								unlock(LOCK_PCAP);
 							}
 							if (Packetserver_clients[connectedclient].packetserver_useStaticIP == 4) //Sending request packet of DHCP?
 							{
@@ -10076,6 +10130,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 									//Timeout has occurred! Disconnect!
 									goto packetserver_autherror; //Disconnect the client: we can't help it!
 								}
+								lock(LOCK_PCAP);
 								if (net.packet) //Packet has been received before the timeout?
 								{
 									if (0) //Gottten a DHCP packet?
@@ -10104,6 +10159,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 										}
 									}
 								}
+								unlock(LOCK_PCAP);
 							}
 
 							if (Packetserver_clients[connectedclient].packetserver_useStaticIP == 7) //Sending release packet of DHCP?
@@ -10126,6 +10182,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 									//Timeout has occurred! Disconnect!
 									goto packetserver_autherror; //Disconnect the client: we can't help it!
 								}
+								lock(LOCK_PCAP);
 								if (net.packet) //Packet has been received before the timeout?
 								{
 									if (0) //Gottten a DHCP packet?
@@ -10150,12 +10207,14 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 										}
 									}
 								}
+								unlock(LOCK_PCAP);
 							}
 						}
 
 						//Check for DHCP release requirement always, even when connected!
 						if (Packetserver_clients[connectedclient].packetserver_useStaticIP == 6) //Looking for the DHCP NACK?
 						{
+							lock(LOCK_PCAP);
 							if (net.packet) //Packet has been received before the timeout?
 							{
 								if (0) //Gottten a DHCP packet?
@@ -10175,6 +10234,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 									}
 								}
 							}
+							unlock(LOCK_PCAP);
 						}
 
 						if (Packetserver_clients[connectedclient].packetserver_stage == PACKETSTAGE_INFORMATION)
@@ -10515,12 +10575,14 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 				}
 			} //Connected?
 
+			lock(LOCK_PCAP); //Make sure it's valid to use!
 			if (net.packet) //Packet received? Discard anything we receive now for other users!
 			{
 				freez((void **)&net.packet, net.pktlen, "MODEM_PACKET");
 				net.packet = NULL; //Discard if failed to deallocate!
 				net.pktlen = 0; //Not allocated!
 			}
+			unlock(LOCK_PCAP);
 		} //While polling?
 	} //To poll?
 }
