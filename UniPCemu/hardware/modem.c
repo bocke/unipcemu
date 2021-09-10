@@ -938,10 +938,10 @@ void fetchpackets_pcap() { //Handle any packets to process!
 				{
 					memcpy(net.packet, &pktdata[0], hdr->len);
 					net.pktlen = (uint16_t)hdr->len;
-					unlock(LOCK_PCAP);
 					if (pcap_verbose) {
 						dolog("ethernetcard", "Received packet of %u bytes.", net.pktlen);
 					}
+					unlock(LOCK_PCAP);
 					//Packet received!
 					pcap_receiverstate = 0; //Start scanning for incoming packets again, since the receiver is cleared again!
 				}
