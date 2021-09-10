@@ -896,7 +896,7 @@ void fetchpackets_pcap() { //Handle any packets to process!
 						{
 							if ((memcmp(&pktdata[detselfrelpos + 0xC], &packetserver_defaultstaticIP[0], 4) == 0) || (memcmp(&pktdata[detselfrelpos + 0x10], &packetserver_defaultstaticIP[0], 4) == 0)) //Our  own IP in source or destination?
 							{
-								IP_useIHL = (((pktdata[detselfrelpos] & 0xF) >> 4) << 5); //IHL field, in bytes!
+								IP_useIHL = ((pktdata[detselfrelpos] & 0xF) << 5); //IHL field, in bytes!
 								if ((detselfdataleft > IP_useIHL) && (IP_useIHL)) //Enough left for the subpacket?
 								{
 									detselfrelpos += IP_useIHL; //TCP Data position!
