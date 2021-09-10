@@ -8381,7 +8381,10 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		packetServerFreePacketBufferQueue(&pppRejectFields); //Free the queued response!
 		break;
 	case 0x2B: //IPX packet?
-		if (Packetserver_clients[connectedclient].ppp_IPXCPstatus[1] && Packetserver_clients[connectedclient].ppp_PAPstatus[1] && Packetserver_clients[connectedclient].ppp_LCPstatus[1]) //Fully authenticated and logged in for sending?
+		if (
+			(Packetserver_clients[connectedclient].ppp_IPXCPstatus[1] && Packetserver_clients[connectedclient].ppp_PAPstatus[1] && Packetserver_clients[connectedclient].ppp_LCPstatus[1]) && //Server-side?
+			(Packetserver_clients[connectedclient].ppp_IPXCPstatus[0] && Packetserver_clients[connectedclient].ppp_PAPstatus[0] && Packetserver_clients[connectedclient].ppp_LCPstatus[0]) //Client-side?
+			) //Fully authenticated and logged in for sending?
 		{
 			//Handle the IPX packet to be sent!
 			if (!createPPPsubstream(&pppstream, &pppstream_requestfield, PPP_streamdataleft(&pppstream))) //Create a substream for the information field?
@@ -8434,7 +8437,9 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		//TODO
 		//break;
 	case 0x21: //IP packet?
-		if (Packetserver_clients[connectedclient].ppp_IPCPstatus[1] && Packetserver_clients[connectedclient].ppp_PAPstatus[1] && Packetserver_clients[connectedclient].ppp_LCPstatus[1]) //Fully authenticated and logged in for sending?
+		if ( //Fully authenticated and logged in for sending?
+			(Packetserver_clients[connectedclient].ppp_IPCPstatus[1] && Packetserver_clients[connectedclient].ppp_PAPstatus[1] && Packetserver_clients[connectedclient].ppp_LCPstatus[1]) && //Server-side?
+			(Packetserver_clients[connectedclient].ppp_IPCPstatus[0] && Packetserver_clients[connectedclient].ppp_PAPstatus[0] && Packetserver_clients[connectedclient].ppp_LCPstatus[0]) //Client-side?
 		{
 			//Handle the IP packet to be sent!
 			if (!createPPPsubstream(&pppstream, &pppstream_requestfield, PPP_streamdataleft(&pppstream))) //Create a substream for the information field?
