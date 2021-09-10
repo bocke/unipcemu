@@ -8614,7 +8614,7 @@ byte PPP_parseReceivedPacketForClient(sword connectedclient)
 						}
 					}
 					//Filter out unwanted IPX network/node numbers that aren't intended for us!
-					if (!Packetserver_clients[connectedclient].ppp_IPXCPstatus[0]) //Not authenticated yet?
+					if ((!Packetserver_clients[connectedclient].ppp_IPXCPstatus[0]) || (!Packetserver_clients[connectedclient].ppp_IPXCPstatus[1])) //Not open yet?
 					{
 						return 0; //Handled, discard!
 					}
@@ -8641,7 +8641,7 @@ byte PPP_parseReceivedPacketForClient(sword connectedclient)
 			}
 			else if (ethernetheader.type == SDL_SwapBE16(0x0800)) //IP packet?
 			{
-				if (!Packetserver_clients[connectedclient].ppp_IPCPstatus[0]) //Not authenticated yet?
+				if ((!Packetserver_clients[connectedclient].ppp_IPCPstatus[0]) || (!Packetserver_clients[connectedclient].ppp_IPCPstatus[1])) //Not open yet?
 				{
 					return 0; //Handled, discard!
 				}
