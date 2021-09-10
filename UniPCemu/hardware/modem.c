@@ -406,6 +406,11 @@ word Packetserver_totalClients = 0; //How many clients are available?
 #define PPP_ENCODEESC(val) (val^0x20)
 #define PPP_DECODEESC(val) (val^0x20)
 
+//What configuration to use when we're receiving data from the client
+#define PPP_RECVCONF 0
+//What configuration to use when we're sending data to the client
+#define PPP_SENDCONF 1
+
 //Define below to encode/decode the PPP packets sent/received from the user using the PPP_ESC values
 #define PPPOE_ENCODEDECODE 0
 
