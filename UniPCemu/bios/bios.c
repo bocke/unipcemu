@@ -1709,7 +1709,7 @@ int BIOS_SaveData() //Save BIOS settings!
 	snprintf(currentstr, sizeof(currentstr), "phonebook0-%u: Phonebook entry #n", (byte)(NUMITEMS(BIOS_Settings.phonebook) - 1)); //Information about the phonebook!
 	safestrcat(modem_comment, sizeof(modem_comment), currentstr); //MAC address information!
 #ifdef PACKETSERVER_ENABLED
-	safestrcat(modem_comment, sizeof(modem_comment), "\nethernetcard: -1 for disabled(use normal emulation), 1+ selected and use a network card, 0 to generate a list of network cards to select\n");
+	safestrcat(modem_comment, sizeof(modem_comment), "\nethernetcard: -1 for disabled(use normal emulation), -2 for local loopback, 1+ selected and use a network card, 0 to generate a list of network cards to select\n");
 	snprintf(currentstr, sizeof(currentstr), "MACaddress: MAC address to emulate as a virtual NIC and send/receive packets on(defaults to %02x:%02x:%02x:%02x:%02x:%02x)\n", maclocal_default[0], maclocal_default[1], maclocal_default[2], maclocal_default[3], maclocal_default[4], maclocal_default[5]);
 	safestrcat(modem_comment, sizeof(modem_comment), currentstr); //MAC address information!
 	safestrcat(modem_comment, sizeof(modem_comment), "gatewayMACaddress: gateway MAC address to send/receive packets on\n");

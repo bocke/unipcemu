@@ -433,7 +433,7 @@ struct {
 #endif
 	uint16_t pktlen;
 	byte *packet; //Current packet received!
-} net;
+} net, loopback;
 
 #include "headers/packed.h"
 typedef union PACKED
@@ -637,7 +637,7 @@ void initPcap() {
 	PacketServer_running = 0; //We're not using the packet server emulation, enable normal modem(we don't connect to other systems ourselves)!
 
 #if defined(PACKETSERVER_ENABLED) && !defined(NOPCAP)
-	if ((BIOS_Settings.ethernetserver_settings.ethernetcard==-1) || (BIOS_Settings.ethernetserver_settings.ethernetcard<0)) //No ethernet card to emulate?
+	if ((BIOS_Settings.ethernetserver_settings.ethernetcard==-1) || (BIOS_Settings.ethernetserver_settings.ethernetcard<-2)) //No ethernet card to emulate?
 	{
 		return; //Disable ethernet emulation!
 	}
@@ -760,6 +760,10 @@ void initPcap() {
 	{
 		dolog("ethernetcard", "The pcap interface and packet server is disabled because the required libraries aren't installed!");
 		pcap_enabled = 0;
+		if (BIOS_Settings.ethernetserver_settings.ethernetcard == -2) //Special loopback mode?
+		{
+			pcap_enabled = 2; //Special loopback mode instead!
+		}
 		pcap_receiverstate = 0; //Packet receiver/filter state: ready to receive a packet!
 		PacketServer_running = 0; //We're using the packet server emulation, disable normal modem(we don't connect to other systems ourselves)!
 		return; //Abort!
@@ -839,18 +843,21 @@ void initPcap() {
 
 	dolog("ethernetcard","Ethernet bridge on %s (%s)...", d->name, d->description?d->description:"No description available");
 
-	if (pcap_datalink(adhandle)!=DLT_EN10MB) //Invalid link layer?
+	if (BIOS_Settings.ethernetserver_settings.ethernetcard != -2) //Not loopback mode?
 	{
-		dolog("ethernetcard","Ethernet card unsupported: Ethernet card is required! %s is unsupported!", d->description ? d->description : "No description available");
-		/* Free the device list */
-		pcap_freealldevs (alldevs);
-		pcap_close(adhandle); //Close the handle!
-		return;		
+		if (pcap_datalink(adhandle) != DLT_EN10MB) //Invalid link layer?
+		{
+			dolog("ethernetcard", "Ethernet card unsupported: Ethernet card is required! %s is unsupported!", d->description ? d->description : "No description available");
+			/* Free the device list */
+			pcap_freealldevs(alldevs);
+			pcap_close(adhandle); //Close the handle!
+			return;
+		}
 	}
 
 	/* At this point, we don't need any more the device list. Free it */
 	pcap_freealldevs (alldevs);
-	pcap_enabled = 1;
+	pcap_enabled = (BIOS_Settings.ethernetserver_settings.ethernetcard==-2)?2:1; //Normal or loopback mode!
 	pcap_receiverstate = 0; //Packet receiver/filter state: ready to receive a packet!
 #endif
 	PacketServer_running = 1; //We're using the packet server emulation, disable normal modem(we don't connect to other systems ourselves)!
@@ -872,9 +879,18 @@ void fetchpackets_pcap() { //Handle any packets to process!
 			if (pcap_receiverstate == 0) //Ready to receive a new packet?
 			{
 			invalidpacket_receivefilter:
-				if (pcap_next_ex(adhandle, &hdr, &pktdata) <= 0) goto trynexttime; //Nothing valid to process?
-				if (hdr->len == 0) goto invalidpacket_receivefilter; //Try again on invalid 
-
+				if (pcap_enabled != -2) //Not loopback mode?
+				{
+					if (pcap_next_ex(adhandle, &hdr, &pktdata) <= 0) goto trynexttime; //Nothing valid to process?
+					if (hdr->len == 0) goto invalidpacket_receivefilter; //Try again on invalid 
+				}
+				else //Loopback mode?
+				{
+					lock(LOCK_PCAP);
+					if (!loopback.packet) goto invalidpacket_receivefilter; //Wait for a packet to appear on the loopback!
+					pktdata = loopback.packet; //For easy handling below!
+					unlock(LOCK_PCAP);
+				}
 				//Packet received!
 				memcpy(&ethernetheader.data, &pktdata[0], sizeof(ethernetheader.data)); //Copy to the client buffer for inspection!
 				//Check for the packet type first! Don't receive anything that is our unsupported (the connected client)!
@@ -914,6 +930,7 @@ void fetchpackets_pcap() { //Handle any packets to process!
 			}
 
 			lock(LOCK_PCAP);
+			//Try and receive the packet!
 			if ((net.packet == NULL) && (pcap_receiverstate == 1)) //Can we receive anything and receiver is loaded?
 			{
 				//Packet acnowledged for clients to receive!
@@ -925,7 +942,10 @@ void fetchpackets_pcap() { //Handle any packets to process!
 					if (pcap_verbose) {
 						dolog("ethernetcard", "Received packet of %u bytes.", net.pktlen);
 					}
-					unlock(LOCK_PCAP);
+					if (pcap_enabled == -2) //Lloopback mode?
+					{
+						freez((void *)loopback.packet, loopback.pktlen, "LOOPBACK_PACKET"); //Free the loopback packet!
+					}
 					//Packet received!
 					pcap_receiverstate = 0; //Start scanning for incoming packets again, since the receiver is cleared again!
 				}
@@ -939,13 +959,34 @@ void fetchpackets_pcap() { //Handle any packets to process!
 #endif
 }
 
-void sendpkt_pcap (uint8_t *src, uint16_t len) {
+byte sendpkt_pcap (uint8_t *src, uint16_t len) {
 #if defined(PACKETSERVER_ENABLED) && !defined(NOPCAP)
 	if (pcap_enabled) //Enabled?
 	{
-		pcap_sendpacket (adhandle, src, len);
+		if (pcap_enabled == -2) //Loopback?
+		{
+			lock(LOCK_PCAP);
+			if (loopback.packet && loopback.pktlen) //Something is still pending?
+			{
+				unlock(LOCK_PCAP);
+				return 0; //Failed!
+			}
+			loopback.packet = zalloc(len, "LOOPBACK_PACKET", NULL); //Allocate!
+			if (!loopback.packet) //Failed?
+			{
+				unlock(LOCK_PCAP);
+				return 0; //Failed!
+			}
+			memcpy(loopback.packet, src, len); //Set the contents of the packet!
+			unlock(LOCK_PCAP);
+		}
+		else //Normal sending?
+		{
+			pcap_sendpacket(adhandle, src, len);
+		}
 	}
 #endif
+	return 1; //Default: success!
 }
 
 void termPcap()
@@ -3629,7 +3670,10 @@ void PPPOE_finishdiscovery(sword connectedclient)
 	else //Send the PADR packet!
 	{
 		//Send the PADR packet that's buffered!
-		sendpkt_pcap(Packetserver_clients[connectedclient].pppoe_discovery_PADT.buffer, Packetserver_clients[connectedclient].pppoe_discovery_PADT.length); //Send the packet to the network!
+		if (!sendpkt_pcap(Packetserver_clients[connectedclient].pppoe_discovery_PADT.buffer, Packetserver_clients[connectedclient].pppoe_discovery_PADT.length)) //Send the packet to the network!
+		{
+			return; //Failed to send!
+		}
 	}
 
 	//Since we can't be using the buffers after this anyways, free them all!
@@ -3679,7 +3723,10 @@ byte PPPOE_requestdiscovery(sword connectedclient)
 	else //Send the PADR packet!
 	{
 		//Send the PADR packet that's buffered!
-		sendpkt_pcap(Packetserver_clients[connectedclient].pppoe_discovery_PADI.buffer, Packetserver_clients[connectedclient].pppoe_discovery_PADI.length); //Send the packet to the network!
+		if (!sendpkt_pcap(Packetserver_clients[connectedclient].pppoe_discovery_PADI.buffer, Packetserver_clients[connectedclient].pppoe_discovery_PADI.length)) //Send the packet to the network!
+		{
+			return 0; //Failure!
+		}
 	}
 	return 1; //Success!
 }
@@ -3759,7 +3806,10 @@ byte PPPOE_handlePADreceived(sword connectedclient)
 				else //Send the PADR packet!
 				{
 					//Send the PADR packet that's buffered!
-					sendpkt_pcap(Packetserver_clients[connectedclient].pppoe_discovery_PADR.buffer, Packetserver_clients[connectedclient].pppoe_discovery_PADR.length); //Send the packet to the network!
+					if (!sendpkt_pcap(Packetserver_clients[connectedclient].pppoe_discovery_PADR.buffer, Packetserver_clients[connectedclient].pppoe_discovery_PADR.length)) //Send the packet to the network!
+					{
+						return 0; //Failure!
+					}
 				}
 				return 0; //Not handled!
 			}
@@ -3802,7 +3852,10 @@ byte PPPOE_handlePADreceived(sword connectedclient)
 			else //Send the PADR packet!
 			{
 				//Send the PADR packet that's buffered!
-				sendpkt_pcap(Packetserver_clients[connectedclient].pppoe_discovery_PADR.buffer,Packetserver_clients[connectedclient].pppoe_discovery_PADR.length); //Send the packet to the network!
+				if (!sendpkt_pcap(Packetserver_clients[connectedclient].pppoe_discovery_PADR.buffer, Packetserver_clients[connectedclient].pppoe_discovery_PADR.length)) //Send the packet to the network!
+				{
+					return 0; //Failure!
+				}
 			}
 			return 1; //Handled!
 		}
@@ -4146,7 +4199,10 @@ byte sendIPXechoreply(sword connectedclient, PPP_Stream *echodata, PPP_Stream *s
 	//End of IPX packet creation.
 
 	//Now, the packet we've stored has become the packet to send!
-	sendpkt_pcap(response.buffer, response.length); //Send the response on the network!
+	if (!sendpkt_pcap(response.buffer, response.length)) //Send the response on the network!
+	{
+		goto ppp_finishpacketbufferqueue2_echo; //Failed to send!
+	}
 	result = 1; //Successfully sent!
 	goto ppp_finishpacketbufferqueue2_echo;
 	ppp_finishpacketbufferqueue_echo: //An error occurred during the response?
@@ -4246,7 +4302,10 @@ byte sendIPXechorequest(sword connectedclient)
 	//End of IPX packet creation.
 
 	//Now, the packet we've stored has become the packet to send!
-	sendpkt_pcap(response.buffer, response.length); //Send the response on the network!
+	if (!sendpkt_pcap(response.buffer, response.length)) //Send the response on the network!
+	{
+		goto ppp_finishpacketbufferqueue_echo; //Failed to send!
+	}
 	result = 1; //Successfully sent!
 	goto ppp_finishpacketbufferqueue2_echo;
 ppp_finishpacketbufferqueue_echo: //An error occurred during the response?
@@ -8465,7 +8524,10 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			}
 
 			//Now, the packet we've stored has become the packet to send!
-			sendpkt_pcap(response.buffer, response.length); //Send the response on the network!
+			if (!sendpkt_pcap(response.buffer, response.length)) //Send the response on the network!
+			{
+				goto ppp_finishpacketbufferqueue; //Failed to send!
+			}
 			goto ppp_finishpacketbufferqueue2;
 			break;
 		}
@@ -8512,7 +8574,10 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			}
 
 			//Now, the packet we've stored has become the packet to send!
-			sendpkt_pcap(response.buffer, response.length); //Send the response on the network!
+			if (!sendpkt_pcap(response.buffer, response.length)) //Send the response on the network!
+			{
+				goto ppp_finishpacketbufferqueue; //Keep pending!
+			}
 			goto ppp_finishpacketbufferqueue2;
 		}
 	default: //Unknown protocol?
@@ -9490,14 +9555,15 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 																memcpy(&ppptransmitheader.dst,&ARPpacket.SHA,6); //To the requester!
 																memcpy(&Packetserver_clients[connectedclient].packet[0],ppptransmitheader.data,sizeof(ppptransmitheader.data)); //The ethernet header!
 																//Now, the packet we've stored has become the packet to send back!
-																sendpkt_pcap(Packetserver_clients[connectedclient].packet, (28+sizeof(ethernetheader.data))); //Send the response back to the originator!
-																
-																 //Discard the received packet, so nobody else handles it too!
-																lock(LOCK_PCAP);
-																freez((void**)&net.packet, net.pktlen, "MODEM_PACKET");
-																net.packet = NULL; //Discard if failed to deallocate!
-																net.pktlen = 0; //Not allocated!
-																unlock(LOCK_PCAP);
+																if (sendpkt_pcap(Packetserver_clients[connectedclient].packet, (28 + sizeof(ethernetheader.data)))) //Send the response back to the originator!
+																{
+																	//Discard the received packet, so nobody else handles it too!
+																	lock(LOCK_PCAP);
+																	freez((void**)&net.packet, net.pktlen, "MODEM_PACKET");
+																	net.packet = NULL; //Discard if failed to deallocate!
+																	net.pktlen = 0; //Not allocated!
+																	unlock(LOCK_PCAP);
+																}
 															}
 														}
 													}
@@ -9914,7 +9980,10 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 											}
 											else //Able to send the packet always?
 											{
-												sendpkt_pcap(Packetserver_clients[connectedclient].packetserver_transmitbuffer, Packetserver_clients[connectedclient].packetserver_transmitlength); //Send the packet!
+												if (!sendpkt_pcap(Packetserver_clients[connectedclient].packetserver_transmitbuffer, Packetserver_clients[connectedclient].packetserver_transmitlength)) //Send the packet!
+												{
+													goto skipSLIP_PPP; //Keep the packet parsing pending!
+												}
 											}
 										}
 										else
