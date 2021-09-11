@@ -660,7 +660,11 @@ void initPcap() {
 	{
 		memcpy(&maclocal,&maclocal_default,sizeof(maclocal)); //Copy the default MAC address to use!
 	}
-	if( 6 == sscanf( BIOS_Settings.ethernetserver_settings.gatewayMACaddress, "%02x:%02x:%02x:%02x:%02x:%02x%*c",
+	if (ethif==-2) //Loopback mode?
+	{
+		memcpy(&packetserver_gatewayMAC,&maclocal,sizeof(maclocal)); //Send to ourselves!
+	}
+	else if( 6 == sscanf( BIOS_Settings.ethernetserver_settings.gatewayMACaddress, "%02x:%02x:%02x:%02x:%02x:%02x%*c",
 		&values[0], &values[1], &values[2],
 		&values[3], &values[4], &values[5] ) ) //Found a MAC address to emulate?
 	{
@@ -758,17 +762,24 @@ void initPcap() {
 
 	if (!pcap_loaded) //PCap isn't loaded?
 	{
-		dolog("ethernetcard", "The pcap interface and packet server is disabled because the required libraries aren't installed!");
+		dolog("ethernetcard", "The pcap interface and public packet server is disabled because the required libraries aren't installed!");
 		pcap_enabled = 0;
 		if (BIOS_Settings.ethernetserver_settings.ethernetcard == -2) //Special loopback mode?
 		{
 			pcap_enabled = 2; //Special loopback mode instead!
+			dolog("ethernetcard", "The packet server is running in loopback mode.");
+			PacketServer_running = 1; //We're using the packet server emulation, disable normal modem(we don't connect to other systems ourselves)!
+		}
+		else
+		{
+			PacketServer_running = 0; //We're using the packet server emulation, disable normal modem(we don't connect to other systems ourselves)!
 		}
 		pcap_receiverstate = 0; //Packet receiver/filter state: ready to receive a packet!
-		PacketServer_running = 0; //We're using the packet server emulation, disable normal modem(we don't connect to other systems ourselves)!
 		return; //Abort!
 	}
 
+	if (BIOS_Settings.ethernetserver_settings.ethernetcard != -2) //Not special loopback mode?
+	{
 	dolog("ethernetcard","Obtaining NIC list via libpcap...");
 
 #if defined(PACKETSERVER_ENABLED) && !defined(NOPCAP)
@@ -857,6 +868,7 @@ void initPcap() {
 
 	/* At this point, we don't need any more the device list. Free it */
 	pcap_freealldevs (alldevs);
+	} //pcap enabled?
 	pcap_enabled = (BIOS_Settings.ethernetserver_settings.ethernetcard==-2)?2:1; //Normal or loopback mode!
 	pcap_receiverstate = 0; //Packet receiver/filter state: ready to receive a packet!
 #endif
@@ -978,6 +990,7 @@ byte sendpkt_pcap (uint8_t *src, uint16_t len) {
 				return 0; //Failed!
 			}
 			memcpy(loopback.packet, src, len); //Set the contents of the packet!
+			loopback.pktlen = len; //The length!
 			unlock(LOCK_PCAP);
 		}
 		else //Normal sending?
@@ -1023,8 +1036,9 @@ void initPcap() //Unsupported!
 {
 	memset(&net,0,sizeof(net)); //Init!
 }
-void sendpkt_pcap (uint8_t *src, uint16_t len)
+byte sendpkt_pcap (uint8_t *src, uint16_t len)
 {
+	return 1; //Success!
 }
 void fetchpackets_pcap() //Handle any packets to process!
 {
