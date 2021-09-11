@@ -985,7 +985,7 @@ void fetchpackets_pcap() { //Handle any packets to process!
 #endif
 }
 
-byte sendpkt_pcap (uint8_t *src, uint16_t len) {
+byte sendpkt_pcap(uint8_t *src, uint16_t len) {
 #if defined(PACKETSERVER_ENABLED) && !defined(NOPCAP)
 	if (pcap_enabled) //Enabled?
 	{
@@ -1050,7 +1050,7 @@ void initPcap() //Unsupported!
 {
 	memset(&net,0,sizeof(net)); //Init!
 }
-byte sendpkt_pcap (uint8_t *src, uint16_t len)
+byte sendpkt_pcap(uint8_t *src, uint16_t len)
 {
 	return 1; //Success!
 }
