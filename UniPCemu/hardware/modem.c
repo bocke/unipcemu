@@ -869,11 +869,16 @@ void initPcap() {
 
 	/* At this point, we don't need any more the device list. Free it */
 	pcap_freealldevs (alldevs);
-	} //pcap enabled?
-	pcap_enabled = (BIOS_Settings.ethernetserver_settings.ethernetcard==-2)?2:1; //Normal or loopback mode!
-	pcap_receiverstate = 0; //Packet receiver/filter state: ready to receive a packet!
+	pcap_enabled = 1; //Normal mode!
 #endif
+	} //pcap enabled?
+	else
+	{
+		dolog("ethernetcard", "The packet server is running in loopback mode.");
+		pcap_enabled = 2; //Loopback mode!
+	}
 	PacketServer_running = 1; //We're using the packet server emulation, disable normal modem(we don't connect to other systems ourselves)!
+	pcap_receiverstate = 0; //Packet receiver/filter state: ready to receive a packet!
 }
 
 byte pcap_capture = 0; //A flag asking for the pcap to quit!
@@ -984,7 +989,7 @@ byte sendpkt_pcap (uint8_t *src, uint16_t len) {
 #if defined(PACKETSERVER_ENABLED) && !defined(NOPCAP)
 	if (pcap_enabled) //Enabled?
 	{
-		if (pcap_enabled == -2) //Loopback?
+		if (pcap_enabled == 2) //Loopback?
 		{
 			lock(LOCK_PCAP);
 			if (loopback.packet && loopback.pktlen) //Something is still pending?
