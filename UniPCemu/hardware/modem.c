@@ -1033,7 +1033,7 @@ void termPcap()
 		}
 	}
 #if defined(PACKETSERVER_ENABLED) && !defined(NOPCAP)
-	if (pcap_enabled)
+	if (pcap_enabled==1)
 	{
 		pcap_close(adhandle); //Close the capture/transmit device!
 	}
