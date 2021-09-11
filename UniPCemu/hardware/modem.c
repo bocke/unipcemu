@@ -411,6 +411,18 @@ word Packetserver_totalClients = 0; //How many clients are available?
 //What configuration to use when we're sending data to the client
 #define PPP_SENDCONF 1
 
+//Easy phase detection
+//LCP:
+//LCP has reached Open or Authenticated phases
+#define LCP_OPEN (Packetserver_clients[connectedclient].ppp_LCPstatus[PPP_RECVCONF] && Packetserver_clients[connectedclient].ppp_LCPstatus[PPP_SENDCONF])
+//LCP is authenticating with the client
+#define LCP_AUTHENTICATING ((Packetserver_clients[connectedclient].ppp_PAPstatus[PPP_SENDCONF]==0) && LCP_OPEN)
+//LCP is in Network phase
+#define LCP_NCP ((Packetserver_clients[connectedclient].ppp_PAPstatus[PPP_RECVCONF] && Packetserver_clients[connectedclient].ppp_PAPstatus[PPP_SENDCONF]) && LCP_OPEN)
+//Network protocol have reached Open
+#define IPXCP_OPEN ((Packetserver_clients[connectedclient].ppp_IPXCPstatus[PPP_RECVCONF] && Packetserver_clients[connectedclient].ppp_IPXCPstatus[PPP_SENDCONF]) && LCP_NCP)
+#define IPCP_OPEN ((Packetserver_clients[connectedclient].ppp_IPCPstatus[PPP_RECVCONF] && Packetserver_clients[connectedclient].ppp_IPCPstatus[PPP_SENDCONF]) && LCP_NCP)
+
 //Define below to encode/decode the PPP packets sent/received from the user using the PPP_ESC values
 #define PPPOE_ENCODEDECODE 0
 
@@ -4637,7 +4649,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 				{
 					goto ppp_finishpacketbufferqueue_lcp; //Incorrect packet: discard it!
 				}
-				if (!packetServerAddPacketBufferQueueBE16(&LCP_requestFields, 0xC023)) //PAP!
+				if (!packetServerAddPacketBufferQueueBE16(&LCP_requestFields, 0xC023)) //PAP is the only one that's currently supported!
 				{
 					goto ppp_finishpacketbufferqueue_lcp; //Incorrect packet: discard it!
 				}
@@ -5392,6 +5404,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 					}
 					break;
 				case 3: //Authentication Protocol
+					//This is a special case: unlike the other parameters which determines how the client want to receive something, this is the client asking us to authenticate using a specified protocol. Allow only valid protocols and NAK it with a supported one if it doesn't match.
 					if (common_OptionLengthField != 4) //Unsupported length?
 					{
 						invalidauthenticationprotocol:
