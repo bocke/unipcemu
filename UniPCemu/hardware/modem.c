@@ -4734,7 +4734,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		donthandleServerPPPLCPyet: //Don't handle PPP LCP from server yet?
 		if ((!handleTransmit) &&
 			//Also, don't handle PAP yet when both sides didn't do LCP open yet.
-			(Packetserver_clients[connectedclient].ppp_LCPstatus[1] && Packetserver_clients[connectedclient].ppp_LCPstatus[0]) && (!Packetserver_clients[connectedclient].ppp_PAPstatus[0])) //Not handling a transmitting of anything atm and LCP for the server-client is down?
+			LCP_AUTHENTICATING) //Not handling a transmitting of anything atm and LCP for the server-client is down?
 		{
 			//Use a simple nanosecond timer to determine if we're to send a 
 			Packetserver_clients[connectedclient].ppp_serverPAPrequesttimer += modem.networkpolltick; //Time!
@@ -4844,7 +4844,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			donthandleServerPPPPAPyet: //Don't handle PAP from the server yet?
 			result = 1; //Didn't handled a protocol.
 			if ((!handleTransmit) &&
-				(Packetserver_clients[connectedclient].ppp_LCPstatus[1] && (Packetserver_clients[connectedclient].ppp_LCPstatus[0])) && (Packetserver_clients[connectedclient].ppp_PAPstatus[1] && Packetserver_clients[connectedclient].ppp_PAPstatus[0]) //Don't handle until the upper layers are open!
+				LCP_NCP //Don't handle until the upper layers are open!
 				&& (!Packetserver_clients[connectedclient].ppp_IPXCPstatus[1])) //Not handling a transmitting of anything atm and LCP for the server-client is down?
 			{	
 				if (Packetserver_clients[connectedclient].ppp_suppressIPXCP) //Suppressing IPXCP packets requested from the client?
@@ -5031,7 +5031,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 			}
 			donthandleServerPPPIPXCPyet: //Don't handle PPP IPXCP from server yet?
 			if ((!handleTransmit) &&
-				(Packetserver_clients[connectedclient].ppp_LCPstatus[1] && (Packetserver_clients[connectedclient].ppp_LCPstatus[0])) && (Packetserver_clients[connectedclient].ppp_PAPstatus[1] && Packetserver_clients[connectedclient].ppp_PAPstatus[0]) //Don't handle until the upper layers are open!
+				LCP_NCP //Don't handle until the upper layers are open!
 				&& (!Packetserver_clients[connectedclient].ppp_IPCPstatus[1])) //Not handling a transmitting of anything atm and LCP for the server-client is down?
 			{
 				if (Packetserver_clients[connectedclient].ppp_suppressIPCP) //Suppressing IPCP packets requested from the client?
@@ -6487,6 +6487,11 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		packetServerFreePacketBufferQueue(&pppRejectFields); //Free the queued response!
 		break;
 	case 0xC023: //PAP?
+		if (!LCP_OPEN) //LCP is closed?
+		{
+			goto ppp_invalidprotocol; //Invalid protocol!
+		}
+		//This is a special reversed case: the client isn't asking to want us to authenticate, the client is asking to authenticate with us (or responses are of us authenticating with them).
 		if (!PPP_consumeStream(&pppstream, &common_CodeField)) //Code couldn't be read?
 		{
 			result = 1; //Incorrect packet: discard it!
@@ -6510,11 +6515,6 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		switch (common_CodeField) //What operation code?
 		{
 		case 1: //Authentication-Request
-			if (!Packetserver_clients[connectedclient].ppp_LCPstatus[PPP_RECVCONF]) //LCP is closed?
-			{
-				goto ppp_invalidprotocol; //Invalid protocol!
-			}
-
 			//This depends on the verification type we're using. If the autodetect method of logging in is used, that's the specified user. Otherrwise, we're going to have to look up users in our database and find a valid user that matches (if any). If any does, authenticate them with said account and make it active.
 
 			c = 0; //When using multiple users, start with the very first user!
@@ -6794,7 +6794,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		packetServerFreePacketBufferQueue(&pppRejectFields); //Free the queued response!
 		break;
 	case 0x802B: //IPXCP?
-		if ((!Packetserver_clients[connectedclient].ppp_LCPstatus[PPP_RECVCONF]) || (!Packetserver_clients[connectedclient].ppp_PAPstatus[PPP_RECVCONF])) //LCP is Closed or PAP isn't authenticated?
+		if (!LCP_NCP) //NCP is Closed?
 		{
 			goto ppp_invalidprotocol; //Don't handle!
 		}
@@ -7799,7 +7799,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		packetServerFreePacketBufferQueue(&pppRejectFields); //Free the queued response!
 		break;
 	case 0x8021: //IPCP?
-		if ((!Packetserver_clients[connectedclient].ppp_LCPstatus[PPP_RECVCONF]) || (!Packetserver_clients[connectedclient].ppp_PAPstatus[PPP_RECVCONF])) //LCP is Closed or PAP isn't authenticated?
+		if (!LCP_NCP) //NCP is Closed?
 		{
 			goto ppp_invalidprotocol; //Don't handle!
 		}
@@ -8420,7 +8420,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		packetServerFreePacketBufferQueue(&pppRejectFields); //Free the queued response!
 		break;
 	case 0x2B: //IPX packet?
-		if (Packetserver_clients[connectedclient].ppp_IPXCPstatus[PPP_RECVCONF] && Packetserver_clients[connectedclient].ppp_PAPstatus[PPP_RECVCONF] && Packetserver_clients[connectedclient].ppp_LCPstatus[PPP_RECVCONF]) //Fully authenticated and logged in for sending on the peer?
+		if (IPXCP_OPEN) //Fully authenticated and logged in for sending on the peer?
 		{
 			//Handle the IPX packet to be sent!
 			if (!createPPPsubstream(&pppstream, &pppstream_requestfield, PPP_streamdataleft(&pppstream))) //Create a substream for the information field?
@@ -8473,7 +8473,7 @@ byte PPP_parseSentPacketFromClient(sword connectedclient, byte handleTransmit)
 		//TODO
 		//break;
 	case 0x21: //IP packet?
-		if (Packetserver_clients[connectedclient].ppp_IPCPstatus[PPP_RECVCONF] && Packetserver_clients[connectedclient].ppp_PAPstatus[PPP_RECVCONF] && Packetserver_clients[connectedclient].ppp_LCPstatus[PPP_RECVCONF]) //Fully authenticated and logged in for sending on the peer?
+		if (IPCP_OPEN) //Fully authenticated and logged in for sending on the peer?
 		{
 			//Handle the IP packet to be sent!
 			if (!createPPPsubstream(&pppstream, &pppstream_requestfield, PPP_streamdataleft(&pppstream))) //Create a substream for the information field?
@@ -8591,7 +8591,7 @@ byte PPP_parseReceivedPacketForClient(sword connectedclient)
 	word packettype; //What PPP packet type to send!
 	result = 0; //Default: discard!
 	//This is supposed to check the packet, parse it and send packets to the connected client in response when it's able to!
-	if (Packetserver_clients[connectedclient].ppp_LCPstatus[PPP_SENDCONF] && Packetserver_clients[connectedclient].ppp_PAPstatus[PPP_SENDCONF]) //Fully authenticated and logged in?
+	if (LCP_NCP) //Fully authenticated and logged in?
 	{
 		if (Packetserver_clients[connectedclient].pktlen > sizeof(ethernetheader.data)) //Length might be fine?
 		{
@@ -8619,7 +8619,7 @@ byte PPP_parseReceivedPacketForClient(sword connectedclient)
 							if (memcmp(&ipxheader.DestinationNodeNumber, &ipxbroadcastaddr, 6) == 0) //Destination node is the broadcast address?
 							{
 								//We're replying to the echo packet!
-								if (!(Packetserver_clients[connectedclient].ppp_IPXCPstatus[PPP_RECVCONF] && Packetserver_clients[connectedclient].ppp_IPXCPstatus[PPP_SENDCONF])) //Not authenticated yet?
+								if (!IPXCP_OPEN) //Not authenticated yet?
 								{
 									return 0; //Handled, discard!
 								}
@@ -8653,7 +8653,7 @@ byte PPP_parseReceivedPacketForClient(sword connectedclient)
 						}
 					}
 					//Filter out unwanted IPX network/node numbers that aren't intended for us!
-					if ((!Packetserver_clients[connectedclient].ppp_IPXCPstatus[PPP_RECVCONF]) || (!Packetserver_clients[connectedclient].ppp_IPXCPstatus[PPP_SENDCONF])) //Not open yet?
+					if (!IPXCP_OPEN) //Not open yet?
 					{
 						return 0; //Handled, discard!
 					}
@@ -8684,7 +8684,7 @@ byte PPP_parseReceivedPacketForClient(sword connectedclient)
 			}
 			else if (ethernetheader.type == SDL_SwapBE16(0x0800)) //IP packet?
 			{
-				if ((!Packetserver_clients[connectedclient].ppp_IPCPstatus[PPP_RECVCONF]) || (!Packetserver_clients[connectedclient].ppp_IPCPstatus[PPP_SENDCONF])) //Not open yet?
+				if (!IPCP_OPEN) //Not open yet?
 				{
 					return 0; //Handled, discard!
 				}
@@ -8754,8 +8754,6 @@ byte PPP_parseReceivedPacketForClient(sword connectedclient)
 	}
 	return 0; //Currently simply discard it!
 }
-
-
 
 void connectModem(char* number)
 {
