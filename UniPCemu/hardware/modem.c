@@ -581,6 +581,7 @@ pcap_if_t *d;
 pcap_t *adhandle;
 const u_char *pktdata;
 struct pcap_pkthdr *hdr;
+uint_32 pcaplength;
 int_64 inum;
 uint16_t curhandle = 0;
 char errbuf[PCAP_ERRBUF_SIZE];
@@ -891,16 +892,22 @@ void fetchpackets_pcap() { //Handle any packets to process!
 			if (pcap_receiverstate == 0) //Ready to receive a new packet?
 			{
 			invalidpacket_receivefilter:
-				if (pcap_enabled != -2) //Not loopback mode?
+				if (pcap_enabled != 2) //Not loopback mode?
 				{
 					if (pcap_next_ex(adhandle, &hdr, &pktdata) <= 0) goto trynexttime; //Nothing valid to process?
 					if (hdr->len == 0) goto invalidpacket_receivefilter; //Try again on invalid 
+					pcaplength = hdr->len; //The length!
 				}
 				else //Loopback mode?
 				{
 					lock(LOCK_PCAP);
-					if (!loopback.packet) goto invalidpacket_receivefilter; //Wait for a packet to appear on the loopback!
+					if (!loopback.packet)
+					{
+						unlock(LOCK_PCAP);
+						goto invalidpacket_receivefilter; //Wait for a packet to appear on the loopback!
+					}
 					pktdata = loopback.packet; //For easy handling below!
+					pcaplength = loopback.pktlen; //It's length!
 					unlock(LOCK_PCAP);
 				}
 				//Packet received!
@@ -931,7 +938,7 @@ void fetchpackets_pcap() { //Handle any packets to process!
 				//Check for the client first! Don't receive anything that is our own traffic (the connected client)!
 				if (ethernetheader.type == SDL_SwapBE16(0x0806)) //ARP?
 				{
-					if ((hdr->len - sizeof(ethernetheader.data)) != 28) //Wrong length?
+					if ((pcaplength - sizeof(ethernetheader.data)) != 28) //Wrong length?
 					{
 						goto invalidpacket_receivefilter; //Ignore this packet and check for more!
 					}
@@ -946,18 +953,20 @@ void fetchpackets_pcap() { //Handle any packets to process!
 			if ((net.packet == NULL) && (pcap_receiverstate == 1)) //Can we receive anything and receiver is loaded?
 			{
 				//Packet acnowledged for clients to receive!
-				net.packet = zalloc(hdr->len, "MODEM_PACKET", NULL);
+				net.packet = zalloc(pcaplength, "MODEM_PACKET", NULL);
 				if (net.packet) //Allocated?
 				{
-					memcpy(net.packet, &pktdata[0], hdr->len);
-					net.pktlen = (uint16_t)hdr->len;
+					memcpy(net.packet, &pktdata[0], pcaplength);
+					net.pktlen = pcaplength;
 					if (pcap_verbose) {
 						dolog("ethernetcard", "Received packet of %u bytes.", net.pktlen);
 					}
-					if (pcap_enabled == -2) //Lloopback mode?
+					if (pcap_enabled == 2) //Loopback mode?
 					{
-						freez((void *)loopback.packet, loopback.pktlen, "LOOPBACK_PACKET"); //Free the loopback packet!
+						freez((void *)&loopback.packet, loopback.pktlen, "LOOPBACK_PACKET"); //Free the loopback packet!
+						loopback.pktlen = 0; //Freed!
 					}
+					pcaplength = 0;
 					//Packet received!
 					pcap_receiverstate = 0; //Start scanning for incoming packets again, since the receiver is cleared again!
 				}
