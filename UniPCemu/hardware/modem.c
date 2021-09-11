@@ -904,7 +904,7 @@ void fetchpackets_pcap() { //Handle any packets to process!
 					if (!loopback.packet)
 					{
 						unlock(LOCK_PCAP);
-						goto invalidpacket_receivefilter; //Wait for a packet to appear on the loopback!
+						goto trynexttime; //Wait for a packet to appear on the loopback!
 					}
 					pktdata = loopback.packet; //For easy handling below!
 					pcaplength = loopback.pktlen; //It's length!
