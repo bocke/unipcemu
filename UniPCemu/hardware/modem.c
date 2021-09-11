@@ -3383,6 +3383,12 @@ void doneModem() //Finish modem!
 	if (pcapthread) //Thread is started?
 	{
 		lock(LOCK_PCAPFLAG);
+		if (strcmp(pcapthread->name, "pcapfetch")) //Pcap thread?
+		{
+			unlock(LOCK_PCAPFLAG);
+			pcapthread = NULL; //Already finished!
+			return;
+		}
 		pcap_capture = 0; //Request for the thread to stop!
 		unlock(LOCK_PCAPFLAG);
 		delay(1000000); //Wait just a bit for the thread to end!
