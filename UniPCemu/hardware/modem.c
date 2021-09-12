@@ -228,7 +228,7 @@ typedef struct
 	char packetserver_username[256]; //Username(settings must match)
 	char packetserver_password[256]; //Password(settings must match)
 	char packetserver_protocol[256]; //Protocol(slip). Hangup when sent with username&password not matching setting.
-	char packetserver_staticIP[4]; //Static IP to assign this user!
+	byte packetserver_staticIP[4]; //Static IP to assign this user!
 	char packetserver_staticIPstr[256]; //Static IP, string format
 	byte packetserver_useStaticIP; //Use static IP?
 	byte packetserver_slipprotocol; //Are we using the slip protocol?
