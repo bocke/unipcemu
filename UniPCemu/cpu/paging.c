@@ -178,6 +178,7 @@ byte verifyCPL(byte iswrite, byte userlevel, byte PDERW, byte PDEUS, byte PTERW,
 
 void Paging_freeOppositeTLB(uint_32 logicaladdress, byte W, byte U, byte D, byte S);
 
+//isPrefetch: bit 0=set during prefetches, bit 1=Code read when set, bit 2=Suppress faults
 byte isvalidpage(uint_32 address, byte iswrite, byte CPL, byte isPrefetch) //Do we have paging without error? userlevel=CPL usually.
 {
 	word DIR, TABLE;
@@ -237,7 +238,7 @@ byte isvalidpage(uint_32 address, byte iswrite, byte CPL, byte isPrefetch) //Do 
 		}
 	}
 
-	if ((isPrefetch&1)) return 0; //Stop the prefetch when not in the TLB!
+	if (isPrefetch&1) return 0; //Stop the prefetch when not in the TLB!
 
 	#ifdef PAGING_LOCKED
 	if (BIU_obtainbuslock()) //Obtaining the bus lock?
@@ -598,7 +599,7 @@ byte CPU_paging_translateaddr(uint_32 address, byte CPL, uint_64 *physaddr) //Do
 byte CPU_Paging_checkPage(uint_32 address, word readflags, byte CPL)
 {
 	byte result;
-	result = isvalidpage(address,((readflags&(~0x10))==0),CPL,(((readflags&0x10)>>4)|(readflags&2)|((readflags&0x100)>>6))); //Are we an invalid page? We've raised an error! Bit4 is set during Prefetch operations! Bit 0 is set when performing an instruction fetch!
+	result = isvalidpage(address,((readflags&0x3)==0),CPL,((readflags&0x10)>>4)|(((readflags&2)&((readflags<<1)&2))|((readflags&0x100)>>6))); //Are we an invalid page? We've raised an error! Bit2 is set during Prefetch operations! Bit 1 is set during code accesses.
 	if (result == 1) //OK?
 	{
 		return 0; //OK!

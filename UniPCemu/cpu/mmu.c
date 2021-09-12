@@ -455,9 +455,13 @@ byte checkMMUaccess32(sword segdesc, word segment, uint_64 offset, word readflag
 	}
 	//Dword boundary check for paging!
 	//Non Page Faults first!
-	if ((result = checkMMUaccess(segdesc, segment, offset+3, (readflags|0x40), CPL, is_offset16, subbyte|3)) != 0) //Upper bound!
+	if (readflags & 0x40) //Not using paging?
 	{
-		return result; //Give the result!
+		//This has priority with segmentation! Don't handle paging just yet!
+		if ((result = checkMMUaccess(segdesc, segment, offset + 3, (readflags | 0x40), CPL, is_offset16, subbyte | 3)) != 0) //Upper bound!
+		{
+			return result; //Give the result!
+		}
 	}
 	//Paging, byte granularity faults!
 	if ((result = checkMMUaccess(segdesc, segment, offset+3, (readflags|0x100), CPL, is_offset16, subbyte|3)) != 0) //Upper bound!
@@ -493,13 +497,14 @@ byte checkPhysMMUaccess32(void *segdesc, word segment, uint_64 offset, word read
 	{
 		return result; //Give the result!
 	}
+	//Ignore segmentation, as there is none special upper-bound case here!
 	if ((result = checkPhysMMUaccess(segdesc, segment, offset + 3, (readflags|0x100), CPL, is_offset16, subbyte | 3)) != 0) //Upper bound!
 	{
-		if ((result = checkPhysMMUaccess(segdesc, segment, offset + 1, readflags, CPL, is_offset16, subbyte | 3)) != 0) //Upper bound!
+		if ((result = checkPhysMMUaccess(segdesc, segment, offset + 1, readflags, CPL, is_offset16, subbyte | 1)) != 0) //Upper bound!
 		{
 			return result; //Give the result!
 		}
-		if ((result = checkPhysMMUaccess(segdesc, segment, offset + 2, readflags, CPL, is_offset16, subbyte | 3)) != 0) //Upper bound!
+		if ((result = checkPhysMMUaccess(segdesc, segment, offset + 2, readflags, CPL, is_offset16, subbyte | 2)) != 0) //Upper bound!
 		{
 			return result; //Give the result!
 		}
