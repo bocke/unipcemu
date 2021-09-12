@@ -3322,10 +3322,25 @@ void initModem(byte enabled) //Initialise modem!
 			{
 				++numavailableclients;
 				packetserver_moveListItem(client, &Packetserver_freeclients, &Packetserver_unusableclients); //Make the client available for usage!
-				client->connectionnumber = i; //What connection number to use!
 			}
 			else break; //Failed to allocate? Not available client anymore!
 		}
+		//Reverse the connection list once again to make it proper!
+		client = Packetserver_freeclients; //First usable client!
+		for (;client;client = client->next) //Process all clients again!
+		{
+			trynextclientalloc:
+			if (modem.inputdatabuffer[i] && modem.outputbuffer[i] && modem.blockoutputbuffer[i]) //Both allocated?
+			{
+				client->connectionnumber = i; //What connection number to use!
+			}
+			else
+			{
+				++i; //Try next!
+				goto trynextclientalloc; //Do it!
+			}
+		}
+
 		if (modem.inputbuffer && modem.inputdatabuffer[0] && modem.outputbuffer[0] && modem.blockoutputbuffer[0]) //Gotten buffers?
 		{
 			lock(LOCK_PCAPFLAG);
