@@ -3327,12 +3327,13 @@ void initModem(byte enabled) //Initialise modem!
 		}
 		//Reverse the connection list once again to make it proper!
 		client = Packetserver_freeclients; //First usable client!
+		i = 0; //Init!
 		for (;client;client = client->next) //Process all clients again!
 		{
 			trynextclientalloc:
 			if (modem.inputdatabuffer[i] && modem.outputbuffer[i] && modem.blockoutputbuffer[i]) //Both allocated?
 			{
-				client->connectionnumber = i; //What connection number to use!
+				client->connectionnumber = i++; //What connection number to use!
 			}
 			else
 			{
