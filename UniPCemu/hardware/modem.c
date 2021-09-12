@@ -451,6 +451,70 @@ typedef union PACKED
 } ETHERNETHEADER;
 #include "headers/endpacked.h"
 
+#include "headers/packed.h"
+typedef struct PACKED
+{
+	//Pseudo IP header
+	byte srcaddr[4];
+	byte dstaddr[4];
+	byte mustbezero;
+	byte protocol;
+	word UDPlength;
+} UDPpseudoheader;
+#include "headers/endpacked.h"
+
+#include "headers/packed.h"
+typedef struct PACKED
+{
+	word sourceport;
+	word destinationport;
+	word length;
+	word checksum;
+} UDPheader;
+#include "headers/endpacked.h"
+
+
+#include "headers/packed.h"
+typedef union PACKED
+{
+	UDPpseudoheader header;
+	byte data[12]; //12 bytes of data!
+} UDPpseudoheadercontainer;
+#include "headers/endpacked.h"
+
+#include "headers/packed.h"
+typedef struct PACKED
+{
+	byte version_IHL; //Low 4 bits=Version, High 4 bits is size in 32-bit dwords.
+	byte DSCP_ECN;
+	word totallength; //Total length of allocation for the entire packet to be received.
+	word identification;
+	byte flags7_5_fragmentoffsethigh4_0; //flags 2:0, fragment offset high 7:3(bits 4:0 of the high byte)
+	byte fragmentoffset; //Remainder of fragment offset low byte
+	byte TTL;
+	byte protocol;
+	word headerchecksum;
+	byte sourceaddr[4];
+	byte destaddr[4];
+	//Now come the options, which are optional.
+} IPv4header;
+#include "headers/endpacked.h"
+
+#include "headers/packed.h"
+typedef struct PACKED
+{
+	word htype;
+	word ptype;
+	byte hlen;
+	byte plen;
+	word oper;
+	byte SHA[6]; //Sender hardware address
+	uint_32 SPA; //Sender protocol address
+	byte THA[6]; //Target hardware address
+	uint_32 TPA; //Target protocol address
+} ARPpackettype;
+#include "headers/endpacked.h"
+
 //Normal modem operations!
 //Text buffer size for transmitting text to the DTE.
 #define MODEM_TEXTBUFFERSIZE 256
@@ -941,7 +1005,11 @@ byte pcap_capture = 0; //A flag asking for the pcap to quit!
 void fetchpackets_pcap() { //Handle any packets to process!
 #if defined(PACKETSERVER_ENABLED) && !defined(NOPCAP)
 	//Filter parameters to apply!
+	PacketServer_clientp connectedclient;
 	ETHERNETHEADER ethernetheader; //The header to inspect!
+	word headertype;
+	ARPpackettype ARPpacket; //For analyzing ARP requests!
+	byte skippacket; //Skipping the packet as unusable?
 
 	if (pcap_enabled) //Enabled?
 	{
@@ -996,15 +1064,169 @@ void fetchpackets_pcap() { //Handle any packets to process!
 					}
 				}
 
-				//Check for the client first! Don't receive anything that is our own traffic (the connected client)!
-				if (ethernetheader.type == SDL_SwapBE16(0x0806)) //ARP?
+				lock(LOCK_PCAP); //Make sure that we don't conflict with the receiver!
+				skippacket = 1; //Default: skip the packet!
+				headertype = ethernetheader.type; //What packet type is used?
+				for (connectedclient = Packetserver_allocatedclients; connectedclient; connectedclient = connectedclient->next) //Parse all possible clients to receive it!
 				{
-					if ((pcaplength - sizeof(ethernetheader.data)) != 28) //Wrong length?
-					{
-						goto invalidpacket_receivefilter; //Ignore this packet and check for more!
-					}
-				}
+					//Perform the same logic as the main thread, checking if a packet is to be received properly!
 
+					//Check for the client first! Don't receive anything that is our own traffic (the connected client)!
+					//Next, check for supported packet types!
+					if (connectedclient->packetserver_slipprotocol == 3) //PPP protocol used?
+					{
+						if (ethernetheader.type == SDL_SwapBE16(0x8863)) //Are we a discovery packet?
+						{
+							if (connectedclient->packetserver_slipprotocol_pppoe) //Using PPPOE?
+							{
+								skippacket = 0; //Handle it!
+								goto skippacketfinished;
+							}
+							//Using PPP, ignore the header type and parse this later!
+						}
+					}
+					headertype = ethernetheader.type; //The requested header type!
+					//Now, check the normal receive parameters!
+					if (connectedclient->packetserver_useStaticIP && (headertype == SDL_SwapBE16(0x0800)) && ((connectedclient->packetserver_slipprotocol == 1)) || ((connectedclient->packetserver_slipprotocol == 3) && (!connectedclient->packetserver_slipprotocol_pppoe) && (connectedclient->ppp_IPCPstatus[PPP_RECVCONF]))) //IP filter to apply for IPv4 connections and PPPOE connections?
+					{
+						if ((memcmp(&pktdata[sizeof(ethernetheader.data) + 16], &connectedclient->packetserver_staticIP, 4) != 0) && (memcmp(&pktdata[sizeof(ethernetheader.data) + 16], &packetserver_broadcastIP, 4) != 0)) //Static IP mismatch?
+						{
+							continue; //Invalid packet!
+						}
+					}
+					if ((memcmp(&ethernetheader.dst, &packetserver_sourceMAC, sizeof(ethernetheader.dst)) != 0) && (memcmp(&ethernetheader.dst, &packetserver_broadcastMAC, sizeof(ethernetheader.dst)) != 0)) //Invalid destination(and not broadcasting)?
+					{
+						continue; //Invalid packet!
+					}
+					if (connectedclient->packetserver_slipprotocol == 3) //PPP protocol used?
+					{
+						if (ethernetheader.type == SDL_SwapBE16(0x8863)) //Are we a discovery packet?
+						{
+							if (connectedclient->packetserver_slipprotocol_pppoe) //PPPOE?
+							{
+								skippacket = 0; //Handle it!
+								goto skippacketfinished;
+							}
+							else
+							{
+								continue; //Invalid for us!
+							}
+						}
+						else if ((headertype == SDL_SwapBE16(0x8864)) && connectedclient->packetserver_slipprotocol_pppoe) //Receiving uses normal PPP packets to transfer/receive on the receiver line only!
+						{
+							skippacket = 0; //Handle it!
+							goto skippacketfinished;
+						}
+						else if (headertype == SDL_SwapBE16(0x8864)) //Invalid for PPP?
+						{
+							continue; //Invalid for us!
+						}
+						if (!connectedclient->packetserver_slipprotocol_pppoe) //PPP requires extra filtering?
+						{
+							if (headertype == SDL_SwapBE16(0x0800)) //IPv4?
+							{
+								if (!connectedclient->ppp_IPCPstatus[PPP_RECVCONF]) //IPv4 not used on PPP?
+								{
+									continue; //Invalid for us!
+								}
+							}
+							else if (headertype == SDL_SwapBE16(0x0806)) //ARP?
+							{
+								if (!connectedclient->ppp_IPCPstatus[PPP_RECVCONF]) //IPv4 not used on PPP?
+								{
+									continue; //Invalid for us!
+								}
+							}
+							else if (headertype == SDL_SwapBE16(0x8137)) //We're an IPX packet?
+							{
+								if (!connectedclient->ppp_IPXCPstatus[PPP_RECVCONF]) //IPX not used on PPP?
+								{
+									continue; //Invalid for us!
+								}
+							}
+							else //Unknown packet type?
+							{
+								continue; //Invalid for us!
+							}
+						}
+					}
+					else if (connectedclient->packetserver_slipprotocol == 2) //IPX protocol used?
+					{
+						if (headertype != SDL_SwapBE16(0x8137)) //We're an IPX packet!
+						{
+							continue; //Invalid for us!
+						}
+					}
+					else //IPv4?
+					{
+						if ((headertype != SDL_SwapBE16(0x0800)) && (headertype!=0x0806)) //We're an IP or ARP packet!
+						{
+							continue; //Invalid for us!
+						}
+					}
+
+					if (connectedclient->packetserver_stage != PACKETSTAGE_PACKETS) continue; //Don't handle SLIP/PPP/IPX yet!
+					if (ethernetheader.type == SDL_SwapBE16(0x0806)) //ARP?
+					{
+						if ((connectedclient->packetserver_slipprotocol == 1) || //IPv4 used?
+							((connectedclient->packetserver_slipprotocol == 3) && (!connectedclient->packetserver_slipprotocol_pppoe) && (connectedclient->ppp_IPCPstatus[PPP_RECVCONF])) //IPv4 used on PPP?
+							) //IPv4 protocol used?
+						{
+							//Always handle ARP packets, if we're IPv4 type!
+							//TODO: Check if it's a request for us. If so, reply with our IPv4 address!
+							memcpy(&ARPpacket, &connectedclient->packet[sizeof(ethernetheader.data)], 28); //Retrieve the ARP packet!
+							if ((SDL_SwapBE16(ARPpacket.htype) == 1) && (ARPpacket.ptype == SDL_SwapBE16(0x0800)) && (ARPpacket.hlen == 6) && (ARPpacket.plen == 4) && (SDL_SwapBE16(ARPpacket.oper) == 1))
+							{
+								//IPv4 ARP request
+								//Check it's our IP, send a response if it's us!
+								if (connectedclient->packetserver_useStaticIP) //IP filter is used?
+								{
+									if (memcmp(&ARPpacket.TPA, &packetserver_defaultstaticIP, 4) == 0) //Default Static IP route to server?
+									{
+										goto handleserverARP_pcap; //Default server packet!
+									}
+									if (memcmp(&ARPpacket.TPA, ((connectedclient->packetserver_slipprotocol == 3) && (!connectedclient->packetserver_slipprotocol_pppoe) && (connectedclient->ppp_IPCPstatus[PPP_RECVCONF])) ? &connectedclient->ipcp_ipaddress[PPP_SENDCONF][0] : &connectedclient->packetserver_staticIP[0], 4) != 0) //Static IP mismatch?
+									{
+										continue; //Invalid packet!
+									}
+								handleserverARP_pcap: //Server ARP or client ARP?
+								//It's for us, send a response!
+								//Construct the ARP packet!
+									skippacket = 0; //Receive it!
+									goto skippacketfinished; //Stop searching!
+								}
+								else
+								{
+									continue; //Invalid for our use, discard it!
+								}
+							}
+							else
+							{
+								continue; //Invalid for our use, discard it!
+							}
+						}
+						else
+						{
+							continue; //Invalid for our use, discard it!
+						}
+					}
+					//Valid packet! Receive it!
+					skippacket = 0; //Receive it!
+					goto skippacketfinished; //Stop searching!
+				}
+				skippacketfinished:
+				if (skippacket) //To skip receiving it?
+				{
+					if (pcap_enabled == 2) //Loopback mode?
+					{
+						freez((void*)&loopback.packet, loopback.pktlen, "LOOPBACK_PACKET"); //Free the loopback packet!
+						loopback.pktlen = 0; //Freed!
+					}
+					unlock(LOCK_PCAP);
+					goto invalidpacket_receivefilter; //Fetch next packet(s)!
+				}
+				unlock(LOCK_PCAP);
+				//Valid packet! Receive it!
 				//Packet ready to receive!
 				pcap_receiverstate = 1; //Packet is loaded and ready to parse by the receiver algorithm!
 			}
@@ -8954,70 +9176,6 @@ byte modem_passthrough()
 	return (modem.supported >= 2); //In phassthough mode?
 }
 
-#include "headers/packed.h"
-typedef struct PACKED
-{
-	//Pseudo IP header
-	byte srcaddr[4];
-	byte dstaddr[4];
-	byte mustbezero;
-	byte protocol;
-	word UDPlength;
-} UDPpseudoheader;
-#include "headers/endpacked.h"
-
-#include "headers/packed.h"
-typedef struct PACKED
-{
-	word sourceport;
-	word destinationport;
-	word length;
-	word checksum;
-} UDPheader;
-#include "headers/endpacked.h"
-
-
-#include "headers/packed.h"
-typedef union PACKED
-{
-	UDPpseudoheader header;
-	byte data[12]; //12 bytes of data!
-} UDPpseudoheadercontainer;
-#include "headers/endpacked.h"
-
-#include "headers/packed.h"
-typedef struct PACKED
-{
-	byte version_IHL; //Low 4 bits=Version, High 4 bits is size in 32-bit dwords.
-	byte DSCP_ECN;
-	word totallength; //Total length of allocation for the entire packet to be received.
-	word identification;
-	byte flags7_5_fragmentoffsethigh4_0; //flags 2:0, fragment offset high 7:3(bits 4:0 of the high byte)
-	byte fragmentoffset; //Remainder of fragment offset low byte
-	byte TTL;
-	byte protocol;
-	word headerchecksum;
-	byte sourceaddr[4];
-	byte destaddr[4];
-	//Now come the options, which are optional.
-} IPv4header;
-#include "headers/endpacked.h"
-
-#include "headers/packed.h"
-typedef struct PACKED
-{
-	word htype;
-	word ptype;
-	byte hlen;
-	byte plen;
-	word oper;
-	byte SHA[6]; //Sender hardware address
-	uint_32 SPA; //Sender protocol address
-	byte THA[6]; //Target hardware address
-	uint_32 TPA; //Target protocol address
-} ARPpackettype;
-#include "headers/endpacked.h"
-
 word performUDPchecksum(MODEM_PACKETBUFFER* buffer)
 {
 	word result;
@@ -9565,18 +9723,10 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 													}
 													//Using PPP, ignore the header type and parse this later!
 												}
-												headertype = SDL_SwapBE16(0x8864); //Receiving uses normal PPP packets to transfer/receive on the receiver line only!
 											}
-											else if (connectedclient->packetserver_slipprotocol == 2) //IPX protocol used?
-											{
-												headertype = SDL_SwapBE16(0x8137); //We're an IPX packet!
-											}
-											else //IPv4?
-											{
-												headertype = SDL_SwapBE16(0x0800); //We're an IP packet!
-											}
+											headertype = ethernetheader.type; //The requested header type!
 											//Now, check the normal receive parameters!
-											if (connectedclient->packetserver_useStaticIP && (headertype == SDL_SwapBE16(0x0800)) && (ethernetheader.type==headertype) && (!((connectedclient->packetserver_slipprotocol == 3) && (!connectedclient->packetserver_slipprotocol_pppoe)))) //IP filter to apply?
+											if (connectedclient->packetserver_useStaticIP && (headertype == SDL_SwapBE16(0x0800)) && ((connectedclient->packetserver_slipprotocol == 1)) || ((connectedclient->packetserver_slipprotocol == 3) && (!connectedclient->packetserver_slipprotocol_pppoe) && (connectedclient->ppp_IPCPstatus[PPP_RECVCONF]))) //IP filter to apply for IPv4 connections and PPPOE connections?
 											{
 												if ((memcmp(&connectedclient->packet[sizeof(ethernetheader.data) + 16], &connectedclient->packetserver_staticIP, 4) != 0) && (memcmp(&connectedclient->packet[sizeof(ethernetheader.data) + 16], &packetserver_broadcastIP, 4) != 0)) //Static IP mismatch?
 												{
@@ -9587,92 +9737,151 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 											{
 												goto invalidpacket; //Invalid packet!
 											}
-											if (!(((connectedclient->packetserver_slipprotocol == 3) && (!connectedclient->packetserver_slipprotocol_pppoe)))) //Filtering header type?
+											if (connectedclient->packetserver_slipprotocol == 3) //PPP protocol used?
 											{
-												if (connectedclient->packetserver_slipprotocol == 3) //PPP protocol used?
+												if (ethernetheader.type == SDL_SwapBE16(0x8863)) //Are we a discovery packet?
 												{
-													if (ethernetheader.type == SDL_SwapBE16(0x8863)) //Are we a discovery packet?
+													if (connectedclient->packetserver_slipprotocol_pppoe) //PPPOE?
 													{
 														if (PPPOE_handlePADreceived(connectedclient)) //Handle the received PAD packet!
 														{
 															//Discard the received packet, so nobody else handles it too!
 															lock(LOCK_PCAP);
-															freez((void**)&net.packet, net.pktlen, "MODEM_PACKET");
-															net.packet = NULL; //Discard if failed to deallocate!
-															net.pktlen = 0; //Not allocated!
-															unlock(LOCK_PCAP);
+																freez((void**)&net.packet, net.pktlen, "MODEM_PACKET");
+																net.packet = NULL; //Discard if failed to deallocate!
+																net.pktlen = 0; //Not allocated!
+																unlock(LOCK_PCAP);
 															goto invalidpacket; //Invalid packet!
 														}
+														//Otherwise, keep pending?
 													}
-													headertype = SDL_SwapBE16(0x8864); //Receiving uses normal PPP packets to transfer/receive on the receiver line only!
+													else
+													{
+														goto invalidpacket; //Invalid for us!
+													}
 												}
-												else if (connectedclient->packetserver_slipprotocol == 2) //IPX protocol used?
+												else if ((headertype != SDL_SwapBE16(0x8864)) && connectedclient->packetserver_slipprotocol_pppoe) //Receiving uses normal PPP packets to transfer/receive on the receiver line only!
 												{
-													headertype = SDL_SwapBE16(0x8137); //We're an IPX packet!
+													goto invalidpacket; //Invalid for us!
 												}
-												else //IPv4?
+												else if (headertype == SDL_SwapBE16(0x8864)) //Invalid for PPP?
 												{
-													headertype = SDL_SwapBE16(0x0800); //We're an IP packet!
+													goto invalidpacket; //Invalid for us!
+												}
+												if (!connectedclient->packetserver_slipprotocol_pppoe) //PPP requires extra filtering?
+												{
+													if (headertype == SDL_SwapBE16(0x0800)) //IPv4?
+													{
+														if (!connectedclient->ppp_IPCPstatus[PPP_RECVCONF]) //IPv4 not used on PPP?
+														{
+															goto invalidpacket; //Invalid for us!
+														}
+													}
+													else if (headertype == SDL_SwapBE16(0x0806)) //ARP?
+													{
+														if (!connectedclient->ppp_IPCPstatus[PPP_RECVCONF]) //IPv4 not used on PPP?
+														{
+															goto invalidpacket; //Invalid for us!
+														}
+													}
+													else if (headertype == SDL_SwapBE16(0x8137)) //We're an IPX packet?
+													{
+														if (!connectedclient->ppp_IPXCPstatus[PPP_RECVCONF]) //IPX not used on PPP?
+														{
+															goto invalidpacket; //Invalid for us!
+														}
+													}
+													else //Unknown packet type?
+													{
+														goto invalidpacket; //Invalid for us!
+													}
+												}
+												else if ((headertype == SDL_SwapBE16(0x0800)) || ((headertype == SDL_SwapBE16(0x8137)))) //IPv4 or IPX on PPPOE?
+												{
+													goto invalidpacket; //Invalid for us!
+												}
+											}
+											else if (connectedclient->packetserver_slipprotocol == 2) //IPX protocol used?
+											{
+												if (headertype != SDL_SwapBE16(0x8137)) //We're an IPX packet!
+												{
+													goto invalidpacket; //Invalid for us!
+												}
+											}
+											else //IPv4?
+											{
+												if ((headertype != SDL_SwapBE16(0x0800)) && (headertype!=0x0806)) //We're an IP or ARP packet!
+												{
+													goto invalidpacket; //Invalid for us!
 												}
 											}
 											if (connectedclient->packetserver_stage != PACKETSTAGE_PACKETS) goto invalidpacket; //Don't handle SLIP/PPP/IPX yet!
-											if ((ethernetheader.type != headertype) && ((!((connectedclient->packetserver_slipprotocol == 3) && (!connectedclient->packetserver_slipprotocol_pppoe))))) //Invalid type?
+											if (ethernetheader.type == SDL_SwapBE16(0x0806)) //ARP?
 											{
-												if (ethernetheader.type == SDL_SwapBE16(0x0806)) //ARP?
+												if ((connectedclient->packetserver_slipprotocol == 1) || //IPv4 used?
+													((connectedclient->packetserver_slipprotocol==3) && (!connectedclient->packetserver_slipprotocol_pppoe) && (connectedclient->ppp_IPCPstatus[PPP_RECVCONF])) //IPv4 used on PPP?
+													) //IPv4 protocol used?
 												{
-													if ((connectedclient->packetserver_slipprotocol == 1) || //IPv4 used?
-														((connectedclient->packetserver_slipprotocol==3) && (!connectedclient->packetserver_slipprotocol_pppoe) && (connectedclient->ppp_IPCPstatus[PPP_RECVCONF])) //IPv4 used on PPP?
-														) //IPv4 protocol used?
+													//Always handle ARP packets, if we're IPv4 type!
+													//TODO: Check if it's a request for us. If so, reply with our IPv4 address!
+													memcpy(&ARPpacket,&connectedclient->packet[sizeof(ethernetheader.data)],28); //Retrieve the ARP packet!
+													if ((SDL_SwapBE16(ARPpacket.htype)==1) && (ARPpacket.ptype==SDL_SwapBE16(0x0800)) && (ARPpacket.hlen==6) && (ARPpacket.plen==4) && (SDL_SwapBE16(ARPpacket.oper)==1))
 													{
-														//Always handle ARP packets, if we're IPv4 type!
-														//TODO: Check if it's a request for us. If so, reply with our IPv4 address!
-														memcpy(&ARPpacket,&connectedclient->packet[sizeof(ethernetheader.data)],28); //Retrieve the ARP packet!
-														if ((SDL_SwapBE16(ARPpacket.htype)==1) && (ARPpacket.ptype==SDL_SwapBE16(0x0800)) && (ARPpacket.hlen==6) && (ARPpacket.plen==4) && (SDL_SwapBE16(ARPpacket.oper)==1))
+														//IPv4 ARP request
+														//Check it's our IP, send a response if it's us!
+														if (connectedclient->packetserver_useStaticIP) //IP filter is used?
 														{
-															//IPv4 ARP request
-															//Check it's our IP, send a response if it's us!
-															if (connectedclient->packetserver_useStaticIP) //IP filter is used?
+															if (memcmp(&ARPpacket.TPA, &packetserver_defaultstaticIP, 4) == 0) //Default Static IP route to server?
 															{
-																if (memcmp(&ARPpacket.TPA, &packetserver_defaultstaticIP, 4) == 0) //Default Static IP route to server?
-																{
-																	goto handleserverARP; //Default server packet!
-																}
-																if (memcmp(&ARPpacket.TPA, ((connectedclient->packetserver_slipprotocol == 3) && (!connectedclient->packetserver_slipprotocol_pppoe) && (connectedclient->ppp_IPCPstatus[PPP_RECVCONF]))?&connectedclient->ipcp_ipaddress[PPP_SENDCONF][0]:&connectedclient->packetserver_staticIP[0], 4) != 0) //Static IP mismatch?
-																{
-																	goto invalidpacket; //Invalid packet!
-																}
-																handleserverARP: //Server ARP or client ARP?
-																//It's for us, send a response!
-																//Construct the ARP packet!
-																ARPresponse.htype = ARPpacket.htype;
-																ARPresponse.ptype = ARPpacket.ptype;
-																ARPresponse.hlen = ARPpacket.hlen;
-																ARPresponse.plen = ARPpacket.plen;
-																ARPresponse.oper = SDL_SwapBE16(2); //Reply!
-																memcpy(&ARPresponse.THA,&ARPpacket.SHA,6); //To the originator!
-																memcpy(&ARPresponse.TPA,&ARPpacket.SPA,4); //Destination IP!
-																memcpy(&ARPresponse.SHA,&maclocal,6); //Our MAC address!
-																memcpy(&ARPresponse.SPA,&ARPpacket.TPA,4); //Our IP!
-																//Construct the ethernet header!
-																memcpy(&connectedclient->packet[sizeof(ethernetheader.data)],&ARPresponse,28); //Paste the response in the packet we're handling (reuse space)!
-																//Now, construct the ethernet header!
-																memcpy(&ppptransmitheader,&ethernetheader,sizeof(ethernetheader.data)); //Copy the header!
-																memcpy(&ppptransmitheader.src,&maclocal,6); //From us!
-																memcpy(&ppptransmitheader.dst,&ARPpacket.SHA,6); //To the requester!
-																memcpy(&connectedclient->packet[0],ppptransmitheader.data,sizeof(ppptransmitheader.data)); //The ethernet header!
-																//Now, the packet we've stored has become the packet to send back!
-																if (sendpkt_pcap(connectedclient->packet, (28 + sizeof(ethernetheader.data)))) //Send the response back to the originator!
-																{
-																	//Discard the received packet, so nobody else handles it too!
-																	lock(LOCK_PCAP);
-																	freez((void**)&net.packet, net.pktlen, "MODEM_PACKET");
-																	net.packet = NULL; //Discard if failed to deallocate!
-																	net.pktlen = 0; //Not allocated!
-																	unlock(LOCK_PCAP);
-																}
+																goto handleserverARP; //Default server packet!
+															}
+															if (memcmp(&ARPpacket.TPA, ((connectedclient->packetserver_slipprotocol == 3) && (!connectedclient->packetserver_slipprotocol_pppoe) && (connectedclient->ppp_IPCPstatus[PPP_RECVCONF]))?&connectedclient->ipcp_ipaddress[PPP_SENDCONF][0]:&connectedclient->packetserver_staticIP[0], 4) != 0) //Static IP mismatch?
+															{
+																goto invalidpacket; //Invalid packet!
+															}
+															handleserverARP: //Server ARP or client ARP?
+															//It's for us, send a response!
+															//Construct the ARP packet!
+															ARPresponse.htype = ARPpacket.htype;
+															ARPresponse.ptype = ARPpacket.ptype;
+															ARPresponse.hlen = ARPpacket.hlen;
+															ARPresponse.plen = ARPpacket.plen;
+															ARPresponse.oper = SDL_SwapBE16(2); //Reply!
+															memcpy(&ARPresponse.THA,&ARPpacket.SHA,6); //To the originator!
+															memcpy(&ARPresponse.TPA,&ARPpacket.SPA,4); //Destination IP!
+															memcpy(&ARPresponse.SHA,&maclocal,6); //Our MAC address!
+															memcpy(&ARPresponse.SPA,&ARPpacket.TPA,4); //Our IP!
+															//Construct the ethernet header!
+															memcpy(&connectedclient->packet[sizeof(ethernetheader.data)],&ARPresponse,28); //Paste the response in the packet we're handling (reuse space)!
+															//Now, construct the ethernet header!
+															memcpy(&ppptransmitheader,&ethernetheader,sizeof(ethernetheader.data)); //Copy the header!
+															memcpy(&ppptransmitheader.src,&maclocal,6); //From us!
+															memcpy(&ppptransmitheader.dst,&ARPpacket.SHA,6); //To the requester!
+															memcpy(&connectedclient->packet[0],ppptransmitheader.data,sizeof(ppptransmitheader.data)); //The ethernet header!
+															//Now, the packet we've stored has become the packet to send back!
+															if (sendpkt_pcap(connectedclient->packet, (28 + sizeof(ethernetheader.data)))) //Send the response back to the originator!
+															{
+																//Discard the received packet, so nobody else handles it too!
+																lock(LOCK_PCAP);
+																freez((void**)&net.packet, net.pktlen, "MODEM_PACKET");
+																net.packet = NULL; //Discard if failed to deallocate!
+																net.pktlen = 0; //Not allocated!
+																unlock(LOCK_PCAP);
 															}
 														}
+														else
+														{
+															goto invalidpacket; //Invalid for our use, discard it!
+														}
 													}
+													else
+													{
+														goto invalidpacket; //Invalid for our use, discard it!
+													}
+												}
+												else
+												{
+													goto invalidpacket; //Invalid for our use, discard it!
 												}
 											}
 											//Valid packet! Receive it!
