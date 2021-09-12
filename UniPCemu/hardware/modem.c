@@ -4138,6 +4138,7 @@ byte incIPXaddr2(byte* ipxaddr, byte addrsizeleft) //addrsizeleft=6 for the addr
 			return 0; //Error out!
 		}
 	}
+	addrsizeleft = originaladdrsize; //What were we processing?
 	if (addrsizeleft == 6) //No overflow for full address?
 	{
 		if (memcmp(ipxaddr - 5, &ipxbroadcastaddr, sizeof(ipxbroadcastaddr)) == 0) //Broadcast address? all ones.
@@ -4194,6 +4195,8 @@ byte sendIPXechoreply(PacketServer_clientp connectedclient, PPP_Stream *echodata
 	ppptransmitheader.type = SDL_SwapBE16(0x8137); //We're an IPX packet!
 
 	memset(&response,0,sizeof(response)); //Clear the response to start filling it!
+
+	result = 0; //Default: not success yet!
 
 	for (skipdatacounter = 0; skipdatacounter < 14; ++skipdatacounter)
 	{
@@ -4521,10 +4524,11 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 	byte request_NakRejectipaddress;
 	byte ipcp_pendingipaddress[4];
 	byte IPnumbers[4];
-	byte* p; //Pointer for IP address
+	char* p; //Pointer for IP address
 	ETHERNETHEADER ppptransmitheader;
 	word c; //For user login.
 	byte performskipdataNak;
+	performskipdataNak = 0; //Default: not skipping anything!
 	if (handleTransmit)
 	{
 		if (connectedclient->packetserver_transmitlength < (3 + ((!connectedclient->PPP_protocolcompressed[PPP_RECVCONF]) ? 1U : 0U) + ((!connectedclient->PPP_headercompressed[PPP_RECVCONF]) ? 2U : 0U))) //Not enough for a full minimal PPP packet (with 1 byte of payload)?
@@ -6764,8 +6768,8 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 		PAP_loginfailed: //The login has failed?
 			if (!pap_authenticated) //Went through all records available and couldn't login?
 			{
-				memset(&connectedclient->packetserver_username, 0, sizeof(&connectedclient->packetserver_username)); //Clear it again!
-				memset(&connectedclient->packetserver_password, 0, sizeof(&connectedclient->packetserver_password)); //Clear it again!
+				memset(&connectedclient->packetserver_username, 0, sizeof(connectedclient->packetserver_username)); //Clear it again!
+				memset(&connectedclient->packetserver_password, 0, sizeof(connectedclient->packetserver_password)); //Clear it again!
 			}
 			//Otherwise, login succeeded and the username&password we're logged in as is stored in the client information now.
 
@@ -6810,7 +6814,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 					connectedclient->packetserver_useStaticIP = 0; //Default: not detected!
 					if (safestrlen(&BIOS_Settings.ethernetserver_settings.users[c].IPaddress[0], 256) >= 12) //Valid length to convert IP addresses?
 					{
-						p = &BIOS_Settings.ethernetserver_settings.users[c].IPaddress[0]; //For scanning the IP!
+						p = (char *)&BIOS_Settings.ethernetserver_settings.users[c].IPaddress[0]; //For scanning the IP!
 
 						if (readIPnumber(&p, &IPnumbers[0]))
 						{
@@ -9617,7 +9621,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 																{
 																	goto handleserverARP; //Default server packet!
 																}
-																if (memcmp(&ARPpacket.TPA, ((connectedclient->packetserver_slipprotocol == 3) && (!connectedclient->packetserver_slipprotocol_pppoe) && (connectedclient->ppp_IPCPstatus[PPP_RECVCONF]))?&connectedclient->ipcp_ipaddress[PPP_SENDCONF]:&connectedclient->packetserver_staticIP, 4) != 0) //Static IP mismatch?
+																if (memcmp(&ARPpacket.TPA, ((connectedclient->packetserver_slipprotocol == 3) && (!connectedclient->packetserver_slipprotocol_pppoe) && (connectedclient->ppp_IPCPstatus[PPP_RECVCONF]))?&connectedclient->ipcp_ipaddress[PPP_SENDCONF][0]:&connectedclient->packetserver_staticIP[0], 4) != 0) //Static IP mismatch?
 																{
 																	goto invalidpacket; //Invalid packet!
 																}
