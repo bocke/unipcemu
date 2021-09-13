@@ -4916,7 +4916,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 	MODEM_PACKETBUFFER response, pppNakFields, pppRejectFields; //The normal response and Nak fields/Reject fields that are queued!
 	MODEM_PACKETBUFFER LCP_requestFields; //Request fields!
 	word checksum;
-	PPP_Stream pppstream, pppstreambackup, pppprotocolstreambackup, pppstream_informationfield, pppstream_requestfield /*, pppstream_optionfield*/;
+	PPP_Stream pppstream, pppstreambackup, pppstream_protocolstreambackup, pppstream_informationfield, pppstream_requestfield /*, pppstream_optionfield*/;
 	byte datab; //byte data from the stream!
 	word dataw; //word data from the stream!
 	byte data4[4]; //4-byte data!
@@ -5799,7 +5799,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 			memcpy(&pppstream, &pppstreambackup, sizeof(pppstream)); //Return the stream to it's proper start, being compressed away!
 		}
 	}
-	memcpy(&pppstream_protocolstreambackup,&ppstream,sizeof(pppstream)); //For SNAP detection
+	memcpy(&pppstream_protocolstreambackup,&pppstream,sizeof(pppstream)); //For SNAP detection
 	//Now, the packet is at the protocol byte/word, so parse it!
 	if (!PPP_consumeStream(&pppstream, &datab))
 	{
@@ -5829,13 +5829,13 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 	switch (protocol) //What protocol is used?
 	{
 	case 0: //Perhaps a SNAP packet?
-		if (!PPP_peekStream(&pppstream_protocolstreambackup, &datab)) //Reached end of stream (no payload)?
+		if (!PPP_consumeStream(&pppstream_protocolstreambackup, &datab)) //Reached end of stream (no payload)?
 		{
 			goto ppp_invalidprotocol; //Invalid protocol!
 		}
-		if (data==0) //Pad byte found?
+		if (datab==0) //Pad byte found?
 		{
-			if (!PPP_peekStream(&pppstream_protocolstreambackup, &datab)) //Reached end of stream (no payload)?
+			if (!PPP_consumeStream(&pppstream_protocolstreambackup, &datab)) //Reached end of stream (no payload)?
 			{
 				goto ppp_invalidprotocol; //Invalid protocol!
 			}
@@ -5843,7 +5843,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 			{
 				goto ppp_invalidprotocol; //Invalid protocol!
 			}
-			if (!PPP_peekStream(&pppstream_protocolstreambackup, &datab)) //Reached end of stream (no payload)?
+			if (!PPP_consumeStream(&pppstream_protocolstreambackup, &datab)) //Reached end of stream (no payload)?
 			{
 				goto ppp_invalidprotocol; //Invalid protocol!
 			}
@@ -5851,7 +5851,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 			{
 				goto ppp_invalidprotocol; //Invalid protocol!
 			}
-			if (!PPP_peekStream(&pppstream_protocolstreambackup, &datab)) //Reached end of stream (no payload)?
+			if (!PPP_consumeStream(&pppstream_protocolstreambackup, &datab)) //Reached end of stream (no payload)?
 			{
 				goto ppp_invalidprotocol; //Invalid protocol!
 			}
@@ -5859,7 +5859,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 			{
 				goto ppp_invalidprotocol; //Invalid protocol!
 			}
-			if (!PPP_peekStream(&pppstream_protocolstreambackup, &datab)) //Reached end of stream (no payload)?
+			if (!PPP_consumeStream(&pppstream_protocolstreambackup, &datab)) //Reached end of stream (no payload)?
 			{
 				goto ppp_invalidprotocol; //Invalid protocol!
 			}
@@ -5867,7 +5867,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 			{
 				goto ppp_invalidprotocol; //Invalid protocol!
 			}
-			if (!PPP_peekStream(&pppstream_protocolstreambackup, &datab)) //Reached end of stream (no payload)?
+			if (!PPP_consumeStream(&pppstream_protocolstreambackup, &datab)) //Reached end of stream (no payload)?
 			{
 				goto ppp_invalidprotocol; //Invalid protocol!
 			}
