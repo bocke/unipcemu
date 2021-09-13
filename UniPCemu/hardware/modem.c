@@ -1159,7 +1159,7 @@ void fetchpackets_pcap() { //Handle any packets to process!
 					}
 					else //IPv4?
 					{
-						if ((headertype != SDL_SwapBE16(0x0800)) && (headertype!=0x0806)) //We're an IP or ARP packet!
+						if ((headertype != SDL_SwapBE16(0x0800)) && (headertype!=SDL_SwapBE(0x0806))) //We're an IP or ARP packet!
 						{
 							continue; //Invalid for us!
 						}
@@ -9810,7 +9810,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 											}
 											else //IPv4?
 											{
-												if ((headertype != SDL_SwapBE16(0x0800)) && (headertype!=0x0806)) //We're an IP or ARP packet!
+												if ((headertype != SDL_SwapBE16(0x0800)) && (headertype!=SDL_SwapBE16(0x0806))) //We're an IP or ARP packet!
 												{
 													goto invalidpacket; //Invalid for us!
 												}
