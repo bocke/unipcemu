@@ -5831,60 +5831,64 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 	case 0: //Perhaps a SNAP packet?
 		if (!PPP_peekStream(&pppstream_protocolstreambackup, &datab)) //Reached end of stream (no payload)?
 		{
-			return 1; //Incorrect packet: discard it!
+			goto ppp_invalidprotocol; //Invalid protocol!
 		}
 		if (data==0) //Pad byte found?
 		{
 			if (!PPP_peekStream(&pppstream_protocolstreambackup, &datab)) //Reached end of stream (no payload)?
 			{
-				return 1; //Incorrect packet: discard it!
+				goto ppp_invalidprotocol; //Invalid protocol!
 			}
 			if (datab!=0) //Not OUI byte 0?
 			{
-				return 1; //Incorrect packet: discard it!
+				goto ppp_invalidprotocol; //Invalid protocol!
 			}
 			if (!PPP_peekStream(&pppstream_protocolstreambackup, &datab)) //Reached end of stream (no payload)?
 			{
-				return 1; //Incorrect packet: discard it!
+				goto ppp_invalidprotocol; //Invalid protocol!
 			}
 			if (datab!=0) //Not OUI byte 1?
 			{
-				return 1; //Incorrect packet: discard it!
+				goto ppp_invalidprotocol; //Invalid protocol!
 			}
 			if (!PPP_peekStream(&pppstream_protocolstreambackup, &datab)) //Reached end of stream (no payload)?
 			{
-				return 1; //Incorrect packet: discard it!
+				goto ppp_invalidprotocol; //Invalid protocol!
 			}
 			if (datab!=0) //Not OUI byte 2?
 			{
-				return 1; //Incorrect packet: discard it!
+				goto ppp_invalidprotocol; //Invalid protocol!
 			}
 			if (!PPP_peekStream(&pppstream_protocolstreambackup, &datab)) //Reached end of stream (no payload)?
 			{
-				return 1; //Incorrect packet: discard it!
+				goto ppp_invalidprotocol; //Invalid protocol!
 			}
 			if (datab!=0x81) //Not IPX (protocol upper byte)?
 			{
-				return 1; //Incorrect packet: discard it!
+				goto ppp_invalidprotocol; //Invalid protocol!
 			}
 			if (!PPP_peekStream(&pppstream_protocolstreambackup, &datab)) //Reached end of stream (no payload)?
 			{
-				return 1; //Incorrect packet: discard it!
+				goto ppp_invalidprotocol; //Invalid protocol!
 			}
 			if (datab!=0x37) //Not IPX (protocol lower byte)?
 			{
-				return 1; //Incorrect packet: discard it!
+				goto ppp_invalidprotocol; //Invalid protocol!
 			}
-			memcpy(&pppstream,&pppstream_protocolstreambackup,sizeof(pppstream)); //The IPX packet to send!
 			if (IPXCP_OPEN)
 			{
+				memcpy(&pppstream,&pppstream_protocolstreambackup,sizeof(pppstream)); //The IPX packet to send!
 				connectedclient->ppp_IPXCPstatus[PPP_RECVCONF] = connectedclient->ppp_IPXCPstatus[PPP_SENDCONF] = 2; //Special IPX SNAP mode to receive now!
 				goto SNAP_sendIPXpacket; //Send the framed IPX packet!
+			}
+			else
+			{
+				goto ppp_invalidprotocol; //Invalid protocol!
 			}
 		}
 		else
 		{
-			return 1; //Incorrect packet: discard it!
+			goto ppp_invalidprotocol; //Invalid protocol!
 		}
 		break;
 	case 0x0001: //Padding protocol?
