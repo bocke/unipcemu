@@ -5879,8 +5879,8 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 			if (IPXCP_OPEN)
 			{
 				connectedclient->ppp_IPXCPstatus[PPP_RECVCONF] = connectedclient->ppp_IPXCPstatus[PPP_SENDCONF] = 2; //Special IPX SNAP mode to receive now!
+				goto SNAP_sendIPXpacket; //Send the framed IPX packet!
 			}
-			goto SNAP_sendIPXpacket; //Send the framed IPX packet!
 		}
 		else
 		{
