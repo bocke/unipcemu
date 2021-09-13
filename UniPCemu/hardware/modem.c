@@ -8434,7 +8434,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 						}
 					}
 					break;
-				case 0x80: //DNS #1 address
+				case 0x81: //DNS #1 address
 					if (common_OptionLengthField != 6) //Unsupported length?
 					{
 						if (!packetServerAddPacketBufferQueue(&pppNakFields, common_TypeField)) //NAK it!
@@ -8511,7 +8511,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 						}
 					}
 					break;
-				case 0x81: //NBNS #1 address
+				case 0x82: //NBNS #1 address
 					if (common_OptionLengthField != 6) //Unsupported length?
 					{
 						if (!packetServerAddPacketBufferQueue(&pppNakFields, common_TypeField)) //NAK it!
@@ -8588,7 +8588,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 						}
 					}
 					break;
-				case 0x82: //DNS #2 address
+				case 0x83: //DNS #2 address
 					if (common_OptionLengthField != 6) //Unsupported length?
 					{
 						if (!packetServerAddPacketBufferQueue(&pppNakFields, common_TypeField)) //NAK it!
@@ -8665,7 +8665,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 						}
 					}
 					break;
-				case 0x83: //NBNS #2 address
+				case 0x84: //NBNS #2 address
 					if (common_OptionLengthField != 6) //Unsupported length?
 					{
 						if (!packetServerAddPacketBufferQueue(&pppNakFields, common_TypeField)) //NAK it!
