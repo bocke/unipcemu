@@ -1132,14 +1132,14 @@ void fetchpackets_pcap() { //Handle any packets to process!
 							}
 							else if (headertype == SDL_SwapBE16(0x0806)) //ARP?
 							{
-								if (!connectedclient->ppp_IPCPstatus[PPP_RECVCONF]) //IPv4 not used on PPP?
+								if (!IPCP_OPEN) //IPv4 not used on PPP?
 								{
 									continue; //Invalid for us!
 								}
 							}
 							else if (headertype == SDL_SwapBE16(0x8137)) //We're an IPX packet?
 							{
-								if (!connectedclient->ppp_IPXCPstatus[PPP_RECVCONF]) //IPX not used on PPP?
+								if (!IPXCP_OPEN) //IPX not used on PPP?
 								{
 									continue; //Invalid for us!
 								}
@@ -1169,7 +1169,7 @@ void fetchpackets_pcap() { //Handle any packets to process!
 					if (ethernetheader.type == SDL_SwapBE16(0x0806)) //ARP?
 					{
 						if ((connectedclient->packetserver_slipprotocol == 1) || //IPv4 used?
-							((connectedclient->packetserver_slipprotocol == 3) && (!connectedclient->packetserver_slipprotocol_pppoe) && (connectedclient->ppp_IPCPstatus[PPP_RECVCONF])) //IPv4 used on PPP?
+							((connectedclient->packetserver_slipprotocol == 3) && (!connectedclient->packetserver_slipprotocol_pppoe) && IPCP_OPEN) //IPv4 used on PPP?
 							) //IPv4 protocol used?
 						{
 							//Always handle ARP packets, if we're IPv4 type!
@@ -1189,7 +1189,7 @@ void fetchpackets_pcap() { //Handle any packets to process!
 									{
 										goto handleserverARP_pcap; //Default server packet!
 									}
-									if (memcmp(&ARPpacket.TPA, ((connectedclient->packetserver_slipprotocol == 3) && (!connectedclient->packetserver_slipprotocol_pppoe) && (connectedclient->ppp_IPCPstatus[PPP_RECVCONF])) ? &connectedclient->ipcp_ipaddress[PPP_SENDCONF][0] : &connectedclient->packetserver_staticIP[0], 4) != 0) //Static IP mismatch?
+									if (memcmp(&ARPpacket.TPA, ((connectedclient->packetserver_slipprotocol == 3) && (!connectedclient->packetserver_slipprotocol_pppoe) && IPCP_OPEN) ? &connectedclient->ipcp_ipaddress[PPP_SENDCONF][0] : &connectedclient->packetserver_staticIP[0], 4) != 0) //Static IP mismatch?
 									{
 										continue; //Invalid packet!
 									}
@@ -9823,7 +9823,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 											if (ethernetheader.type == SDL_SwapBE16(0x0806)) //ARP?
 											{
 												if ((connectedclient->packetserver_slipprotocol == 1) || //IPv4 used?
-													((connectedclient->packetserver_slipprotocol==3) && (!connectedclient->packetserver_slipprotocol_pppoe) && (connectedclient->ppp_IPCPstatus[PPP_RECVCONF])) //IPv4 used on PPP?
+													((connectedclient->packetserver_slipprotocol==3) && (!connectedclient->packetserver_slipprotocol_pppoe) && IPCP_OPEN) //IPv4 used on PPP?
 													) //IPv4 protocol used?
 												{
 													//Always handle ARP packets, if we're IPv4 type!
@@ -9843,7 +9843,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 															{
 																goto handleserverARP; //Default server packet!
 															}
-															if (memcmp(&ARPpacket.TPA, ((connectedclient->packetserver_slipprotocol == 3) && (!connectedclient->packetserver_slipprotocol_pppoe) && (connectedclient->ppp_IPCPstatus[PPP_RECVCONF]))?&connectedclient->ipcp_ipaddress[PPP_SENDCONF][0]:&connectedclient->packetserver_staticIP[0], 4) != 0) //Static IP mismatch?
+															if (memcmp(&ARPpacket.TPA, ((connectedclient->packetserver_slipprotocol == 3) && (!connectedclient->packetserver_slipprotocol_pppoe) && IPCP_OPEN)?&connectedclient->ipcp_ipaddress[PPP_SENDCONF][0]:&connectedclient->packetserver_staticIP[0], 4) != 0) //Static IP mismatch?
 															{
 																goto invalidpacket; //Invalid packet!
 															}
