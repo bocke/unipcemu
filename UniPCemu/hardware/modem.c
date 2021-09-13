@@ -8514,6 +8514,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 						}
 						else //Can't comply?
 						{
+							performskipdataNak = 2; //Read already in data4!
 							goto performrejectfield_ipcp; //Reject it!
 						}
 					}
@@ -8598,6 +8599,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 						}
 						else
 						{
+							performskipdataNak = 2; //Read already in data4!
 							goto performrejectfield_ipcp; //Reject it!
 						}
 					}
@@ -8682,6 +8684,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 						}
 						else
 						{
+							performskipdataNak = 2; //Read already in data4!
 							goto performrejectfield_ipcp; //Reject it!
 						}
 					}
@@ -8766,6 +8769,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 						}
 						else
 						{
+							performskipdataNak = 2; //Read already in data4!
 							goto performrejectfield_ipcp; //Reject it!
 						}
 					}
@@ -8784,20 +8788,42 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 					if (common_OptionLengthField >= 2) //Enough length to skip?
 					{
 						skipdatacounter = common_OptionLengthField - 2; //How much to skip!
-						for (; skipdatacounter;) //Skip it!
+						if (performskipdataNak == 2) //Field already read into data2?
 						{
-							if (!PPP_consumeStream(&pppstream_requestfield, &datab)) //Failed to consume properly?
+							if (!packetServerAddPacketBufferQueue(&pppRejectFields, data4[0])) //Correct length!
 							{
 								goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
 							}
-							if (!performskipdataNak) //Not skipping data altogether?
+							if (!packetServerAddPacketBufferQueue(&pppRejectFields, data4[1])) //Correct length!
 							{
-								if (!packetServerAddPacketBufferQueue(&pppRejectFields, datab)) //Correct length!
+								goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+							}
+							if (!packetServerAddPacketBufferQueue(&pppRejectFields, data4[2])) //Correct length!
+							{
+								goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+							}
+							if (!packetServerAddPacketBufferQueue(&pppRejectFields, data4[3])) //Correct length!
+							{
+								goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+							}
+						}
+						else //Normal behaviour? Skipping or rejecting the field fully.
+						{
+							for (; skipdatacounter;) //Skip it!
+							{
+								if (!PPP_consumeStream(&pppstream_requestfield, &datab)) //Failed to consume properly?
 								{
 									goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
 								}
+								if (!performskipdataNak) //Not skipping data altogether?
+								{
+									if (!packetServerAddPacketBufferQueue(&pppRejectFields, datab)) //Correct length!
+									{
+										goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+									}
+								}
+								--skipdatacounter;
 							}
-							--skipdatacounter;
 						}
 					}
 					else //Malformed parameter!
