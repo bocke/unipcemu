@@ -1159,7 +1159,7 @@ void fetchpackets_pcap() { //Handle any packets to process!
 					}
 					else //IPv4?
 					{
-						if ((headertype != SDL_SwapBE16(0x0800)) && (headertype!=SDL_SwapBE(0x0806))) //We're an IP or ARP packet!
+						if ((headertype != SDL_SwapBE16(0x0800)) && (headertype!=SDL_SwapBE16(0x0806))) //We're an IP or ARP packet!
 						{
 							continue; //Invalid for us!
 						}
@@ -1173,6 +1173,10 @@ void fetchpackets_pcap() { //Handle any packets to process!
 							) //IPv4 protocol used?
 						{
 							//Always handle ARP packets, if we're IPv4 type!
+							if (pcaplength != (28 + sizeof(ethernetheader.data))) //Unsupported length?
+							{
+								continue; //Invalid packet!
+							}
 							//TODO: Check if it's a request for us. If so, reply with our IPv4 address!
 							memcpy(&ARPpacket, &connectedclient->packet[sizeof(ethernetheader.data)], 28); //Retrieve the ARP packet!
 							if ((SDL_SwapBE16(ARPpacket.htype) == 1) && (ARPpacket.ptype == SDL_SwapBE16(0x0800)) && (ARPpacket.hlen == 6) && (ARPpacket.plen == 4) && (SDL_SwapBE16(ARPpacket.oper) == 1))
@@ -9823,6 +9827,10 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 													) //IPv4 protocol used?
 												{
 													//Always handle ARP packets, if we're IPv4 type!
+													if (pcaplength != (28 + sizeof(ethernetheader.data))) //Unsupported length?
+													{
+														goto invalidpacket; //Invalid packet!
+													}
 													//TODO: Check if it's a request for us. If so, reply with our IPv4 address!
 													memcpy(&ARPpacket,&connectedclient->packet[sizeof(ethernetheader.data)],28); //Retrieve the ARP packet!
 													if ((SDL_SwapBE16(ARPpacket.htype)==1) && (ARPpacket.ptype==SDL_SwapBE16(0x0800)) && (ARPpacket.hlen==6) && (ARPpacket.plen==4) && (SDL_SwapBE16(ARPpacket.oper)==1))
