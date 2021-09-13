@@ -8517,7 +8517,6 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 							goto performrejectfield_ipcp; //Reject it!
 						}
 					}
-					else //Can't co
 					break;
 				case 0x82: //NBNS #1 address
 					if (common_OptionLengthField != 6) //Unsupported length?
