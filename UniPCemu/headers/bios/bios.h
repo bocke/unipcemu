@@ -52,6 +52,7 @@ typedef struct
 	CharacterType DNS2IPaddress[256]; //IP address!
 	CharacterType NBNS1IPaddress[256]; //IP address!
 	CharacterType NBNS2IPaddress[256]; //IP address!
+	CharacterType subnetmaskIPaddress[256]; //IP address!
 	ETHERNETSERVER_USER users[256]; //Up to 256 users!
 } ETHERNETSERVER_SETTINGS_TYPE;
 #endif

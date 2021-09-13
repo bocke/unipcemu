@@ -212,9 +212,17 @@ byte packetserver_NBNS1IP = 0; //Gotten a default gateway IP?
 byte packetserver_NBNS1IPaddr[4] = { 0,0,0,0 }; //Default gateway IP to use?
 byte packetserver_NBNS2IP = 0; //Gotten a default gateway IP?
 byte packetserver_NBNS2IPaddr[4] = { 0,0,0,0 }; //Default gateway IP to use?
+byte packetserver_subnetmaskIP = 0; //Gotten a default gateway IP?
+byte packetserver_subnetmaskIPaddr[4] = { 0,0,0,0 }; //Default gateway IP to use?
 byte packetserver_broadcastIP[4] = { 0xFF,0xFF,0xFF,0xFF }; //Broadcast IP to use?
 byte packetserver_usedefaultStaticIP = 0; //Use static IP?
 char packetserver_defaultstaticIPstr[256] = ""; //Static IP, string format
+char packetserver_defaultgatewayIPstr[256] = ""; //Static IP, string format
+char packetserver_DNS1IPstr[256] = ""; //Static IP, string format
+char packetserver_DNS2IPstr[256] = ""; //Static IP, string format
+char packetserver_NBNS1IPstr[256] = ""; //Static IP, string format
+char packetserver_NBNS2IPstr[256] = ""; //Static IP, string format
+char packetserver_subnetmaskIPstr[256] = ""; //Static IP, string format
 
 typedef struct
 {
@@ -354,6 +362,7 @@ typedef struct
 	byte ipcp_DNS2ipaddress[2][4];
 	byte ipcp_NBNS1ipaddress[2][4];
 	byte ipcp_NBNS2ipaddress[2][4];
+	byte ipcp_subnetmaskipaddress[2][4];
 	uint_32 asynccontrolcharactermap[2]; //Async control character map, stored in little endian format!
 	void* next, * prev; //Next and previous (un)allocated client!
 	word connectionnumber; //The number of this entry in the list!
@@ -817,7 +826,14 @@ void initPcap() {
 	memcpy(&packetserver_sourceMAC,&maclocal,sizeof(packetserver_sourceMAC)); //Load sender MAC to become active!
 
 	memset(&packetserver_defaultstaticIPstr, 0, sizeof(packetserver_defaultstaticIPstr));
+	memset(&packetserver_defaultgatewayIPstr, 0, sizeof(packetserver_defaultgatewayIPstr));
+	memset(&packetserver_DNS1IPstr, 0, sizeof(packetserver_DNS1IPstr));
+	memset(&packetserver_DNS2IPstr, 0, sizeof(packetserver_DNS2IPstr));
+	memset(&packetserver_NBNS1IPstr, 0, sizeof(packetserver_NBNS1IPstr));
+	memset(&packetserver_NBNS2IPstr, 0, sizeof(packetserver_NBNS2IPstr));
+	memset(&packetserver_subnetmaskIPstr, 0, sizeof(packetserver_subnetmaskIPstr));
 	memset(&packetserver_defaultstaticIP, 0, sizeof(packetserver_defaultstaticIP));
+
 	packetserver_usedefaultStaticIP = 0; //Default to unused!
 
 #if defined(PACKETSERVER_ENABLED) && !defined(NOPCAP)
@@ -858,6 +874,7 @@ void initPcap() {
 						if (*p == '\0') //EOS?
 						{
 							//Automatic port?
+							snprintf(packetserver_defaultgatewayIPstr, sizeof(packetserver_defaultgatewayIPstr), "%u.%u.%u.%u", IPnumbers[0], IPnumbers[1], IPnumbers[2], IPnumbers[3]); //Formulate the address!
 							memcpy(&packetserver_defaultgatewayIPaddr, &IPnumbers, 4); //Set read IP!
 							packetserver_defaultgatewayIP = 1; //Static IP set!
 						}
@@ -880,6 +897,7 @@ void initPcap() {
 						if (*p == '\0') //EOS?
 						{
 							//Automatic port?
+							snprintf(packetserver_DNS1IPstr, sizeof(packetserver_DNS1IPstr), "%u.%u.%u.%u", IPnumbers[0], IPnumbers[1], IPnumbers[2], IPnumbers[3]); //Formulate the address!
 							memcpy(&packetserver_DNS1IPaddr, &IPnumbers, 4); //Set read IP!
 							packetserver_DNS1IP = 1; //Static IP set!
 						}
@@ -902,6 +920,7 @@ void initPcap() {
 						if (*p == '\0') //EOS?
 						{
 							//Automatic port?
+							snprintf(packetserver_DNS2IPstr, sizeof(packetserver_DNS2IPstr), "%u.%u.%u.%u", IPnumbers[0], IPnumbers[1], IPnumbers[2], IPnumbers[3]); //Formulate the address!
 							memcpy(&packetserver_DNS2IPaddr, &IPnumbers, 4); //Set read IP!
 							packetserver_DNS2IP = 1; //Static IP set!
 						}
@@ -924,6 +943,7 @@ void initPcap() {
 						if (*p == '\0') //EOS?
 						{
 							//Automatic port?
+							snprintf(packetserver_NBNS1IPstr, sizeof(packetserver_NBNS1IPstr), "%u.%u.%u.%u", IPnumbers[0], IPnumbers[1], IPnumbers[2], IPnumbers[3]); //Formulate the address!
 							memcpy(&packetserver_NBNS1IPaddr, &IPnumbers, 4); //Set read IP!
 							packetserver_NBNS1IP = 1; //Static IP set!
 						}
@@ -946,8 +966,32 @@ void initPcap() {
 						if (*p == '\0') //EOS?
 						{
 							//Automatic port?
+							snprintf(packetserver_NBNS2IPstr, sizeof(packetserver_NBNS2IPstr), "%u.%u.%u.%u", IPnumbers[0], IPnumbers[1], IPnumbers[2], IPnumbers[3]); //Formulate the address!
 							memcpy(&packetserver_NBNS2IPaddr, &IPnumbers, 4); //Set read IP!
 							packetserver_NBNS2IP = 1; //Static IP set!
+						}
+					}
+				}
+			}
+		}
+	}
+	if (safestrlen(&BIOS_Settings.ethernetserver_settings.subnetmaskIPaddress[0], 256) >= 12) //Valid length to convert IP addresses?
+	{
+		p = &BIOS_Settings.ethernetserver_settings.subnetmaskIPaddress[0]; //For scanning the IP!
+		if (readIPnumber(&p, &IPnumbers[0]))
+		{
+			if (readIPnumber(&p, &IPnumbers[1]))
+			{
+				if (readIPnumber(&p, &IPnumbers[2]))
+				{
+					if (readIPnumber(&p, &IPnumbers[3]))
+					{
+						if (*p == '\0') //EOS?
+						{
+							//Automatic port?
+							snprintf(packetserver_subnetmaskIPstr, sizeof(packetserver_NBNS1IPstr), "%u.%u.%u.%u", IPnumbers[0], IPnumbers[1], IPnumbers[2], IPnumbers[3]); //Formulate the address!
+							memcpy(&packetserver_subnetmaskIPaddr, &IPnumbers, 4); //Set read IP!
+							packetserver_subnetmaskIP = 1; //Static IP set!
 						}
 					}
 				}
@@ -967,6 +1011,8 @@ void initPcap() {
 	packetserver_NBNS1IP = 0; //No gateway IP!
 	memset(&packetserver_NBNS2IPaddr, 0, sizeof(packetserver_NBNS2IPaddr));
 	packetserver_NBNS2IP = 0; //No gateway IP!
+	memset(&packetserver_subnetmaskIPaddr, 0, sizeof(packetserver_subnetmaskIPaddr));
+	packetserversubnetmaskIP = 0; //No gateway IP!
 #endif
 
 	dolog("ethernetcard","Receiver MAC address: %02x:%02x:%02x:%02x:%02x:%02x",maclocal[0],maclocal[1],maclocal[2],maclocal[3],maclocal[4],maclocal[5]);
@@ -974,6 +1020,10 @@ void initPcap() {
 	if (packetserver_usedefaultStaticIP) //Static IP configured?
 	{
 		dolog("ethernetcard","Static IP configured: %s(%02x%02x%02x%02x)",packetserver_defaultstaticIPstr,packetserver_defaultstaticIP[0],packetserver_defaultstaticIP[1],packetserver_defaultstaticIP[2],packetserver_defaultstaticIP[3]); //Log it!
+	}
+	if (packetserver_defaultgatewayIP) //Static IP configured?
+	{
+		dolog("ethernetcard", "Default Gateway IP configured: %s(%02x%02x%02x%02x)", packetserver_defaultstaticIPstr, packetserver_defaultstaticIP[0], packetserver_defaultstaticIP[1], packetserver_defaultstaticIP[2], packetserver_defaultstaticIP[3]); //Log it!
 	}
 
 	for (i = 0; i < NUMITEMS(Packetserver_clients); ++i) //Initialize client data!
@@ -4877,6 +4927,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 	byte ipcp_pendingDNS2ipaddress[4];
 	byte ipcp_pendingNBNS1ipaddress[4];
 	byte ipcp_pendingNBNS2ipaddress[4];
+	byte ipcp_pendingsubnetmaskipaddress[4];
 	byte IPnumbers[4];
 	char* p; //Pointer for IP address
 	ETHERNETHEADER ppptransmitheader;
@@ -8338,6 +8389,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 			memset(&ipcp_pendingDNS2ipaddress, 0, sizeof(ipcp_pendingDNS2ipaddress)); //Default: none!
 			memset(&ipcp_pendingNBNS1ipaddress, 0, sizeof(ipcp_pendingNBNS1ipaddress)); //Default: none!
 			memset(&ipcp_pendingNBNS2ipaddress, 0, sizeof(ipcp_pendingNBNS2ipaddress)); //Default: none!
+			memset(&ipcp_pendingsubnetmaskipaddress, 0, sizeof(ipcp_pendingsubnetmaskipaddress)); //Default: none!
 
 			//Now, start parsing the options for the connection!
 			for (; PPP_peekStream(&pppstream_requestfield, &common_TypeField);) //Gotten a new option to parse?
@@ -8774,6 +8826,91 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 						}
 					}
 					break;
+				case 0x90: //subnet mask
+					if (common_OptionLengthField != 6) //Unsupported length?
+					{
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, common_TypeField)) //NAK it!
+						{
+							goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, 6)) //Correct length!
+						{
+							goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, packetserver_subnetmaskIP ? packetserver_subnetmaskIPaddr[0] : 0)) //None!
+						{
+							goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, packetserver_subnetmaskIP ? packetserver_subnetmaskIPaddr[1] : 0)) //None!
+						{
+							goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, packetserver_subnetmaskIP ? packetserver_subnetmaskIPaddr[2] : 0)) //None!
+						{
+							goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+						}
+						if (!packetServerAddPacketBufferQueue(&pppNakFields, packetserver_subnetmaskIP ? packetserver_subnetmaskIPaddr[3] : 0)) //None!
+						{
+							goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+						}
+						performskipdataNak = 1; //Skipped already!
+						goto performskipdata_ipcp; //Skip the data please!
+					}
+					if (!PPP_consumeStream(&pppstream_requestfield, &data4[0])) //Pending Node Number field!
+					{
+						goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+					}
+					if (!PPP_consumeStream(&pppstream_requestfield, &data4[1])) //Pending Node Number field!
+					{
+						goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+					}
+					if (!PPP_consumeStream(&pppstream_requestfield, &data4[2])) //Pending Node Number field!
+					{
+						goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+					}
+					if (!PPP_consumeStream(&pppstream_requestfield, &data4[3])) //Pending Node Number field!
+					{
+						goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+					}
+					memcpy(&ipcp_pendingsubnetmaskipaddress, &data4, 4); //Set the network number to use!
+					//Field is OK!
+
+					if ((memcmp(&ipcp_pendingsubnetmaskipaddress, &ipnulladdr, 4) == 0)) //0.0.0.0 specified? The client asks for an IP address!
+					{
+						if (packetserver_subnetmaskIP) //Can supply?
+						{
+							if (!packetServerAddPacketBufferQueue(&pppNakFields, common_TypeField)) //IP address!
+							{
+								goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+							}
+							if (!packetServerAddPacketBufferQueue(&pppNakFields, 6)) //Correct length!
+							{
+								goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+							}
+							if (!packetServerAddPacketBufferQueue(&pppNakFields, packetserver_subnetmaskIPaddr[0])) //None!
+							{
+								goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+							}
+							if (!packetServerAddPacketBufferQueue(&pppNakFields, packetserver_subnetmaskIPaddr[1])) //None!
+							{
+								goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+							}
+							if (!packetServerAddPacketBufferQueue(&pppNakFields, packetserver_subnetmaskIPaddr[2])) //None!
+							{
+								goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+							}
+							if (!packetServerAddPacketBufferQueue(&pppNakFields, packetserver_subnetmaskIPaddr[3])) //None!
+							{
+								goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+							}
+						}
+						else
+						{
+							performskipdataNak = 2; //Read already in data4!
+							goto performrejectfield_ipcp; //Reject it!
+						}
+					}
+					break;
 				default: //Unknown option?
 					performrejectfield_ipcp:
 					if (!packetServerAddPacketBufferQueue(&pppRejectFields, common_TypeField)) //NAK it!
@@ -8943,6 +9080,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 					memcpy(&connectedclient->ipcp_DNS2ipaddress[0], &ipcp_pendingDNS2ipaddress, sizeof(ipcp_pendingDNS2ipaddress)); //Network number specified or 0 for none!
 					memcpy(&connectedclient->ipcp_NBNS1ipaddress[0], &ipcp_pendingNBNS1ipaddress, sizeof(ipcp_pendingNBNS1ipaddress)); //Network number specified or 0 for none!
 					memcpy(&connectedclient->ipcp_NBNS2ipaddress[0], &ipcp_pendingNBNS2ipaddress, sizeof(ipcp_pendingNBNS2ipaddress)); //Network number specified or 0 for none!
+					memcpy(&connectedclient->ipcp_subnetmaskipaddress[0], &ipcp_pendingsubnetmaskipaddress, sizeof(ipcp_pendingsubnetmaskipaddress)); //Network number specified or 0 for none!
 				}
 			}
 			goto ppp_finishpacketbufferqueue2_ipcp; //Finish up!
