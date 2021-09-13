@@ -48,6 +48,8 @@ typedef struct
 	CharacterType MACaddress[256]; //MAC address, formatted with hexadecimal characters and : only!
 	CharacterType gatewayMACaddress[256]; //MAC address, formatted with hexadecimal characters and : only!
 	CharacterType gatewayIPaddress[256]; //IP address!
+	CharacterType DNS1IPaddress[256]; //IP address!
+	CharacterType DNS2IPaddress[256]; //IP address!
 	ETHERNETSERVER_USER users[256]; //Up to 256 users!
 } ETHERNETSERVER_SETTINGS_TYPE;
 #endif
