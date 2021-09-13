@@ -8732,7 +8732,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 					{
 						goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
 					}
-					memcpy(&ipcp_pendingDNS2ipaddress, &data4, 4); //Set the network number to use!
+					memcpy(&ipcp_pendingNBNS2ipaddress, &data4, 4); //Set the network number to use!
 					//Field is OK!
 					
 					if ((memcmp(&ipcp_pendingNBNS2ipaddress, &ipnulladdr, 4) == 0)) //0.0.0.0 specified? The client asks for an IP address!
