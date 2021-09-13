@@ -1358,6 +1358,8 @@ void BIOS_LoadData() //Load BIOS settings!
 	get_private_profile_string("modem", "gatewayIPaddress", "", &BIOS_Settings.ethernetserver_settings.gatewayIPaddress[0], sizeof(BIOS_Settings.ethernetserver_settings.gatewayIPaddress), inifile); //Read entry!
 	get_private_profile_string("modem", "DNS1IPaddress", "", &BIOS_Settings.ethernetserver_settings.DNS1IPaddress[0], sizeof(BIOS_Settings.ethernetserver_settings.DNS1IPaddress), inifile); //Read entry!
 	get_private_profile_string("modem", "DNS2IPaddress", "", &BIOS_Settings.ethernetserver_settings.DNS2IPaddress[0], sizeof(BIOS_Settings.ethernetserver_settings.DNS2IPaddress), inifile); //Read entry!
+	get_private_profile_string("modem", "NBNS1IPaddress", "", &BIOS_Settings.ethernetserver_settings.NBNS1IPaddress[0], sizeof(BIOS_Settings.ethernetserver_settings.NBNS1IPaddress), inifile); //Read entry!
+	get_private_profile_string("modem", "NBNS2IPaddress", "", &BIOS_Settings.ethernetserver_settings.NBNS2IPaddress[0], sizeof(BIOS_Settings.ethernetserver_settings.NBNS2IPaddress), inifile); //Read entry!
 
 	for (c = 0; c < NUMITEMS(BIOS_Settings.phonebook); ++c) //Process all phonebook entries!
 	{
@@ -1718,6 +1720,8 @@ int BIOS_SaveData() //Save BIOS settings!
 	safestrcat(modem_comment, sizeof(modem_comment), "gatewayIPaddress: default gateway IP address for the PPP client to use\n");
 	safestrcat(modem_comment, sizeof(modem_comment), "DNS1IPaddress: DNS #1 IP address for the PPP client to use\n");
 	safestrcat(modem_comment, sizeof(modem_comment), "DNS2IPaddress: DNS #2 IP address for the PPP client to use\n");
+	safestrcat(modem_comment, sizeof(modem_comment), "NBNS1IPaddress: NBNS #1 IP address for the PPP client to use\n");
+	safestrcat(modem_comment, sizeof(modem_comment), "NBNS2IPaddress: NBNS #2 IP address for the PPP client to use\n");
 	safestrcat(modem_comment, sizeof(modem_comment), "username: set username and password to non-empty values for a credential protected server\n");
 	safestrcat(modem_comment, sizeof(modem_comment), "password: set username and password to non-empty values for a credential protected server\n");
 	safestrcat(modem_comment, sizeof(modem_comment), "IPaddress: static IP address to use for this NIC (account). Format 0123456789AB for IP 012.345.678.9AB\n");
@@ -1745,6 +1749,8 @@ int BIOS_SaveData() //Save BIOS settings!
 	if (!write_private_profile_string("modem", modem_commentused, "gatewayIPaddress", &BIOS_Settings.ethernetserver_settings.gatewayIPaddress[0], inifile)) ABORT_SAVEDATA //MAC address to use!
 	if (!write_private_profile_string("modem", modem_commentused, "DNS1IPaddress", &BIOS_Settings.ethernetserver_settings.DNS1IPaddress[0], inifile)) ABORT_SAVEDATA //MAC address to use!
 	if (!write_private_profile_string("modem", modem_commentused, "DNS2IPaddress", &BIOS_Settings.ethernetserver_settings.DNS2IPaddress[0], inifile)) ABORT_SAVEDATA //MAC address to use!
+	if (!write_private_profile_string("modem", modem_commentused, "NBNS1IPaddress", &BIOS_Settings.ethernetserver_settings.NBNS1IPaddress[0], inifile)) ABORT_SAVEDATA //MAC address to use!
+	if (!write_private_profile_string("modem", modem_commentused, "NBNS2IPaddress", &BIOS_Settings.ethernetserver_settings.NBNS2IPaddress[0], inifile)) ABORT_SAVEDATA //MAC address to use!
 
 	for (c = 0; c < NUMITEMS(BIOS_Settings.ethernetserver_settings.users); ++c) //Process all phonebook entries!
 	{
