@@ -8483,33 +8483,41 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 					memcpy(&ipcp_pendingDNS1ipaddress, &data4, 4); //Set the network number to use!
 					//Field is OK!
 
-					if ((memcmp(&ipcp_pendingDNS1ipaddress, &ipnulladdr, 4) == 0) && packetserver_DNS1IP) //0.0.0.0 specified? The client asks for an IP address!
+					if ((memcmp(&ipcp_pendingDNS1ipaddress, &ipnulladdr, 4) == 0)) //0.0.0.0 specified? The client asks for an IP address!
 					{
-						if (!packetServerAddPacketBufferQueue(&pppNakFields, common_TypeField)) //IP address!
+						if (packetserver_DNS1IP) //Can supply?
 						{
-							goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+							if (!packetServerAddPacketBufferQueue(&pppNakFields, common_TypeField)) //IP address!
+							{
+								goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+							}
+							if (!packetServerAddPacketBufferQueue(&pppNakFields, 6)) //Correct length!
+							{
+								goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+							}
+							if (!packetServerAddPacketBufferQueue(&pppNakFields, packetserver_DNS1IPaddr[0])) //None!
+							{
+								goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+							}
+							if (!packetServerAddPacketBufferQueue(&pppNakFields, packetserver_DNS1IPaddr[1])) //None!
+							{
+								goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+							}
+							if (!packetServerAddPacketBufferQueue(&pppNakFields, packetserver_DNS1IPaddr[2])) //None!
+							{
+								goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+							}
+							if (!packetServerAddPacketBufferQueue(&pppNakFields, packetserver_DNS1IPaddr[3])) //None!
+							{
+								goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+							}
 						}
-						if (!packetServerAddPacketBufferQueue(&pppNakFields, 6)) //Correct length!
+						else //Can't comply?
 						{
-							goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
-						}
-						if (!packetServerAddPacketBufferQueue(&pppNakFields, packetserver_DNS1IPaddr[0])) //None!
-						{
-							goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
-						}
-						if (!packetServerAddPacketBufferQueue(&pppNakFields, packetserver_DNS1IPaddr[1])) //None!
-						{
-							goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
-						}
-						if (!packetServerAddPacketBufferQueue(&pppNakFields, packetserver_DNS1IPaddr[2])) //None!
-						{
-							goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
-						}
-						if (!packetServerAddPacketBufferQueue(&pppNakFields, packetserver_DNS1IPaddr[3])) //None!
-						{
-							goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+							goto performrejectfield_ipcp; //Reject it!
 						}
 					}
+					else //Can't co
 					break;
 				case 0x82: //NBNS #1 address
 					if (common_OptionLengthField != 6) //Unsupported length?
@@ -8560,31 +8568,38 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 					memcpy(&ipcp_pendingNBNS1ipaddress, &data4, 4); //Set the network number to use!
 					//Field is OK!
 					
-					if ((memcmp(&ipcp_pendingNBNS1ipaddress, &ipnulladdr, 4) == 0) && packetserver_NBNS1IP) //0.0.0.0 specified? The client asks for an IP address!
+					if ((memcmp(&ipcp_pendingNBNS1ipaddress, &ipnulladdr, 4) == 0)) //0.0.0.0 specified? The client asks for an IP address!
 					{
-						if (!packetServerAddPacketBufferQueue(&pppNakFields, common_TypeField)) //IP address!
+						if (packetserver_NBNS1IP) //Can supply?
 						{
-							goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+							if (!packetServerAddPacketBufferQueue(&pppNakFields, common_TypeField)) //IP address!
+							{
+								goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+							}
+							if (!packetServerAddPacketBufferQueue(&pppNakFields, 6)) //Correct length!
+							{
+								goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+							}
+							if (!packetServerAddPacketBufferQueue(&pppNakFields, packetserver_NBNS1IPaddr[0])) //None!
+							{
+								goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+							}
+							if (!packetServerAddPacketBufferQueue(&pppNakFields, packetserver_NBNS1IPaddr[1])) //None!
+							{
+								goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+							}
+							if (!packetServerAddPacketBufferQueue(&pppNakFields, packetserver_NBNS1IPaddr[2])) //None!
+							{
+								goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+							}
+							if (!packetServerAddPacketBufferQueue(&pppNakFields, packetserver_NBNS1IPaddr[3])) //None!
+							{
+								goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+							}
 						}
-						if (!packetServerAddPacketBufferQueue(&pppNakFields, 6)) //Correct length!
+						else
 						{
-							goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
-						}
-						if (!packetServerAddPacketBufferQueue(&pppNakFields, packetserver_NBNS1IPaddr[0])) //None!
-						{
-							goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
-						}
-						if (!packetServerAddPacketBufferQueue(&pppNakFields, packetserver_NBNS1IPaddr[1])) //None!
-						{
-							goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
-						}
-						if (!packetServerAddPacketBufferQueue(&pppNakFields, packetserver_NBNS1IPaddr[2])) //None!
-						{
-							goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
-						}
-						if (!packetServerAddPacketBufferQueue(&pppNakFields, packetserver_NBNS1IPaddr[3])) //None!
-						{
-							goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+							goto performrejectfield_ipcp; //Reject it!
 						}
 					}
 					break;
@@ -8637,31 +8652,38 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 					memcpy(&ipcp_pendingDNS2ipaddress, &data4, 4); //Set the network number to use!
 					//Field is OK!
 
-					if ((memcmp(&ipcp_pendingDNS2ipaddress, &ipnulladdr, 4) == 0) && packetserver_DNS2IP) //0.0.0.0 specified? The client asks for an IP address!
+					if ((memcmp(&ipcp_pendingDNS2ipaddress, &ipnulladdr, 4) == 0)) //0.0.0.0 specified? The client asks for an IP address!
 					{
-						if (!packetServerAddPacketBufferQueue(&pppNakFields, 0x82)) //IP address!
+						if (packetserver_DNS2IP) //Can supply?
 						{
-							goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+							if (!packetServerAddPacketBufferQueue(&pppNakFields, 0x82)) //IP address!
+							{
+								goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+							}
+							if (!packetServerAddPacketBufferQueue(&pppNakFields, 6)) //Correct length!
+							{
+								goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+							}
+							if (!packetServerAddPacketBufferQueue(&pppNakFields, packetserver_DNS2IPaddr[0])) //None!
+							{
+								goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+							}
+							if (!packetServerAddPacketBufferQueue(&pppNakFields, packetserver_DNS2IPaddr[1])) //None!
+							{
+								goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+							}
+							if (!packetServerAddPacketBufferQueue(&pppNakFields, packetserver_DNS2IPaddr[2])) //None!
+							{
+								goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+							}
+							if (!packetServerAddPacketBufferQueue(&pppNakFields, packetserver_DNS2IPaddr[3])) //None!
+							{
+								goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+							}
 						}
-						if (!packetServerAddPacketBufferQueue(&pppNakFields, 6)) //Correct length!
+						else
 						{
-							goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
-						}
-						if (!packetServerAddPacketBufferQueue(&pppNakFields, packetserver_DNS2IPaddr[0])) //None!
-						{
-							goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
-						}
-						if (!packetServerAddPacketBufferQueue(&pppNakFields, packetserver_DNS2IPaddr[1])) //None!
-						{
-							goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
-						}
-						if (!packetServerAddPacketBufferQueue(&pppNakFields, packetserver_DNS2IPaddr[2])) //None!
-						{
-							goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
-						}
-						if (!packetServerAddPacketBufferQueue(&pppNakFields, packetserver_DNS2IPaddr[3])) //None!
-						{
-							goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+							goto performrejectfield_ipcp; //Reject it!
 						}
 					}
 					break;
@@ -8714,35 +8736,43 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 					memcpy(&ipcp_pendingDNS2ipaddress, &data4, 4); //Set the network number to use!
 					//Field is OK!
 					
-					if ((memcmp(&ipcp_pendingNBNS2ipaddress, &ipnulladdr, 4) == 0) && packetserver_NBNS2IP) //0.0.0.0 specified? The client asks for an IP address!
+					if ((memcmp(&ipcp_pendingNBNS2ipaddress, &ipnulladdr, 4) == 0)) //0.0.0.0 specified? The client asks for an IP address!
 					{
-						if (!packetServerAddPacketBufferQueue(&pppNakFields, common_TypeField)) //IP address!
+						if (packetserver_NBNS2IP) //Can supply?
 						{
-							goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+							if (!packetServerAddPacketBufferQueue(&pppNakFields, common_TypeField)) //IP address!
+							{
+								goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+							}
+							if (!packetServerAddPacketBufferQueue(&pppNakFields, 6)) //Correct length!
+							{
+								goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+							}
+							if (!packetServerAddPacketBufferQueue(&pppNakFields, packetserver_NBNS2IPaddr[0])) //None!
+							{
+								goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+							}
+							if (!packetServerAddPacketBufferQueue(&pppNakFields, packetserver_NBNS2IPaddr[1])) //None!
+							{
+								goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+							}
+							if (!packetServerAddPacketBufferQueue(&pppNakFields, packetserver_NBNS2IPaddr[2])) //None!
+							{
+								goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+							}
+							if (!packetServerAddPacketBufferQueue(&pppNakFields, packetserver_NBNS2IPaddr[3])) //None!
+							{
+								goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+							}
 						}
-						if (!packetServerAddPacketBufferQueue(&pppNakFields, 6)) //Correct length!
+						else
 						{
-							goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
-						}
-						if (!packetServerAddPacketBufferQueue(&pppNakFields, packetserver_NBNS2IPaddr[0])) //None!
-						{
-							goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
-						}
-						if (!packetServerAddPacketBufferQueue(&pppNakFields, packetserver_NBNS2IPaddr[1])) //None!
-						{
-							goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
-						}
-						if (!packetServerAddPacketBufferQueue(&pppNakFields, packetserver_NBNS2IPaddr[2])) //None!
-						{
-							goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
-						}
-						if (!packetServerAddPacketBufferQueue(&pppNakFields, packetserver_NBNS2IPaddr[3])) //None!
-						{
-							goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
+							goto performrejectfield_ipcp; //Reject it!
 						}
 					}
 					break;
 				default: //Unknown option?
+					performrejectfield_ipcp:
 					if (!packetServerAddPacketBufferQueue(&pppRejectFields, common_TypeField)) //NAK it!
 					{
 						goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
