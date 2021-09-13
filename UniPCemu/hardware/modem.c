@@ -204,6 +204,10 @@ byte packetserver_gatewayMAC[6]; //Gateway MAC to send to!
 byte packetserver_defaultstaticIP[4] = { 0,0,0,0 }; //Static IP to use?
 byte packetserver_defaultgatewayIP = 0; //Gotten a default gateway IP?
 byte packetserver_defaultgatewayIPaddr[4] = { 0,0,0,0 }; //Default gateway IP to use?
+byte packetserver_DNS1IP = 0; //Gotten a default gateway IP?
+byte packetserver_DNS1IPaddr[4] = { 0,0,0,0 }; //Default gateway IP to use?
+byte packetserver_DNS2IP = 0; //Gotten a default gateway IP?
+byte packetserver_DNS2IPaddr[4] = { 0,0,0,0 }; //Default gateway IP to use?
 byte packetserver_broadcastIP[4] = { 0xFF,0xFF,0xFF,0xFF }; //Broadcast IP to use?
 byte packetserver_usedefaultStaticIP = 0; //Use static IP?
 char packetserver_defaultstaticIPstr[256] = ""; //Static IP, string format
@@ -854,11 +858,59 @@ void initPcap() {
 			}
 		}
 	}
+	if (safestrlen(&BIOS_Settings.ethernetserver_settings.DNS1IPaddress[0], 256) >= 12) //Valid length to convert IP addresses?
+	{
+		p = &BIOS_Settings.ethernetserver_settings.DNS1IPaddress[0]; //For scanning the IP!
+		if (readIPnumber(&p, &IPnumbers[0]))
+		{
+			if (readIPnumber(&p, &IPnumbers[1]))
+			{
+				if (readIPnumber(&p, &IPnumbers[2]))
+				{
+					if (readIPnumber(&p, &IPnumbers[3]))
+					{
+						if (*p == '\0') //EOS?
+						{
+							//Automatic port?
+							memcpy(&packetserver_DNS1IPaddr, &IPnumbers, 4); //Set read IP!
+							packetserver_DNS1IP = 1; //Static IP set!
+						}
+					}
+				}
+			}
+		}
+	}
+	if (safestrlen(&BIOS_Settings.ethernetserver_settings.DNS2IPaddress[0], 256) >= 12) //Valid length to convert IP addresses?
+	{
+		p = &BIOS_Settings.ethernetserver_settings.DNS2IPaddress[0]; //For scanning the IP!
+		if (readIPnumber(&p, &IPnumbers[0]))
+		{
+			if (readIPnumber(&p, &IPnumbers[1]))
+			{
+				if (readIPnumber(&p, &IPnumbers[2]))
+				{
+					if (readIPnumber(&p, &IPnumbers[3]))
+					{
+						if (*p == '\0') //EOS?
+						{
+							//Automatic port?
+							memcpy(&packetserver_DNS2IPaddr, &IPnumbers, 4); //Set read IP!
+							packetserver_DNS2IP = 1; //Static IP set!
+						}
+					}
+				}
+			}
+		}
+	}
 #else
 	memset(&maclocal, 0, sizeof(maclocal));
 	memset(&packetserver_gatewayMAC, 0, sizeof(packetserver_gatewayMAC));
 	memset(&packetserver_defaultgatewayIPaddr, 0, sizeof(packetserver_defaultgatewayIPaddr));
 	packetserver_defaultgatewayIP = 0; //No gateway IP!
+	memset(&packetserver_DNS1IPaddr, 0, sizeof(packetserver_defaultgatewayIPaddr));
+	packetserver_DNS1IP = 0; //No gateway IP!
+	memset(&packetserver_DNS2IPaddr, 0, sizeof(packetserver_defaultgatewayIPaddr));
+	packetserver_DNS2IP = 0; //No gateway IP!
 #endif
 
 	dolog("ethernetcard","Receiver MAC address: %02x:%02x:%02x:%02x:%02x:%02x",maclocal[0],maclocal[1],maclocal[2],maclocal[3],maclocal[4],maclocal[5]);
