@@ -9457,7 +9457,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 	byte *LCPbuf;
 	uint_32 ppp_transmitasynccontrolcharactermap;
 	ARPpackettype ARPpacket, ARPresponse; //ARP packet to send/receive!
-	PacketServer_clientp connectedclient;
+	PacketServer_clientp connectedclient, tempclient;
 	sword connectionid;
 	byte datatotransmit;
 	ETHERNETHEADER ethernetheader, ppptransmitheader;
@@ -10902,6 +10902,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 				{
 					for (connectedclient = Packetserver_allocatedclients; connectedclient; connectedclient = connectedclient->next) //Check all connected clients!
 					{
+						performnextconnectedclient: //For now deallocated purposes.
 						if (fifobuffer_freesize(modem.outputbuffer[connectedclient->connectionnumber]) && peekfifobuffer(modem.blockoutputbuffer[connectedclient->connectionnumber], &datatotransmit)) //Able to transmit something?
 						{
 							for (; fifobuffer_freesize(modem.outputbuffer[connectedclient->connectionnumber]) && peekfifobuffer(modem.blockoutputbuffer[connectedclient->connectionnumber], &datatotransmit);) //Can we still transmit something more?
@@ -10947,6 +10948,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 									else //Normal release?
 									{
 										normalFreeDHCP(connectedclient);
+										tempclient = connectedclient->next; //Who to parse next!
 										freePacketserver_client(connectedclient); //Free the client list item!
 									}
 									fifobuffer_clear(modem.inputdatabuffer[connectedclient->connectionnumber]); //Clear the output buffer for the next client!
@@ -10955,6 +10957,15 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 									if (!Packetserver_allocatedclients) //All cleared?
 									{
 										modem.connected = 0; //Not connected anymore!
+									}
+									if (tempclient && (connectedclient->used == 0)) //Properly Deallocated?
+									{
+										connectedclient = tempclient; //Who to parse next! Since our old client is unavailable now!
+										goto performnextconnectedclient; //Who to perform next!
+									}
+									else if (connectedclient->used == 0) //Finished all clients?
+									{
+										goto finishpollingnetwork; //Finish polling the network
 									}
 								}
 								break; //Abort!
@@ -11002,6 +11013,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 										else //Normal release?
 										{
 											normalFreeDHCP(connectedclient);
+											tempclient = connectedclient->next; //Who to parse next!
 											freePacketserver_client(connectedclient); //Free the client list item!
 										}
 										fifobuffer_clear(modem.inputdatabuffer[connectedclient->connectionnumber]); //Clear the output buffer for the next client!
@@ -11010,6 +11022,15 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 										if (!Packetserver_allocatedclients) //All cleared?
 										{
 											modem.connected = 0; //Not connected anymore!
+										}
+										if (tempclient && (connectedclient->used == 0)) //Properly Deallocated?
+										{
+											connectedclient = tempclient; //Who to parse next! Since our old client is unavailable now!
+											goto performnextconnectedclient; //Who to perform next!
+										}
+										else if (connectedclient->used == 0) //Finished all clients?
+										{
+											goto finishpollingnetwork; //Finish polling the network
 										}
 									}
 								}
@@ -11021,6 +11042,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 					}
 				}
 			} //Connected?
+			finishpollingnetwork:
 
 			lock(LOCK_PCAP); //Make sure it's valid to use!
 			if (net.packet) //Packet received? Discard anything we receive now for other users!
