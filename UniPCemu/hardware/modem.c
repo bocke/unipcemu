@@ -4809,7 +4809,7 @@ ppp_finishpacketbufferqueue2_echo:
 byte PPP_addPPPheader(PacketServer_clientp connectedclient, MODEM_PACKETBUFFER* response, byte allowheadercompression, word protocol)
 {
 	//Don't compress the header yet, since it's still negotiating!
-	if ((!(connectedclient->PPP_headercompressed[PPP_SENDCONF] && allowheadercompression) || (protocol==0xC021))) //Header isn't compressed? LCP is never compressed!
+	if ((!(connectedclient->PPP_headercompressed[PPP_SENDCONF] && allowheadercompression) || ((protocol==0x2B) && (connectedclient->ppp_IPXCPstatus[PPP_SENDCONF]==2)) || (protocol==0xC021))) //Header isn't compressed? LCP is never compressed!
 	{
 		if (!packetServerAddPacketBufferQueue(response, 0xFF)) //Start of PPP header!
 		{
@@ -4820,18 +4820,48 @@ byte PPP_addPPPheader(PacketServer_clientp connectedclient, MODEM_PACKETBUFFER* 
 			return 1; //Finish up!
 		}
 	}
-	if ((protocol != 0xC021) && (connectedclient->PPP_protocolcompressed[PPP_SENDCONF]) && ((protocol & 0xFF) == protocol) && (protocol&1)) //Protocol can be compressed?
+	if ((connectedclient->ppp_IPXCPstatus[PPP_SENDCONF]==2) && (protocol==0x2B)) //Special headers for SNAP IPX?
 	{
-		if (!packetServerAddPacketBufferQueue(response, (protocol & 0xFF))) //The protocol, compressed!
+		if (!packetServerAddPacketBufferQueue(response, 0x00)) //Pad!
+		{
+			return 1; //Finish up!
+		}
+		if (!packetServerAddPacketBufferQueue(response, 0x00)) //OUI 0!
+		{
+			return 1; //Finish up!
+		}
+		if (!packetServerAddPacketBufferQueue(response, 0x00)) //OUI 1!
+		{
+			return 1; //Finish up!
+		}
+		if (!packetServerAddPacketBufferQueue(response, 0x00)) //OUI 2!
+		{
+			return 1; //Finish up!
+		}
+		if (!packetServerAddPacketBufferQueue(response, 0x81)) //EtherType: IPX!
+		{
+			return 1; //Finish up!
+		}
+		if (!packetServerAddPacketBufferQueue(response, 0x37)) //EtherType: IPX!
 		{
 			return 1; //Finish up!
 		}
 	}
-	else //Uncompressed protocol?
+	else //Normal PPP header!
 	{
-		if (!packetServerAddPacketBufferQueueBE16(response, protocol)) //The protocol!
+		if ((protocol != 0xC021) && (connectedclient->PPP_protocolcompressed[PPP_SENDCONF]) && ((protocol & 0xFF) == protocol) && (protocol&1)) //Protocol can be compressed?
 		{
-			return 1; //Finish up!
+			if (!packetServerAddPacketBufferQueue(response, (protocol & 0xFF))) //The protocol, compressed!
+			{
+				return 1; //Finish up!
+			}
+		}
+		else //Uncompressed protocol?
+		{
+			if (!packetServerAddPacketBufferQueueBE16(response, protocol)) //The protocol!
+			{
+				return 1; //Finish up!
+			}
 		}
 	}
 	return 0; //Success!
@@ -4886,7 +4916,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 	MODEM_PACKETBUFFER response, pppNakFields, pppRejectFields; //The normal response and Nak fields/Reject fields that are queued!
 	MODEM_PACKETBUFFER LCP_requestFields; //Request fields!
 	word checksum;
-	PPP_Stream pppstream, pppstreambackup, pppstream_informationfield, pppstream_requestfield /*, pppstream_optionfield*/;
+	PPP_Stream pppstream, pppstreambackup, pppprotocolstreambackup, pppstream_informationfield, pppstream_requestfield /*, pppstream_optionfield*/;
 	byte datab; //byte data from the stream!
 	word dataw; //word data from the stream!
 	byte data4[4]; //4-byte data!
@@ -5769,6 +5799,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 			memcpy(&pppstream, &pppstreambackup, sizeof(pppstream)); //Return the stream to it's proper start, being compressed away!
 		}
 	}
+	memcpy(&pppstream_protocolstreambackup,&ppstream,sizeof(pppstream)); //For SNAP detection
 	//Now, the packet is at the protocol byte/word, so parse it!
 	if (!PPP_consumeStream(&pppstream, &datab))
 	{
@@ -5797,6 +5828,65 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 	memset(&pppRejectFields, 0, sizeof(pppRejectFields)); //Init to not used!
 	switch (protocol) //What protocol is used?
 	{
+	case 0: //Perhaps a SNAP packet?
+		if (!PPP_peekStream(&pppstream_protocolstreambackup, &datab)) //Reached end of stream (no payload)?
+		{
+			return 1; //Incorrect packet: discard it!
+		}
+		if (data==0) //Pad byte found?
+		{
+			if (!PPP_peekStream(&pppstream_protocolstreambackup, &datab)) //Reached end of stream (no payload)?
+			{
+				return 1; //Incorrect packet: discard it!
+			}
+			if (datab!=0) //Not OUI byte 0?
+			{
+				return 1; //Incorrect packet: discard it!
+			}
+			if (!PPP_peekStream(&pppstream_protocolstreambackup, &datab)) //Reached end of stream (no payload)?
+			{
+				return 1; //Incorrect packet: discard it!
+			}
+			if (datab!=0) //Not OUI byte 1?
+			{
+				return 1; //Incorrect packet: discard it!
+			}
+			if (!PPP_peekStream(&pppstream_protocolstreambackup, &datab)) //Reached end of stream (no payload)?
+			{
+				return 1; //Incorrect packet: discard it!
+			}
+			if (datab!=0) //Not OUI byte 2?
+			{
+				return 1; //Incorrect packet: discard it!
+			}
+			if (!PPP_peekStream(&pppstream_protocolstreambackup, &datab)) //Reached end of stream (no payload)?
+			{
+				return 1; //Incorrect packet: discard it!
+			}
+			if (datab!=0x81) //Not IPX (protocol upper byte)?
+			{
+				return 1; //Incorrect packet: discard it!
+			}
+			if (!PPP_peekStream(&pppstream_protocolstreambackup, &datab)) //Reached end of stream (no payload)?
+			{
+				return 1; //Incorrect packet: discard it!
+			}
+			if (datab!=0x37) //Not IPX (protocol lower byte)?
+			{
+				return 1; //Incorrect packet: discard it!
+			}
+			memcpy(&pppstream,&pppstream_protocolstreambackup,sizeof(pppstream)); //The IPX packet to send!
+			if (IPXCP_OPEN)
+			{
+				connectedclient->ppp_IPXCPstatus[PPP_RECVCONF] = connectedclient->ppp_IPXCPstatus[PPP_SENDCONF] = 2; //Special IPX SNAP mode to receive now!
+			}
+			goto SNAP_sendIPXpacket; //Send the framed IPX packet!
+		}
+		else
+		{
+			return 1; //Incorrect packet: discard it!
+		}
+		break;
 	case 0x0001: //Padding protocol?
 		//NOP!
 		break;
@@ -9432,6 +9522,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 		packetServerFreePacketBufferQueue(&pppRejectFields); //Free the queued response!
 		break;
 	case 0x2B: //IPX packet?
+		SNAP_sendIPXpacket:
 		if (IPXCP_OPEN) //Fully authenticated and logged in for sending on the peer?
 		{
 			//Handle the IPX packet to be sent!
