@@ -8886,6 +8886,8 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 					memcpy(&connectedclient->ipcp_ipaddress[0],&ipcp_pendingipaddress, sizeof(ipcp_pendingipaddress)); //Network number specified or 0 for none!
 					memcpy(&connectedclient->ipcp_DNS1ipaddress[0], &ipcp_pendingDNS1ipaddress, sizeof(ipcp_pendingDNS1ipaddress)); //Network number specified or 0 for none!
 					memcpy(&connectedclient->ipcp_DNS2ipaddress[0], &ipcp_pendingDNS2ipaddress, sizeof(ipcp_pendingDNS2ipaddress)); //Network number specified or 0 for none!
+					memcpy(&connectedclient->ipcp_NBNS1ipaddress[0], &ipcp_pendingNBNS1ipaddress, sizeof(ipcp_pendingNBNS1ipaddress)); //Network number specified or 0 for none!
+					memcpy(&connectedclient->ipcp_NBNS2ipaddress[0], &ipcp_pendingDNBS2ipaddress, sizeof(ipcp_pendingNBNS2ipaddress)); //Network number specified or 0 for none!
 				}
 			}
 			goto ppp_finishpacketbufferqueue2_ipcp; //Finish up!
