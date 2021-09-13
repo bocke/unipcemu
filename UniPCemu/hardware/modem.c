@@ -1087,7 +1087,7 @@ void fetchpackets_pcap() { //Handle any packets to process!
 					}
 					headertype = ethernetheader.type; //The requested header type!
 					//Now, check the normal receive parameters!
-					if (connectedclient->packetserver_useStaticIP && (headertype == SDL_SwapBE16(0x0800)) && ((connectedclient->packetserver_slipprotocol == 1)) || ((connectedclient->packetserver_slipprotocol == 3) && (!connectedclient->packetserver_slipprotocol_pppoe) && (connectedclient->ppp_IPCPstatus[PPP_RECVCONF]))) //IP filter to apply for IPv4 connections and PPPOE connections?
+					if (connectedclient->packetserver_useStaticIP && (headertype == SDL_SwapBE16(0x0800)) && (((connectedclient->packetserver_slipprotocol == 1)) || ((connectedclient->packetserver_slipprotocol == 3) && (!connectedclient->packetserver_slipprotocol_pppoe) && (connectedclient->ppp_IPCPstatus[PPP_RECVCONF])))) //IP filter to apply for IPv4 connections and PPPOE connections?
 					{
 						if ((memcmp(&pktdata[sizeof(ethernetheader.data) + 16], &connectedclient->packetserver_staticIP, 4) != 0) && (memcmp(&pktdata[sizeof(ethernetheader.data) + 16], &packetserver_broadcastIP, 4) != 0)) //Static IP mismatch?
 						{
@@ -9730,7 +9730,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 											}
 											headertype = ethernetheader.type; //The requested header type!
 											//Now, check the normal receive parameters!
-											if (connectedclient->packetserver_useStaticIP && (headertype == SDL_SwapBE16(0x0800)) && ((connectedclient->packetserver_slipprotocol == 1)) || ((connectedclient->packetserver_slipprotocol == 3) && (!connectedclient->packetserver_slipprotocol_pppoe) && (connectedclient->ppp_IPCPstatus[PPP_RECVCONF]))) //IP filter to apply for IPv4 connections and PPPOE connections?
+											if (connectedclient->packetserver_useStaticIP && (headertype == SDL_SwapBE16(0x0800)) && (((connectedclient->packetserver_slipprotocol == 1)) || ((connectedclient->packetserver_slipprotocol == 3) && (!connectedclient->packetserver_slipprotocol_pppoe) && (connectedclient->ppp_IPCPstatus[PPP_RECVCONF])))) //IP filter to apply for IPv4 connections and PPPOE connections?
 											{
 												if ((memcmp(&connectedclient->packet[sizeof(ethernetheader.data) + 16], &connectedclient->packetserver_staticIP, 4) != 0) && (memcmp(&connectedclient->packet[sizeof(ethernetheader.data) + 16], &packetserver_broadcastIP, 4) != 0)) //Static IP mismatch?
 												{
