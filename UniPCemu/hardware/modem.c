@@ -8656,7 +8656,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 					{
 						if (packetserver_DNS2IP) //Can supply?
 						{
-							if (!packetServerAddPacketBufferQueue(&pppNakFields, 0x82)) //IP address!
+							if (!packetServerAddPacketBufferQueue(&pppNakFields, common_TypeField)) //IP address!
 							{
 								goto ppp_finishpacketbufferqueue_ipcp; //Incorrect packet: discard it!
 							}
