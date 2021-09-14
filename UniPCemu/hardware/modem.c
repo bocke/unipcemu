@@ -11092,6 +11092,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 									//PPP is sending a frame abort?
 									goto discardPPPsentframe;
 								}
+								/*
 								if (connectedclient->packetserver_slipprotocol == 3) //PPP has a different concept of this than SLIP!
 								{
 									//PPP END is a toggle for active data!
@@ -11110,6 +11111,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 										goto discardPPPsentframe; //Discard the frame that's currently buffered, if there's any!
 									}
 								}
+								*/
 								if (connectedclient->packetserver_transmitstate == 0) //Ready to send the packet(not waiting for the buffer to free)?
 								{
 									//Clean up the packet container!
