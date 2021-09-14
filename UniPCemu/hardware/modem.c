@@ -1235,7 +1235,7 @@ void fetchpackets_pcap() { //Handle any packets to process!
 						}
 					}
 				}
-
+				waitforclientready: //Wait for all clients to become ready to receive!
 				lock(LOCK_PCAP); //Make sure that we don't conflict with the receiver!
 				skippacket = 1; //Default: skip the packet!
 				headertype = ethernetheader.type; //What packet type is used?
@@ -1387,6 +1387,11 @@ void fetchpackets_pcap() { //Handle any packets to process!
 						}
 					}
 					//Valid packet! Receive it!
+					if (connectedclient->packet) //Client isn't ready to receive it?
+					{
+						unlock(LOCK_PCAP);
+						goto waitforclientready; //Wait for the client to become ready!
+					}
 					skippacket = 0; //Receive it!
 					goto skippacketfinished; //Stop searching!
 				}
@@ -9830,7 +9835,7 @@ byte PPP_parseReceivedPacketForClient(PacketServer_clientp connectedclient)
 								//We're authenticated, so send a reply!
 								if (sendIPXechoreply(connectedclient, &ipxechostream, &pppstream)) //Sent a reply?
 								{
-									return 0; //Handled, discard!
+									goto handleIPXreplies; //Handled, discard, but handle raw packeting also!
 								}
 								else //Couldn't send a reply packet?
 								{
@@ -9838,6 +9843,7 @@ byte PPP_parseReceivedPacketForClient(PacketServer_clientp connectedclient)
 								}
 							}
 						}
+						handleIPXreplies:
 						//Check for echo replies on our requests!
 						if ((memcmp(&ipxheader.DestinationNodeNumber, &ipx_servernodeaddr, 6) == 0) && (memcmp(&ipxheader.DestinationNetworkNumber, &ipx_servernetworknumber, 4) == 0)) //Negotiation address and network is being sent to?
 						{
@@ -9877,7 +9883,15 @@ byte PPP_parseReceivedPacketForClient(PacketServer_clientp connectedclient)
 				}
 				else //Wrong length?
 				{
-					return 0; //Handled, discard!
+					if (!IPXCP_OPEN) //Not open yet?
+					{
+						return 0; //Handled, discard!
+					}
+					if (connectedclient->ppp_IPXCPstatus[PPP_SENDCONF] <= 1) //Normal receiver or not receiving?
+					{
+						return 0; //Handled, discard!
+					}
+					//Otherwise, it's either a raw or valid IPX packet!
 				}
 				if (connectedclient->ppp_suppressIPX) //IPX suppressed?
 				{
