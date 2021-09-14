@@ -4866,7 +4866,7 @@ byte PPP_addPPPheader(PacketServer_clientp connectedclient, MODEM_PACKETBUFFER* 
 	{
 		for (c = 0; c < 12;++c) //Ethnernet dest/src address!
 		{
-			if (!packetServerAddPacketBufferQueue(response, 0x00)) //OUI 0!
+			if (!packetServerAddPacketBufferQueue(response, 0xFF)) //Only broadcast MAC!
 			{
 				return 1; //Finish up!
 			}
