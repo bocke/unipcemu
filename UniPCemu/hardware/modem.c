@@ -4822,6 +4822,7 @@ ppp_finishpacketbufferqueue2_echo:
 //result: 0: success, 1: error
 byte PPP_addPPPheader(PacketServer_clientp connectedclient, MODEM_PACKETBUFFER* response, byte allowheadercompression, word protocol)
 {
+	word c;
 	//Don't compress the header yet, since it's still negotiating!
 	if ((!(connectedclient->PPP_headercompressed[PPP_SENDCONF] && allowheadercompression) || ((protocol==0x2B) && (connectedclient->ppp_IPXCPstatus[PPP_SENDCONF]==2)) || (protocol==0xC021))) //Header isn't compressed? LCP is never compressed!
 	{
@@ -4861,7 +4862,26 @@ byte PPP_addPPPheader(PacketServer_clientp connectedclient, MODEM_PACKETBUFFER* 
 			return 1; //Finish up!
 		}
 	}
-	else //Normal PPP header!
+	else if ((connectedclient->ppp_IPXCPstatus[PPP_SENDCONF] == 3) && (protocol == 0x2B)) //Special headers for Ethernet II IPX?
+	{
+		for (c = 0; c < 12;++c) //Ethnernet dest/src address!
+		{
+			if (!packetServerAddPacketBufferQueue(response, 0x00)) //OUI 0!
+			{
+				return 1; //Finish up!
+			}
+		}
+		if (!packetServerAddPacketBufferQueue(response, 0x81)) //EtherType: IPX!
+		{
+			return 1; //Finish up!
+		}
+
+		if (!packetServerAddPacketBufferQueue(response, 0x37)) //EtherType: IPX!
+		{
+			return 1; //Finish up!
+		}
+	}
+	else if (!((connectedclient->ppp_IPXCPstatus[PPP_SENDCONF] == 3) && (protocol == 0x2B))) //Normal PPP header!
 	{
 		if ((protocol != 0xC021) && (connectedclient->PPP_protocolcompressed[PPP_SENDCONF]) && ((protocol & 0xFF) == protocol) && (protocol&1)) //Protocol can be compressed?
 		{
@@ -4930,7 +4950,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 	MODEM_PACKETBUFFER response, pppNakFields, pppRejectFields; //The normal response and Nak fields/Reject fields that are queued!
 	MODEM_PACKETBUFFER LCP_requestFields; //Request fields!
 	word checksum;
-	PPP_Stream pppstream, pppstreambackup, pppstream_protocolstreambackup, pppstream_informationfield, pppstream_requestfield /*, pppstream_optionfield*/;
+	PPP_Stream pppstream, pppstreambackup, pppstream_protocolstreambackup, pppstream_protocolstreambackup2, pppstream_informationfield, pppstream_requestfield /*, pppstream_optionfield*/;
 	byte datab; //byte data from the stream!
 	word dataw; //word data from the stream!
 	byte data4[4]; //4-byte data!
@@ -5779,7 +5799,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 	checksum = PPP_calcFCS(&connectedclient->packetserver_transmitbuffer[0], connectedclient->packetserver_transmitlength); //Calculate the checksum!
 	if (checksum != PPP_GOODFCS) //Checksum error?
 	{
-		return 1; //Incorrect packet: discard it!
+		goto checkotherprotocols; //Incorrect packet: check for other protocols!
 	}
 	createPPPstream(&pppstream, &connectedclient->packetserver_transmitbuffer[0], connectedclient->packetserver_transmitlength-2); //Create a stream object for us to use, which goes until the end of the payload!
 	memcpy(&pppstreambackup, &pppstream, sizeof(pppstream)); //Backup for checking again!
@@ -5843,66 +5863,98 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 	switch (protocol) //What protocol is used?
 	{
 	case 0: //Perhaps a SNAP packet?
+	checkotherprotocols:
+		memcpy(&pppstream_protocolstreambackup2, &pppstream_protocolstreambackup, sizeof(pppstream)); //For different protocols detection
 		if (!PPP_consumeStream(&pppstream_protocolstreambackup, &datab)) //Reached end of stream (no payload)?
 		{
 			goto ppp_invalidprotocol; //Invalid protocol!
 		}
-		if (datab==0) //Pad byte found?
+		if (datab == 0) //Pad byte found?
 		{
 			if (!PPP_consumeStream(&pppstream_protocolstreambackup, &datab)) //Reached end of stream (no payload)?
 			{
-				goto ppp_invalidprotocol; //Invalid protocol!
+				goto trynextprotocol; //Invalid protocol!
 			}
-			if (datab!=0) //Not OUI byte 0?
+			if (datab != 0) //Not OUI byte 0?
 			{
-				goto ppp_invalidprotocol; //Invalid protocol!
-			}
-			if (!PPP_consumeStream(&pppstream_protocolstreambackup, &datab)) //Reached end of stream (no payload)?
-			{
-				goto ppp_invalidprotocol; //Invalid protocol!
-			}
-			if (datab!=0) //Not OUI byte 1?
-			{
-				goto ppp_invalidprotocol; //Invalid protocol!
+				goto trynextprotocol; //Invalid protocol!
 			}
 			if (!PPP_consumeStream(&pppstream_protocolstreambackup, &datab)) //Reached end of stream (no payload)?
 			{
-				goto ppp_invalidprotocol; //Invalid protocol!
+				goto trynextprotocol; //Invalid protocol!
 			}
-			if (datab!=0) //Not OUI byte 2?
+			if (datab != 0) //Not OUI byte 1?
 			{
-				goto ppp_invalidprotocol; //Invalid protocol!
-			}
-			if (!PPP_consumeStream(&pppstream_protocolstreambackup, &datab)) //Reached end of stream (no payload)?
-			{
-				goto ppp_invalidprotocol; //Invalid protocol!
-			}
-			if (datab!=0x81) //Not IPX (protocol upper byte)?
-			{
-				goto ppp_invalidprotocol; //Invalid protocol!
+				goto trynextprotocol; //Invalid protocol!
 			}
 			if (!PPP_consumeStream(&pppstream_protocolstreambackup, &datab)) //Reached end of stream (no payload)?
 			{
-				goto ppp_invalidprotocol; //Invalid protocol!
+				goto trynextprotocol; //Invalid protocol!
 			}
-			if (datab!=0x37) //Not IPX (protocol lower byte)?
+			if (datab != 0) //Not OUI byte 2?
 			{
-				goto ppp_invalidprotocol; //Invalid protocol!
+				goto trynextprotocol; //Invalid protocol!
+			}
+			if (!PPP_consumeStream(&pppstream_protocolstreambackup, &datab)) //Reached end of stream (no payload)?
+			{
+				goto trynextprotocol; //Invalid protocol!
+			}
+			if (datab != 0x81) //Not IPX (protocol upper byte)?
+			{
+				goto trynextprotocol; //Invalid protocol!
+			}
+			if (!PPP_consumeStream(&pppstream_protocolstreambackup, &datab)) //Reached end of stream (no payload)?
+			{
+				goto trynextprotocol; //Invalid protocol!
+			}
+			if (datab != 0x37) //Not IPX (protocol lower byte)?
+			{
+				goto trynextprotocol; //Invalid protocol!
 			}
 			if (IPXCP_OPEN)
 			{
-				memcpy(&pppstream,&pppstream_protocolstreambackup,sizeof(pppstream)); //The IPX packet to send!
+				memcpy(&pppstream, &pppstream_protocolstreambackup, sizeof(pppstream)); //The IPX packet to send!
 				connectedclient->ppp_IPXCPstatus[PPP_RECVCONF] = connectedclient->ppp_IPXCPstatus[PPP_SENDCONF] = 2; //Special IPX SNAP mode to receive now!
 				goto SNAP_sendIPXpacket; //Send the framed IPX packet!
 			}
-			else
+			//Try next protocol!
+		}
+		trynextprotocol: //Try the next usable protocol!
+		memcpy(&pppstream_protocolstreambackup, &pppstream_protocolstreambackup2, sizeof(pppstream)); //For different protocols detection
+		for (dataw = 0; dataw < 12; ++dataw)
+		{
+			if (!PPP_consumeStream(&pppstream_protocolstreambackup, &datab)) //Reached end of stream (no payload)?
 			{
-				goto ppp_invalidprotocol; //Invalid protocol!
+				goto trynextprotocol2; //Invalid protocol!
 			}
 		}
-		else
+		if (!PPP_consumeStream(&pppstream_protocolstreambackup, &datab)) //Reached end of stream (no payload)?
 		{
-			goto ppp_invalidprotocol; //Invalid protocol!
+			goto trynextprotocol2; //Invalid protocol!
+		}
+		dataw = datab; //Load!
+		if (!PPP_consumeStream(&pppstream_protocolstreambackup, &datab)) //Reached end of stream (no payload)?
+		{
+			goto trynextprotocol2; //Invalid protocol!
+		}
+		dataw = (dataw << 8) | datab; //Load!
+		if (IPXCP_OPEN)
+		{
+			if (dataw == 0x8137) //Not IPX (protocol lower byte)?
+			{
+				memcpy(&pppstream, &pppstream_protocolstreambackup, sizeof(pppstream)); //The IPX packet to send!
+				connectedclient->ppp_IPXCPstatus[PPP_RECVCONF] = connectedclient->ppp_IPXCPstatus[PPP_SENDCONF] = 3; //Special IPX Ethernet II mode to receive now!
+				goto SNAP_sendIPXpacket; //Send the framed IPX packet!
+			}
+		}
+		trynextprotocol2:
+		if (checksum==PPP_GOODFCS) //PPP packet?
+		{
+			goto ppp_invalidprotocol; //Handle as invalid PPP protocol!
+		}
+		else //Discard this packet type!
+		{
+			return 1; //Invalid packet to handle right now!
 		}
 		break;
 	case 0x0001: //Padding protocol?
