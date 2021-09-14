@@ -1136,8 +1136,8 @@ void initPcap() {
 	if ( (adhandle= pcap_open_live (d->name, 65535, PCAP_OPENFLAG_PROMISCUOUS, -1, errbuf) ) == NULL)
 #endif
 		{
-			dolog("ethernetcard","Unable to open the adapter. %s is not supported by WinPcap. Reason: %s", d->name, errbuf);
-			GPU_messagebox(NULL, MESSAGEBOX_ERROR, "Unable to open the adapter. %s is not supported by WinPcap. Reason: %s", d->name, errbuf);
+			dolog("ethernetcard","Unable to open the adapter. \"%s\" is not supported by WinPcap. Reason: %s", d->name, errbuf);
+			GPU_messagebox(NULL, MESSAGEBOX_ERROR, "Unable to open the adapter. \"%s\" is not supported by WinPcap. Reason: %s", d->name, errbuf);
 			/* Free the device list */
 			pcap_freealldevs (alldevs);
 			exit(1);
@@ -1150,8 +1150,8 @@ void initPcap() {
 	{
 		if (pcap_datalink(adhandle) != DLT_EN10MB) //Invalid link layer?
 		{
-			dolog("ethernetcard", "Ethernet card unsupported: Ethernet card is required! %s is unsupported!", d->description ? d->description : "No description available");
-			GPU_messagebox(NULL, MESSAGEBOX_WARNING, "Ethernet card unsupported: Ethernet card is required! %s is unsupported!", d->description ? d->description : "No description available");
+			dolog("ethernetcard", "Ethernet card \"%s\" is unsupported!", d->description ? d->description : "No description available");
+			GPU_messagebox(NULL, MESSAGEBOX_WARNING, "Ethernet card \"%s\" is unsupported!", d->description ? d->description : "No description available");
 			/* Free the device list */
 			pcap_freealldevs(alldevs);
 			pcap_close(adhandle); //Close the handle!
