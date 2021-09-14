@@ -9857,7 +9857,7 @@ byte PPP_parseReceivedPacketForClient(PacketServer_clientp connectedclient)
 					{
 						return 0; //Handled, discard!
 					}
-					if (connectedclient->ppp_IPXCPstatus[PPP_RECVCONF] > 1) //Raw mode? Use unfiltered!
+					if (connectedclient->ppp_IPXCPstatus[PPP_RECVCONF]==1) //Raw mode? Use unfiltered when not in normal mode!
 					{
 						if (memcmp(&ipxheader.DestinationNetworkNumber, &connectedclient->ipxcp_networknumber[PPP_RECVCONF][0], 4) != 0) //Network number mismatch?
 						{
