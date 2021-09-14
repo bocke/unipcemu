@@ -7195,7 +7195,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 			goto ppp_finishpacketbufferqueue2;
 			break;
 		case 11: //Discard-Request
-			if (connectedclient->ppp_LCPstatus) //LCP opened?
+			if (connectedclient->ppp_LCPstatus[PPP_RECVCONF]) //LCP opened?
 			{
 				//Magic-NUmber is ignored.
 				//This packet is fully discarded!
