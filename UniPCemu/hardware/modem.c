@@ -1393,7 +1393,7 @@ void fetchpackets_pcap() { //Handle any packets to process!
 						goto waitforclientready; //Wait for the client to become ready!
 					}
 					skippacket = 0; //Receive it!
-					goto skippacketfinished; //Stop searching!
+					//Continue scanning for other clients to become ready to receive!
 				}
 				skippacketfinished:
 				if (skippacket) //To skip receiving it?
