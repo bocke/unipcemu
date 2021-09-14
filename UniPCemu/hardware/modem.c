@@ -4881,7 +4881,7 @@ byte PPP_addPPPheader(PacketServer_clientp connectedclient, MODEM_PACKETBUFFER* 
 			return 1; //Finish up!
 		}
 	}
-	else if (!((connectedclient->ppp_IPXCPstatus[PPP_SENDCONF] == 3) && (protocol == 0x2B))) //Normal PPP header!
+	else //Normal PPP header!
 	{
 		if ((protocol != 0xC021) && (connectedclient->PPP_protocolcompressed[PPP_SENDCONF]) && ((protocol & 0xFF) == protocol) && (protocol&1)) //Protocol can be compressed?
 		{
