@@ -9857,18 +9857,21 @@ byte PPP_parseReceivedPacketForClient(PacketServer_clientp connectedclient)
 					{
 						return 0; //Handled, discard!
 					}
-					if (memcmp(&ipxheader.DestinationNetworkNumber, &connectedclient->ipxcp_networknumber[PPP_RECVCONF][0], 4) != 0) //Network number mismatch?
+					if (connectedclient->ppp_IPXCPstatus[PPP_RECVCONF] > 1) //Raw mode? Use unfiltered!
 					{
-						if (memcmp(&ipxheader.DestinationNetworkNumber, &ipx_currentnetworknumber, 4) != 0) //Current network mismatch?
+						if (memcmp(&ipxheader.DestinationNetworkNumber, &connectedclient->ipxcp_networknumber[PPP_RECVCONF][0], 4) != 0) //Network number mismatch?
 						{
-							return 0; //Handled, discard!
+							if (memcmp(&ipxheader.DestinationNetworkNumber, &ipx_currentnetworknumber, 4) != 0) //Current network mismatch?
+							{
+								return 0; //Handled, discard!
+							}
 						}
-					}
-					if (memcmp(&ipxheader.DestinationNodeNumber, &connectedclient->ipxcp_nodenumber[0][0], 6) != 0) //Node number mismatch?
-					{
-						if (memcmp(&ipxheader.DestinationNodeNumber, &ipxbroadcastaddr, 6) != 0) //Also not a broadcast?
+						if (memcmp(&ipxheader.DestinationNodeNumber, &connectedclient->ipxcp_nodenumber[0][0], 6) != 0) //Node number mismatch?
 						{
-							return 0; //Handled, discard!
+							if (memcmp(&ipxheader.DestinationNodeNumber, &ipxbroadcastaddr, 6) != 0) //Also not a broadcast?
+							{
+								return 0; //Handled, discard!
+							}
 						}
 					}
 				}
