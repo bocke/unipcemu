@@ -5893,6 +5893,15 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 	{
 	case 0: //Perhaps a SNAP packet?
 	checkotherprotocols:
+		if (checksum == PPP_GOODFCS)
+		{
+			goto ppp_invalidprotocol; //Handle as invalid PPP protocol always!
+		}
+		else //Disable this handling right now!
+		{
+			result = 1; //Discard this packet!
+			goto ppp_finishpacketbufferqueue2; //Simply abort!
+		}
 		memcpy(&pppstream_protocolstreambackup2, &pppstream_protocolstreambackup, sizeof(pppstream)); //For different protocols detection
 		if (!PPP_consumeStream(&pppstream_protocolstreambackup, &datab)) //Reached end of stream (no payload)?
 		{
@@ -5990,7 +5999,8 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 				connectedclient->ppp_IPXCPstatus[PPP_RECVCONF] = connectedclient->ppp_IPXCPstatus[PPP_SENDCONF] = 4; //Special IPX raw mode to receive now!
 				goto SNAP_sendIPXpacket; //Send the framed IPX packet!
 			}
-			return 1; //Invalid packet to handle right now!
+			result = 1; //Discard this packet!
+			goto ppp_finishpacketbufferqueue2; //Simply abort!
 		}
 		break;
 	case 0x0001: //Padding protocol?
