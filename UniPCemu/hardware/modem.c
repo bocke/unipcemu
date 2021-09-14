@@ -78,6 +78,7 @@ typedef unsigned short u_short;
 #include "headers/support/log.h" //Logging support for errors!
 #include "headers/support/highrestimer.h" //High resolution timing support for cleaning up DHCP!
 #include "headers/emu/threads.h" //Thread support for pcap!
+#include "headers/emu/gpu/gpu.h" //Message box support!
 
 #if defined(PACKETSERVER_ENABLED)
 #include <stdint.h>
@@ -1051,6 +1052,10 @@ void initPcap() {
 		}
 		else
 		{
+			if (BIOS_Settings.ethernetserver_settings.ethernetcard > 0) //Required to operate according to the settings?
+			{
+				GPU_messagebox(NULL,MESSAGEBOX_WARNING, "The pcap interface and public packet server is disabled because the required libraries aren't installed!");
+			}
 			PacketServer_running = 0; //We're using the packet server emulation, disable normal modem(we don't connect to other systems ourselves)!
 		}
 		pcap_receiverstate = 0; //Packet receiver/filter state: ready to receive a packet!
@@ -1075,6 +1080,7 @@ void initPcap() {
 #endif
 		{
 			dolog("ethernetcard","Error in pcap_findalldevs_ex: %s", errbuf);
+			GPU_messagebox(NULL, MESSAGEBOX_ERROR, "Error in pcap_findalldevs_ex: %s", errbuf);
 			exit (1);
 		}
 
@@ -1094,16 +1100,22 @@ void initPcap() {
 
 	if (i == 0) {
 			dolog("ethernetcard","No interfaces found! Make sure WinPcap is installed.");
+			GPU_messagebox(NULL, MESSAGEBOX_WARNING, "No interfaces found! Make sure WinPcap is installed.");
 			return;
 		}
 
-	if (ethif==0) exit (0); //Failed: no ethernet card to use: only performing detection!
+	if (ethif == 0)
+	{
+		GPU_messagebox(NULL, MESSAGEBOX_WARNING, "Interfaces logged. Terminating app.");
+		exit(0); //Failed: no ethernet card to use: only performing detection!
+	}
 	else inum = ethif;
 	dolog("ethernetcard","Using network interface %u.", ethif);
 
 
 	if (inum < 1 || inum > i) {
 			dolog("ethernetcard","Interface number out of range.");
+			GPU_messagebox(NULL, MESSAGEBOX_WARNING, "Interface number out of range.");
 			/* Free the device list */
 			pcap_freealldevs (alldevs);
 			return;
@@ -1125,6 +1137,7 @@ void initPcap() {
 #endif
 		{
 			dolog("ethernetcard","Unable to open the adapter. %s is not supported by WinPcap. Reason: %s", d->name, errbuf);
+			GPU_messagebox(NULL, MESSAGEBOX_ERROR, "Unable to open the adapter. %s is not supported by WinPcap. Reason: %s", d->name, errbuf);
 			/* Free the device list */
 			pcap_freealldevs (alldevs);
 			exit(1);
@@ -1138,6 +1151,7 @@ void initPcap() {
 		if (pcap_datalink(adhandle) != DLT_EN10MB) //Invalid link layer?
 		{
 			dolog("ethernetcard", "Ethernet card unsupported: Ethernet card is required! %s is unsupported!", d->description ? d->description : "No description available");
+			GPU_messagebox(NULL, MESSAGEBOX_WARNING, "Ethernet card unsupported: Ethernet card is required! %s is unsupported!", d->description ? d->description : "No description available");
 			/* Free the device list */
 			pcap_freealldevs(alldevs);
 			pcap_close(adhandle); //Close the handle!
