@@ -9694,6 +9694,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 			goto ppp_finishpacketbufferqueue2;
 		}
 	default: //Unknown protocol?
+		goto checkotherprotocols; //Special: check for other protocols to have been sent over this link!
 		ppp_invalidprotocol: //Invalid protocol used when not fully authenticated or verified?
 		if (connectedclient->ppp_LCPstatus[PPP_RECVCONF]) //LCP is Open?
 		{
