@@ -11086,10 +11086,11 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 										connectedclient->packetserver_transmitstate = 0; //We're not escaping something anymore!
 									}
 								}
-								else if (connectedclient->packetserver_transmitstate) //Escaped with  PPP?
+								else if (connectedclient->packetserver_transmitstate) //Escaped with  PPP? This is an abort sequence!
 								{
 									connectedclient->packetserver_transmitstate = 0; //Stop escaping!
-									//This seems to indicate that PPP is sending an incorrect frame? Accept it anyways, though?
+									//PPP is sending a frame abort?
+									goto discardPPPsentframe;
 								}
 								if (connectedclient->packetserver_slipprotocol == 3) //PPP has a different concept of this than SLIP!
 								{
