@@ -4824,7 +4824,11 @@ byte PPP_addPPPheader(PacketServer_clientp connectedclient, MODEM_PACKETBUFFER* 
 {
 	word c;
 	//Don't compress the header yet, since it's still negotiating!
-	if ((!(connectedclient->PPP_headercompressed[PPP_SENDCONF] && allowheadercompression) || ((protocol==0x2B) && (connectedclient->ppp_IPXCPstatus[PPP_SENDCONF]==2)) || (protocol==0xC021))) //Header isn't compressed? LCP is never compressed!
+	if ((!(connectedclient->PPP_headercompressed[PPP_SENDCONF] && allowheadercompression) ||
+		((protocol==0x2B) && (connectedclient->ppp_IPXCPstatus[PPP_SENDCONF]==2)) || //Not with SNAP mode!
+		((protocol == 0x2B) && (connectedclient->ppp_IPXCPstatus[PPP_SENDCONF] == 3)) || //Not with Ethernet II mode!
+		((protocol == 0x2B) && (connectedclient->ppp_IPXCPstatus[PPP_SENDCONF] == 4)) //Now with RAW IPX mode!
+		|| (protocol==0xC021))) //Header isn't compressed? LCP is never compressed!
 	{
 		if (!packetServerAddPacketBufferQueue(response, 0xFF)) //Start of PPP header!
 		{
@@ -4881,7 +4885,7 @@ byte PPP_addPPPheader(PacketServer_clientp connectedclient, MODEM_PACKETBUFFER* 
 			return 1; //Finish up!
 		}
 	}
-	else //Normal PPP header!
+	else if (!((connectedclient->ppp_IPXCPstatus[PPP_SENDCONF] == 4) && (protocol == 0x2B)))  //Normal PPP header! Not with IPX raw mode!
 	{
 		if ((protocol != 0xC021) && (connectedclient->PPP_protocolcompressed[PPP_SENDCONF]) && ((protocol & 0xFF) == protocol) && (protocol&1)) //Protocol can be compressed?
 		{
@@ -4925,14 +4929,22 @@ byte PPP_addLCPNCPResponseHeader(PacketServer_clientp connectedclient, MODEM_PAC
 }
 
 //result: 0: success, 1: error
-byte PPP_addFCS(MODEM_PACKETBUFFER* response)
+byte PPP_addFCS(MODEM_PACKETBUFFER* response, PacketServer_client *connectedclient, word protocol)
 {
 	word checksumfield;
-	//Calculate and add the checksum field!
-	checksumfield = PPP_calcFCS(response->buffer, response->length); //The checksum field!
-	if (!packetServerAddPacketBufferQueueLE16(response, (checksumfield^0xFFFF))) //Checksum failure? For some reason this is in little-endian format and complemented.
+	if (!(
+		((protocol == 0x2B) && (connectedclient->ppp_IPXCPstatus[PPP_SENDCONF] == 2)) || //Not with SNAP mode!
+		((protocol == 0x2B) && (connectedclient->ppp_IPXCPstatus[PPP_SENDCONF] == 3)) || //Not with Ethernet II mode!
+		((protocol == 0x2B) && (connectedclient->ppp_IPXCPstatus[PPP_SENDCONF] == 4)) //Now with RAW IPX mode!
+		)
+		) //Using FCS for this packet type?
 	{
-		return 1;
+		//Calculate and add the checksum field!
+		checksumfield = PPP_calcFCS(response->buffer, response->length); //The checksum field!
+			if (!packetServerAddPacketBufferQueueLE16(response, (checksumfield ^ 0xFFFF))) //Checksum failure? For some reason this is in little-endian format and complemented.
+			{
+				return 1;
+			}
 	}
 	return 0;
 }
@@ -5085,7 +5097,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 			}
 		}
 		//Calculate and add the checksum field!
-		if (PPP_addFCS(&response))
+		if (PPP_addFCS(&response,connectedclient, (nakreject_ipcp ? 0x8021 : (nakreject_ipxcp ? 0x802B : 0xC021))))
 		{
 			goto ppp_finishpacketbufferqueueNAKReject;
 		}
@@ -5321,7 +5333,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 		}
 
 		//Calculate and add the checksum field!
-		if (PPP_addFCS(&response))
+		if (PPP_addFCS(&response,connectedclient,0xC021))
 		{
 			goto ppp_finishpacketbufferqueue_lcp;
 		}
@@ -5431,7 +5443,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 			}
 
 			//Calculate and add the checksum field!
-			if (PPP_addFCS(&response))
+			if (PPP_addFCS(&response,connectedclient,0xC023))
 			{
 				goto ppp_finishpacketbufferqueue_papserver;
 			}
@@ -5609,7 +5621,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 				}
 
 				//Calculate and add the checksum field!
-				if (PPP_addFCS(&response))
+				if (PPP_addFCS(&response,connectedclient,0x802B))
 				{
 					goto ppp_finishpacketbufferqueue_ipxcpserver;
 				}
@@ -5743,7 +5755,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 				}
 
 				//Calculate and add the checksum field!
-				if (PPP_addFCS(&response))
+				if (PPP_addFCS(&response,connectedclient,0x8021))
 				{
 					goto ppp_finishpacketbufferqueue_ipcpserver;
 				}
@@ -5797,11 +5809,12 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 	if (!handleTransmit) return 1; //Don't do anything more when not handling a transmit!
 	//Check the checksum first before doing anything with the data!
 	checksum = PPP_calcFCS(&connectedclient->packetserver_transmitbuffer[0], connectedclient->packetserver_transmitlength); //Calculate the checksum!
+	createPPPstream(&pppstream, &connectedclient->packetserver_transmitbuffer[0], connectedclient->packetserver_transmitlength - 2); //Create a stream object for us to use, which goes until the end of the payload!
 	if (checksum != PPP_GOODFCS) //Checksum error?
 	{
+		memcpy(&pppstream_protocolstreambackup, &pppstream,sizeof(pppstream_protocolstreambackup)); //Create a stream object for us to use, which goes until the end of the payload!
 		goto checkotherprotocols; //Incorrect packet: check for other protocols!
 	}
-	createPPPstream(&pppstream, &connectedclient->packetserver_transmitbuffer[0], connectedclient->packetserver_transmitlength-2); //Create a stream object for us to use, which goes until the end of the payload!
 	memcpy(&pppstreambackup, &pppstream, sizeof(pppstream)); //Backup for checking again!
 	if (!connectedclient->PPP_headercompressed[PPP_RECVCONF]) //Header present?
 	{
@@ -5954,6 +5967,13 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 		}
 		else //Discard this packet type!
 		{
+			//Since this is an unknown protocol, assume raw IPX packets, if enabled!
+			if (IPXCP_OPEN) //IPXCP opened?
+			{
+				memcpy(&pppstream, &pppstream_protocolstreambackup2, sizeof(pppstream)); //The IPX packet to send!
+				connectedclient->ppp_IPXCPstatus[PPP_RECVCONF] = connectedclient->ppp_IPXCPstatus[PPP_SENDCONF] = 4; //Special IPX raw mode to receive now!
+				goto SNAP_sendIPXpacket; //Send the framed IPX packet!
+			}
 			return 1; //Invalid packet to handle right now!
 		}
 		break;
@@ -6274,7 +6294,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 					}
 				}
 				//Calculate and add the checksum field!
-				if (PPP_addFCS(&response))
+				if (PPP_addFCS(&response,connectedclient,protocol))
 				{
 					goto ppp_finishpacketbufferqueue;
 				}
@@ -6331,7 +6351,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 				}
 			}
 			//Calculate and add the checksum field!
-			if (PPP_addFCS(&response))
+			if (PPP_addFCS(&response,connectedclient,protocol))
 			{
 				goto ppp_finishpacketbufferqueue;
 			}
@@ -6453,7 +6473,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 				}
 			}
 			//Calculate and add the checksum field!
-			if (PPP_addFCS(&response))
+			if (PPP_addFCS(&response,connectedclient,protocol))
 			{
 				goto ppp_finishpacketbufferqueue;
 			}
@@ -7176,7 +7196,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 				}
 			}
 			//Calculate and add the checksum field!
-			if (PPP_addFCS(&response))
+			if (PPP_addFCS(&response,connectedclient,protocol))
 			{
 				goto ppp_finishpacketbufferqueue;
 			}
@@ -7355,7 +7375,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 				goto ppp_finishpacketbufferqueue; //Incorrect packet: discard it!
 			}
 			//Calculate and add the checksum field!
-			if (PPP_addFCS(&response))
+			if (PPP_addFCS(&response,connectedclient,protocol))
 			{
 				goto ppp_finishpacketbufferqueue_pap;
 			}
@@ -7891,7 +7911,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 					}
 				}
 				//Calculate and add the checksum field!
-				if (PPP_addFCS(&response))
+				if (PPP_addFCS(&response,connectedclient,protocol))
 				{
 					goto ppp_finishpacketbufferqueue_ipxcp;
 				}
@@ -7937,7 +7957,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 				}
 			}
 			//Calculate and add the checksum field!
-			if (PPP_addFCS(&response))
+			if (PPP_addFCS(&response,connectedclient,protocol))
 			{
 				goto ppp_finishpacketbufferqueue_ipxcp;
 			}
@@ -8488,7 +8508,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 				}
 			}
 			//Calculate and add the checksum field!
-			if (PPP_addFCS(&response))
+			if (PPP_addFCS(&response,connectedclient,protocol))
 			{
 				goto ppp_finishpacketbufferqueue_ipxcp;
 			}
@@ -9213,7 +9233,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 					}
 				}
 				//Calculate and add the checksum field!
-				if (PPP_addFCS(&response))
+				if (PPP_addFCS(&response,connectedclient,protocol))
 				{
 					goto ppp_finishpacketbufferqueue_ipcp;
 				}
@@ -9262,7 +9282,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 				}
 			}
 			//Calculate and add the checksum field!
-			if (PPP_addFCS(&response))
+			if (PPP_addFCS(&response,connectedclient,protocol))
 			{
 				goto ppp_finishpacketbufferqueue_ipcp;
 			}
@@ -9566,7 +9586,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 				}
 			}
 			//Calculate and add the checksum field!
-			if (PPP_addFCS(&response))
+			if (PPP_addFCS(&response,connectedclient,protocol))
 			{
 				goto ppp_finishpacketbufferqueue_ipcp;
 			}
@@ -9718,7 +9738,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 				}
 			}
 			//Calculate and add the checksum field!
-			if (PPP_addFCS(&response))
+			if (PPP_addFCS(&response,connectedclient,protocol))
 			{
 				goto ppp_finishpacketbufferqueue;
 			}
@@ -9910,7 +9930,7 @@ byte PPP_parseReceivedPacketForClient(PacketServer_clientp connectedclient)
 				}
 			}
 			//Calculate and add the checksum field!
-			if (PPP_addFCS(&response))
+			if (PPP_addFCS(&response,connectedclient,packettype))
 			{
 				goto ppp_finishpacketbufferqueue_ppprecv;
 			}
