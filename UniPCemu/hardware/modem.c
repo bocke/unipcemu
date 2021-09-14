@@ -3965,6 +3965,7 @@ void packetServerFreePacketBufferQueue(MODEM_PACKETBUFFER *buffer)
 	if (buffer->buffer) //Valid buffer to free?
 	{
 		freez((void**)&buffer->buffer, buffer->size, "MODEM_SENDPACKET"); //Free it!
+		buffer->buffer = NULL; //No buffer anymore!
 	}
 	buffer->size = buffer->length = 0; //No length anymore!
 }
@@ -4829,10 +4830,11 @@ byte PPP_addPPPheader(PacketServer_clientp connectedclient, MODEM_PACKETBUFFER* 
 {
 	word c;
 	//Don't compress the header yet, since it's still negotiating!
-	if ((!(connectedclient->PPP_headercompressed[PPP_SENDCONF] && allowheadercompression) ||
+	if (!(
+		(connectedclient->PPP_headercompressed[PPP_SENDCONF] && allowheadercompression) || //Not with header compression!
 		((protocol==0x2B) && (connectedclient->ppp_IPXCPstatus[PPP_SENDCONF]==2)) || //Not with SNAP mode!
 		((protocol == 0x2B) && (connectedclient->ppp_IPXCPstatus[PPP_SENDCONF] == 3)) || //Not with Ethernet II mode!
-		((protocol == 0x2B) && (connectedclient->ppp_IPXCPstatus[PPP_SENDCONF] == 4)) //Now with RAW IPX mode!
+		((protocol == 0x2B) && (connectedclient->ppp_IPXCPstatus[PPP_SENDCONF] == 4)) //Not with RAW IPX mode!
 		|| (protocol==0xC021))) //Header isn't compressed? LCP is never compressed!
 	{
 		if (!packetServerAddPacketBufferQueue(response, 0xFF)) //Start of PPP header!
@@ -9926,7 +9928,7 @@ byte PPP_parseReceivedPacketForClient(PacketServer_clientp connectedclient)
 
 			//PPP phase of handling the packet has been reached! This packet is meant to be received by the connected client!
 
-			if (connectedclient->ppp_response.buffer) //Already receiving something?
+			if (connectedclient->ppp_response.size) //Already receiving something?
 			{
 				return 1; //Keep pending until we can receive it!
 			}
@@ -10492,34 +10494,47 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 			{
 				if (modem.connected == 2) //Running the packet server?
 				{
+					//First, a receiver loop!
+
+					lock(LOCK_PCAP); //Lock for pcap!
+					if (net.packet) //Anything to receive?
+					{
+						//Move the packet to all available clients!
+						for (connectedclient = Packetserver_allocatedclients; connectedclient; connectedclient = connectedclient->next) //Check all connected clients!
+						{
+							if ((connectedclient->packet == NULL) && (!connectedclient->packet)) //Ready to receive?
+							{
+								connectedclient->packet = zalloc(net.pktlen, "SERVER_PACKET", NULL); //Allocate a packet to receive!
+								if (connectedclient->packet) //Allocated?
+								{
+									connectedclient->pktlen = net.pktlen; //Save the length of the packet!
+									memcpy(connectedclient->packet, net.packet, net.pktlen); //Copy the packet to the active buffer!
+								}
+								if (!connectedclient->packetserver_slipprotocol_pppoe && (connectedclient->packetserver_slipprotocol == 3)) //Not suitable for consumption by the client yet?
+								{
+									//This is handled by the protocol itself! It has it's own packet handling code!
+								}
+								else //Packet ready for sending to the client!
+								{
+									connectedclient->PPP_packetreadyforsending = 1; //Ready to send to client always!
+									connectedclient->PPP_packetpendingforsending = 0; //Not pending for sending by default!
+								}
+							}
+						}
+						//We've received the packets on all clients, allow the next one to arrive!
+						freez((void**)&net.packet, net.pktlen, "MODEM_PACKET");
+						net.packet = NULL; //Discard if failed to deallocate!
+						net.pktlen = 0; //Not allocated!
+					}
+					unlock(LOCK_PCAP);
 					for (connectedclient = Packetserver_allocatedclients; connectedclient; connectedclient = connectedclient->next) //Check all connected clients!
 					{
 						if (connectedclient->used == 0) continue; //Skip unused clients!
 						//Handle packet server packet data transfers into the inputdatabuffer/outputbuffer to the network!
 						if (modem.blockoutputbuffer[connectedclient->connectionnumber]) //Properly allocated?
 						{
-							lock(LOCK_PCAP); //Lock for pcap!
-							if (net.packet || connectedclient->packet || ((connectedclient->packetserver_slipprotocol == 3) && (!connectedclient->packetserver_slipprotocol_pppoe))) //Packet has been received or processing? Try to start transmit it!
+							if (connectedclient->packet || ((connectedclient->packetserver_slipprotocol == 3) && (!connectedclient->packetserver_slipprotocol_pppoe))) //Packet has been received or processing? Try to start transmit it!
 							{
-								if ((connectedclient->packet == NULL) && (net.packet) && (!connectedclient->packet)) //Ready to receive?
-								{
-									connectedclient->packet = zalloc(net.pktlen,"SERVER_PACKET",NULL); //Allocate a packet to receive!
-									if (connectedclient->packet) //Allocated?
-									{
-										connectedclient->pktlen = net.pktlen; //Save the length of the packet!
-										memcpy(connectedclient->packet, net.packet, net.pktlen); //Copy the packet to the active buffer!
-									}
-									if (!connectedclient->packetserver_slipprotocol_pppoe && (connectedclient->packetserver_slipprotocol == 3)) //Not suitable for consumption by the client yet?
-									{
-										//This is handled by the protocol itself! It has it's own packet handling code!
-									}
-									else //Packet ready for sending to the client!
-									{
-										connectedclient->PPP_packetreadyforsending = 1; //Ready to send to client always!
-										connectedclient->PPP_packetpendingforsending = 0; //Not pending for sending by default!
-									}
-								}
-								unlock(LOCK_PCAP);
 								if (fifobuffer_freesize(modem.blockoutputbuffer[connectedclient->connectionnumber]) == fifobuffer_size(modem.blockoutputbuffer[connectedclient->connectionnumber])) //Valid to produce more data?
 								{
 									if ((((connectedclient->packetserver_packetpos == 0) && (connectedclient->packetserver_packetack == 0)) || ((connectedclient->packetserver_slipprotocol == 3) && (!connectedclient->packetserver_slipprotocol_pppoe))) && (connectedclient->packet)) //New packet?
@@ -10537,11 +10552,6 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 														if (PPPOE_handlePADreceived(connectedclient)) //Handle the received PAD packet!
 														{
 															//Discard the received packet, so nobody else handles it too!
-															lock(LOCK_PCAP);
-															freez((void**)&net.packet, net.pktlen, "MODEM_PACKET");
-															net.packet = NULL; //Discard if failed to deallocate!
-															net.pktlen = 0; //Not allocated!
-															unlock(LOCK_PCAP);
 															goto invalidpacket; //Invalid packet!
 														}
 													}
@@ -10570,11 +10580,6 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 														if (PPPOE_handlePADreceived(connectedclient)) //Handle the received PAD packet!
 														{
 															//Discard the received packet, so nobody else handles it too!
-															lock(LOCK_PCAP);
-																freez((void**)&net.packet, net.pktlen, "MODEM_PACKET");
-																net.packet = NULL; //Discard if failed to deallocate!
-																net.pktlen = 0; //Not allocated!
-																unlock(LOCK_PCAP);
 															goto invalidpacket; //Invalid packet!
 														}
 														//Otherwise, keep pending?
@@ -10690,11 +10695,6 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 															if (sendpkt_pcap(connectedclient->packet, (28 + sizeof(ethernetheader.data)))) //Send the response back to the originator!
 															{
 																//Discard the received packet, so nobody else handles it too!
-																lock(LOCK_PCAP);
-																freez((void**)&net.packet, net.pktlen, "MODEM_PACKET");
-																net.packet = NULL; //Discard if failed to deallocate!
-																net.pktlen = 0; //Not allocated!
-																unlock(LOCK_PCAP);
 															}
 														}
 														else
@@ -11352,7 +11352,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 									goto packetserver_autherror; //Disconnect the client: we can't help it!
 								}
 								lock(LOCK_PCAP);
-								if (net.packet) //Packet has been received before the timeout?
+								if (connectedclient->packet) //Packet has been received before the timeout?
 								{
 									if (0) //Gottten a DHCP packet?
 									{
@@ -11364,7 +11364,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 											//Save it in the storage!
 											for (currentpos = 0; currentpos < net.pktlen;) //Parse the entire packet!
 											{
-												if (!packetServerAddPacketBufferQueue(&connectedclient->DHCP_offerpacket, net.packet[currentpos++])) //Failed to save the packet?
+												if (!packetServerAddPacketBufferQueue(&connectedclient->DHCP_offerpacket, connectedclient->packet[currentpos++])) //Failed to save the packet?
 												{
 													goto packetserver_autherror; //Error out: disconnect!
 												}
@@ -11399,7 +11399,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 									goto packetserver_autherror; //Disconnect the client: we can't help it!
 								}
 								lock(LOCK_PCAP);
-								if (net.packet) //Packet has been received before the timeout?
+								if (connectedclient->packet) //Packet has been received before the timeout?
 								{
 									if (0) //Gottten a DHCP packet?
 									{
@@ -11416,7 +11416,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 											//Save it in the storage!
 											for (currentpos = 0; currentpos < net.pktlen;) //Parse the entire packet!
 											{
-												if (!packetServerAddPacketBufferQueue(&connectedclient->DHCP_offerpacket, net.packet[currentpos++])) //Failed to save the packet?
+												if (!packetServerAddPacketBufferQueue(&connectedclient->DHCP_offerpacket, connectedclient->packet[currentpos++])) //Failed to save the packet?
 												{
 													goto packetserver_autherror; //Error out: disconnect!
 												}
@@ -11451,7 +11451,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 									goto packetserver_autherror; //Disconnect the client: we can't help it!
 								}
 								lock(LOCK_PCAP);
-								if (net.packet) //Packet has been received before the timeout?
+								if (connectedclient->packet) //Packet has been received before the timeout?
 								{
 									if (0) //Gottten a DHCP packet?
 									{
@@ -11483,7 +11483,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 						if (connectedclient->packetserver_useStaticIP == 6) //Looking for the DHCP NACK?
 						{
 							lock(LOCK_PCAP);
-							if (net.packet) //Packet has been received before the timeout?
+							if (connectedclient->packet) //Packet has been received before the timeout?
 							{
 								if (0) //Gottten a DHCP packet?
 								{
@@ -11862,16 +11862,8 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 					}
 				}
 			} //Connected?
-			finishpollingnetwork:
-
-			lock(LOCK_PCAP); //Make sure it's valid to use!
-			if (net.packet) //Packet received? Discard anything we receive now for other users!
-			{
-				freez((void **)&net.packet, net.pktlen, "MODEM_PACKET");
-				net.packet = NULL; //Discard if failed to deallocate!
-				net.pktlen = 0; //Not allocated!
-			}
-			unlock(LOCK_PCAP);
+		finishpollingnetwork:
+			continue; //Continue onwards!
 		} //While polling?
 	} //To poll?
 }
