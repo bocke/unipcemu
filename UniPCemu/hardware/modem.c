@@ -5925,7 +5925,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 			{
 				goto trynextprotocol; //Invalid protocol!
 			}
-			if ((IPXCP_OPEN) && ((connectedclient->ppp_IPXCPstatus[PPP_RECVCONF]==1)||(connectedclient->ppp_IPXCPstatus[PPP_RECVCONF]==2)))) //Undetermined or for us?
+			if ((IPXCP_OPEN) && ((connectedclient->ppp_IPXCPstatus[PPP_RECVCONF]==1)||(connectedclient->ppp_IPXCPstatus[PPP_RECVCONF]==2))) //Undetermined or for us?
 			{
 				memcpy(&pppstream, &pppstream_protocolstreambackup, sizeof(pppstream)); //The IPX packet to send!
 				connectedclient->ppp_IPXCPstatus[PPP_RECVCONF] = connectedclient->ppp_IPXCPstatus[PPP_SENDCONF] = 2; //Special IPX SNAP mode to receive now!
@@ -5952,7 +5952,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 			goto trynextprotocol2; //Invalid protocol!
 		}
 		dataw = (dataw << 8) | datab; //Load!
-		if ((IPXCP_OPEN) && ((connectedclient->ppp_IPXCPstatus[PPP_RECVCONF] == 1) || (connectedclient->ppp_IPXCPstatus[PPP_RECVCONF] == 3)))) //Undetermined or for us?
+		if ((IPXCP_OPEN) && ((connectedclient->ppp_IPXCPstatus[PPP_RECVCONF] == 1) || (connectedclient->ppp_IPXCPstatus[PPP_RECVCONF] == 3))) //Undetermined or for us?
 		{
 			if (dataw == 0x8137) //Not IPX (protocol lower byte)?
 			{
@@ -5969,7 +5969,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 		else //Discard this packet type!
 		{
 			//Since this is an unknown protocol, assume raw IPX packets, if enabled!
-			if ((IPXCP_OPEN) && ((connectedclient->ppp_IPXCPstatus[PPP_RECVCONF] == 1) || (connectedclient->ppp_IPXCPstatus[PPP_RECVCONF] == 4)))) //Undetermined or for us?
+			if ((IPXCP_OPEN) && ((connectedclient->ppp_IPXCPstatus[PPP_RECVCONF] == 1) || (connectedclient->ppp_IPXCPstatus[PPP_RECVCONF] == 4))) //Undetermined or for us?
 			{
 				memcpy(&pppstream, &pppstream_protocolstreambackup2, sizeof(pppstream)); //The IPX packet to send!
 				connectedclient->ppp_IPXCPstatus[PPP_RECVCONF] = connectedclient->ppp_IPXCPstatus[PPP_SENDCONF] = 4; //Special IPX raw mode to receive now!
