@@ -5812,6 +5812,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 	createPPPstream(&pppstream, &connectedclient->packetserver_transmitbuffer[0], connectedclient->packetserver_transmitlength - 2); //Create a stream object for us to use, which goes until the end of the payload!
 	if (checksum != PPP_GOODFCS) //Checksum error?
 	{
+		createPPPstream(&pppstream, &connectedclient->packetserver_transmitbuffer[0], connectedclient->packetserver_transmitlength); //Create a stream object for us to use, which goes until the end of the entire packet!
 		memcpy(&pppstream_protocolstreambackup, &pppstream,sizeof(pppstream_protocolstreambackup)); //Create a stream object for us to use, which goes until the end of the payload!
 		goto checkotherprotocols; //Incorrect packet: check for other protocols!
 	}
