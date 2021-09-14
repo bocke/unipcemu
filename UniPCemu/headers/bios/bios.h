@@ -34,7 +34,6 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 //BIOS Version!
 #define BIOS_VERSION 1
 
-#ifdef PACKETSERVER_ENABLED
 typedef struct
 {
 	CharacterType IPaddress[256]; //Credentials IP address, otherwise default(the 0th user)!
@@ -55,7 +54,6 @@ typedef struct
 	CharacterType subnetmaskIPaddress[256]; //IP address!
 	ETHERNETSERVER_USER users[256]; //Up to 256 users!
 } ETHERNETSERVER_SETTINGS_TYPE;
-#endif
 
 typedef struct
 {
@@ -136,9 +134,7 @@ typedef struct
 	byte got_i430fxCMOS; //Gotten an CMOS?
 	CMOSDATA i440fxCMOS; //The full saved CMOS!
 	byte got_i440fxCMOS; //Gotten an CMOS?
-#ifdef PACKETSERVER_ENABLED
 	ETHERNETSERVER_SETTINGS_TYPE ethernetserver_settings;
-#endif
 	CharacterType phonebook[10][256]; //A full phonebook for the modem!
 	byte backgroundpolicy; //The currently active background policy!
 	byte advancedlog; //Use advanced debugger information during common log format logging?

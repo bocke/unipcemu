@@ -1351,7 +1351,6 @@ void BIOS_LoadData() //Load BIOS settings!
 		get_private_profile_string("modem", phonebookentry, "", &BIOS_Settings.phonebook[c][0], sizeof(BIOS_Settings.phonebook[0]), inifile); //Read entry!
 	}
 
-#ifdef PACKETSERVER_ENABLED
 	BIOS_Settings.ethernetserver_settings.ethernetcard = get_private_profile_int64("modem", "ethernetcard", -1, inifile); //Ethernet card to use!
 	get_private_profile_string("modem", "MACaddress", "", &BIOS_Settings.ethernetserver_settings.MACaddress[0], sizeof(BIOS_Settings.ethernetserver_settings.MACaddress), inifile); //Read entry!
 	get_private_profile_string("modem", "gatewayMACaddress", "", &BIOS_Settings.ethernetserver_settings.gatewayMACaddress[0], sizeof(BIOS_Settings.ethernetserver_settings.gatewayMACaddress), inifile); //Read entry!
@@ -1392,7 +1391,6 @@ void BIOS_LoadData() //Load BIOS settings!
 		}
 		get_private_profile_string("modem", phonebookentry, "", &BIOS_Settings.ethernetserver_settings.users[c].IPaddress[0], sizeof(BIOS_Settings.ethernetserver_settings.users[c].IPaddress), inifile); //Read entry!
 	}
-#endif
 
 	//Disks
 	get_private_profile_string("disks","floppy0","",&BIOS_Settings.floppy0[0],sizeof(BIOS_Settings.floppy0),inifile); //Read entry!
@@ -1575,9 +1573,7 @@ char buttons[15][256] = {"start","left","up","right","down","ltrigger","rtrigger
 byte modefields[16][256] = { "","_triangle","_square","_cross","_circle" };
 char cmos_comment[4096] = ""; //PrimaryCMOS comment!
 
-#ifdef PACKETSERVER_ENABLED
 extern uint8_t maclocal_default[6]; //Default MAC of the sender!
-#endif
 
 #define ABORT_SAVEDATA {closeinifile(&inifile); return 0;}
 
@@ -1713,7 +1709,6 @@ int BIOS_SaveData() //Save BIOS settings!
 	safestrcat(modem_comment, sizeof(modem_comment), currentstr); //MAC address information!
 	snprintf(currentstr, sizeof(currentstr), "phonebook0-%u: Phonebook entry #n", (byte)(NUMITEMS(BIOS_Settings.phonebook) - 1)); //Information about the phonebook!
 	safestrcat(modem_comment, sizeof(modem_comment), currentstr); //MAC address information!
-#ifdef PACKETSERVER_ENABLED
 	safestrcat(modem_comment, sizeof(modem_comment), "\nethernetcard: -1 for disabled(use normal emulation), -2 for local loopback, 1+ selected and use a network card, 0 to generate a list of network cards to select\n");
 	snprintf(currentstr, sizeof(currentstr), "MACaddress: MAC address to emulate as a virtual NIC and send/receive packets on(defaults to %02x:%02x:%02x:%02x:%02x:%02x)\n", maclocal_default[0], maclocal_default[1], maclocal_default[2], maclocal_default[3], maclocal_default[4], maclocal_default[5]);
 	safestrcat(modem_comment, sizeof(modem_comment), currentstr); //MAC address information!
@@ -1734,7 +1729,6 @@ int BIOS_SaveData() //Save BIOS settings!
 		safestrcat(modem_comment, sizeof(modem_comment), currentstr); //Extra user information!
 		safestrcat(modem_comment, sizeof(modem_comment), "Specifying no or an invalid IP address for the numbered IPaddress fields other than the default will use the default field instead.\n");
 	}
-#endif
 	char *modem_commentused=NULL;
 	if (modem_comment[0]) modem_commentused = &modem_comment[0];
 	if (!write_private_profile_uint64("modem",modem_commentused,"listenport",BIOS_Settings.modemlistenport,inifile)) ABORT_SAVEDATA //Modem listen port!
@@ -1744,7 +1738,6 @@ int BIOS_SaveData() //Save BIOS settings!
 		snprintf(phonebookentry, sizeof(phonebookentry), "phonebook%u", c); //The entry to use!
 		if (!write_private_profile_string("modem", modem_commentused, phonebookentry, &BIOS_Settings.phonebook[c][0], inifile)) ABORT_SAVEDATA //Entry!
 	}
-#ifdef PACKETSERVER_ENABLED
 	if (!write_private_profile_int64("modem", modem_commentused, "ethernetcard", BIOS_Settings.ethernetserver_settings.ethernetcard, inifile)) ABORT_SAVEDATA //Ethernet card to use!
 	if (!write_private_profile_string("modem", modem_commentused, "MACaddress", &BIOS_Settings.ethernetserver_settings.MACaddress[0], inifile)) ABORT_SAVEDATA //MAC address to use!
 	if (!write_private_profile_string("modem", modem_commentused, "gatewayMACaddress", &BIOS_Settings.ethernetserver_settings.gatewayMACaddress[0], inifile)) ABORT_SAVEDATA //MAC address to use!
@@ -1785,7 +1778,6 @@ int BIOS_SaveData() //Save BIOS settings!
 		}
 		if (!write_private_profile_string("modem", modem_commentused, phonebookentry, &BIOS_Settings.ethernetserver_settings.users[c].IPaddress[0], inifile)) ABORT_SAVEDATA //MAC address to use!
 	}
-#endif
 
 	//Disks
 	memset(&disks_comment,0,sizeof(disks_comment)); //Init!

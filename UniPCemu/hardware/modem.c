@@ -700,6 +700,8 @@ void packetserver_moveListItem(PacketServer_clientp listitem, PacketServer_clien
 	}
 }
 
+uint8_t maclocal_default[6] = { 0xDE, 0xAD, 0xBE, 0xEF, 0x13, 0x37 }; //The MAC address of the modem we're emulating!
+
 //Supported and enabled the packet setver?
 #if defined(PACKETSERVER_ENABLED)
 #ifndef _WIN32
@@ -729,7 +731,6 @@ int_64 inum;
 uint16_t curhandle = 0;
 char errbuf[PCAP_ERRBUF_SIZE];
 #endif
-uint8_t maclocal_default[6] = { 0xDE, 0xAD, 0xBE, 0xEF, 0x13, 0x37 }; //The MAC address of the modem we're emulating!
 byte pcap_verbose = 0;
 
 #ifdef WPCAP_WASNTDEFINED
@@ -3756,6 +3757,7 @@ void initModem(byte enabled) //Initialise modem!
 		if (modem.inputbuffer && modem.inputdatabuffer[0] && modem.outputbuffer[0] && modem.blockoutputbuffer[0]) //Gotten buffers?
 		{
 			lock(LOCK_PCAPFLAG);
+#ifdef PACKETSERVER_ENABLED
 			if (pcap_enabled) //Required to actually start the pcap capture?
 			{
 				pcap_capture = 1; //Make sure that capture is active now!
@@ -3764,6 +3766,7 @@ void initModem(byte enabled) //Initialise modem!
 			{
 				pcap_capture = 0; //Make sure that capture is inactive now!
 			}
+#endif
 			unlock(LOCK_PCAPFLAG);
 			pcapthread = startThread(&fetchpackets_pcap, "pcapfetch", NULL); //Start the pcap thread for packet capture, if possible!
 			if (!pcapthread) //Unavailable?
@@ -3883,7 +3886,9 @@ void doneModem() //Finish modem!
 			pcapthread = NULL; //Already finished!
 			return;
 		}
+#ifdef PACKETSERVER_ENABLED
 		pcap_capture = 0; //Request for the thread to stop!
+#endif
 		unlock(LOCK_PCAPFLAG);
 		delay(1000000); //Wait just a bit for the thread to end!
 		waitThreadEnd(pcapthread); //Wait for the capture thread to end!
