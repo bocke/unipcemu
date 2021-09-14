@@ -1202,7 +1202,7 @@ void fetchpackets_pcap() { //Handle any packets to process!
 				else //Loopback mode?
 				{
 					lock(LOCK_PCAP);
-					if (!loopback.packet)
+					if (!(loopback.packet && loopback.pktlen)) //Not allocated?
 					{
 						unlock(LOCK_PCAP);
 						goto trynexttime; //Wait for a packet to appear on the loopback!
@@ -1400,7 +1400,8 @@ void fetchpackets_pcap() { //Handle any packets to process!
 				{
 					if (pcap_enabled == 2) //Loopback mode?
 					{
-						freez((void*)&loopback.packet, loopback.pktlen, "LOOPBACK_PACKET"); //Free the loopback packet!
+						freez((void **)&loopback.packet, loopback.pktlen, "LOOPBACK_PACKET"); //Free the loopback packet!
+						loopback.packet = NULL;
 						loopback.pktlen = 0; //Freed!
 					}
 					unlock(LOCK_PCAP);
@@ -1427,7 +1428,8 @@ void fetchpackets_pcap() { //Handle any packets to process!
 					}
 					if (pcap_enabled == 2) //Loopback mode?
 					{
-						freez((void *)&loopback.packet, loopback.pktlen, "LOOPBACK_PACKET"); //Free the loopback packet!
+						freez((void **)&loopback.packet, loopback.pktlen, "LOOPBACK_PACKET"); //Free the loopback packet!
+						loopback.packet = NULL; //Not allocated anymore!
 						loopback.pktlen = 0; //Freed!
 					}
 					pcaplength = 0;
@@ -1446,25 +1448,30 @@ void fetchpackets_pcap() { //Handle any packets to process!
 
 byte sendpkt_pcap(uint8_t *src, uint16_t len) {
 #if defined(PACKETSERVER_ENABLED) && !defined(NOPCAP)
+	byte* packet;
 	if (pcap_enabled) //Enabled?
 	{
 		if (pcap_enabled == 2) //Loopback?
 		{
-			lock(LOCK_PCAP);
-			if (loopback.packet && loopback.pktlen) //Something is still pending?
+			if (len) //Valid length?
 			{
+				lock(LOCK_PCAP);
+				if (loopback.packet && loopback.pktlen) //Something is still pending?
+				{
+					unlock(LOCK_PCAP);
+					return 0; //Failed!
+				}
+				packet = zalloc(len, "LOOPBACK_PACKET", NULL); //Allocate!
+				if (!packet) //Failed?
+				{
+					unlock(LOCK_PCAP);
+					return 0; //Failed!
+				}
+				memcpy(packet, src, len); //Set the contents of the packet!
+				loopback.packet = packet; //The packet to use!
+				loopback.pktlen = len; //The length!
 				unlock(LOCK_PCAP);
-				return 0; //Failed!
 			}
-			loopback.packet = zalloc(len, "LOOPBACK_PACKET", NULL); //Allocate!
-			if (!loopback.packet) //Failed?
-			{
-				unlock(LOCK_PCAP);
-				return 0; //Failed!
-			}
-			memcpy(loopback.packet, src, len); //Set the contents of the packet!
-			loopback.pktlen = len; //The length!
-			unlock(LOCK_PCAP);
 		}
 		else //Normal sending?
 		{
@@ -1528,6 +1535,7 @@ PacketServer_clientp allocPacketserver_client()
 	PacketServer_clientp result;
 	if (!Packetserver_freeclients) return NULL; //None available!
 	result = Packetserver_freeclients; //What to use!
+	lock(LOCK_PCAP); //Start locking to prevent mixing!
 	packetserver_moveListItem(result, &Packetserver_allocatedclients, &Packetserver_freeclients); //Allocate it now!
 	result->used = 1; //We're used now!
 	return result; //Give the client!
@@ -10388,15 +10396,17 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 				if (PacketServer_running) //Packet server is running?
 				{
 					connectedclient = allocPacketserver_client(); //Try to allocate!
-					if (connectedclient >= 0) //Allocated?
+					if (connectedclient) //Allocated?
 					{
 						connectedclient->connectionid = connectionid; //We're connected like this!
 						modem.connected = 2; //Connect as packet server instead, we start answering manually instead of the emulated modem!
 						modem.ringing = 0; //Never ring!
 						initPacketServer(connectedclient); //Initialize the packet server to be used!
+						unlock(LOCK_PCAP); //Unlock PCAP which was locked by the allocation function!
 					}
 					else //Failed to allocate?
 					{
+						unlock(LOCK_PCAP); //Finished using it!
 						TCP_DisconnectClientServer(connectionid); //Try and disconnect, if possible!
 					}
 				}
