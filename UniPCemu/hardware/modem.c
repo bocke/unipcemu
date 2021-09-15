@@ -10719,7 +10719,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 															memcpy(&ppptransmitheader.dst,&ARPpacket.SHA,6); //To the requester!
 															memcpy(&connectedclient->packet[0],ppptransmitheader.data,sizeof(ppptransmitheader.data)); //The ethernet header!
 															//Now, the packet we've stored has become the packet to send back!
-															if (sendpkt_pcap(connectedclient->packet, (28 + sizeof(ethernetheader.data)))) //Send the response back to the originator!
+															if (sendpkt_pcap(connectedclient->packet, (28 + 0xE))) //Send the response back to the originator!
 															{
 																//Discard the received packet, so nobody else handles it too!
 															}
