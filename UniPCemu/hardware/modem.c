@@ -839,7 +839,31 @@ void initPcap() {
 	packetserver_usedefaultStaticIP = 0; //Default to unused!
 
 #if defined(PACKETSERVER_ENABLED) && !defined(NOPCAP)
-	if (safestrlen(&BIOS_Settings.ethernetserver_settings.users[0].IPaddress[0], 256) >= 12) //Valid length to convert IP addresses?
+	if (safestrlen(&BIOS_Settings.ethernetserver_settings.hostIPaddress[0], 256) >= 12) //Valid length to convert IP addresses?
+	{
+		p = &BIOS_Settings.ethernetserver_settings.hostIPaddress[0]; //For scanning the IP!
+		if (readIPnumber(&p, &IPnumbers[0]))
+		{
+			if (readIPnumber(&p, &IPnumbers[1]))
+			{
+				if (readIPnumber(&p, &IPnumbers[2]))
+				{
+					if (readIPnumber(&p, &IPnumbers[3]))
+					{
+						if (*p == '\0') //EOS?
+						{
+							//Automatic port?
+							snprintf(packetserver_defaultstaticIPstr, sizeof(packetserver_defaultstaticIPstr), "%u.%u.%u.%u", IPnumbers[0], IPnumbers[1], IPnumbers[2], IPnumbers[3]); //Formulate the address!
+							memcpy(&packetserver_defaultstaticIP, &IPnumbers, 4); //Set read IP!
+							packetserver_usedefaultStaticIP = 1; //Static IP set!
+						}
+					}
+				}
+			}
+		}
+	}
+	//Fallback to the first client's address!
+	if ((safestrlen(&BIOS_Settings.ethernetserver_settings.users[0].IPaddress[0], 256) >= 12) && (!packetserver_usedefaultStaticIP)) //Valid length to convert IP addresses?
 	{
 		p = &BIOS_Settings.ethernetserver_settings.users[0].IPaddress[0]; //For scanning the IP!
 		if (readIPnumber(&p, &IPnumbers[0]))
@@ -10716,23 +10740,11 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 															//Now, construct the ethernet header!
 															memcpy(&ppptransmitheader,&ethernetheader,sizeof(ethernetheader.data)); //Copy the header!
 															memcpy(&ppptransmitheader.src,&maclocal,6); //From us!
-															memcpy(&ppptransmitheader.dst,&ARPpacket.SHA,6); //To the requester!
+															memcpy(&ppptransmitheader.dst,/*&ARPpacket.SHA*/ &packetserver_broadcastMAC,6); //To the requester (everyone?)!
 															memcpy(&connectedclient->packet[0],ppptransmitheader.data,sizeof(ppptransmitheader.data)); //The ethernet header!
 															//Now, the packet we've stored has become the packet to send back!
 															if (sendpkt_pcap(connectedclient->packet, (28 + 0xE))) //Send the response back to the originator!
 															{
-																if (!(loopback.packet && loopback.pktlen) && packetserver_defaultgatewayIP) //Not using loopback? Notify the router as well, if possible!
-																{
-																	memcpy(&ARPresponse.THA, &packetserver_gatewayMAC, 6); //To the router!
-																	memcpy(&ARPresponse.TPA, &packetserver_defaultgatewayIPaddr, 4); //Destination IP!
-																	memcpy(&ppptransmitheader.dst, &packetserver_gatewayMAC, 6); //To the router!
-																	memcpy(&connectedclient->packet[0], ppptransmitheader.data, sizeof(ppptransmitheader.data)); //The ethernet header!
-																	memcpy(&connectedclient->packet[sizeof(ethernetheader.data)], &ARPresponse, 28); //Paste the response in the packet we're handling (reuse space)!
-																	if (sendpkt_pcap(connectedclient->packet, (28 + 0xE))) //Send to the router!
-																	{
-																		goto invalidpacket; //Finish up: we're parsed!
-																	}
-																}
 																//Discard the received packet, so nobody else handles it too!
 																goto invalidpacket; //Finish up: we're parsed!
 															}
