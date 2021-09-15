@@ -1210,7 +1210,12 @@ void fetchpackets_pcap() { //Handle any packets to process!
 	byte skippacket; //Skipping the packet as unusable?
 	ETHERNETHEADER ppptransmitheader;
 	byte *arppacketc;
-	uint_32 arpstart; //Start of ARP inside the packet!
+
+	union
+	{
+		uint_32 addressnetworkorder32;
+		byte addressnetworkorderb[4];
+	} ARPIP;
 
 	if (pcap_enabled) //Enabled?
 	{
@@ -1379,16 +1384,16 @@ void fetchpackets_pcap() { //Handle any packets to process!
 								continue; //Invalid packet!
 							}
 							//TODO: Check if it's a request for us. If so, reply with our IPv4 address!
-							arpstart = 0xE; //The default start of the ARP packet: at the beginning of the ARP block (padding may follow after)
-							tryARPstart:
-							memcpy(&ARPpacket, &pktdata[arpstart], 28); //Retrieve the ARP packet, if compatible!
+							memcpy(&ARPpacket, &pktdata[0xE], 28); //Retrieve the ARP packet, if compatible!
+							memcpy(&ARPIP.addressnetworkorderb, &ARPpacket.TPA, 4); //Whatr is requested?
+							ARPIP.addressnetworkorder32 = SDL_Swap32(ARPIP.addressnetworkorder32); //Make sure it's in our supported format!
 							if ((SDL_SwapBE16(ARPpacket.htype) == 1) && (ARPpacket.ptype == SDL_SwapBE16(0x0800)) && (ARPpacket.hlen == 6) && (ARPpacket.plen == 4) && (SDL_SwapBE16(ARPpacket.oper) == 1))
 							{
 								//IPv4 ARP request
 								//Check it's our IP, send a response if it's us!
 								if (connectedclient->packetserver_useStaticIP) //IP filter is used?
 								{
-									if (memcmp(&ARPpacket.TPA, ((connectedclient->packetserver_slipprotocol == 3) && (!connectedclient->packetserver_slipprotocol_pppoe) && IPCP_OPEN) ? &connectedclient->ipcp_ipaddress[PPP_SENDCONF][0] : &connectedclient->packetserver_staticIP[0], 4) != 0) //Static IP mismatch?
+									if (memcmp(&ARPIP.addressnetworkorderb, ((connectedclient->packetserver_slipprotocol == 3) && (!connectedclient->packetserver_slipprotocol_pppoe) && IPCP_OPEN) ? &connectedclient->ipcp_ipaddress[PPP_SENDCONF][0] : &connectedclient->packetserver_staticIP[0], 4) != 0) //Static IP mismatch?
 									{
 										continue; //Invalid packet!
 									}
@@ -1406,7 +1411,7 @@ void fetchpackets_pcap() { //Handle any packets to process!
 									memcpy(&ARPresponse.SHA, &maclocal, 6); //Our MAC address!
 									memcpy(&ARPresponse.SPA, &ARPpacket.TPA, 4); //Our IP!
 									//Construct the ethernet header!
-									memcpy(&arppacketc[arpstart], &ARPresponse, 28); //Paste the response in the packet we're handling (reuse space)!
+									memcpy(&arppacketc[0xE], &ARPresponse, 28); //Paste the response in the packet we're handling (reuse space)!
 									//Make sure that the room in between the ARP response and ethernet header stays zeroed.
 									//Now, construct the ethernet header!
 									memcpy(&ppptransmitheader, &ethernetheader, sizeof(ethernetheader.data)); //Copy the header!
@@ -1423,12 +1428,7 @@ void fetchpackets_pcap() { //Handle any packets to process!
 								}
 								else
 								{
-									if (arpstart == 0xE)
-									{
-										arpstart = pcaplength - 28; //Try this position next!
-										goto tryARPstart; //Try next option!
-									}
-									//Tried both options for ARP? Unsupported ARP!
+									//Unsupported ARP!
 									continue; //Invalid for our use, discard it!
 								}
 							}
