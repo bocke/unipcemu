@@ -1210,6 +1210,7 @@ void fetchpackets_pcap() { //Handle any packets to process!
 	byte skippacket; //Skipping the packet as unusable?
 	ETHERNETHEADER ppptransmitheader;
 	byte *arppacketc;
+	uint_32 arpstart; //Start of ARP inside the packet!
 
 	if (pcap_enabled) //Enabled?
 	{
@@ -1373,12 +1374,14 @@ void fetchpackets_pcap() { //Handle any packets to process!
 							) //IPv4 protocol used?
 						{
 							//Always handle ARP packets, if we're IPv4 type!
-							if (pcaplength != (28 + sizeof(ethernetheader.data))) //Unsupported length?
+							if (pcaplength < (28 + 0xE)) //Unsupported length?
 							{
 								continue; //Invalid packet!
 							}
 							//TODO: Check if it's a request for us. If so, reply with our IPv4 address!
-							memcpy(&ARPpacket, &pktdata[sizeof(ethernetheader.data)], 28); //Retrieve the ARP packet!
+							arpstart = 0xE; //The default start of the ARP packet: at the beginning of the ARP block (padding may follow after)
+							tryARPstart:
+							memcpy(&ARPpacket, &pktdata[arpstart], 28); //Retrieve the ARP packet, if compatible!
 							if ((SDL_SwapBE16(ARPpacket.htype) == 1) && (ARPpacket.ptype == SDL_SwapBE16(0x0800)) && (ARPpacket.hlen == 6) && (ARPpacket.plen == 4) && (SDL_SwapBE16(ARPpacket.oper) == 1))
 							{
 								//IPv4 ARP request
@@ -1389,7 +1392,7 @@ void fetchpackets_pcap() { //Handle any packets to process!
 									{
 										continue; //Invalid packet!
 									}
-									arppacketc = zalloc((28 + 0xE),"MODEM_PACKET",NULL); //Allocate a reply!
+									arppacketc = zalloc(pcaplength,"MODEM_PACKET",NULL); //Allocate a reply of the very same length!
 									if (arppacketc==NULL) continue; //Skip if unable!
 									//It's for us, send a response!
 									//Construct the ARP reply packet!
@@ -1403,15 +1406,16 @@ void fetchpackets_pcap() { //Handle any packets to process!
 									memcpy(&ARPresponse.SHA, &maclocal, 6); //Our MAC address!
 									memcpy(&ARPresponse.SPA, &ARPpacket.TPA, 4); //Our IP!
 									//Construct the ethernet header!
-									memcpy(&arppacketc[0xE], &ARPresponse, 28); //Paste the response in the packet we're handling (reuse space)!
+									memcpy(&arppacketc[arpstart], &ARPresponse, 28); //Paste the response in the packet we're handling (reuse space)!
+									//Make sure that the room in between the ARP response and ethernet header stays zeroed.
 									//Now, construct the ethernet header!
 									memcpy(&ppptransmitheader, &ethernetheader, sizeof(ethernetheader.data)); //Copy the header!
 									memcpy(&ppptransmitheader.src, &maclocal, 6); //From us!
 									memcpy(&ppptransmitheader.dst, &ARPpacket.SHA, 6); //To the requester!
 									memcpy(&arppacketc[0], ppptransmitheader.data, 0xE); //The ethernet header!
 									//Now, the packet we've stored has become the packet to send back!
-									pcap_sendpacket(adhandle, arppacketc, (28 + 0xE));
-									freez((void **)&arppacketc,(28 + 0xE),"MODEM_PACKET"); //Free it!
+									pcap_sendpacket(adhandle, arppacketc, (28 + 0xE)); //Send the ARP response now!
+									freez((void **)&arppacketc,pcaplength,"MODEM_PACKET"); //Free it!
 									arppacketc = NULL;
 									unlock(LOCK_PCAP);
 									skippacket = 1; //Skip it!
@@ -1419,11 +1423,18 @@ void fetchpackets_pcap() { //Handle any packets to process!
 								}
 								else
 								{
+									if (arpstart == 0xE)
+									{
+										arpstart = pcaplength - 28; //Try this position next!
+										goto tryARPstart; //Try next option!
+									}
+									//Tried both options for ARP? Unsupported ARP!
 									continue; //Invalid for our use, discard it!
 								}
 							}
 							else
 							{
+
 								continue; //Invalid for our use, discard it!
 							}
 						}
