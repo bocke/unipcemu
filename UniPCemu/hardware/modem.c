@@ -10721,6 +10721,18 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 															//Now, the packet we've stored has become the packet to send back!
 															if (sendpkt_pcap(connectedclient->packet, (28 + 0xE))) //Send the response back to the originator!
 															{
+																if (!(loopback.packet && loopback.pktlen) && packetserver_defaultgatewayIP) //Not using loopback? Notify the router as well, if possible!
+																{
+																	memcpy(&ARPresponse.THA, &packetserver_gatewayMAC, 6); //To the router!
+																	memcpy(&ARPresponse.TPA, &packetserver_defaultgatewayIPaddr, 4); //Destination IP!
+																	memcpy(&ppptransmitheader.dst, &packetserver_gatewayMAC, 6); //To the router!
+																	memcpy(&connectedclient->packet[0], ppptransmitheader.data, sizeof(ppptransmitheader.data)); //The ethernet header!
+																	memcpy(&connectedclient->packet[sizeof(ethernetheader.data)], &ARPresponse, 28); //Paste the response in the packet we're handling (reuse space)!
+																	if (sendpkt_pcap(connectedclient->packet, (28 + 0xE))) //Send to the router!
+																	{
+																		goto invalidpacket; //Finish up: we're parsed!
+																	}
+																}
 																//Discard the received packet, so nobody else handles it too!
 																goto invalidpacket; //Finish up: we're parsed!
 															}
