@@ -10722,6 +10722,11 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 															if (sendpkt_pcap(connectedclient->packet, (28 + 0xE))) //Send the response back to the originator!
 															{
 																//Discard the received packet, so nobody else handles it too!
+																goto invalidpacket; //Finish up!
+															}
+															else
+															{
+																goto skippacketreceiving; //Keep waiting until we can send it!
 															}
 														}
 														else
@@ -10818,6 +10823,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 											connectedclient->packetserver_packetack = 0; //Not acnowledged yet!
 										}
 									}
+									skippacketreceiving:
 									if (connectedclient->packetserver_stage != PACKETSTAGE_PACKETS)
 									{
 										if (connectedclient->packet) //Still have a packet allocated to discard?
