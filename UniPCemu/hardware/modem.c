@@ -7765,6 +7765,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 					performskipdataNak = 1; //Skipped already!
 					goto performskipdata_ipx; //Unused parameter! Simply skip it!
 				case 6: //IPX-Configuration-Complete
+					/*
 					if (common_OptionLengthField != 2)
 					{
 						if (!packetServerAddPacketBufferQueue(&pppNakFields, common_TypeField)) //NAK it!
@@ -7783,6 +7784,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 						performskipdataNak = 1; //Skipped already!
 						goto performskipdata_ipx; //Unused parameter! Simply skip it!
 					}
+					*/ //Unknown option, so Reject it!
 				case 3: //IPX-Compression-Protocol
 				default: //Unknown option?
 					if (!packetServerAddPacketBufferQueue(&pppRejectFields, common_TypeField)) //NAK it!
