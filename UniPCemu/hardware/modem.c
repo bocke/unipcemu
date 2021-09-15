@@ -1386,7 +1386,7 @@ void fetchpackets_pcap() { //Handle any packets to process!
 							//TODO: Check if it's a request for us. If so, reply with our IPv4 address!
 							memcpy(&ARPpacket, &pktdata[0xE], 28); //Retrieve the ARP packet, if compatible!
 							memcpy(&ARPIP.addressnetworkorderb, &ARPpacket.TPA, 4); //Whatr is requested?
-							ARPIP.addressnetworkorder32 = SDL_Swap32(ARPIP.addressnetworkorder32); //Make sure it's in our supported format!
+							//ARPIP.addressnetworkorder32 = SDL_Swap32(ARPIP.addressnetworkorder32); //Make sure it's in our supported format!
 							if ((SDL_SwapBE16(ARPpacket.htype) == 1) && (ARPpacket.ptype == SDL_SwapBE16(0x0800)) && (ARPpacket.hlen == 6) && (ARPpacket.plen == 4) && (SDL_SwapBE16(ARPpacket.oper) == 1))
 							{
 								//IPv4 ARP request
