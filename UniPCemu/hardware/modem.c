@@ -1383,10 +1383,6 @@ void fetchpackets_pcap() { //Handle any packets to process!
 								//Check it's our IP, send a response if it's us!
 								if (connectedclient->packetserver_useStaticIP) //IP filter is used?
 								{
-									if (memcmp(&ARPpacket.TPA, &packetserver_defaultstaticIP, 4) == 0) //Default Static IP route to server?
-									{
-										goto handleserverARP_pcap; //Default server packet!
-									}
 									if (memcmp(&ARPpacket.TPA, ((connectedclient->packetserver_slipprotocol == 3) && (!connectedclient->packetserver_slipprotocol_pppoe) && IPCP_OPEN) ? &connectedclient->ipcp_ipaddress[PPP_SENDCONF][0] : &connectedclient->packetserver_staticIP[0], 4) != 0) //Static IP mismatch?
 									{
 										continue; //Invalid packet!
@@ -10716,10 +10712,6 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 														//Check it's our IP, send a response if it's us!
 														if (connectedclient->packetserver_useStaticIP) //IP filter is used?
 														{
-															if (memcmp(&ARPpacket.TPA, &packetserver_defaultstaticIP, 4) == 0) //Default Static IP route to server?
-															{
-																goto handleserverARP; //Default server packet!
-															}
 															if (memcmp(&ARPpacket.TPA, ((connectedclient->packetserver_slipprotocol == 3) && (!connectedclient->packetserver_slipprotocol_pppoe) && IPCP_OPEN)?&connectedclient->ipcp_ipaddress[PPP_SENDCONF][0]:&connectedclient->packetserver_staticIP[0], 4) != 0) //Static IP mismatch?
 															{
 																goto invalidpacket; //Invalid packet!
@@ -10741,7 +10733,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 															//Now, construct the ethernet header!
 															memcpy(&ppptransmitheader,&ethernetheader,sizeof(ethernetheader.data)); //Copy the header!
 															memcpy(&ppptransmitheader.src,&maclocal,6); //From us!
-															memcpy(&ppptransmitheader.dst,/*&ARPpacket.SHA*/ &packetserver_broadcastMAC,6); //To the requester (everyone?)!
+															memcpy(&ppptransmitheader.dst,&ARPpacket.SHA,6); //To the requester!
 															memcpy(&connectedclient->packet[0],ppptransmitheader.data,sizeof(ppptransmitheader.data)); //The ethernet header!
 															//Now, the packet we've stored has become the packet to send back!
 															if (sendpkt_pcap(connectedclient->packet, (28 + 0xE))) //Send the response back to the originator!
