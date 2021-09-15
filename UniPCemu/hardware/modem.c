@@ -1028,6 +1028,7 @@ void initPcap() {
 	memset(&maclocal, 0, sizeof(maclocal));
 	memset(&packetserver_gatewayMAC, 0, sizeof(packetserver_gatewayMAC));
 	memset(&packetserver_defaultgatewayIPaddr, 0, sizeof(packetserver_defaultgatewayIPaddr));
+	memset(&packetserver_defaultgatewayIPstr, 0, sizeof(packetserver_defaultgatewayIPstr));
 	packetserver_defaultgatewayIP = 0; //No gateway IP!
 	memset(&packetserver_DNS1IPaddr, 0, sizeof(packetserver_DNS1IPaddr));
 	packetserver_DNS1IP = 0; //No gateway IP!
@@ -1049,7 +1050,7 @@ void initPcap() {
 	}
 	if (packetserver_defaultgatewayIP) //Static IP configured?
 	{
-		dolog("ethernetcard", "Default Gateway IP configured: %s(%02x%02x%02x%02x)", packetserver_defaultgatewayIPstr, packetserver_defaultgatewayIP[0], packetserver_defaultgatewayIP[1], packetserver_defaultgatewayIP[2], packetserver_defaultgatewayIP[3]); //Log it!
+		dolog("ethernetcard", "Default Gateway IP configured: %s(%02x%02x%02x%02x)", packetserver_defaultgatewayIPstr, packetserver_defaultgatewayIPaddr[0], packetserver_defaultgatewayIPaddr[1], packetserver_defaultgatewayIPaddr[2], packetserver_defaultgatewayIPaddr[3]); //Log it!
 	}
 
 	for (i = 0; i < NUMITEMS(Packetserver_clients); ++i) //Initialize client data!
