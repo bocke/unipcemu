@@ -7262,10 +7262,15 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 			//Is LCP is closed, an Code-Reject is issued instead?
 		case 6: //Terminate-Ack (Acnowledge termination of connection)
 			//Why would we need to handle this if the client can't have it's connection terminated by us!
+			connectedclient->ppp_LCPstatus[1] = 0; //Close our connection?
 		case 7: //Code-Reject (Code field is rejected because it's unknown)
-			//Do anything with this?
+			result = 1; //Discard!
+			goto ppp_finishpacketbufferqueue2; //Finish up!
 		case 10: //Echo-Reply
 			//Echo replies aren't done by us, so ignore them.
+			result = 1; //Success!
+			goto ppp_finishpacketbufferqueue2; //Finish up!
+			break; //Ignore it!
 		default: //Unknown Code field?
 			//Send a Code-Reject packet to the client!
 			memset(&response, 0, sizeof(response)); //Init the response!
@@ -8578,8 +8583,15 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 			break;
 		case 6: //Terminate-Ack (Acnowledge termination of connection)
 			//Why would we need to handle this if the client can't have it's connection terminated by us!
+			connectedclient->ppp_IPXCPstatus[1] = 0; //Close our connection?
+			result = 1; //Success!
+			goto ppp_finishpacketbufferqueue2_ipxcp; //Finish up!
+			break;
 		case 7: //Code-Reject (Code field is rejected because it's unknown)
 			//Do anything with this?
+			result = 1; //Discard!
+			goto ppp_finishpacketbufferqueue2_ipxcp; //Finish up!
+			break; //Not handled!
 		default: //Unknown Code field?
 			//Send a Code-Reject packet to the client!
 			memset(&response, 0, sizeof(response)); //Init the response!
@@ -9656,8 +9668,14 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 			break;
 		case 6: //Terminate-Ack (Acnowledge termination of connection)
 			//Why would we need to handle this if the client can't have it's connection terminated by us!
+			connectedclient->ppp_IPCPstatus[1] = 0; //Close our connection?
+			result = 1; //Success!
+			goto ppp_finishpacketbufferqueue2_ipcp; //Finish up!
 		case 7: //Code-Reject (Code field is rejected because it's unknown)
 			//Do anything with this?
+			result = 1; //Discard!
+			goto ppp_finishpacketbufferqueue2_ipcp; //Finish up!
+			break; //Don't handle it!
 		default: //Unknown Code field?
 			//Send a Code-Reject packet to the client!
 			memset(&response, 0, sizeof(response)); //Init the response!
