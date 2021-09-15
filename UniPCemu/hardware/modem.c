@@ -10722,7 +10722,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 															if (sendpkt_pcap(connectedclient->packet, (28 + 0xE))) //Send the response back to the originator!
 															{
 																//Discard the received packet, so nobody else handles it too!
-																goto invalidpacket; //Finish up!
+																goto invalidpacket; //Finish up: we're parsed!
 															}
 															else
 															{
