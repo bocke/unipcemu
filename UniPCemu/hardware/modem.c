@@ -1200,14 +1200,16 @@ void initPcap() {
 }
 
 byte pcap_capture = 0; //A flag asking for the pcap to quit!
+byte sendpkt_pcap(uint8_t* src, uint16_t len); //Prototype!
 void fetchpackets_pcap() { //Handle any packets to process!
 #if defined(PACKETSERVER_ENABLED) && !defined(NOPCAP)
 	//Filter parameters to apply!
 	PacketServer_clientp connectedclient;
 	ETHERNETHEADER ethernetheader; //The header to inspect!
 	word headertype;
-	ARPpackettype ARPpacket; //For analyzing ARP requests!
+	ARPpackettype ARPpacket, ARPresponse; //For analyzing and responding to ARP requests!
 	byte skippacket; //Skipping the packet as unusable?
+	ETHERNETHEADER ppptransmitheader;
 
 	if (pcap_enabled) //Enabled?
 	{
@@ -1388,9 +1390,36 @@ void fetchpackets_pcap() { //Handle any packets to process!
 										continue; //Invalid packet!
 									}
 								handleserverARP_pcap: //Server ARP or client ARP?
-								//It's for us, send a response!
-								//Construct the ARP packet!
-									skippacket = 0; //Receive it!
+									//It's for us, send a response!
+									//Construct the ARP reply packet!
+									ARPresponse.htype = ARPpacket.htype;
+									ARPresponse.ptype = ARPpacket.ptype;
+									ARPresponse.hlen = ARPpacket.hlen;
+									ARPresponse.plen = ARPpacket.plen;
+									ARPresponse.oper = SDL_SwapBE16(2); //Reply!
+									memcpy(&ARPresponse.THA, &ARPpacket.SHA, 6); //To the originator!
+									memcpy(&ARPresponse.TPA, &ARPpacket.SPA, 4); //Destination IP!
+									memcpy(&ARPresponse.SHA, &maclocal, 6); //Our MAC address!
+									memcpy(&ARPresponse.SPA, &ARPpacket.TPA, 4); //Our IP!
+									//Construct the ethernet header!
+									memcpy(&connectedclient->packet[sizeof(ethernetheader.data)], &ARPresponse, 28); //Paste the response in the packet we're handling (reuse space)!
+									//Now, construct the ethernet header!
+									memcpy(&ppptransmitheader, &ethernetheader, sizeof(ethernetheader.data)); //Copy the header!
+									memcpy(&ppptransmitheader.src, &maclocal, 6); //From us!
+									memcpy(&ppptransmitheader.dst, &ARPpacket.SHA, 6); //To the requester!
+									memcpy(&connectedclient->packet[0], ppptransmitheader.data, sizeof(ppptransmitheader.data)); //The ethernet header!
+									//Now, the packet we've stored has become the packet to send back!
+									unlock(LOCK_PCAP);
+									if (sendpkt_pcap(connectedclient->packet, (28 + 0xE))) //Send the response back to the originator!
+									{
+										//Discard the received packet, so nobody else handles it too!
+										goto invalidpacket_receivefilter; //Finish up: we're parsed!
+									}
+									else
+									{
+										lock(LOCK_PCAP);
+										continue; //Keep waiting until we can send it!
+									}
 									goto skippacketfinished; //Stop searching!
 								}
 								else
@@ -1468,7 +1497,7 @@ void fetchpackets_pcap() { //Handle any packets to process!
 #endif
 }
 
-byte sendpkt_pcap(uint8_t *src, uint16_t len) {
+byte sendpkt_pcap(uint8_t* src, uint16_t len) {
 #if defined(PACKETSERVER_ENABLED) && !defined(NOPCAP)
 	byte* packet;
 	if (pcap_enabled) //Enabled?
