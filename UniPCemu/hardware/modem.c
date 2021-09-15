@@ -1049,7 +1049,7 @@ void initPcap() {
 	}
 	if (packetserver_defaultgatewayIP) //Static IP configured?
 	{
-		dolog("ethernetcard", "Default Gateway IP configured: %s(%02x%02x%02x%02x)", packetserver_defaultstaticIPstr, packetserver_defaultstaticIP[0], packetserver_defaultstaticIP[1], packetserver_defaultstaticIP[2], packetserver_defaultstaticIP[3]); //Log it!
+		dolog("ethernetcard", "Default Gateway IP configured: %s(%02x%02x%02x%02x)", packetserver_defaultgatewayIPstr, packetserver_defaultgatewayIP[0], packetserver_defaultgatewayIP[1], packetserver_defaultgatewayIP[2], packetserver_defaultgatewayIP[3]); //Log it!
 	}
 
 	for (i = 0; i < NUMITEMS(Packetserver_clients); ++i) //Initialize client data!
