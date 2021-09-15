@@ -1393,7 +1393,7 @@ void fetchpackets_pcap() { //Handle any packets to process!
 								//Check it's our IP, send a response if it's us!
 								if (connectedclient->packetserver_useStaticIP) //IP filter is used?
 								{
-									if (memcmp(&ARPIP.addressnetworkorderb, ((connectedclient->packetserver_slipprotocol == 3) && (!connectedclient->packetserver_slipprotocol_pppoe) && IPCP_OPEN) ? &connectedclient->ipcp_ipaddress[PPP_SENDCONF][0] : &connectedclient->packetserver_staticIP[0], 4) != 0) //Static IP mismatch?
+									if (memcmp(&ARPIP.addressnetworkorderb, ((connectedclient->packetserver_slipprotocol == 3) && (!connectedclient->packetserver_slipprotocol_pppoe) && IPCP_OPEN) ? &connectedclient->ipcp_ipaddress[PPP_RECVCONF][0] : &connectedclient->packetserver_staticIP[0], 4) != 0) //Static IP mismatch?
 									{
 										continue; //Invalid packet!
 									}
