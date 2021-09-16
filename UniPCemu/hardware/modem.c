@@ -1572,14 +1572,19 @@ byte sendpkt_pcap(PacketServer_clientp connectedclient, uint8_t* src, uint16_t l
 			{
 				if (memcmp(&ethernetheader.dst, &packetserver_broadcastMAC, 6) != 0) //Not broadcasting IP?
 				{
+					//We can assume it's addressed to the default gateway in this case.
 					if (len >= (0xE + 16 + 4)) //Long enough to check?
 					{
 						memcpy(&dstip, &src[sizeof(ethernetheader.data) + 16], 4); //The IP address!
-						if ((dstip&packetserver_subnetmaskIPaddrd)==packetserver_defaultgatewayIPaddrd) //Local network destination?
+						if (((dstip&packetserver_subnetmaskIPaddrd)==packetserver_defaultgatewayIPaddrd) && packetserver_defaultgatewayIPaddrd) //Local network destination?
 						{
 							memcpy(&src, &maclocal, 6); //Send to ourselves for now!
 						}
-						//TODO: Send ARP to network with client timeout(=failure) when not sending to ourselves.
+						else if (((dstip&packetserver_hostsubnetmaskIPaddrd)==packetserver_defaultgatewayIPaddrd) && packetserver_defaultgatewayIPaddrd) //Host network destination?
+						{
+							//TODO: Send ARP to network with client timeout(=failure) when not sending to ourselves.
+							memcpy(&src, &maclocal, 6); //Send to ourselves for now!
+						}
 					}
 				}
 			}
