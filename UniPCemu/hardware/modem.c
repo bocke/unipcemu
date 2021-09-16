@@ -1429,7 +1429,7 @@ void fetchpackets_pcap() { //Handle any packets to process!
 							//ARPIP.addressnetworkorder32 = SDL_Swap32(ARPIP.addressnetworkorder32); //Make sure it's in our supported format!
 							if (connectedclient->ARPrequeststatus==1) //Anything requested?
 							{
-								if ((SDL_SwapBE16(ARPpacket.htype) == 2) && (ARPpacket.ptype == SDL_SwapBE16(0x0800)) && (ARPpacket.hlen == 6) && (ARPpacket.plen == 4) && (SDL_SwapBE16(ARPpacket.oper) == 2)) //Valid reply received?
+								if ((SDL_SwapBE16(ARPpacket.htype) == 1) && (ARPpacket.ptype == SDL_SwapBE16(0x0800)) && (ARPpacket.hlen == 6) && (ARPpacket.plen == 4) && (SDL_SwapBE16(ARPpacket.oper) == 2)) //Valid reply received?
 								{
 									memcpy(&ARPIP.addressnetworkorderb, &ARPpacket.SPA, 4); //What is requested?
 									if (memcmp(&ARPIP.addressnetworkorderb,&connectedclient->ARPrequestIP,4)) //Match found?
