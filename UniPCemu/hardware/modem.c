@@ -1630,7 +1630,7 @@ byte sendpkt_pcap(PacketServer_clientp connectedclient, uint8_t* src, uint16_t l
 							{
 								if (connectedclient->ARPrequeststatus==2) //Finished?
 								{
-									if (memcmp(&dstip,&connectedclient->ARPrequestIP,4)) //Match found?
+									if (memcmp(&dstip,&connectedclient->ARPrequestIP,4)==0) //Match found?
 									{
 										if (getnspassed_k(&connectedclient->ARPtimer)>=30000000000.0f) //Timeout 30 seconds?
 										{
