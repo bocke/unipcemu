@@ -205,6 +205,7 @@ byte packetserver_gatewayMAC[6]; //Gateway MAC to send to!
 byte packetserver_defaultstaticIP[4] = { 0,0,0,0 }; //Static IP to use?
 byte packetserver_defaultgatewayIP = 0; //Gotten a default gateway IP?
 byte packetserver_defaultgatewayIPaddr[4] = { 0,0,0,0 }; //Default gateway IP to use?
+byte packetserver_defaultgatewayIPaddrd = 0; //Default gateway IP to use?
 byte packetserver_DNS1IP = 0; //Gotten a default gateway IP?
 byte packetserver_DNS1IPaddr[4] = { 0,0,0,0 }; //Default gateway IP to use?
 byte packetserver_DNS2IP = 0; //Gotten a default gateway IP?
@@ -215,6 +216,7 @@ byte packetserver_NBNS2IP = 0; //Gotten a default gateway IP?
 byte packetserver_NBNS2IPaddr[4] = { 0,0,0,0 }; //Default gateway IP to use?
 byte packetserver_subnetmaskIP = 0; //Gotten a default gateway IP?
 byte packetserver_subnetmaskIPaddr[4] = { 0,0,0,0 }; //Default gateway IP to use?
+uint_32 packetserver_subnetmaskIPaddrd = 0; //Default gateway IP to use?
 byte packetserver_broadcastIP[4] = { 0xFF,0xFF,0xFF,0xFF }; //Broadcast IP to use?
 byte packetserver_usedefaultStaticIP = 0; //Use static IP?
 char packetserver_defaultstaticIPstr[256] = ""; //Static IP, string format
@@ -902,6 +904,7 @@ void initPcap() {
 							//Automatic port?
 							snprintf(packetserver_defaultgatewayIPstr, sizeof(packetserver_defaultgatewayIPstr), "%u.%u.%u.%u", IPnumbers[0], IPnumbers[1], IPnumbers[2], IPnumbers[3]); //Formulate the address!
 							memcpy(&packetserver_defaultgatewayIPaddr, &IPnumbers, 4); //Set read IP!
+							memcpy(&packetserver_defaultgatewayIPaddrd, &IPnumbers, 4); //Set read IP!
 							packetserver_defaultgatewayIP = 1; //Static IP set!
 						}
 					}
@@ -1017,6 +1020,7 @@ void initPcap() {
 							//Automatic port?
 							snprintf(packetserver_subnetmaskIPstr, sizeof(packetserver_NBNS1IPstr), "%u.%u.%u.%u", IPnumbers[0], IPnumbers[1], IPnumbers[2], IPnumbers[3]); //Formulate the address!
 							memcpy(&packetserver_subnetmaskIPaddr, &IPnumbers, 4); //Set read IP!
+							memcpy(&packetserver_subnetmaskIPaddrd, &IPnumbers, 4); //Set read IP!
 							packetserver_subnetmaskIP = 1; //Static IP set!
 						}
 					}
@@ -1505,6 +1509,8 @@ void fetchpackets_pcap() { //Handle any packets to process!
 
 byte sendpkt_pcap(uint8_t* src, uint16_t len) {
 #if defined(PACKETSERVER_ENABLED) && !defined(NOPCAP)
+	ETHERNETHEADER ethernetheader; //The header to inspect!
+	uint_32 dstip;
 	byte* packet;
 	if (pcap_enabled) //Enabled?
 	{
@@ -1532,6 +1538,21 @@ byte sendpkt_pcap(uint8_t* src, uint16_t len) {
 		}
 		else //Normal sending?
 		{
+			memcpy(&ethernetheader, src, 0xE); //Set the header!
+			if (ethernetheader.type == SDL_SwapBE16(0x0800)) //IP?
+			{
+				if (memcmp(&ethernetheader.dst, &packetserver_broadcastMAC, 6) != 0) //Not broadcasting IP?
+				{
+					if (len >= (0xE + 16 + 4)) //Long enough to check?
+					{
+						memcpy(&dstip, &src[sizeof(ethernetheader.data) + 16], 4); //The IP address!
+						if ((dstip&packetserver_subnetmaskIPaddrd)==packetserver_defaultgatewayIPaddrd) //Local network destination?
+						{
+							memcpy(&src, &maclocal, 6); //Send to ourselves for now!
+						}
+					}
+				}
+			}
 			pcap_sendpacket(adhandle, src, len);
 		}
 	}
