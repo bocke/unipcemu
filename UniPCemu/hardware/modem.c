@@ -549,6 +549,22 @@ typedef struct PACKED
 } ARPpackettype;
 #include "headers/endpacked.h"
 
+#include "headers/packed.h"
+typedef struct PACKED
+{
+	word CheckSum;
+	word Length;
+	byte TransportControl;
+	byte PacketType;
+	byte DestinationNetworkNumber[4];
+	byte DestinationNodeNumber[6];
+	word DestinationSocketNumber;
+	byte SourceNetworkNumber[4];
+	byte SourceNodeNumber[6];
+	word SourceSocketNumber;
+} IPXPACKETHEADER;
+#include "headers/endpacked.h"
+
 //Normal modem operations!
 //Text buffer size for transmitting text to the DTE.
 #define MODEM_TEXTBUFFERSIZE 256
@@ -4782,6 +4798,8 @@ word PPP_calcFCS(byte* buffer, uint_32 length)
 byte ip_serveripaddress[4] = { 0xFF,0xFF,0xFF,0xFF }; //Server IP address!
 
 //Addresses are big-endian!
+byte ipx_currentnetworknumber[4] = { 0x00,0x00,0x00,0x00 }; //Current network number!
+byte ipx_broadcastnetworknumber[4] = { 0xFF,0xFF,0xFF,0xFF }; //Broadcast network number! 
 byte ipx_servernetworknumber[4] = { 0x00,0x00,0x00,0x01 }; //Server network number!
 byte ipxbroadcastaddr[6] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF}; //IPX Broadcast address
 byte ipxnulladdr[6] = {0x00,0x00,0x00,0x00,0x00,0x00 }; //IPX Forbidden NULL address
@@ -5207,7 +5225,6 @@ byte PPP_addFCS(MODEM_PACKETBUFFER* response, PacketServer_client *connectedclie
 byte no_magic_number[4] = { 0,0,0,0 }; //No magic number used!
 byte no_network_number[4] = { 0,0,0,0 }; //No network number used!
 byte no_node_number[6] = { 0,0,0,0,0,0 }; //No node number used!
-byte ipx_currentnetworknumber[4] = { 0,0,0,0 }; //Meaning: current network
 
 //result: 1 on success, 0 on pending. When handleTransmit==1, false blocks the transmitter from handling new packets.
 byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte handleTransmit)
@@ -5262,6 +5279,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 	byte IPnumbers[4];
 	char* p; //Pointer for IP address
 	ETHERNETHEADER ppptransmitheader;
+	IPXPACKETHEADER ipxtransmitheader;
 	word c; //For user login.
 	byte performskipdataNak;
 	performskipdataNak = 0; //Default: not skipping anything!
@@ -9942,10 +9960,24 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 				}
 			}
 
-			//Now, the packet we've stored has become the packet to send!
-			if (!sendpkt_pcap(connectedclient,response.buffer, response.length)) //Send the response on the network!
+			//Some post-processing!
+			if (response.length >= (30+0xE)) //Full header?
 			{
-				goto ppp_finishpacketbufferqueue; //Failed to send!
+				memcpy(&ipxttansmitheader,&response.buffer[0xE],30); //Load the header!
+				if (memcmp(&ipxtransmitheader.SourceNetworkNumber,&ipx_currentnetworknumber,4)==0) //Current network number?
+				{
+					memcpy(&ipxtransmitheader.SourceNetworkNumber,connectedclient->ipxcp_networknumber[PPP_RECVCONF],4); //Current network number!
+				}
+				if (memcmp(&ipxtransmitheader.DestinationNetworkNumber,&ipx_currentnetworknumber,4)==0) //Current network number?
+				{
+					memcpy(&ipxtransmitheader.DestinationNetworkNumber,connectedclient->ipxcp_networknumber[PPP_RECVCONF],4); //Current network number!
+				}
+				memcpy(&response.buffer[0xE],&ipxtransmitheader,30); //Replace the header!
+				//Now, the packet we've stored has become the packet to send!
+				if (!sendpkt_pcap(connectedclient,response.buffer, response.length)) //Send the response on the network!
+				{
+					goto ppp_finishpacketbufferqueue; //Failed to send!
+				}
 			}
 			goto ppp_finishpacketbufferqueue2;
 			break;
@@ -10048,22 +10080,6 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 	return result; //Currently simply discard it!
 }
 
-#include "headers/packed.h"
-typedef struct PACKED
-{
-	word CheckSum;
-	word Length;
-	byte TransportControl;
-	byte PacketType;
-	byte DestinationNetworkNumber[4];
-	byte DestinationNodeNumber[6];
-	word DestinationSocketNumber;
-	byte SourceNetworkNumber[4];
-	byte SourceNodeNumber[6];
-	word SourceSocketNumber;
-} IPXPACKETHEADER;
-#include "headers/endpacked.h"
-
 //result: 0 to discard the packet. 1 to keep it pending in this stage until we're ready to send it to the client.
 byte PPP_parseReceivedPacketForClient(PacketServer_clientp connectedclient)
 {
@@ -10147,7 +10163,7 @@ byte PPP_parseReceivedPacketForClient(PacketServer_clientp connectedclient)
 					{
 						if (memcmp(&ipxheader.DestinationNetworkNumber, &connectedclient->ipxcp_networknumber[PPP_RECVCONF][0], 4) != 0) //Network number mismatch?
 						{
-							if (memcmp(&ipxheader.DestinationNetworkNumber, &ipx_currentnetworknumber, 4) != 0) //Current network mismatch?
+							if ((memcmp(&ipxheader.DestinationNetworkNumber, &ipx_currentnetworknumber, 4) != 0) && (memcmp(&ipxheader.DestinationNetworkNumber, &ipx_broadcastnetworknumber, 4) != 0)) //Current and Broadcast network mismatch?
 							{
 								return 0; //Handled, discard!
 							}
