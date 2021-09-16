@@ -1600,11 +1600,12 @@ byte sendpkt_pcap(PacketServer_clientp connectedclient, uint8_t* src, uint16_t l
 					if (len >= (0xE + 16 + 4)) //Long enough to check?
 					{
 						memcpy(&dstip, &src[sizeof(ethernetheader.data) + 16], 4); //The IP address!
-						if (((dstip&packetserver_subnetmaskIPaddrd)==packetserver_defaultgatewayIPaddrd) && packetserver_defaultgatewayIPaddrd) //Local network destination?
+						if (((dstip&packetserver_subnetmaskIPaddrd)==(packetserver_defaultgatewayIPaddrd&packetserver_subnetmaskIPaddrd)) && packetserver_defaultgatewayIPaddrd && packetserver_subnetmaskIPaddrd) //Local network destination?
 						{
 							memcpy(src, &maclocal, 6); //Send to ourselves for now!
 						}
-						else if (((dstip&packetserver_hostsubnetmaskIPaddrd)==packetserver_defaultgatewayIPaddrd) && packetserver_defaultgatewayIPaddrd) //Host network destination?
+						//Otherwise, it's meant for the default gateway. Then determine if it's for the local host network.
+						else if (((dstip&packetserver_hostsubnetmaskIPaddrd)==(packetserver_defaultgatewayIPaddrd&packetserver_hostsubnetmaskIPaddrd)) && packetserver_defaultgatewayIPaddrd && packetserver_hostsubnetmaskIPaddrd) //Host network destination?
 						{
 							lock(LOCK_PCAP);
 							//TODO: Send ARP to network with client timeout(=failure) when not sending to ourselves.
