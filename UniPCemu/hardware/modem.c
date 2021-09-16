@@ -9963,7 +9963,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 			//Some post-processing!
 			if (response.length >= (30+0xE)) //Full header?
 			{
-				memcpy(&ipxttansmitheader,&response.buffer[0xE],30); //Load the header!
+				memcpy(&ipxtransmitheader,&response.buffer[0xE],30); //Load the header!
 				if (memcmp(&ipxtransmitheader.SourceNetworkNumber,&ipx_currentnetworknumber,4)==0) //Current network number?
 				{
 					memcpy(&ipxtransmitheader.SourceNetworkNumber,connectedclient->ipxcp_networknumber[PPP_RECVCONF],4); //Current network number!
