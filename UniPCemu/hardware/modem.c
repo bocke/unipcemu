@@ -373,6 +373,12 @@ typedef struct
 	uint_32 asynccontrolcharactermap[2]; //Async control character map, stored in little endian format!
 	void* next, * prev; //Next and previous (un)allocated client!
 	word connectionnumber; //The number of this entry in the list!
+	
+	//ARP request support for sending!
+	TickHolder ARPtimer;
+	byte ARPrequeststatus; //0=None, 1=Requesting, 2=Result loaded.
+	byte ARPrequestIP[4]; //What was requested!
+	byte ARPrequestresult[6]; //What was the result!
 } PacketServer_client, *PacketServer_clientp;
 
 PacketServer_client Packetserver_clients[0x100]; //Up to 100 clients!
@@ -1583,8 +1589,51 @@ byte sendpkt_pcap(PacketServer_clientp connectedclient, uint8_t* src, uint16_t l
 						}
 						else if (((dstip&packetserver_hostsubnetmaskIPaddrd)==packetserver_defaultgatewayIPaddrd) && packetserver_defaultgatewayIPaddrd) //Host network destination?
 						{
+							lock(LOCK_PCAP);
 							//TODO: Send ARP to network with client timeout(=failure) when not sending to ourselves.
 							memcpy(&src, &maclocal, 6); //Send to ourselves for now!
+							//TickHolder ARPtimer;
+							//byte ARPrequeststatus; //0=None, 1=Requesting, 2=Result loaded.
+							//byte ARPrequestIP[4]; //What was requested!
+							//byte ARPrequestresult[6]; //What was the result!
+							if (connectedclient->ARPrequeststatus) //Anything requested?
+							{
+								if (connectedclient->ARPrequeststatus==2) //Finished?
+								{
+									if (memcmp(&dstip,&connectedclient->ARPrequestIP,4)) //Match found?
+									{
+										memcpy(&src,&connectedclient->ARPrequestresult,6); //Where to send: the ARP MAC address!
+										connectedclient->ARPrequeststatus = 0; //Prepare for other requests!
+									}
+									else //For other request? Try again!
+									{
+										goto startnewARPrequest;
+									}
+								}
+								else //Pending?
+								{
+									if (getnspassed_k(&connectedclient->ARPtimer)>=) //Timeout?
+									{
+										connectedclient->ARPrequeststatus = 0; //Stop waiting for it!
+										unlock(LOCK_PCAP);
+										return 1; //ARP failed! Abort sending completely!
+									}
+									unlock(LOCK_PCAP);
+									return 0; //Pending!
+								}
+							}
+							else //New request?
+							{
+								startnewARPrequest:
+								initTicksHolder(connectedclient->ARPtimer);
+								getnspassed(&connectedclient->ARPtimer); //Start timing!
+								//Send a request!
+								memcpy(&connectedclient->ARPrequestIP,dstip,4); //What ARP reply to wait for!
+								connectedclient->ARPrequeststatus = 1; //Start waiting for it!
+								unlock(LOCK_PCAP);
+								return 0; //Pending!
+							}
+							unlock(LOCK_PCAP);
 						}
 					}
 				}
@@ -1724,6 +1773,7 @@ void initPacketServer(PacketServer_clientp client) //Initialize the packet serve
 	fifobuffer_clear(modem.blockoutputbuffer[client->connectionnumber]); //Nothing is sent to the client yet!
 	client->packetserver_slipprotocol = 0; //Initialize the protocol to the default value, which is unused!
 	client->lastreceivedCRLFinput = 0; //Reset last received input to none of CR and LF!
+	client->ARPrequeststatus = 0; //No request loaded yet.
 }
 
 byte packetserver_authenticate(PacketServer_clientp client)
