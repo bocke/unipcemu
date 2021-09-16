@@ -1471,7 +1471,7 @@ void fetchpackets_pcap() { //Handle any packets to process!
 									memcpy(&ppptransmitheader.dst, &ARPpacket.SHA, 6); //To the requester!
 									memcpy(&arppacketc[0], ppptransmitheader.data, 0xE); //The ethernet header!
 									//Now, the packet we've stored has become the packet to send back!
-									pcap_sendpacket(adhandle, arppacketc, (28 + 0xE)); //Send the ARP response now!
+									pcap_sendpacket(adhandle, arppacketc, pcaplength); //Send the ARP response now!
 									freez((void **)&arppacketc,pcaplength,"MODEM_PACKET"); //Free it!
 									arppacketc = NULL;
 									unlock(LOCK_PCAP);
@@ -1640,7 +1640,7 @@ byte sendpkt_pcap(PacketServer_clientp connectedclient, uint8_t* src, uint16_t l
 								memcpy(&connectedclient->ARPrequestIP,dstip,4); //What ARP reply to wait for!
 								connectedclient->ARPrequeststatus = 1; //Start waiting for it!
 								ourip = ((connectedclient->packetserver_slipprotocol == 3) && (!connectedclient->packetserver_slipprotocol_pppoe) && IPCP_OPEN) ? &connectedclient->ipcp_ipaddress[PPP_RECVCONF][0] : &connectedclient->packetserver_staticIP[0]; //Our IP to use!
-								arppacketc = zalloc(pcaplength,"MODEM_PACKET",NULL); //Allocate a reply of the very same length!
+								arppacketc = zalloc(60,"MODEM_PACKET",NULL); //Allocate a reply of the very same length!
 								if (arppacketc==NULL) //Skip if unable!
 								{
 									unlock(LOCK_PCAP)
@@ -1667,8 +1667,8 @@ byte sendpkt_pcap(PacketServer_clientp connectedclient, uint8_t* src, uint16_t l
 								memcpy(&ppptransmitheader.dst, &packetserver_broadcastMAC, 6); //A broadcast!
 								memcpy(&arppacketc[0], ppptransmitheader.data, 0xE); //The ethernet header!
 								//Now, the packet we've stored has become the packet to send back!
-								pcap_sendpacket(adhandle, arppacketc, (28 + 0xE)); //Send the ARP response now!
-								freez((void **)&arppacketc,pcaplength,"MODEM_PACKET"); //Free it!
+								pcap_sendpacket(adhandle, arppacketc, 60); //Send the ARP response now!
+								freez((void **)&arppacketc,60,"MODEM_PACKET"); //Free it!
 								unlock(LOCK_PCAP);
 								return 0; //Pending!
 							}
