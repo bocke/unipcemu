@@ -1624,6 +1624,7 @@ byte sendpkt_pcap(PacketServer_clientp connectedclient, uint8_t* src, uint16_t l
 						//Otherwise, it's meant for the default gateway. Then determine if it's for the local host network.
 						else if (((dstip&packetserver_hostsubnetmaskIPaddrd)==(packetserver_defaultgatewayIPaddrd&packetserver_hostsubnetmaskIPaddrd)) && packetserver_defaultgatewayIPaddrd && packetserver_hostsubnetmaskIPaddrd) //Host network destination?
 						{
+							handledefaultgateway:
 							lock(LOCK_PCAP);
 							//TODO: Send ARP to network with client timeout(=failure) when not sending to ourselves.
 							if (connectedclient->ARPrequeststatus) //Anything requested?
@@ -1697,6 +1698,14 @@ byte sendpkt_pcap(PacketServer_clientp connectedclient, uint8_t* src, uint16_t l
 								return 0; //Pending!
 							}
 							unlock(LOCK_PCAP);
+						}
+						else //Use the default gateway?
+						{
+							if (packetserver_defaultgatewayIP) //Gotten a default gateway set?
+							{
+								dstip = packetserver_defaultgatewayIPaddrd;
+								goto handledefaultgateway; //Handle the ARP to the default gateway!
+							}
 						}
 					}
 				}
