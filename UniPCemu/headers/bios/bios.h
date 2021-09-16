@@ -46,6 +46,7 @@ typedef struct
 	int_64 ethernetcard; //What adapter to use? 255=List adapters!
 	CharacterType MACaddress[256]; //MAC address, formatted with hexadecimal characters and : only!
 	CharacterType hostIPaddress[256]; //IP address!
+	CharacterType hostsubnetmaskIPaddress[256]; //IP address!
 	CharacterType gatewayMACaddress[256]; //MAC address, formatted with hexadecimal characters and : only!
 	CharacterType gatewayIPaddress[256]; //IP address!
 	CharacterType DNS1IPaddress[256]; //IP address!

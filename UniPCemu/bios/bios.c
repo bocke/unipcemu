@@ -1354,6 +1354,7 @@ void BIOS_LoadData() //Load BIOS settings!
 	BIOS_Settings.ethernetserver_settings.ethernetcard = get_private_profile_int64("modem", "ethernetcard", -1, inifile); //Ethernet card to use!
 	get_private_profile_string("modem", "hostMACaddress", "", &BIOS_Settings.ethernetserver_settings.MACaddress[0], sizeof(BIOS_Settings.ethernetserver_settings.MACaddress), inifile); //Read entry!
 	get_private_profile_string("modem", "hostIPaddress", "", &BIOS_Settings.ethernetserver_settings.hostIPaddress[0], sizeof(BIOS_Settings.ethernetserver_settings.hostIPaddress), inifile); //Read entry!
+	get_private_profile_string("modem", "hostsubnetmaskIPaddress", "", &BIOS_Settings.ethernetserver_settings.hostsubnetmaskIPaddress[0], sizeof(BIOS_Settings.ethernetserver_settings.subnetmaskIPaddress), inifile); //Read entry!
 	get_private_profile_string("modem", "gatewayMACaddress", "", &BIOS_Settings.ethernetserver_settings.gatewayMACaddress[0], sizeof(BIOS_Settings.ethernetserver_settings.gatewayMACaddress), inifile); //Read entry!
 	get_private_profile_string("modem", "gatewayIPaddress", "", &BIOS_Settings.ethernetserver_settings.gatewayIPaddress[0], sizeof(BIOS_Settings.ethernetserver_settings.gatewayIPaddress), inifile); //Read entry!
 	get_private_profile_string("modem", "DNS1IPaddress", "", &BIOS_Settings.ethernetserver_settings.DNS1IPaddress[0], sizeof(BIOS_Settings.ethernetserver_settings.DNS1IPaddress), inifile); //Read entry!
@@ -1714,6 +1715,7 @@ int BIOS_SaveData() //Save BIOS settings!
 	snprintf(currentstr, sizeof(currentstr), "hostMACaddress: MAC address to emulate as a virtual NIC and send/receive packets on(defaults to %02x:%02x:%02x:%02x:%02x:%02x)\n", maclocal_default[0], maclocal_default[1], maclocal_default[2], maclocal_default[3], maclocal_default[4], maclocal_default[5]);
 	safestrcat(modem_comment, sizeof(modem_comment), "hostIPaddress: host IP address for the PPP client to use by default and the host IP address\n");
 	safestrcat(modem_comment, sizeof(modem_comment), currentstr); //MAC address information!
+	safestrcat(modem_comment, sizeof(modem_comment), "hostsubnetmaskIPaddress: subnet mask IP address for the host to use\n");
 	safestrcat(modem_comment, sizeof(modem_comment), "gatewayMACaddress: gateway MAC address to send/receive packets on\n");
 	safestrcat(modem_comment, sizeof(modem_comment), "gatewayIPaddress: default gateway IP address for the PPP client to use\n");
 	safestrcat(modem_comment, sizeof(modem_comment), "DNS1IPaddress: DNS #1 IP address for the PPP client to use\n");
@@ -1743,6 +1745,7 @@ int BIOS_SaveData() //Save BIOS settings!
 	if (!write_private_profile_int64("modem", modem_commentused, "ethernetcard", BIOS_Settings.ethernetserver_settings.ethernetcard, inifile)) ABORT_SAVEDATA //Ethernet card to use!
 	if (!write_private_profile_string("modem", modem_commentused, "hostMACaddress", &BIOS_Settings.ethernetserver_settings.MACaddress[0], inifile)) ABORT_SAVEDATA //MAC address to use!
 	if (!write_private_profile_string("modem", modem_commentused, "hostIPaddress", &BIOS_Settings.ethernetserver_settings.hostIPaddress[0], inifile)) ABORT_SAVEDATA //MAC address to use!
+	if (!write_private_profile_string("modem", modem_commentused, "hostsubnetmaskIPaddress", &BIOS_Settings.ethernetserver_settings.hostsubnetmaskIPaddress[0], inifile)) ABORT_SAVEDATA //MAC address to use!
 	if (!write_private_profile_string("modem", modem_commentused, "gatewayMACaddress", &BIOS_Settings.ethernetserver_settings.gatewayMACaddress[0], inifile)) ABORT_SAVEDATA //MAC address to use!
 	if (!write_private_profile_string("modem", modem_commentused, "gatewayIPaddress", &BIOS_Settings.ethernetserver_settings.gatewayIPaddress[0], inifile)) ABORT_SAVEDATA //MAC address to use!
 	if (!write_private_profile_string("modem", modem_commentused, "DNS1IPaddress", &BIOS_Settings.ethernetserver_settings.DNS1IPaddress[0], inifile)) ABORT_SAVEDATA //MAC address to use!
