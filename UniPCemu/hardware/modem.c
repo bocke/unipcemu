@@ -1256,6 +1256,7 @@ void fetchpackets_pcap() { //Handle any packets to process!
 		uint_32 addressnetworkorder32;
 		byte addressnetworkorderb[4];
 	} ARPIP;
+	byte ARPether[6]; //Ethernet address!
 
 	if (pcap_enabled) //Enabled?
 	{
@@ -1426,13 +1427,14 @@ void fetchpackets_pcap() { //Handle any packets to process!
 							//TODO: Check if it's a request for us. If so, reply with our IPv4 address!
 							memcpy(&ARPpacket, &pktdata[0xE], 28); //Retrieve the ARP packet, if compatible!
 							memcpy(&ARPIP.addressnetworkorderb, &ARPpacket.TPA, 4); //What is requested?
+							memcpy(&ARPether, &ARPpacket.THA, 6); //Who is requested for responses?
 							//ARPIP.addressnetworkorder32 = SDL_Swap32(ARPIP.addressnetworkorder32); //Make sure it's in our supported format!
 							if (connectedclient->ARPrequeststatus==1) //Anything requested?
 							{
 								if ((SDL_SwapBE16(ARPpacket.htype) == 1) && (ARPpacket.ptype == SDL_SwapBE16(0x0800)) && (ARPpacket.hlen == 6) && (ARPpacket.plen == 4) && (SDL_SwapBE16(ARPpacket.oper) == 2)) //Valid reply received?
 								{
 									memcpy(&ARPIP.addressnetworkorderb, &ARPpacket.SPA, 4); //What is requested?
-									if (memcmp(&ARPIP.addressnetworkorderb, &connectedclient->ARPrequestIP, 4) == 0) //Match found?
+									if ((memcmp(&ARPIP.addressnetworkorderb, &connectedclient->ARPrequestIP, 4) == 0) && (memcmp(&ARPether, &maclocal, 6)==0)) //Match found?
 									{
 										memcpy(&connectedclient->ARPrequestresult, &ARPpacket.SHA, 6); //Where to send: the ARP MAC address!
 										connectedclient->ARPrequeststatus = 2; //Result gotten!
