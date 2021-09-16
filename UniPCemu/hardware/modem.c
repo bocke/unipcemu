@@ -1507,7 +1507,7 @@ void fetchpackets_pcap() { //Handle any packets to process!
 #endif
 }
 
-byte sendpkt_pcap(uint8_t* src, uint16_t len) {
+byte sendpkt_pcap(PacketServer_clientp connectedclient, uint8_t* src, uint16_t len) {
 #if defined(PACKETSERVER_ENABLED) && !defined(NOPCAP)
 	ETHERNETHEADER ethernetheader; //The header to inspect!
 	uint_32 dstip;
@@ -1550,6 +1550,7 @@ byte sendpkt_pcap(uint8_t* src, uint16_t len) {
 						{
 							memcpy(&src, &maclocal, 6); //Send to ourselves for now!
 						}
+						//TODO: Send ARP to network with client timeout(=failure) when not sending to ourselves.
 					}
 				}
 			}
@@ -1596,7 +1597,7 @@ void initPcap() //Unsupported!
 {
 	memset(&net,0,sizeof(net)); //Init!
 }
-byte sendpkt_pcap(uint8_t *src, uint16_t len)
+byte sendpkt_pcap(PacketServer_clientp connectedclient, uint8_t *src, uint16_t len)
 {
 	return 1; //Success!
 }
@@ -4267,7 +4268,7 @@ void PPPOE_finishdiscovery(PacketServer_clientp connectedclient)
 	else //Send the PADR packet!
 	{
 		//Send the PADR packet that's buffered!
-		if (!sendpkt_pcap(connectedclient->pppoe_discovery_PADT.buffer, connectedclient->pppoe_discovery_PADT.length)) //Send the packet to the network!
+		if (!sendpkt_pcap(connectedclient,connectedclient->pppoe_discovery_PADT.buffer, connectedclient->pppoe_discovery_PADT.length)) //Send the packet to the network!
 		{
 			return; //Failed to send!
 		}
@@ -4320,7 +4321,7 @@ byte PPPOE_requestdiscovery(PacketServer_clientp connectedclient)
 	else //Send the PADR packet!
 	{
 		//Send the PADR packet that's buffered!
-		if (!sendpkt_pcap(connectedclient->pppoe_discovery_PADI.buffer, connectedclient->pppoe_discovery_PADI.length)) //Send the packet to the network!
+		if (!sendpkt_pcap(connectedclient,connectedclient->pppoe_discovery_PADI.buffer, connectedclient->pppoe_discovery_PADI.length)) //Send the packet to the network!
 		{
 			return 0; //Failure!
 		}
@@ -4403,7 +4404,7 @@ byte PPPOE_handlePADreceived(PacketServer_clientp connectedclient)
 				else //Send the PADR packet!
 				{
 					//Send the PADR packet that's buffered!
-					if (!sendpkt_pcap(connectedclient->pppoe_discovery_PADR.buffer, connectedclient->pppoe_discovery_PADR.length)) //Send the packet to the network!
+					if (!sendpkt_pcap(connectedclient,connectedclient->pppoe_discovery_PADR.buffer, connectedclient->pppoe_discovery_PADR.length)) //Send the packet to the network!
 					{
 						return 0; //Failure!
 					}
@@ -4449,7 +4450,7 @@ byte PPPOE_handlePADreceived(PacketServer_clientp connectedclient)
 			else //Send the PADR packet!
 			{
 				//Send the PADR packet that's buffered!
-				if (!sendpkt_pcap(connectedclient->pppoe_discovery_PADR.buffer, connectedclient->pppoe_discovery_PADR.length)) //Send the packet to the network!
+				if (!sendpkt_pcap(connectedclient,connectedclient->pppoe_discovery_PADR.buffer, connectedclient->pppoe_discovery_PADR.length)) //Send the packet to the network!
 				{
 					return 0; //Failure!
 				}
@@ -4799,7 +4800,7 @@ byte sendIPXechoreply(PacketServer_clientp connectedclient, PPP_Stream *echodata
 	//End of IPX packet creation.
 
 	//Now, the packet we've stored has become the packet to send!
-	if (!sendpkt_pcap(response.buffer, response.length)) //Send the response on the network!
+	if (!sendpkt_pcap(connectedclient,response.buffer, response.length)) //Send the response on the network!
 	{
 		goto ppp_finishpacketbufferqueue2_echo; //Failed to send!
 	}
@@ -4902,7 +4903,7 @@ byte sendIPXechorequest(PacketServer_clientp connectedclient)
 	//End of IPX packet creation.
 
 	//Now, the packet we've stored has become the packet to send!
-	if (!sendpkt_pcap(response.buffer, response.length)) //Send the response on the network!
+	if (!sendpkt_pcap(connectedclient,response.buffer, response.length)) //Send the response on the network!
 	{
 		goto ppp_finishpacketbufferqueue_echo; //Failed to send!
 	}
@@ -9785,7 +9786,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 			}
 
 			//Now, the packet we've stored has become the packet to send!
-			if (!sendpkt_pcap(response.buffer, response.length)) //Send the response on the network!
+			if (!sendpkt_pcap(connectedclient,response.buffer, response.length)) //Send the response on the network!
 			{
 				goto ppp_finishpacketbufferqueue; //Failed to send!
 			}
@@ -9835,7 +9836,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 			}
 
 			//Now, the packet we've stored has become the packet to send!
-			if (!sendpkt_pcap(response.buffer, response.length)) //Send the response on the network!
+			if (!sendpkt_pcap(connectedclient,response.buffer, response.length)) //Send the response on the network!
 			{
 				goto ppp_finishpacketbufferqueue; //Keep pending!
 			}
@@ -10810,7 +10811,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 															memcpy(&ppptransmitheader.dst,&ARPpacket.SHA,6); //To the requester!
 															memcpy(&connectedclient->packet[0],ppptransmitheader.data,sizeof(ppptransmitheader.data)); //The ethernet header!
 															//Now, the packet we've stored has become the packet to send back!
-															if (sendpkt_pcap(connectedclient->packet, (28 + 0xE))) //Send the response back to the originator!
+															if (sendpkt_pcap(connectedclient,connectedclient->packet, (28 + 0xE))) //Send the response back to the originator!
 															{
 																//Discard the received packet, so nobody else handles it too!
 																goto invalidpacket; //Finish up: we're parsed!
@@ -11250,7 +11251,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 											}
 											else //Able to send the packet always?
 											{
-												if (!sendpkt_pcap(connectedclient->packetserver_transmitbuffer, connectedclient->packetserver_transmitlength)) //Send the packet!
+												if (!sendpkt_pcap(connectedclient,connectedclient->packetserver_transmitbuffer, connectedclient->packetserver_transmitlength)) //Send the packet!
 												{
 													goto skipSLIP_PPP; //Keep the packet parsing pending!
 												}
