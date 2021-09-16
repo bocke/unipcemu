@@ -219,6 +219,7 @@ byte packetserver_subnetmaskIPaddr[4] = { 0,0,0,0 }; //Default gateway IP to use
 uint_32 packetserver_subnetmaskIPaddrd = 0; //Default gateway IP to use?
 byte packetserver_hostsubnetmaskIP = 0; //Gotten a default gateway IP?
 byte packetserver_hostsubnetmaskIPaddr[4] = { 0,0,0,0 }; //Default gateway IP to use?
+char packetserver_hostsubnetmaskIPstr[256] = ""; //Static IP, string format
 uint_32 packetserver_hostsubnetmaskIPaddrd = 0; //Default gateway IP to use?
 byte packetserver_broadcastIP[4] = { 0xFF,0xFF,0xFF,0xFF }; //Broadcast IP to use?
 byte packetserver_usedefaultStaticIP = 0; //Use static IP?
