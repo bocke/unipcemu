@@ -375,7 +375,7 @@ typedef struct
 	word connectionnumber; //The number of this entry in the list!
 	
 	//ARP request support for sending!
-	TickHolder ARPtimer;
+	TicksHolder ARPtimer;
 	byte ARPrequeststatus; //0=None, 1=Requesting, 2=Result loaded.
 	byte ARPrequestIP[4]; //What was requested!
 	byte ARPrequestresult[6]; //What was the result!
@@ -1432,7 +1432,7 @@ void fetchpackets_pcap() { //Handle any packets to process!
 								if ((SDL_SwapBE16(ARPpacket.htype) == 2) && (ARPpacket.ptype == SDL_SwapBE16(0x0800)) && (ARPpacket.hlen == 6) && (ARPpacket.plen == 4) && (SDL_SwapBE16(ARPpacket.oper) == 2)) //Valid reply received?
 								{
 									memcpy(&ARPIP.addressnetworkorderb, &ARPpacket.SPA, 4); //What is requested?
-									if (memcmp(&ARPIP.adressnetworkorderb,&connectedclient->ARPrequestIP,4)) //Match found?
+									if (memcmp(&ARPIP.addressnetworkorderb,&connectedclient->ARPrequestIP,4)) //Match found?
 									{
 										memcpy(&connectedclient->ARPrequestresult,&ARPpacket.SHA,6); //Where to send: the ARP MAC address!
 										connectedclient->ARPrequeststatus = 2; //Result gotten!
@@ -1565,6 +1565,7 @@ byte sendpkt_pcap(PacketServer_clientp connectedclient, uint8_t* src, uint16_t l
 	byte* packet;
 	byte *ourip;
 	byte macrequest[6]; //Dummy NULL field to request ARP!
+	byte *arppacketc;
 	if (pcap_enabled) //Enabled?
 	{
 		if (pcap_enabled == 2) //Loopback?
@@ -1602,7 +1603,7 @@ byte sendpkt_pcap(PacketServer_clientp connectedclient, uint8_t* src, uint16_t l
 						memcpy(&dstip, &src[sizeof(ethernetheader.data) + 16], 4); //The IP address!
 						if (((dstip&packetserver_subnetmaskIPaddrd)==packetserver_defaultgatewayIPaddrd) && packetserver_defaultgatewayIPaddrd) //Local network destination?
 						{
-							memcpy(&src, &maclocal, 6); //Send to ourselves for now!
+							memcpy(src, &maclocal, 6); //Send to ourselves for now!
 						}
 						else if (((dstip&packetserver_hostsubnetmaskIPaddrd)==packetserver_defaultgatewayIPaddrd) && packetserver_defaultgatewayIPaddrd) //Host network destination?
 						{
@@ -1633,23 +1634,23 @@ byte sendpkt_pcap(PacketServer_clientp connectedclient, uint8_t* src, uint16_t l
 									{
 										connectedclient->ARPrequeststatus = 0; //Stop waiting for it!
 										unlock(LOCK_PCAP);
-										memcpy(&src,&packetserver_gatewayMAC),6); //ARP failed! Send to the default gateway instead!
+										memcpy(src,&packetserver_gatewayMAC,6); //ARP failed! Send to the default gateway instead!
 									}
 								}
 							}
 							else //New request?
 							{
 								startnewARPrequest:
-								initTicksHolder(connectedclient->ARPtimer);
+								initTicksHolder(&connectedclient->ARPtimer);
 								getnspassed(&connectedclient->ARPtimer); //Start timing!
 								//Send a request!
-								memcpy(&connectedclient->ARPrequestIP,dstip,4); //What ARP reply to wait for!
+								memcpy(&connectedclient->ARPrequestIP,&dstip,4); //What ARP reply to wait for!
 								connectedclient->ARPrequeststatus = 1; //Start waiting for it!
 								ourip = ((connectedclient->packetserver_slipprotocol == 3) && (!connectedclient->packetserver_slipprotocol_pppoe) && IPCP_OPEN) ? &connectedclient->ipcp_ipaddress[PPP_RECVCONF][0] : &connectedclient->packetserver_staticIP[0]; //Our IP to use!
 								arppacketc = zalloc(60,"MODEM_PACKET",NULL); //Allocate a reply of the very same length!
 								if (arppacketc==NULL) //Skip if unable!
 								{
-									unlock(LOCK_PCAP)
+									unlock(LOCK_PCAP);
 									return 0; //Pending!
 								}
 								//It's for us, send a response!
@@ -1661,9 +1662,9 @@ byte sendpkt_pcap(PacketServer_clientp connectedclient, uint8_t* src, uint16_t l
 								ARPresponse.oper = SDL_SwapBE16(1); //Request!
 								memset(&macrequest,0,sizeof(macrequest)); //Requesting this: zeroed!
 								memcpy(&ARPresponse.THA, &macrequest, 6); //To the broadcast MAC!
-								memcpy(&ARPresponse.TPA, &dstIP, 4); //Destination IP!
+								memcpy(&ARPresponse.TPA, &dstip, 4); //Destination IP!
 								memcpy(&ARPresponse.SHA, &maclocal, 6); //Our MAC address!
-								memcpy(&ARPresponse.SPA, &ourip, 4); //Our IP!
+								memcpy(&ARPresponse.SPA, ourip, 4); //Our IP!
 								//Construct the ethernet header!
 								memcpy(&arppacketc[0xE], &ARPresponse, 28); //Paste the response in the packet we're handling (reuse space)!
 								//Make sure that the room in between the ARP response and ethernet header stays zeroed.
