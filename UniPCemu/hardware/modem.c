@@ -217,6 +217,9 @@ byte packetserver_NBNS2IPaddr[4] = { 0,0,0,0 }; //Default gateway IP to use?
 byte packetserver_subnetmaskIP = 0; //Gotten a default gateway IP?
 byte packetserver_subnetmaskIPaddr[4] = { 0,0,0,0 }; //Default gateway IP to use?
 uint_32 packetserver_subnetmaskIPaddrd = 0; //Default gateway IP to use?
+byte packetserver_hostsubnetmaskIP = 0; //Gotten a default gateway IP?
+byte packetserver_hostsubnetmaskIPaddr[4] = { 0,0,0,0 }; //Default gateway IP to use?
+uint_32 packetserver_hostsubnetmaskIPaddrd = 0; //Default gateway IP to use?
 byte packetserver_broadcastIP[4] = { 0xFF,0xFF,0xFF,0xFF }; //Broadcast IP to use?
 byte packetserver_usedefaultStaticIP = 0; //Use static IP?
 char packetserver_defaultstaticIPstr[256] = ""; //Static IP, string format
@@ -1018,10 +1021,34 @@ void initPcap() {
 						if (*p == '\0') //EOS?
 						{
 							//Automatic port?
-							snprintf(packetserver_subnetmaskIPstr, sizeof(packetserver_NBNS1IPstr), "%u.%u.%u.%u", IPnumbers[0], IPnumbers[1], IPnumbers[2], IPnumbers[3]); //Formulate the address!
+							snprintf(packetserver_subnetmaskIPstr, sizeof(packetserver_subnetmaskIPstr), "%u.%u.%u.%u", IPnumbers[0], IPnumbers[1], IPnumbers[2], IPnumbers[3]); //Formulate the address!
 							memcpy(&packetserver_subnetmaskIPaddr, &IPnumbers, 4); //Set read IP!
 							memcpy(&packetserver_subnetmaskIPaddrd, &IPnumbers, 4); //Set read IP!
 							packetserver_subnetmaskIP = 1; //Static IP set!
+						}
+					}
+				}
+			}
+		}
+	}
+	if (safestrlen(&BIOS_Settings.ethernetserver_settings.hostsubnetmaskIPaddress[0], 256) >= 12) //Valid length to convert IP addresses?
+	{
+		p = &BIOS_Settings.ethernetserver_settings.hostsubnetmaskIPaddress[0]; //For scanning the IP!
+		if (readIPnumber(&p, &IPnumbers[0]))
+		{
+			if (readIPnumber(&p, &IPnumbers[1]))
+			{
+				if (readIPnumber(&p, &IPnumbers[2]))
+				{
+					if (readIPnumber(&p, &IPnumbers[3]))
+					{
+						if (*p == '\0') //EOS?
+						{
+							//Automatic port?
+							snprintf(packetserver_hostsubnetmaskIPstr, sizeof(packetserver_hostsubnetmaskIPstr), "%u.%u.%u.%u", IPnumbers[0], IPnumbers[1], IPnumbers[2], IPnumbers[3]); //Formulate the address!
+							memcpy(&packetserver_hostsubnetmaskIPaddr, &IPnumbers, 4); //Set read IP!
+							memcpy(&packetserver_hostsubnetmaskIPaddrd, &IPnumbers, 4); //Set read IP!
+							packetserver_hostsubnetmaskIP = 1; //Static IP set!
 						}
 					}
 				}
@@ -1043,7 +1070,9 @@ void initPcap() {
 	memset(&packetserver_NBNS2IPaddr, 0, sizeof(packetserver_NBNS2IPaddr));
 	packetserver_NBNS2IP = 0; //No gateway IP!
 	memset(&packetserver_subnetmaskIPaddr, 0, sizeof(packetserver_subnetmaskIPaddr));
-	packetserversubnetmaskIP = 0; //No gateway IP!
+	packetserver_subnetmaskIP = 0; //No gateway IP!
+	memset(&packetserver_hostsubnetmaskIPaddr, 0, sizeof(packetserver_hostsubnetmaskIPaddr));
+	packetserver_hostsubnetmaskIP = 0; //No gateway IP!
 #endif
 
 	dolog("ethernetcard","Receiver MAC address: %02x:%02x:%02x:%02x:%02x:%02x",maclocal[0],maclocal[1],maclocal[2],maclocal[3],maclocal[4],maclocal[5]);
