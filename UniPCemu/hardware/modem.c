@@ -1669,9 +1669,9 @@ byte sendpkt_pcap(PacketServer_clientp connectedclient, uint8_t* src, uint16_t l
 								memcpy(&arppacketc[0xE], &ARPresponse, 28); //Paste the response in the packet we're handling (reuse space)!
 								//Make sure that the room in between the ARP response and ethernet header stays zeroed.
 								//Now, construct the ethernet header!
-								memcpy(&ppptransmitheader, &ethernetheader, sizeof(ethernetheader.data)); //Copy the header!
 								memcpy(&ppptransmitheader.src, &maclocal, 6); //From us!
 								memcpy(&ppptransmitheader.dst, &packetserver_broadcastMAC, 6); //A broadcast!
+								ppptransmitheader.type = SDL_SwapBE16(0x0806); //ARP!
 								memcpy(&arppacketc[0], ppptransmitheader.data, 0xE); //The ethernet header!
 								//Now, the packet we've stored has become the packet to send back!
 								pcap_sendpacket(adhandle, arppacketc, 60); //Send the ARP response now!
