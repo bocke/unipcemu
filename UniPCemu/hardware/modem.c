@@ -205,7 +205,7 @@ byte packetserver_gatewayMAC[6]; //Gateway MAC to send to!
 byte packetserver_defaultstaticIP[4] = { 0,0,0,0 }; //Static IP to use?
 byte packetserver_defaultgatewayIP = 0; //Gotten a default gateway IP?
 byte packetserver_defaultgatewayIPaddr[4] = { 0,0,0,0 }; //Default gateway IP to use?
-byte packetserver_defaultgatewayIPaddrd = 0; //Default gateway IP to use?
+uint_32 packetserver_defaultgatewayIPaddrd = 0; //Default gateway IP to use?
 byte packetserver_DNS1IP = 0; //Gotten a default gateway IP?
 byte packetserver_DNS1IPaddr[4] = { 0,0,0,0 }; //Default gateway IP to use?
 byte packetserver_DNS2IP = 0; //Gotten a default gateway IP?
