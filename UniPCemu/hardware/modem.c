@@ -1432,12 +1432,20 @@ void fetchpackets_pcap() { //Handle any packets to process!
 								if ((SDL_SwapBE16(ARPpacket.htype) == 1) && (ARPpacket.ptype == SDL_SwapBE16(0x0800)) && (ARPpacket.hlen == 6) && (ARPpacket.plen == 4) && (SDL_SwapBE16(ARPpacket.oper) == 2)) //Valid reply received?
 								{
 									memcpy(&ARPIP.addressnetworkorderb, &ARPpacket.SPA, 4); //What is requested?
-									if (memcmp(&ARPIP.addressnetworkorderb,&connectedclient->ARPrequestIP,4)) //Match found?
+									if (memcmp(&ARPIP.addressnetworkorderb, &connectedclient->ARPrequestIP, 4) == 0) //Match found?
 									{
-										memcpy(&connectedclient->ARPrequestresult,&ARPpacket.SHA,6); //Where to send: the ARP MAC address!
+										memcpy(&connectedclient->ARPrequestresult, &ARPpacket.SHA, 6); //Where to send: the ARP MAC address!
 										connectedclient->ARPrequeststatus = 2; //Result gotten!
 										getnspassed(&connectedclient->ARPtimer); //Reset the timer to now count cached time instead of waiting for response time!
 									}
+									else
+									{
+										continue;
+									}
+								}
+								else
+								{
+									continue;
 								}
 							}
 							if ((SDL_SwapBE16(ARPpacket.htype) == 1) && (ARPpacket.ptype == SDL_SwapBE16(0x0800)) && (ARPpacket.hlen == 6) && (ARPpacket.plen == 4) && (SDL_SwapBE16(ARPpacket.oper) == 1))
