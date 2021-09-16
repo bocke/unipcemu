@@ -1627,10 +1627,8 @@ byte sendpkt_pcap(PacketServer_clientp connectedclient, uint8_t* src, uint16_t l
 									{
 										connectedclient->ARPrequeststatus = 0; //Stop waiting for it!
 										unlock(LOCK_PCAP);
-										return 1; //ARP failed! Abort sending completely!
+										memcpy(&src,&packetserver_gatewayMAC),6); //ARP failed! Send to the default gateway instead!
 									}
-									unlock(LOCK_PCAP);
-									return 0; //Pending!
 								}
 							}
 							else //New request?
@@ -1643,7 +1641,11 @@ byte sendpkt_pcap(PacketServer_clientp connectedclient, uint8_t* src, uint16_t l
 								connectedclient->ARPrequeststatus = 1; //Start waiting for it!
 								ourip = ((connectedclient->packetserver_slipprotocol == 3) && (!connectedclient->packetserver_slipprotocol_pppoe) && IPCP_OPEN) ? &connectedclient->ipcp_ipaddress[PPP_RECVCONF][0] : &connectedclient->packetserver_staticIP[0]; //Our IP to use!
 								arppacketc = zalloc(pcaplength,"MODEM_PACKET",NULL); //Allocate a reply of the very same length!
-								if (arppacketc==NULL) continue; //Skip if unable!
+								if (arppacketc==NULL) //Skip if unable!
+								{
+									unlock(LOCK_PCAP)
+									return 0; //Pending!
+								}
 								//It's for us, send a response!
 								//Construct the ARP reply packet!
 								ARPresponse.htype = 1;
