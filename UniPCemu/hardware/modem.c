@@ -1560,7 +1560,6 @@ byte sendpkt_pcap(PacketServer_clientp connectedclient, uint8_t* src, uint16_t l
 #if defined(PACKETSERVER_ENABLED) && !defined(NOPCAP)
 	ETHERNETHEADER ethernetheader; //The header to inspect!
 	ARPpackettype ARPresponse; //For analyzing and responding to ARP requests!
-	byte skippacket; //Skipping the packet as unusable?
 	ETHERNETHEADER ppptransmitheader;	uint_32 dstip;
 	byte* packet;
 	byte *ourip;
@@ -10922,7 +10921,6 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 															{
 																goto invalidpacket; //Invalid packet!
 															}
-															handleserverARP: //Server ARP or client ARP?
 															//It's for us, send a response!
 															//Construct the ARP packet!
 															ARPresponse.htype = ARPpacket.htype;
