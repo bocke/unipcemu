@@ -1612,7 +1612,7 @@ byte sendpkt_pcap(PacketServer_clientp connectedclient, uint8_t* src, uint16_t l
 								}
 								else //Pending?
 								{
-									if (getnspassed_k(&connectedclient->ARPtimer)>=) //Timeout?
+									if (getnspassed_k(&connectedclient->ARPtimer)>=500000000) //Timeout 500ms?
 									{
 										connectedclient->ARPrequeststatus = 0; //Stop waiting for it!
 										unlock(LOCK_PCAP);
