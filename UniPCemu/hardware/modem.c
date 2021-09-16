@@ -1436,6 +1436,7 @@ void fetchpackets_pcap() { //Handle any packets to process!
 									{
 										memcpy(&connectedclient->ARPrequestresult,&ARPpacket.SHA,6); //Where to send: the ARP MAC address!
 										connectedclient->ARPrequeststatus = 2; //Result gotten!
+										getnspassed(&connectedclient->ARPtimer); //Reset the timer to now count cached time instead of waiting for response time!
 									}
 								}
 							}
@@ -1613,6 +1614,11 @@ byte sendpkt_pcap(PacketServer_clientp connectedclient, uint8_t* src, uint16_t l
 								{
 									if (memcmp(&dstip,&connectedclient->ARPrequestIP,4)) //Match found?
 									{
+										if (getnspassed_k(&connectedclient->ARPtimer)>=30000000000.0f) //Timeout 30 seconds?
+										{
+											connectedclient->ARPrequeststatus = 0; //Timeout the cache itself!
+											goto startnewARPrequest; //Refresh!
+										}
 										memcpy(src,&connectedclient->ARPrequestresult,6); //Where to send: the ARP MAC address!
 										//Don't clear the request status: perform this like a buffering of most recently resulted MAC address!
 									}
