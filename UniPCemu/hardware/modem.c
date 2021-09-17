@@ -243,6 +243,8 @@ typedef struct
 {
 	uint16_t pktlen;
 	byte *packet; //Current packet received!
+	uint16_t IPpktlen;
+	byte *IPpacket; //Current packet received!
 	byte *packetserver_transmitbuffer; //When sending a packet, this contains the currently built decoded data, which is already decoded!
 	uint_32 packetserver_bytesleft;
 	uint_32 packetserver_transmitlength; //How much has been built?
@@ -379,6 +381,7 @@ typedef struct
 	byte ARPrequeststatus; //0=None, 1=Requesting, 2=Result loaded.
 	byte ARPrequestIP[4]; //What was requested!
 	byte ARPrequestresult[6]; //What was the result!
+	byte roundrobinpackettype; //IP/Other packet type switcher!
 } PacketServer_client, *PacketServer_clientp;
 
 PacketServer_client Packetserver_clients[0x100]; //Up to 100 clients!
@@ -470,7 +473,7 @@ struct {
 #endif
 	uint16_t pktlen;
 	byte *packet; //Current packet received!
-} net, loopback;
+} net, IPnet, loopback;
 
 #include "headers/packed.h"
 typedef union PACKED
@@ -1530,7 +1533,7 @@ void fetchpackets_pcap() { //Handle any packets to process!
 						}
 					}
 					//Valid packet! Receive it!
-					if (connectedclient->packet) //Client isn't ready to receive it?
+					if ((ethernetheader.type==SDL_SwapBE16(0x0800))?connectedclient->IPpacket:connectedclient->packet) //Client isn't ready to receive it?
 					{
 						unlock(LOCK_PCAP);
 						goto waitforclientready; //Wait for the client to become ready!
@@ -1558,14 +1561,29 @@ void fetchpackets_pcap() { //Handle any packets to process!
 
 			lock(LOCK_PCAP);
 			//Try and receive the packet!
-			if ((net.packet == NULL) && (pcap_receiverstate == 1)) //Can we receive anything and receiver is loaded?
+			if ((((ethernetheader.type==SDL_SwapBE16(0x0800))?IPnet.packet:net.packet) == NULL) && (pcap_receiverstate == 1)) //Can we receive anything and receiver is loaded?
 			{
 				//Packet acnowledged for clients to receive!
-				net.packet = zalloc(pcaplength, "MODEM_PACKET", NULL);
-				if (net.packet) //Allocated?
+				if (ethernetheader.type==SDL_SwapBE16(0x0800)) //IPv4?
 				{
-					memcpy(net.packet, &pktdata[0], pcaplength);
-					net.pktlen = pcaplength;
+					IPnet.packet = zalloc(pcaplength, "MODEM_PACKET", NULL);
+				}
+				else //Other?
+				{
+					net.packet = zalloc(pcaplength, "MODEM_PACKET", NULL);
+				}
+				if ((ethernetheader.type==SDL_SwapBE16(0x0800))?IPnet.packet:net.packet) //Allocated?
+				{
+					if (ethernetheader.type==SDL_SwapBE16(0x0800)) //IPv4?
+					{
+						memcpy(net.packet, &pktdata[0], pcaplength);
+						net.pktlen = pcaplength;
+					}
+					else //Other?
+					{
+						memcpy(IPnet.packet, &pktdata[0], pcaplength);
+						IPnet.pktlen = pcaplength;
+					}
 					if (pcap_verbose) {
 						dolog("ethernetcard", "Received packet of %u bytes.", net.pktlen);
 					}
@@ -1741,6 +1759,10 @@ void termPcap()
 	{
 		freez((void **)&net.packet,net.pktlen,"MODEM_PACKET"); //Cleanup!
 	}
+	if (IPnet.packet)
+	{
+		freez((void **)&IPnet.packet,IPnet.pktlen,"MODEM_PACKET"); //Cleanup!
+	}
 	unlock(LOCK_PCAP);
 	PacketServer_clientp client;
 	for (clientnumber=0;clientnumber<NUMITEMS(Packetserver_clients);++clientnumber) //Process all clients!
@@ -1862,6 +1884,7 @@ void initPacketServer(PacketServer_clientp client) //Initialize the packet serve
 	client->packetserver_slipprotocol = 0; //Initialize the protocol to the default value, which is unused!
 	client->lastreceivedCRLFinput = 0; //Reset last received input to none of CR and LF!
 	client->ARPrequeststatus = 0; //No request loaded yet.
+	connectedclient->roundrobinpackettype = 0; //Initialize the round-robin packet receiver!
 }
 
 byte packetserver_authenticate(PacketServer_clientp client)
@@ -10081,7 +10104,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 }
 
 //result: 0 to discard the packet. 1 to keep it pending in this stage until we're ready to send it to the client.
-byte PPP_parseReceivedPacketForClient(PacketServer_clientp connectedclient)
+byte PPP_parseReceivedPacketForClient(byte protocol, PacketServer_clientp connectedclient)
 {
 	ETHERNETHEADER ethernetheader;
 	IPXPACKETHEADER ipxheader;
@@ -10094,12 +10117,12 @@ byte PPP_parseReceivedPacketForClient(PacketServer_clientp connectedclient)
 	//This is supposed to check the packet, parse it and send packets to the connected client in response when it's able to!
 	if (LCP_NCP) //Fully authenticated and logged in?
 	{
-		if (connectedclient->pktlen > sizeof(ethernetheader.data)) //Length might be fine?
+		if ((protocol?connectedclient->IPpktlen:connectedclient->pktlen) > sizeof(ethernetheader.data)) //Length might be fine?
 		{
 			result = 1; //Default: pending!
 
 			//TODO: Receiving IP packets. Ignore for now.
-			memcpy(&ethernetheader.data, connectedclient->packet, sizeof(ethernetheader.data)); //Take a look at the ethernet header!
+			memcpy(&ethernetheader.data, protocol?connectedclient->IPpacket:connectedclient->packet, sizeof(ethernetheader.data)); //Take a look at the ethernet header!
 			if ((ethernetheader.type != SDL_SwapBE16(0x8137)) && (ethernetheader.type != SDL_SwapBE16(0x0800))) //We're not an IPX or IP packet!
 			{
 				return 0; //Unsupported packet type, discard!
@@ -10201,11 +10224,11 @@ byte PPP_parseReceivedPacketForClient(PacketServer_clientp connectedclient)
 				{
 					return 0; //Handled, discard!
 				}
-				if (connectedclient->pktlen < (sizeof(ethernetheader.data) + 16 + 4)) //Not enough length?
+				if (connectedclient->IPpktlen < (sizeof(ethernetheader.data) + 16 + 4)) //Not enough length?
 				{
 					return 0; //Incorrect packet: discard!
 				}
-				if ((memcmp(&connectedclient->packet[sizeof(ethernetheader.data) + 16], &connectedclient->ipcp_ipaddress[PPP_RECVCONF], 4) != 0) && (memcmp(&connectedclient->packet[sizeof(ethernetheader.data) + 16], &packetserver_broadcastIP, 4) != 0)) //Static IP mismatch?
+				if ((memcmp(&connectedclient->IPpacket[sizeof(ethernetheader.data) + 16], &connectedclient->ipcp_ipaddress[PPP_RECVCONF], 4) != 0) && (memcmp(&connectedclient->IPpacket[sizeof(ethernetheader.data) + 16], &packetserver_broadcastIP, 4) != 0)) //Static IP mismatch?
 				{
 					return 0; //Invalid packet!
 				}
@@ -10234,7 +10257,7 @@ byte PPP_parseReceivedPacketForClient(PacketServer_clientp connectedclient)
 			{
 				goto ppp_finishpacketbufferqueue_ppprecv;
 			}
-			createPPPstream(&pppstream, &connectedclient->packet[sizeof(ethernetheader.data)], connectedclient->pktlen - sizeof(ethernetheader.data)); //Create a stream out of the packet!
+			createPPPstream(&pppstream, (ethernetheader.type == SDL_SwapBE16(0x0800))?&connectedclient->IPpacket[sizeof(ethernetheader.data)]:&connectedclient->packet[sizeof(ethernetheader.data)], connectedclient->pktlen - sizeof(ethernetheader.data)); //Create a stream out of the packet!
 			//Now, the received packet itself!
 			for (; PPP_consumeStream(&pppstream, &datab);) //The information field itself follows!
 			{
@@ -10571,6 +10594,10 @@ void packetserver_initStartPPP(PacketServer_clientp connectedclient, byte autode
 void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 {
 	byte *LCPbuf;
+	byte handledreceived; //Receiving status for the current client packet type!
+	byte **pktsrc; //source of the packet to receive!
+	uint16_t *pktlen; //length of the packet to receive
+	byte pkttype; //type of the packet we're trying to receive
 	uint_32 ppp_transmitasynccontrolcharactermap;
 	ARPpackettype ARPpacket, ARPresponse; //ARP packet to send/receive!
 	PacketServer_clientp connectedclient, tempclient;
@@ -10822,22 +10849,64 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 						net.packet = NULL; //Discard if failed to deallocate!
 						net.pktlen = 0; //Not allocated!
 					}
+					if (IPnet.packet) //Anything to receive?
+					{
+						//Move the packet to all available clients!
+						for (connectedclient = Packetserver_allocatedclients; connectedclient; connectedclient = connectedclient->next) //Check all connected clients!
+						{
+							if ((connectedclient->IPpacket == NULL) && (!connectedclient->IPpacket)) //Ready to receive?
+							{
+								connectedclient->IPpacket = zalloc(IPnet.pktlen, "SERVER_PACKET", NULL); //Allocate a packet to receive!
+								if (connectedclient->IPpacket) //Allocated?
+								{
+									connectedclient->IPpktlen = IPnet.pktlen; //Save the length of the packet!
+									memcpy(connectedclient->IPpacket, IPnet.packet, IPnet.pktlen); //Copy the packet to the active buffer!
+								}
+								if (!connectedclient->packetserver_slipprotocol_pppoe && (connectedclient->packetserver_slipprotocol == 3)) //Not suitable for consumption by the client yet?
+								{
+									//This is handled by the protocol itself! It has it's own packet handling code!
+								}
+								else //Packet ready for sending to the client!
+								{
+									connectedclient->PPP_packetreadyforsending = 1; //Ready to send to client always!
+									connectedclient->PPP_packetpendingforsending = 0; //Not pending for sending by default!
+								}
+							}
+						}
+						//We've received the packets on all clients, allow the next one to arrive!
+						freez((void**)&IPnet.packet, IPnet.pktlen, "MODEM_PACKET");
+						IPnet.packet = NULL; //Discard if failed to deallocate!
+						IPnet.pktlen = 0; //Not allocated!
+					}
 					unlock(LOCK_PCAP);
 					for (connectedclient = Packetserver_allocatedclients; connectedclient; connectedclient = connectedclient->next) //Check all connected clients!
 					{
 						if (connectedclient->used == 0) continue; //Skip unused clients!
+						pkttype = connectedclient->roundrobinpackettype; //First type to receive: generic packet!
+						handledreceived = 0; //Default: NOP!
+						retrypkttype:
+						if (pkttype) //IPv4?
+						{
+							pktsrc = &connectedclient->IPpacket; //Packet to receive
+							pktlen = &connectedclient->IPpktlen; //Packet length to receive
+						}
+						else //Other?
+						{
+							pktsrc = &connectedclient->packet; //Packet to receive
+							pktlen = &connectedclient->pktlen; //Packet length to receive
+						}
 						//Handle packet server packet data transfers into the inputdatabuffer/outputbuffer to the network!
 						if (modem.blockoutputbuffer[connectedclient->connectionnumber]) //Properly allocated?
 						{
-							if (connectedclient->packet || ((connectedclient->packetserver_slipprotocol == 3) && (!connectedclient->packetserver_slipprotocol_pppoe))) //Packet has been received or processing? Try to start transmit it!
+							if ((*pktsrc) || ((connectedclient->packetserver_slipprotocol == 3) && (!connectedclient->packetserver_slipprotocol_pppoe))) //Packet has been received or processing? Try to start transmit it!
 							{
 								if (fifobuffer_freesize(modem.blockoutputbuffer[connectedclient->connectionnumber]) == fifobuffer_size(modem.blockoutputbuffer[connectedclient->connectionnumber])) //Valid to produce more data?
 								{
-									if ((((connectedclient->packetserver_packetpos == 0) && (connectedclient->packetserver_packetack == 0)) || ((connectedclient->packetserver_slipprotocol == 3) && (!connectedclient->packetserver_slipprotocol_pppoe))) && (connectedclient->packet)) //New packet?
+									if ((((connectedclient->packetserver_packetpos == 0) && (connectedclient->packetserver_packetack == 0)) || ((connectedclient->packetserver_slipprotocol == 3) && (!connectedclient->packetserver_slipprotocol_pppoe))) && ((*pktsrc))) //New packet?
 									{
-										if (connectedclient->pktlen >= (sizeof(ethernetheader.data) + ((connectedclient->packetserver_slipprotocol!=3)?20:(connectedclient->packetserver_slipprotocol_pppoe?7:1)))) //Length OK(at least one byte of data and complete IP header) or the PPP packet size (7 extra bytes for PPPOE, 1 byte minimal for PPP)?
+										if (*pktlen >= (sizeof(ethernetheader.data) + ((connectedclient->packetserver_slipprotocol!=3)?20:(connectedclient->packetserver_slipprotocol_pppoe?7:1)))) //Length OK(at least one byte of data and complete IP header) or the PPP packet size (7 extra bytes for PPPOE, 1 byte minimal for PPP)?
 										{
-											memcpy(&ethernetheader.data, connectedclient->packet, sizeof(ethernetheader.data)); //Copy to the client buffer for inspection!
+											memcpy(&ethernetheader.data, (*pktsrc), sizeof(ethernetheader.data)); //Copy to the client buffer for inspection!
 											//Next, check for supported packet types!
 											if (connectedclient->packetserver_slipprotocol == 3) //PPP protocol used?
 											{
@@ -10858,7 +10927,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 											//Now, check the normal receive parameters!
 											if (connectedclient->packetserver_useStaticIP && (headertype == SDL_SwapBE16(0x0800)) && (((connectedclient->packetserver_slipprotocol == 1)) || ((connectedclient->packetserver_slipprotocol == 3) && (!connectedclient->packetserver_slipprotocol_pppoe) && (connectedclient->ppp_IPCPstatus[PPP_RECVCONF])))) //IP filter to apply for IPv4 connections and PPPOE connections?
 											{
-												if ((memcmp(&connectedclient->packet[sizeof(ethernetheader.data) + 16], &connectedclient->packetserver_staticIP, 4) != 0) && (memcmp(&connectedclient->packet[sizeof(ethernetheader.data) + 16], &packetserver_broadcastIP, 4) != 0)) //Static IP mismatch?
+												if ((memcmp(&(*pktsrc)[sizeof(ethernetheader.data) + 16], &connectedclient->packetserver_staticIP, 4) != 0) && (memcmp(&(*pktsrc)[sizeof(ethernetheader.data) + 16], &packetserver_broadcastIP, 4) != 0)) //Static IP mismatch?
 												{
 													goto invalidpacket; //Invalid packet!
 												}
@@ -10948,12 +11017,12 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 													) //IPv4 protocol used?
 												{
 													//Always handle ARP packets, if we're IPv4 type!
-													if (connectedclient->pktlen != (28 + sizeof(ethernetheader.data))) //Unsupported length?
+													if (*pktlen != (28 + sizeof(ethernetheader.data))) //Unsupported length?
 													{
 														goto invalidpacket; //Invalid packet!
 													}
 													//TODO: Check if it's a request for us. If so, reply with our IPv4 address!
-													memcpy(&ARPpacket,&connectedclient->packet[sizeof(ethernetheader.data)],28); //Retrieve the ARP packet!
+													memcpy(&ARPpacket,&(*pktsrc)[sizeof(ethernetheader.data)],28); //Retrieve the ARP packet!
 													if ((SDL_SwapBE16(ARPpacket.htype)==1) && (ARPpacket.ptype==SDL_SwapBE16(0x0800)) && (ARPpacket.hlen==6) && (ARPpacket.plen==4) && (SDL_SwapBE16(ARPpacket.oper)==1))
 													{
 														//IPv4 ARP request
@@ -10976,14 +11045,14 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 															memcpy(&ARPresponse.SHA,&maclocal,6); //Our MAC address!
 															memcpy(&ARPresponse.SPA,&ARPpacket.TPA,4); //Our IP!
 															//Construct the ethernet header!
-															memcpy(&connectedclient->packet[sizeof(ethernetheader.data)],&ARPresponse,28); //Paste the response in the packet we're handling (reuse space)!
+															memcpy(&(*pktsrc)[sizeof(ethernetheader.data)],&ARPresponse,28); //Paste the response in the packet we're handling (reuse space)!
 															//Now, construct the ethernet header!
 															memcpy(&ppptransmitheader,&ethernetheader,sizeof(ethernetheader.data)); //Copy the header!
 															memcpy(&ppptransmitheader.src,&maclocal,6); //From us!
 															memcpy(&ppptransmitheader.dst,&ARPpacket.SHA,6); //To the requester!
-															memcpy(&connectedclient->packet[0],ppptransmitheader.data,sizeof(ppptransmitheader.data)); //The ethernet header!
+															memcpy(&(*pktsrc)[0],ppptransmitheader.data,sizeof(ppptransmitheader.data)); //The ethernet header!
 															//Now, the packet we've stored has become the packet to send back!
-															if (sendpkt_pcap(connectedclient,connectedclient->packet, (28 + 0xE))) //Send the response back to the originator!
+															if (sendpkt_pcap(connectedclient,(*pktsrc), (28 + 0xE))) //Send the response back to the originator!
 															{
 																//Discard the received packet, so nobody else handles it too!
 																goto invalidpacket; //Finish up: we're parsed!
@@ -11019,18 +11088,18 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 														{
 															goto invalidpacket; //Invalid packet: not ready yet!
 														}
-														if (connectedclient->packet[sizeof(ethernetheader.data) + 0] != 0x11) //Invalid VER/type?
+														if ((*pktsrc)[sizeof(ethernetheader.data) + 0] != 0x11) //Invalid VER/type?
 														{
 															goto invalidpacket; //Invalid packet!
 														}
-														if (connectedclient->packet[sizeof(ethernetheader.data) + 1] != 0) //Invalid Type?
+														if ((*pktsrc)[sizeof(ethernetheader.data) + 1] != 0) //Invalid Type?
 														{
 															goto invalidpacket; //Invalid packet!
 														}
 														word length, sessionid, requiredsessionid, pppoe_protocol;
-														memcpy(&length, &connectedclient->packet[sizeof(ethernetheader.data) + 4], sizeof(length)); //The length field!
-														memcpy(&sessionid, &connectedclient->packet[sizeof(ethernetheader.data) + 2], sizeof(sessionid)); //The length field!
-														memcpy(&pppoe_protocol, &connectedclient->packet[sizeof(ethernetheader.data) + 6], sizeof(sessionid)); //The length field!
+														memcpy(&length, &(*pktsrc)[sizeof(ethernetheader.data) + 4], sizeof(length)); //The length field!
+														memcpy(&sessionid, &(*pktsrc)[sizeof(ethernetheader.data) + 2], sizeof(sessionid)); //The length field!
+														memcpy(&pppoe_protocol, &(*pktsrc)[sizeof(ethernetheader.data) + 6], sizeof(sessionid)); //The length field!
 														memcpy(&requiredsessionid, &connectedclient->pppoe_discovery_PADS.buffer[sizeof(ethernetheader.data) + 4], sizeof(requiredsessionid)); //The required session id field!
 														if (SDL_SwapBE16(length) < 4) //Invalid Length?
 														{
@@ -11045,11 +11114,11 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 															goto invalidpacket; //Invalid packet!
 														}
 														connectedclient->packetserver_packetpos = sizeof(ethernetheader.data) + 0x8; //Skip the ethernet header and give the raw IP data!
-														connectedclient->packetserver_bytesleft = connectedclient->pktlen - connectedclient->packetserver_packetpos; //How much is left to send?
+														connectedclient->packetserver_bytesleft = *pktlen - connectedclient->packetserver_packetpos; //How much is left to send?
 													}
 													else //Filter the packet depending on the packet type we're receiving!
 													{
-														if (PPP_parseReceivedPacketForClient(connectedclient)) //The packet is pending?
+														if (PPP_parseReceivedPacketForClient((ethernetheader.type==SDL_SwapBE16(0x0800))?1:0,connectedclient)) //The packet is pending?
 														{
 															connectedclient->PPP_packetpendingforsending = 1; //Not ready, pending still!
 														}
@@ -11063,7 +11132,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 												else //SLIP?
 												{
 													connectedclient->packetserver_packetpos = sizeof(ethernetheader.data); //Skip the ethernet header and give the raw IP data!
-													connectedclient->packetserver_bytesleft = MIN(connectedclient->pktlen - connectedclient->packetserver_packetpos, SDL_SwapBE16(*((word*)&connectedclient->packet[sizeof(ethernetheader.data) + 2]))); //How much is left to send?
+													connectedclient->packetserver_bytesleft = MIN(*pktlen - connectedclient->packetserver_packetpos, SDL_SwapBE16(*((word*)&(*pktsrc)[sizeof(ethernetheader.data) + 2]))); //How much is left to send?
 												}
 											}
 											else //We're using the ethernet header protocol?
@@ -11071,15 +11140,16 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 												//else, we're using ethernet header protocol, so take the packet and start sending it to the client!
 												connectedclient->packetserver_packetack = 1; //We're acnowledging the packet, so start transferring it!
 												connectedclient->packetserver_packetpos = 0; //Use the ethernet header as well!
-												connectedclient->packetserver_bytesleft = connectedclient->pktlen; //Use the entire packet, unpatched!
+												connectedclient->packetserver_bytesleft = *pktlen; //Use the entire packet, unpatched!
 											}
 										}
 										else //Invalid length?
 										{
 										invalidpacket:
 											//Discard the invalid packet!
-											freez((void **)&connectedclient->packet, connectedclient->pktlen, "SERVER_PACKET"); //Release the packet to receive new packets again!
-											connectedclient->packet = NULL; //No packet!
+											handledreceived = 1; //We're received!
+											freez((void **)&(*pktsrc), *pktlen, "SERVER_PACKET"); //Release the packet to receive new packets again!
+											(*pktsrc) = NULL; //No packet!
 											if (!((((connectedclient->packetserver_slipprotocol == 3)) && (!connectedclient->packetserver_slipprotocol_pppoe)))) //Not PPP?
 											{
 												connectedclient->packetserver_packetpos = 0; //Reset packet position for the new packets!
@@ -11090,7 +11160,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 									skippacketreceiving:
 									if (connectedclient->packetserver_stage != PACKETSTAGE_PACKETS)
 									{
-										if (connectedclient->packet) //Still have a packet allocated to discard?
+										if ((*pktsrc)) //Still have a packet allocated to discard?
 										{
 											goto invalidpacket; //Discard the received packet!
 										}
@@ -11098,7 +11168,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 									}
 									if (
 										(
-											(connectedclient->packet && (!((connectedclient->packetserver_slipprotocol == 3) && (!connectedclient->packetserver_slipprotocol_pppoe)))) || //Direct packet to be received by the client in encrypted form?
+											((*pktsrc) && (!((connectedclient->packetserver_slipprotocol == 3) && (!connectedclient->packetserver_slipprotocol_pppoe)))) || //Direct packet to be received by the client in encrypted form?
 											((connectedclient->packetserver_slipprotocol == 3) && (!connectedclient->packetserver_slipprotocol_pppoe) && (connectedclient->ppp_response.size && connectedclient->ppp_response.buffer)) //Response ready for client in PPP form?
 										) //Packet might be ready for sending?
 										&& ( //Extra conditions for sending:
@@ -11126,7 +11196,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 											}
 											else //Normal packet that's sent?
 											{
-												datatotransmit = connectedclient->packet[connectedclient->packetserver_packetpos++]; //Read the data to construct!
+												datatotransmit = (*pktsrc)[connectedclient->packetserver_packetpos++]; //Read the data to construct!
 											}
 											if (connectedclient->packetserver_slipprotocol==3) //PPP?
 											{
@@ -11215,17 +11285,13 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 											{
 												writefifobuffer(modem.blockoutputbuffer[connectedclient->connectionnumber], SLIP_END); //END of frame!
 											}
-											freez((void **)&connectedclient->packet, connectedclient->pktlen, "SERVER_PACKET"); //Release the packet to receive new packets again!
-											connectedclient->packet = NULL; //Discard the packet anyway, no matter what!
+											freez((void **)pktsrc, *pktlen, "SERVER_PACKET"); //Release the packet to receive new packets again!
+											(*pktsrc) = NULL; //Discard the packet anyway, no matter what!
 											connectedclient->packetserver_packetpos = 0; //Reset packet position!
 											connectedclient->packetserver_packetack = 0; //Not acnowledged yet!
 										}
 									}
 								}
-							}
-							else
-							{
-								unlock(LOCK_PCAP); //Finished with pcap!
 							}
 						}
 
@@ -11652,7 +11718,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 									goto packetserver_autherror; //Disconnect the client: we can't help it!
 								}
 								lock(LOCK_PCAP);
-								if (connectedclient->packet) //Packet has been received before the timeout?
+								if ((*pktsrc)) //Packet has been received before the timeout?
 								{
 									if (0) //Gottten a DHCP packet?
 									{
@@ -11664,7 +11730,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 											//Save it in the storage!
 											for (currentpos = 0; currentpos < net.pktlen;) //Parse the entire packet!
 											{
-												if (!packetServerAddPacketBufferQueue(&connectedclient->DHCP_offerpacket, connectedclient->packet[currentpos++])) //Failed to save the packet?
+												if (!packetServerAddPacketBufferQueue(&connectedclient->DHCP_offerpacket, (*pktsrc)[currentpos++])) //Failed to save the packet?
 												{
 													goto packetserver_autherror; //Error out: disconnect!
 												}
@@ -11699,7 +11765,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 									goto packetserver_autherror; //Disconnect the client: we can't help it!
 								}
 								lock(LOCK_PCAP);
-								if (connectedclient->packet) //Packet has been received before the timeout?
+								if ((*pktsrc)) //Packet has been received before the timeout?
 								{
 									if (0) //Gottten a DHCP packet?
 									{
@@ -11716,7 +11782,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 											//Save it in the storage!
 											for (currentpos = 0; currentpos < net.pktlen;) //Parse the entire packet!
 											{
-												if (!packetServerAddPacketBufferQueue(&connectedclient->DHCP_offerpacket, connectedclient->packet[currentpos++])) //Failed to save the packet?
+												if (!packetServerAddPacketBufferQueue(&connectedclient->DHCP_offerpacket, (*pktsrc)[currentpos++])) //Failed to save the packet?
 												{
 													goto packetserver_autherror; //Error out: disconnect!
 												}
@@ -11751,7 +11817,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 									goto packetserver_autherror; //Disconnect the client: we can't help it!
 								}
 								lock(LOCK_PCAP);
-								if (connectedclient->packet) //Packet has been received before the timeout?
+								if ((*pktsrc)) //Packet has been received before the timeout?
 								{
 									if (0) //Gottten a DHCP packet?
 									{
@@ -11783,7 +11849,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 						if (connectedclient->packetserver_useStaticIP == 6) //Looking for the DHCP NACK?
 						{
 							lock(LOCK_PCAP);
-							if (connectedclient->packet) //Packet has been received before the timeout?
+							if ((*pktsrc)) //Packet has been received before the timeout?
 							{
 								if (0) //Gottten a DHCP packet?
 								{
@@ -11885,10 +11951,33 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 								}
 							}
 						}
+						sendoutputbuffer: //Send the output buffer to the client or other side, as required!
+						if ((handledreceived) || (!*pktsrc)) //Received a packet or nothing left pending?
+						{
+							pkttype = !pkttype; //Next type to check!
+							if (pkttype) //First type checked? Check second type now!
+							{
+								pktsrc = &connectedclient->IPpacket; //Packet to receive
+								pktlen = &connectedclient->IPpktlen; //Packet length to receive
+							}
+							else //Second type checked? Check first type now!
+							{
+								pktsrc = &connectedclient->packet; //Packet to receive
+								pktlen = &connectedclient->pktlen; //Packet length to receive
+							}
+							if (pkttype!=connectedclient->roundrobinpackettype) //Starting position not reached again?
+							{
+								goto retrypkttype; //Try the next packet type!
+							}
+						}
+						else
+						{
+							//Otherwise, keep the current type pending, as it's to be processed!
+							connectedclient->roundrobinpackettype = pkttype; //The packet type to keep pending!
+						}
 					}
 				}
 
-			sendoutputbuffer: //Send the output buffer to the client or other side, as required!
 				//Transfer the data, one byte at a time if required!
 				if ((modem.connected == 1) && (modem.connectionid>=0)) //Normal connection?
 				{
