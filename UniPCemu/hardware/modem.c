@@ -1884,7 +1884,7 @@ void initPacketServer(PacketServer_clientp client) //Initialize the packet serve
 	client->packetserver_slipprotocol = 0; //Initialize the protocol to the default value, which is unused!
 	client->lastreceivedCRLFinput = 0; //Reset last received input to none of CR and LF!
 	client->ARPrequeststatus = 0; //No request loaded yet.
-	connectedclient->roundrobinpackettype = 0; //Initialize the round-robin packet receiver!
+	client->roundrobinpackettype = 0; //Initialize the round-robin packet receiver!
 }
 
 byte packetserver_authenticate(PacketServer_clientp client)
