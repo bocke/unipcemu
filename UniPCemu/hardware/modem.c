@@ -1772,6 +1772,10 @@ void termPcap()
 		{
 			freez((void **)&client->packet, client->pktlen, "SERVER_PACKET"); //Cleanup!
 		}
+		if (client->IPpacket)
+		{
+			freez((void**)&client->IPpacket, client->IPpktlen, "SERVER_PACKET"); //Cleanup!
+		}
 		if (client->packetserver_transmitbuffer && client->packetserver_transmitsize) //Gotten a send buffer allocated?
 		{
 			freez((void **)&client->packetserver_transmitbuffer, client->packetserver_transmitsize, "MODEM_SENDPACKET"); //Clear the transmit buffer!
@@ -1875,6 +1879,11 @@ void initPacketServer(PacketServer_clientp client) //Initialize the packet serve
 	{
 		freez((void **)&client->packet, client->pktlen, "SERVER_PACKET"); //Release the buffered packet: we're a new client!
 		client->packet = NULL; //No packet anymore!
+	}
+	if (client->IPpacket)
+	{
+		freez((void**)&client->IPpacket, client->IPpktlen, "SERVER_PACKET"); //Release the buffered packet: we're a new client!
+		client->IPpacket = NULL; //No packet anymore!
 	}
 	client->packetserver_packetpos = 0; //No packet buffered anymore! New connections must read a new packet!
 	client->packetserver_packetack = 0; //Not acnowledged yet!
@@ -10257,7 +10266,7 @@ byte PPP_parseReceivedPacketForClient(byte protocol, PacketServer_clientp connec
 			{
 				goto ppp_finishpacketbufferqueue_ppprecv;
 			}
-			createPPPstream(&pppstream, (ethernetheader.type == SDL_SwapBE16(0x0800))?&connectedclient->IPpacket[sizeof(ethernetheader.data)]:&connectedclient->packet[sizeof(ethernetheader.data)], connectedclient->pktlen - sizeof(ethernetheader.data)); //Create a stream out of the packet!
+			createPPPstream(&pppstream, (ethernetheader.type == SDL_SwapBE16(0x0800))?&connectedclient->IPpacket[sizeof(ethernetheader.data)]:&connectedclient->packet[sizeof(ethernetheader.data)], ((ethernetheader.type == SDL_SwapBE16(0x0800))?connectedclient->IPpktlen:connectedclient->pktlen) - sizeof(ethernetheader.data)); //Create a stream out of the packet!
 			//Now, the received packet itself!
 			for (; PPP_consumeStream(&pppstream, &datab);) //The information field itself follows!
 			{
@@ -11148,7 +11157,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 										invalidpacket:
 											//Discard the invalid packet!
 											handledreceived = 1; //We're received!
-											freez((void **)&(*pktsrc), *pktlen, "SERVER_PACKET"); //Release the packet to receive new packets again!
+											freez((void **)pktsrc, *pktlen, "SERVER_PACKET"); //Release the packet to receive new packets again!
 											(*pktsrc) = NULL; //No packet!
 											if (!((((connectedclient->packetserver_slipprotocol == 3)) && (!connectedclient->packetserver_slipprotocol_pppoe)))) //Not PPP?
 											{
@@ -11728,7 +11737,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 											//If an Offer packet, do the following:
 											packetServerFreePacketBufferQueue(&connectedclient->DHCP_offerpacket); //Free the old one first, if present!
 											//Save it in the storage!
-											for (currentpos = 0; currentpos < net.pktlen;) //Parse the entire packet!
+											for (currentpos = 0; currentpos < *pktlen;) //Parse the entire packet!
 											{
 												if (!packetServerAddPacketBufferQueue(&connectedclient->DHCP_offerpacket, (*pktsrc)[currentpos++])) //Failed to save the packet?
 												{
@@ -11780,7 +11789,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 											//If an Acknowledgement packet, do the following:
 											packetServerFreePacketBufferQueue(&connectedclient->DHCP_offerpacket); //Free the old one first, if present!
 											//Save it in the storage!
-											for (currentpos = 0; currentpos < net.pktlen;) //Parse the entire packet!
+											for (currentpos = 0; currentpos < *pktlen;) //Parse the entire packet!
 											{
 												if (!packetServerAddPacketBufferQueue(&connectedclient->DHCP_offerpacket, (*pktsrc)[currentpos++])) //Failed to save the packet?
 												{
