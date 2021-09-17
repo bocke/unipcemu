@@ -203,6 +203,7 @@ uint8_t packetserver_broadcastMAC[6] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF }; /
 byte packetserver_sourceMAC[6]; //Our MAC to send from!
 byte packetserver_gatewayMAC[6]; //Gateway MAC to send to!
 byte packetserver_defaultstaticIP[4] = { 0,0,0,0 }; //Static IP to use?
+uint_32 packetserver_hostIPaddrd = 0; //Host IP to use for subnetting?
 byte packetserver_defaultgatewayIP = 0; //Gotten a default gateway IP?
 byte packetserver_defaultgatewayIPaddr[4] = { 0,0,0,0 }; //Default gateway IP to use?
 uint_32 packetserver_defaultgatewayIPaddrd = 0; //Default gateway IP to use?
@@ -372,6 +373,7 @@ typedef struct
 	byte ipcp_NBNS1ipaddress[2][4];
 	byte ipcp_NBNS2ipaddress[2][4];
 	byte ipcp_subnetmaskipaddress[2][4];
+	uint_32 ipcp_subnetmaskipaddressd; //Subnet mask the client chose!
 	uint_32 asynccontrolcharactermap[2]; //Async control character map, stored in little endian format!
 	void* next, * prev; //Next and previous (un)allocated client!
 	word connectionnumber; //The number of this entry in the list!
@@ -886,6 +888,7 @@ void initPcap() {
 							//Automatic port?
 							snprintf(packetserver_defaultstaticIPstr, sizeof(packetserver_defaultstaticIPstr), "%u.%u.%u.%u", IPnumbers[0], IPnumbers[1], IPnumbers[2], IPnumbers[3]); //Formulate the address!
 							memcpy(&packetserver_defaultstaticIP, &IPnumbers, 4); //Set read IP!
+							memcpy(&packetserver_hostIPaddrd, &IPnumbers, 4); //Set read IP!
 							packetserver_usedefaultStaticIP = 1; //Static IP set!
 						}
 					}
@@ -910,6 +913,7 @@ void initPcap() {
 							//Automatic port?
 							snprintf(packetserver_defaultstaticIPstr, sizeof(packetserver_defaultstaticIPstr), "%u.%u.%u.%u", IPnumbers[0], IPnumbers[1], IPnumbers[2], IPnumbers[3]); //Formulate the address!
 							memcpy(&packetserver_defaultstaticIP, &IPnumbers, 4); //Set read IP!
+							memcpy(&packetserver_hostIPaddrd, &IPnumbers, 4); //Set read IP!
 							packetserver_usedefaultStaticIP = 1; //Static IP set!
 						}
 					}
@@ -1611,7 +1615,9 @@ byte sendpkt_pcap(PacketServer_clientp connectedclient, uint8_t* src, uint16_t l
 #if defined(PACKETSERVER_ENABLED) && !defined(NOPCAP)
 	ETHERNETHEADER ethernetheader; //The header to inspect!
 	ARPpackettype ARPresponse; //For analyzing and responding to ARP requests!
-	ETHERNETHEADER ppptransmitheader;	uint_32 dstip;
+	ETHERNETHEADER ppptransmitheader;
+	uint_32 dstip;
+	uint_32 srcip;
 	byte* packet;
 	byte *ourip;
 	byte macrequest[6]; //Dummy NULL field to request ARP!
@@ -1650,13 +1656,14 @@ byte sendpkt_pcap(PacketServer_clientp connectedclient, uint8_t* src, uint16_t l
 					//We can assume it's addressed to the default gateway in this case.
 					if (len >= (0xE + 16 + 4)) //Long enough to check?
 					{
+						memcpy(&srcip,((connectedclient->packetserver_slipprotocol == 3) && (!connectedclient->packetserver_slipprotocol_pppoe) && IPCP_OPEN) ? &connectedclient->ipcp_ipaddress[PPP_RECVCONF][0] : &connectedclient->packetserver_staticIP[0], 4); //The clients own IP address!
 						memcpy(&dstip, &src[sizeof(ethernetheader.data) + 16], 4); //The IP address!
-						if (((dstip&packetserver_subnetmaskIPaddrd)==(packetserver_defaultgatewayIPaddrd&packetserver_subnetmaskIPaddrd)) && packetserver_defaultgatewayIPaddrd && packetserver_subnetmaskIPaddrd) //Local network destination?
+						if (((dstip&connectedclient->ipcp_subnetmaskipaddressd)==(srcip&connectedclient->ipcp_subnetmaskipaddrd)) && connectedclient->ipcp_subnetmaskipaddrd) //Local network destination?
 						{
 							memcpy(src, &maclocal, 6); //Send to ourselves for now!
 						}
 						//Otherwise, it's meant for the default gateway. Then determine if it's for the local host network.
-						else if (((dstip&packetserver_hostsubnetmaskIPaddrd)==(packetserver_defaultgatewayIPaddrd&packetserver_hostsubnetmaskIPaddrd)) && packetserver_defaultgatewayIPaddrd && packetserver_hostsubnetmaskIPaddrd) //Host network destination?
+						else if (((dstip&packetserver_hostsubnetmaskIPaddrd)==(packetserver_hostIPaddrd&packetserver_hostsubnetmaskIPaddrd)) && packetserver_hostIPaddrd && packetserver_hostsubnetmaskIPaddrd) //Host network destination?
 						{
 							handledefaultgateway:
 							lock(LOCK_PCAP);
@@ -1733,7 +1740,7 @@ byte sendpkt_pcap(PacketServer_clientp connectedclient, uint8_t* src, uint16_t l
 							}
 							unlock(LOCK_PCAP);
 						}
-						else //Use the default gateway?
+						else //Use the default gateway on the host network?
 						{
 							if (packetserver_defaultgatewayIP) //Gotten a default gateway set?
 							{
@@ -9582,6 +9589,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 					memcpy(&connectedclient->ipcp_NBNS1ipaddress[0], &ipcp_pendingNBNS1ipaddress, sizeof(ipcp_pendingNBNS1ipaddress)); //Network number specified or 0 for none!
 					memcpy(&connectedclient->ipcp_NBNS2ipaddress[0], &ipcp_pendingNBNS2ipaddress, sizeof(ipcp_pendingNBNS2ipaddress)); //Network number specified or 0 for none!
 					memcpy(&connectedclient->ipcp_subnetmaskipaddress[0], &ipcp_pendingsubnetmaskipaddress, sizeof(ipcp_pendingsubnetmaskipaddress)); //Network number specified or 0 for none!
+					memcpy(&connectedclient->ipcp_subnetmaskipaddressd,&connectedclient->ipcp_subnetmaskipaddress[0],4); //Subnet mask for the client to use!
 				}
 			}
 			goto ppp_finishpacketbufferqueue2_ipcp; //Finish up!
