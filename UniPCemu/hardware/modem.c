@@ -1576,13 +1576,13 @@ void fetchpackets_pcap() { //Handle any packets to process!
 				{
 					if (ethernetheader.type==SDL_SwapBE16(0x0800)) //IPv4?
 					{
-						memcpy(net.packet, &pktdata[0], pcaplength);
-						net.pktlen = pcaplength;
+						memcpy(IPnet.packet, &pktdata[0], pcaplength);
+						IPnet.pktlen = pcaplength;
 					}
 					else //Other?
 					{
-						memcpy(IPnet.packet, &pktdata[0], pcaplength);
-						IPnet.pktlen = pcaplength;
+						memcpy(net.packet, &pktdata[0], pcaplength);
+						net.pktlen = pcaplength;
 					}
 					if (pcap_verbose) {
 						dolog("ethernetcard", "Received packet of %u bytes.", net.pktlen);
