@@ -867,6 +867,7 @@ void initPcap() {
 	memset(&packetserver_NBNS1IPstr, 0, sizeof(packetserver_NBNS1IPstr));
 	memset(&packetserver_NBNS2IPstr, 0, sizeof(packetserver_NBNS2IPstr));
 	memset(&packetserver_subnetmaskIPstr, 0, sizeof(packetserver_subnetmaskIPstr));
+	memset(&packetserver_hostsubnetmaskIPstr, 0, sizeof(packetserver_hostsubnetmaskIPstr));
 	memset(&packetserver_defaultstaticIP, 0, sizeof(packetserver_defaultstaticIP));
 
 	packetserver_usedefaultStaticIP = 0; //Default to unused!
@@ -1037,6 +1038,9 @@ void initPcap() {
 			}
 		}
 	}
+
+
+	packetserver_subnetmaskIPaddrd = ~0; //Unused!
 	if (safestrlen(&BIOS_Settings.ethernetserver_settings.subnetmaskIPaddress[0], 256) >= 12) //Valid length to convert IP addresses?
 	{
 		p = &BIOS_Settings.ethernetserver_settings.subnetmaskIPaddress[0]; //For scanning the IP!
@@ -1061,6 +1065,8 @@ void initPcap() {
 			}
 		}
 	}
+
+	packetserver_hostsubnetmaskIPaddrd = ~0; //Unused!
 	if (safestrlen(&BIOS_Settings.ethernetserver_settings.hostsubnetmaskIPaddress[0], 256) >= 12) //Valid length to convert IP addresses?
 	{
 		p = &BIOS_Settings.ethernetserver_settings.hostsubnetmaskIPaddress[0]; //For scanning the IP!
@@ -1099,9 +1105,11 @@ void initPcap() {
 	packetserver_NBNS1IP = 0; //No gateway IP!
 	memset(&packetserver_NBNS2IPaddr, 0, sizeof(packetserver_NBNS2IPaddr));
 	packetserver_NBNS2IP = 0; //No gateway IP!
-	memset(&packetserver_subnetmaskIPaddr, 0, sizeof(packetserver_subnetmaskIPaddr));
+	memset(&packetserver_subnetmaskIPaddr, ~0, sizeof(packetserver_subnetmaskIPaddr));
+	packetserver_subnetmaskIPaddrd = ~0; //Unused!
 	packetserver_subnetmaskIP = 0; //No gateway IP!
-	memset(&packetserver_hostsubnetmaskIPaddr, 0, sizeof(packetserver_hostsubnetmaskIPaddr));
+	memset(&packetserver_hostsubnetmaskIPaddr, ~0, sizeof(packetserver_hostsubnetmaskIPaddr));
+	packetserver_hostsubnetmaskIPaddrd = ~0; //Unused!
 	packetserver_hostsubnetmaskIP = 0; //No gateway IP!
 #endif
 
