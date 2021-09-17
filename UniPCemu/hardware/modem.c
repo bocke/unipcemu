@@ -1658,12 +1658,12 @@ byte sendpkt_pcap(PacketServer_clientp connectedclient, uint8_t* src, uint16_t l
 					{
 						memcpy(&srcip,((connectedclient->packetserver_slipprotocol == 3) && (!connectedclient->packetserver_slipprotocol_pppoe) && IPCP_OPEN) ? &connectedclient->ipcp_ipaddress[PPP_RECVCONF][0] : &connectedclient->packetserver_staticIP[0], 4); //The clients own IP address!
 						memcpy(&dstip, &src[sizeof(ethernetheader.data) + 16], 4); //The IP address!
-						if (((dstip&connectedclient->ipcp_subnetmaskipaddressd)==(srcip&connectedclient->ipcp_subnetmaskipaddressd)) && connectedclient->ipcp_subnetmaskipaddressd) //Local network destination?
+						if (((dstip&connectedclient->ipcp_subnetmaskipaddressd)==(srcip&connectedclient->ipcp_subnetmaskipaddressd)) && srcip) //Local network destination?
 						{
 							memcpy(src, &maclocal, 6); //Send to ourselves for now!
 						}
 						//Otherwise, it's meant for the default gateway. Then determine if it's for the local host network.
-						else if (((dstip&packetserver_hostsubnetmaskIPaddrd)==(packetserver_hostIPaddrd&packetserver_hostsubnetmaskIPaddrd)) && packetserver_hostIPaddrd && packetserver_hostsubnetmaskIPaddrd) //Host network destination?
+						else if (((dstip&packetserver_hostsubnetmaskIPaddrd)==(packetserver_hostIPaddrd&packetserver_hostsubnetmaskIPaddrd)) && packetserver_hostIPaddrd) //Host network destination?
 						{
 							handledefaultgateway:
 							lock(LOCK_PCAP);
