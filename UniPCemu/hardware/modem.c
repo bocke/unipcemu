@@ -8911,7 +8911,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 			memset(&ipcp_pendingDNS2ipaddress, 0, sizeof(ipcp_pendingDNS2ipaddress)); //Default: none!
 			memset(&ipcp_pendingNBNS1ipaddress, 0, sizeof(ipcp_pendingNBNS1ipaddress)); //Default: none!
 			memset(&ipcp_pendingNBNS2ipaddress, 0, sizeof(ipcp_pendingNBNS2ipaddress)); //Default: none!
-			memset(&ipcp_pendingsubnetmaskipaddress, 0, sizeof(ipcp_pendingsubnetmaskipaddress)); //Default: none!
+			memcpy(&ipcp_pendingsubnetmaskipaddress, &packetserver_subnetmaskIPaddr, sizeof(ipcp_pendingsubnetmaskipaddress)); //Default: specified in the settings!
 
 			//Now, start parsing the options for the connection!
 			for (; PPP_peekStream(&pppstream_requestfield, &common_TypeField);) //Gotten a new option to parse?
