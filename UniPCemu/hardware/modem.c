@@ -5281,8 +5281,8 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 	PPP_Stream pppstream, pppstreambackup, pppstream_protocolstreambackup, pppstream_protocolstreambackup2, pppstream_informationfield, pppstream_requestfield /*, pppstream_optionfield*/;
 	byte datab; //byte data from the stream!
 	word dataw; //word data from the stream!
-	byte data4[4]; //4-byte data!
-	byte data6[6]; //6-byte data!
+	byte data4[4] = {0,0,0,0}; //4-byte data!
+	byte data6[6] = {0,0,0,0,0,0}; //6-byte data!
 	word protocol; //The used protocol!
 	//Header at the start of the info field!
 	byte common_CodeField; //Code field!
@@ -7586,6 +7586,7 @@ byte PPP_parseSentPacketFromClient(PacketServer_clientp connectedclient, byte ha
 			//This depends on the verification type we're using. If the autodetect method of logging in is used, that's the specified user. Otherrwise, we're going to have to look up users in our database and find a valid user that matches (if any). If any does, authenticate them with said account and make it active.
 
 			c = 0; //When using multiple users, start with the very first user!
+			pap_authenticated = 0; //Default: not authenticated!
 			retrynextuser:
 				if (!(BIOS_Settings.ethernetserver_settings.users[c].username[c] && BIOS_Settings.ethernetserver_settings.users[c].password[c])) //Gotten no credentials?
 				{
