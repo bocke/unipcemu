@@ -872,6 +872,27 @@ void initPcap() {
 
 	packetserver_usedefaultStaticIP = 0; //Default to unused!
 
+	memset(&maclocal, 0, sizeof(maclocal));
+	memset(&packetserver_gatewayMAC, 0, sizeof(packetserver_gatewayMAC));
+	memset(&packetserver_defaultgatewayIPaddr, 0, sizeof(packetserver_defaultgatewayIPaddr));
+	memset(&packetserver_defaultgatewayIPstr, 0, sizeof(packetserver_defaultgatewayIPstr));
+	packetserver_defaultgatewayIP = 0; //No gateway IP!
+	memset(&packetserver_DNS1IPaddr, 0, sizeof(packetserver_DNS1IPaddr));
+	packetserver_DNS1IP = 0; //No gateway IP!
+	memset(&packetserver_DNS2IPaddr, 0, sizeof(packetserver_DNS2IPaddr));
+	packetserver_DNS2IP = 0; //No gateway IP!
+	memset(&packetserver_NBNS1IPaddr, 0, sizeof(packetserver_NBNS1IPaddr));
+	packetserver_NBNS1IP = 0; //No gateway IP!
+	memset(&packetserver_NBNS2IPaddr, 0, sizeof(packetserver_NBNS2IPaddr));
+	packetserver_NBNS2IP = 0; //No gateway IP!
+	memset(&packetserver_subnetmaskIPaddr, ~0, sizeof(packetserver_subnetmaskIPaddr));
+	packetserver_subnetmaskIPaddrd = ~0; //Unused!
+	packetserver_subnetmaskIP = 0; //No gateway IP!
+	memset(&packetserver_hostsubnetmaskIPaddr, ~0, sizeof(packetserver_hostsubnetmaskIPaddr));
+	packetserver_hostsubnetmaskIPaddrd = ~0; //Unused!
+	packetserver_hostsubnetmaskIP = 0; //No gateway IP!
+
+
 #if defined(PACKETSERVER_ENABLED) && !defined(NOPCAP)
 	if (safestrlen(&BIOS_Settings.ethernetserver_settings.hostIPaddress[0], 256) >= 12) //Valid length to convert IP addresses?
 	{
@@ -1040,7 +1061,6 @@ void initPcap() {
 	}
 
 
-	packetserver_subnetmaskIPaddrd = ~0; //Unused!
 	if (safestrlen(&BIOS_Settings.ethernetserver_settings.subnetmaskIPaddress[0], 256) >= 12) //Valid length to convert IP addresses?
 	{
 		p = &BIOS_Settings.ethernetserver_settings.subnetmaskIPaddress[0]; //For scanning the IP!
@@ -1066,7 +1086,6 @@ void initPcap() {
 		}
 	}
 
-	packetserver_hostsubnetmaskIPaddrd = ~0; //Unused!
 	if (safestrlen(&BIOS_Settings.ethernetserver_settings.hostsubnetmaskIPaddress[0], 256) >= 12) //Valid length to convert IP addresses?
 	{
 		p = &BIOS_Settings.ethernetserver_settings.hostsubnetmaskIPaddress[0]; //For scanning the IP!
@@ -1091,26 +1110,6 @@ void initPcap() {
 			}
 		}
 	}
-#else
-	memset(&maclocal, 0, sizeof(maclocal));
-	memset(&packetserver_gatewayMAC, 0, sizeof(packetserver_gatewayMAC));
-	memset(&packetserver_defaultgatewayIPaddr, 0, sizeof(packetserver_defaultgatewayIPaddr));
-	memset(&packetserver_defaultgatewayIPstr, 0, sizeof(packetserver_defaultgatewayIPstr));
-	packetserver_defaultgatewayIP = 0; //No gateway IP!
-	memset(&packetserver_DNS1IPaddr, 0, sizeof(packetserver_DNS1IPaddr));
-	packetserver_DNS1IP = 0; //No gateway IP!
-	memset(&packetserver_DNS2IPaddr, 0, sizeof(packetserver_DNS2IPaddr));
-	packetserver_DNS2IP = 0; //No gateway IP!
-	memset(&packetserver_NBNS1IPaddr, 0, sizeof(packetserver_NBNS1IPaddr));
-	packetserver_NBNS1IP = 0; //No gateway IP!
-	memset(&packetserver_NBNS2IPaddr, 0, sizeof(packetserver_NBNS2IPaddr));
-	packetserver_NBNS2IP = 0; //No gateway IP!
-	memset(&packetserver_subnetmaskIPaddr, ~0, sizeof(packetserver_subnetmaskIPaddr));
-	packetserver_subnetmaskIPaddrd = ~0; //Unused!
-	packetserver_subnetmaskIP = 0; //No gateway IP!
-	memset(&packetserver_hostsubnetmaskIPaddr, ~0, sizeof(packetserver_hostsubnetmaskIPaddr));
-	packetserver_hostsubnetmaskIPaddrd = ~0; //Unused!
-	packetserver_hostsubnetmaskIP = 0; //No gateway IP!
 #endif
 
 	dolog("ethernetcard","Receiver MAC address: %02x:%02x:%02x:%02x:%02x:%02x",maclocal[0],maclocal[1],maclocal[2],maclocal[3],maclocal[4],maclocal[5]);
