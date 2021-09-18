@@ -12133,7 +12133,8 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 				{
 					for (connectedclient = Packetserver_allocatedclients; connectedclient; connectedclient = connectedclient->next) //Check all connected clients!
 					{
-						performnextconnectedclient: //For now deallocated purposes.
+					performnextconnectedclient: //For now deallocated purposes.
+						if (connectedclient == NULL) break; //Finish when required (deallocated last entry in the allocated list)!
 						if (fifobuffer_freesize(modem.outputbuffer[connectedclient->connectionnumber]) && peekfifobuffer(modem.blockoutputbuffer[connectedclient->connectionnumber], &datatotransmit)) //Able to transmit something?
 						{
 							for (; fifobuffer_freesize(modem.outputbuffer[connectedclient->connectionnumber]) && peekfifobuffer(modem.blockoutputbuffer[connectedclient->connectionnumber], &datatotransmit);) //Can we still transmit something more?
@@ -12175,6 +12176,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 										PacketServer_startNextStage(connectedclient, PACKETSTAGE_DHCP);
 										connectedclient->packetserver_useStaticIP = 7; //Start the release of the lease!
 										connectedclient->used = 2; //Special use case: we're in the DHCP release-only state!
+										tempclient = NULL; //Not used!
 									}
 									else //Normal release?
 									{
@@ -12240,6 +12242,7 @@ void updateModem(DOUBLE timepassed) //Sound tick. Executes every instruction.
 											PacketServer_startNextStage(connectedclient, PACKETSTAGE_DHCP);
 											connectedclient->packetserver_useStaticIP = 7; //Start the release of the lease!
 											connectedclient->used = 2; //Special use case: we're in the DHCP release-only state!
+											tempclient = NULL; //Not used!
 										}
 										else //Normal release?
 										{
