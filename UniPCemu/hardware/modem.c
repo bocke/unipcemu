@@ -872,8 +872,6 @@ void initPcap() {
 
 	packetserver_usedefaultStaticIP = 0; //Default to unused!
 
-	memset(&maclocal, 0, sizeof(maclocal));
-	memset(&packetserver_gatewayMAC, 0, sizeof(packetserver_gatewayMAC));
 	memset(&packetserver_defaultgatewayIPaddr, 0, sizeof(packetserver_defaultgatewayIPaddr));
 	memset(&packetserver_defaultgatewayIPstr, 0, sizeof(packetserver_defaultgatewayIPstr));
 	packetserver_defaultgatewayIP = 0; //No gateway IP!
