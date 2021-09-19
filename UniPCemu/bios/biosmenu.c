@@ -3966,7 +3966,7 @@ void BIOS_DefragmentDynamicHDD() //Defragment a dynamic HDD Image!
 							cleardata(&errorlog[0],sizeof(errorlog)); //Clear the error log data!
 							if (error==2) //Position/status error?
 							{
-								snprintf(errorlog,sizeof(errorlog),"Position/status error: Source status: %i, Destination status: %i, Error source sector: %u, error destination sector: %u",srcstatus,deststatus,sectornr,destsectornr);
+								snprintf(errorlog,sizeof(errorlog),"Position/status error: Source status: %i, Destination status: %i, Error source sector: %" SPRINTF_u_UINT32 ", error destination sector: %" SPRINTF_u_UINT32,srcstatus,deststatus,sectornr,destsectornr);
 							}
 							switch (srcstatus) //What status?
 							{
@@ -4033,7 +4033,7 @@ void BIOS_DefragmentDynamicHDD() //Defragment a dynamic HDD Image!
 								break;
 							default: //Unknown?
 							case 1: //Next sector to process?
-								snprintf(errorlog,sizeof(errorlog),"Source: sector %u",sectornr); //This sector!
+								snprintf(errorlog,sizeof(errorlog),"Source: sector %" SPRINTF_u_UINT32,sectornr); //This sector!
 								break; //Continue running on the next sector to process!
 						}
 						if (!remove(fullfilename)) //Defragmented file can be removed?
@@ -8847,7 +8847,7 @@ void BIOS_breakpoint()
 			}
 			break;
 		case 2: //Protected mode?
-			snprintf(breakpointstr,sizeof(breakpointstr),"%04X:%08XP",(word)((BIOS_Settings.breakpoint[BPindex]>>SETTINGS_BREAKPOINT_SEGMENT_SHIFT)&SETTINGS_BREAKPOINT_SEGMENT_MASK),(uint_32)(BIOS_Settings.breakpoint[BPindex]&SETTINGS_BREAKPOINT_OFFSET_MASK)); //seg16:offs16!
+			snprintf(breakpointstr,sizeof(breakpointstr),"%04X:%08" SPRINTF_X_UINT32 "P",(word)((BIOS_Settings.breakpoint[BPindex]>>SETTINGS_BREAKPOINT_SEGMENT_SHIFT)&SETTINGS_BREAKPOINT_SEGMENT_MASK),(uint_32)(BIOS_Settings.breakpoint[BPindex]&SETTINGS_BREAKPOINT_OFFSET_MASK)); //seg16:offs16!
 			if ((BIOS_Settings.breakpoint[BPindex]>>SETTINGS_BREAKPOINT_IGNOREADDRESS_SHIFT)&1) //Ignore address?
 			{
 				safestrcat(breakpointstr,sizeof(breakpointstr),"M"); //Ignore mode!
@@ -8978,7 +8978,7 @@ void BIOS_taskBreakpoint()
 		case 0: //No breakpoint?
 			break;
 		case 1: //Enabled?
-			snprintf(breakpointstr,sizeof(breakpointstr),"%04X:%08X",(word)((BIOS_Settings.taskBreakpoint>>SETTINGS_TASKBREAKPOINT_SEGMENT_SHIFT)&SETTINGS_TASKBREAKPOINT_SEGMENT_MASK),(uint_32)(BIOS_Settings.taskBreakpoint&SETTINGS_TASKBREAKPOINT_BASE_MASK)); //seg16:offs16!
+			snprintf(breakpointstr,sizeof(breakpointstr),"%04X:%08" SPRINTF_X_UINT32,(word)((BIOS_Settings.taskBreakpoint>>SETTINGS_TASKBREAKPOINT_SEGMENT_SHIFT)&SETTINGS_TASKBREAKPOINT_SEGMENT_MASK),(uint_32)(BIOS_Settings.taskBreakpoint&SETTINGS_TASKBREAKPOINT_BASE_MASK)); //seg16:offs16!
 			if ((BIOS_Settings.taskBreakpoint>>SETTINGS_TASKBREAKPOINT_IGNOREBASE_SHIFT)&1) //Ignore EIP?
 			{
 				safestrcat(breakpointstr,sizeof(breakpointstr),"I"); //Ignore EIP!
@@ -9063,7 +9063,7 @@ void BIOS_FSBreakpoint()
 	case 0: //No breakpoint?
 		break;
 	case 1: //Enabled?
-		snprintf(breakpointstr, sizeof(breakpointstr), "%04X:%08X", (word)((BIOS_Settings.FSBreakpoint >> SETTINGS_FSBREAKPOINT_SEGMENT_SHIFT) & SETTINGS_FSBREAKPOINT_SEGMENT_MASK), (uint_32)(BIOS_Settings.FSBreakpoint & SETTINGS_FSBREAKPOINT_BASE_MASK)); //seg16:offs16!
+		snprintf(breakpointstr, sizeof(breakpointstr), "%04X:%08" SPRINTF_X_UINT32, (word)((BIOS_Settings.FSBreakpoint >> SETTINGS_FSBREAKPOINT_SEGMENT_SHIFT) & SETTINGS_FSBREAKPOINT_SEGMENT_MASK), (uint_32)(BIOS_Settings.FSBreakpoint & SETTINGS_FSBREAKPOINT_BASE_MASK)); //seg16:offs16!
 		if ((BIOS_Settings.FSBreakpoint >> SETTINGS_FSBREAKPOINT_IGNOREBASE_SHIFT) & 1) //Ignore EIP?
 		{
 			safestrcat(breakpointstr, sizeof(breakpointstr), "I"); //Ignore EIP!
@@ -9149,7 +9149,7 @@ void BIOS_CR3breakpoint()
 		case 0: //No breakpoint?
 			break;
 		case 1: //Enabled?
-			snprintf(breakpointstr,sizeof(breakpointstr),"%08X",(uint_32)(BIOS_Settings.CR3breakpoint&SETTINGS_CR3BREAKPOINT_BASE_MASK)); //offs16!
+			snprintf(breakpointstr,sizeof(breakpointstr),"%08" SPRINTF_X_UINT32,(uint_32)(BIOS_Settings.CR3breakpoint&SETTINGS_CR3BREAKPOINT_BASE_MASK)); //offs16!
 			break;
 		default: //Just in case!
 			break;
