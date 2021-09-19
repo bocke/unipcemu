@@ -160,7 +160,7 @@ byte CPU_customint(byte intnr, word retsegment, uint_32 retoffset, int_64 errorc
 		}
 		else
 		{
-			snprintf(errorcodestr,sizeof(errorcodestr),"%08X",(uint_32)errorcode); //The error code itself!
+			snprintf(errorcodestr,sizeof(errorcodestr),"%08" SPRINTF_X_UINT32,(uint_32)errorcode); //The error code itself!
 		}
 		#ifdef LOG_INTS
 		dolog("cpu","Interrupt %02X=%04X:%08X@%04X:%04X(%02X); ERRORCODE: %s; STACK=%04X:%08X",intnr, CPU[activeCPU].destCS, CPU[activeCPU].destEIP,REG_CS,REG_EIP,CPU[activeCPU].currentopcode,errorcodestr,REG_SS,REG_ESP); //Log the current info of the call!

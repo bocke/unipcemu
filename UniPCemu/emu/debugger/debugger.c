@@ -266,11 +266,11 @@ void debugger_logmemoryaccess(byte iswrite, uint_64 address, byte value, byte ty
 				{
 					if (strcmp(debugger_memoryaccess_text,"")==0) //Nothing logged yet?
 					{
-						snprintf(debugger_memoryaccess_text,sizeof(debugger_memoryaccess_text),"Normal(w):%08x=%02x(%c)",(uint_32)address,value,stringsafeDebugger(value)); //Compact version!
+						snprintf(debugger_memoryaccess_text,sizeof(debugger_memoryaccess_text),"Normal(w):%08" SPRINTF_x_UINT32 "=%02x(%c)",(uint_32)address,value,stringsafeDebugger(value)); //Compact version!
 					}
 					else
 					{
-						snprintf(debugger_memoryaccess_line,sizeof(debugger_memoryaccess_line),"Normal(w):%08x=%02x(%c)",(uint_32)address,value,stringsafeDebugger(value)); //Compact version!
+						snprintf(debugger_memoryaccess_line,sizeof(debugger_memoryaccess_line),"Normal(w):%08" SPRINTF_x_UINT32 "=%02x(%c)",(uint_32)address,value,stringsafeDebugger(value)); //Compact version!
 						safestrcat_text("; ");
 						safestrcat_text(debugger_memoryaccess_line); //Add the line!
 					}
@@ -288,11 +288,11 @@ void debugger_logmemoryaccess(byte iswrite, uint_64 address, byte value, byte ty
 				{
 					if (strcmp(debugger_memoryaccess_text,"")==0) //Nothing logged yet?
 					{
-						snprintf(debugger_memoryaccess_text,sizeof(debugger_memoryaccess_text),"Paged(w):%08x=%02x(%c)",(uint_32)address,value,stringsafeDebugger(value)); //Compact version!
+						snprintf(debugger_memoryaccess_text,sizeof(debugger_memoryaccess_text),"Paged(w):%08" SPRINTF_x_UINT32 "=%02x(%c)",(uint_32)address,value,stringsafeDebugger(value)); //Compact version!
 					}
 					else
 					{
-						snprintf(debugger_memoryaccess_line,sizeof(debugger_memoryaccess_line),"Paged(w):%08x=%02x(%c)",(uint_32)address,value,stringsafeDebugger(value)); //Compact version!
+						snprintf(debugger_memoryaccess_line,sizeof(debugger_memoryaccess_line),"Paged(w):%08" SPRINTF_x_UINT32 "=%02x(%c)",(uint_32)address,value,stringsafeDebugger(value)); //Compact version!
 						safestrcat_text("; ");
 						safestrcat_text(debugger_memoryaccess_line); //Add the line!
 					}
@@ -310,11 +310,11 @@ void debugger_logmemoryaccess(byte iswrite, uint_64 address, byte value, byte ty
 				{
 					if (strcmp(debugger_memoryaccess_text,"")==0) //Nothing logged yet?
 					{
-						snprintf(debugger_memoryaccess_text,sizeof(debugger_memoryaccess_text),"Physical(w):%08x=%02x(%c)",(uint_32)address,value,stringsafeDebugger(value)); //Compact version!
+						snprintf(debugger_memoryaccess_text,sizeof(debugger_memoryaccess_text),"Physical(w):%08" SPRINTF_x_UINT32 "=%02x(%c)",(uint_32)address,value,stringsafeDebugger(value)); //Compact version!
 					}
 					else
 					{
-						snprintf(debugger_memoryaccess_line,sizeof(debugger_memoryaccess_line),"Physical(w):%08x=%02x(%c)", (uint_32)address,value,stringsafeDebugger(value)); //Compact version!
+						snprintf(debugger_memoryaccess_line,sizeof(debugger_memoryaccess_line),"Physical(w):%08" SPRINTF_x_UINT32 "=%02x(%c)", (uint_32)address,value,stringsafeDebugger(value)); //Compact version!
 						safestrcat_text("; ");
 						safestrcat_text(debugger_memoryaccess_line); //Add the line!
 					}
@@ -333,11 +333,11 @@ void debugger_logmemoryaccess(byte iswrite, uint_64 address, byte value, byte ty
 				{
 					if (strcmp(debugger_memoryaccess_text,"")==0) //Nothing logged yet?
 					{
-						snprintf(debugger_memoryaccess_text,sizeof(debugger_memoryaccess_text),"RAM(w):%08x=%02x(%c)", (uint_32)address,value,stringsafeDebugger(value)); //Compact version!
+						snprintf(debugger_memoryaccess_text,sizeof(debugger_memoryaccess_text),"RAM(w):%08" SPRINTF_x_UINT32 "=%02x(%c)", (uint_32)address,value,stringsafeDebugger(value)); //Compact version!
 					}
 					else
 					{
-						snprintf(debugger_memoryaccess_line,sizeof(debugger_memoryaccess_line),"RAM(w):%08x=%02x(%c)", (uint_32)address,value,stringsafeDebugger(value)); //Compact version!
+						snprintf(debugger_memoryaccess_line,sizeof(debugger_memoryaccess_line),"RAM(w):%08" SPRINTF_x_UINT32 "=%02x(%c)", (uint_32)address,value,stringsafeDebugger(value)); //Compact version!
 						safestrcat_text("; ");
 						safestrcat_text(debugger_memoryaccess_line); //Add the line!
 					}
@@ -355,11 +355,11 @@ void debugger_logmemoryaccess(byte iswrite, uint_64 address, byte value, byte ty
 				{
 					if (strcmp(debugger_memoryaccess_text,"")==0) //Nothing logged yet?
 					{
-						snprintf(debugger_memoryaccess_text,sizeof(debugger_memoryaccess_text),"RealRAM(w):%08x=%02x(%c)", (uint_32)address,value,stringsafeDebugger(value)); //Compact version!
+						snprintf(debugger_memoryaccess_text,sizeof(debugger_memoryaccess_text),"RealRAM(w):%08" SPRINTF_x_UINT32 "=%02x(%c)", (uint_32)address,value,stringsafeDebugger(value)); //Compact version!
 					}
 					else
 					{
-						snprintf(debugger_memoryaccess_line,sizeof(debugger_memoryaccess_line),"RealRAM(w):%08x=%02x(%c)", (uint_32)address,value,stringsafeDebugger(value)); //Compact version!
+						snprintf(debugger_memoryaccess_line,sizeof(debugger_memoryaccess_line),"RealRAM(w):%08" SPRINTF_x_UINT32 "=%02x(%c)", (uint_32)address,value,stringsafeDebugger(value)); //Compact version!
 						safestrcat_text("; ");
 						safestrcat_text(debugger_memoryaccess_line); //Add the line!
 					}
@@ -383,11 +383,11 @@ void debugger_logmemoryaccess(byte iswrite, uint_64 address, byte value, byte ty
 				{
 					if (strcmp(debugger_memoryaccess_text,"")==0) //Nothing logged yet?
 					{
-						snprintf(debugger_memoryaccess_text,sizeof(debugger_memoryaccess_text),"Normal(%c):%08x=%02x(%c)",(type&LOGMEMORYACCESS_PREFETCH)?'p':'r', (uint_32)address,value,stringsafeDebugger(value)); //Compact version!
+						snprintf(debugger_memoryaccess_text,sizeof(debugger_memoryaccess_text),"Normal(%c):%08" SPRINTF_x_UINT32 "=%02x(%c)",(type&LOGMEMORYACCESS_PREFETCH)?'p':'r', (uint_32)address,value,stringsafeDebugger(value)); //Compact version!
 					}
 					else
 					{
-						snprintf(debugger_memoryaccess_line,sizeof(debugger_memoryaccess_line),"Normal(%c):%08x=%02x(%c)",(type&LOGMEMORYACCESS_PREFETCH)?'p':'r', (uint_32)address,value,stringsafeDebugger(value)); //Compact version!
+						snprintf(debugger_memoryaccess_line,sizeof(debugger_memoryaccess_line),"Normal(%c):%08" SPRINTF_x_UINT32 "=%02x(%c)",(type&LOGMEMORYACCESS_PREFETCH)?'p':'r', (uint_32)address,value,stringsafeDebugger(value)); //Compact version!
 						safestrcat_text("; ");
 						safestrcat_text(debugger_memoryaccess_line); //Add the line!
 					}
@@ -405,11 +405,11 @@ void debugger_logmemoryaccess(byte iswrite, uint_64 address, byte value, byte ty
 				{
 					if (strcmp(debugger_memoryaccess_text,"")==0) //Nothing logged yet?
 					{
-						snprintf(debugger_memoryaccess_text,sizeof(debugger_memoryaccess_text),"Paged(%c):%08x=%02x(%c)",(type&LOGMEMORYACCESS_PREFETCH)?'p':'r', (uint_32)address,value,stringsafeDebugger(value)); //Compact version!
+						snprintf(debugger_memoryaccess_text,sizeof(debugger_memoryaccess_text),"Paged(%c):%08" SPRINTF_x_UINT32 "=%02x(%c)",(type&LOGMEMORYACCESS_PREFETCH)?'p':'r', (uint_32)address,value,stringsafeDebugger(value)); //Compact version!
 					}
 					else
 					{
-						snprintf(debugger_memoryaccess_line,sizeof(debugger_memoryaccess_line),"Paged(%c):%08x=%02x(%c)",(type&LOGMEMORYACCESS_PREFETCH)?'p':'r', (uint_32)address,value,stringsafeDebugger(value)); //Compact version!
+						snprintf(debugger_memoryaccess_line,sizeof(debugger_memoryaccess_line),"Paged(%c):%08" SPRINTF_x_UINT32 "=%02x(%c)",(type&LOGMEMORYACCESS_PREFETCH)?'p':'r', (uint_32)address,value,stringsafeDebugger(value)); //Compact version!
 						safestrcat_text("; ");
 						safestrcat_text(debugger_memoryaccess_line); //Add the line!
 					}
@@ -420,18 +420,18 @@ void debugger_logmemoryaccess(byte iswrite, uint_64 address, byte value, byte ty
 				{
 					log_timestampbackup = log_logtimestamp(2); //Save state!
 					log_logtimestamp(debugger_loggingtimestamp); //Are we to log the timestamp?
-					dolog("debugger","Reading from physical memory(%c): %08x=%02x (%c)",(type&LOGMEMORYACCESS_PREFETCH)?'p':'r', (uint_32)address,value,stringsafeDebugger(value));
+					dolog("debugger","Reading from physical memory(%c): %08" SPRINTF_x_UINT32 "=%02x (%c)",(type&LOGMEMORYACCESS_PREFETCH)?'p':'r', (uint_32)address,value,stringsafeDebugger(value));
 					log_logtimestamp(log_timestampbackup); //Restore state!
 				}
 				else
 				{
 					if (strcmp(debugger_memoryaccess_text,"")==0) //Nothing logged yet?
 					{
-						snprintf(debugger_memoryaccess_text,sizeof(debugger_memoryaccess_text),"Physical(%c):%08x=%02x(%c)",(type&LOGMEMORYACCESS_PREFETCH)?'p':'r', (uint_32)address,value,stringsafeDebugger(value)); //Compact version!
+						snprintf(debugger_memoryaccess_text,sizeof(debugger_memoryaccess_text),"Physical(%c):%08" SPRINTF_x_UINT32 "=%02x(%c)",(type&LOGMEMORYACCESS_PREFETCH)?'p':'r', (uint_32)address,value,stringsafeDebugger(value)); //Compact version!
 					}
 					else
 					{
-						snprintf(debugger_memoryaccess_line,sizeof(debugger_memoryaccess_line),"Physical(%c):%08x=%02x(%c)",(type&LOGMEMORYACCESS_PREFETCH)?'p':'r', (uint_32)address,value,stringsafeDebugger(value)); //Compact version!
+						snprintf(debugger_memoryaccess_line,sizeof(debugger_memoryaccess_line),"Physical(%c):%08" SPRINTF_x_UINT32 "=%02x(%c)",(type&LOGMEMORYACCESS_PREFETCH)?'p':'r', (uint_32)address,value,stringsafeDebugger(value)); //Compact version!
 						safestrcat_text("; ");
 						safestrcat_text(debugger_memoryaccess_line); //Add the line!
 					}
@@ -443,18 +443,18 @@ void debugger_logmemoryaccess(byte iswrite, uint_64 address, byte value, byte ty
 				{
 					log_timestampbackup = log_logtimestamp(2); //Save state!
 					log_logtimestamp(debugger_loggingtimestamp); //Are we to log the timestamp?
-					dolog("debugger","Reading from RAM(%c): %08x=%02x (%c)",(type&LOGMEMORYACCESS_PREFETCH)?'p':'r', (uint_32)address,value,stringsafeDebugger(value));
+					dolog("debugger","Reading from RAM(%c): %08" SPRINTF_x_UINT32 "=%02x (%c)",(type&LOGMEMORYACCESS_PREFETCH)?'p':'r', (uint_32)address,value,stringsafeDebugger(value));
 					log_logtimestamp(log_timestampbackup); //Restore state!
 				}
 				else
 				{
 					if (strcmp(debugger_memoryaccess_text,"")==0) //Nothing logged yet?
 					{
-						snprintf(debugger_memoryaccess_text,sizeof(debugger_memoryaccess_text),"RAM(%c):%08x=%02x(%c)",(type&LOGMEMORYACCESS_PREFETCH)?'p':'r', (uint_32)address,value,stringsafeDebugger(value)); //Compact version!
+						snprintf(debugger_memoryaccess_text,sizeof(debugger_memoryaccess_text),"RAM(%c):%08" SPRINTF_x_UINT32 "=%02x(%c)",(type&LOGMEMORYACCESS_PREFETCH)?'p':'r', (uint_32)address,value,stringsafeDebugger(value)); //Compact version!
 					}
 					else
 					{
-						snprintf(debugger_memoryaccess_line,sizeof(debugger_memoryaccess_line),"RAM(%c):%08x=%02x(%c)",(type&LOGMEMORYACCESS_PREFETCH)?'p':'r', (uint_32)address,value,stringsafeDebugger(value)); //Compact version!
+						snprintf(debugger_memoryaccess_line,sizeof(debugger_memoryaccess_line),"RAM(%c):%08" SPRINTF_x_UINT32 "=%02x(%c)",(type&LOGMEMORYACCESS_PREFETCH)?'p':'r', (uint_32)address,value,stringsafeDebugger(value)); //Compact version!
 						safestrcat_text("; ");
 						safestrcat_text(debugger_memoryaccess_line); //Add the line!
 					}
@@ -465,18 +465,18 @@ void debugger_logmemoryaccess(byte iswrite, uint_64 address, byte value, byte ty
 				{
 					log_timestampbackup = log_logtimestamp(2); //Save state!
 					log_logtimestamp(debugger_loggingtimestamp); //Are we to log the timestamp?
-					dolog("debugger","MMU: Reading from real(%c): %08x=%02x (%c)",(type&LOGMEMORYACCESS_PREFETCH)?'p':'r', (uint_32)address,value,stringsafeDebugger(value));
+					dolog("debugger","MMU: Reading from real(%c): %08" SPRINTF_x_UINT32 "=%02x (%c)",(type&LOGMEMORYACCESS_PREFETCH)?'p':'r', (uint_32)address,value,stringsafeDebugger(value));
 					log_logtimestamp(log_timestampbackup); //Restore state!
 				}
 				else
 				{
 					if (strcmp(debugger_memoryaccess_text,"")==0) //Nothing logged yet?
 					{
-						snprintf(debugger_memoryaccess_text,sizeof(debugger_memoryaccess_text),"RealRAM(%c):%08x=%02x(%c)",(type&LOGMEMORYACCESS_PREFETCH)?'p':'r', (uint_32)address,value,stringsafeDebugger(value)); //Compact version!
+						snprintf(debugger_memoryaccess_text,sizeof(debugger_memoryaccess_text),"RealRAM(%c):%08" SPRINTF_x_UINT32 "=%02x(%c)",(type&LOGMEMORYACCESS_PREFETCH)?'p':'r', (uint_32)address,value,stringsafeDebugger(value)); //Compact version!
 					}
 					else
 					{
-						snprintf(debugger_memoryaccess_line,sizeof(debugger_memoryaccess_line),"RealRAM(%c):%08x=%02x(%c)",(type&LOGMEMORYACCESS_PREFETCH)?'p':'r', (uint_32)address,value,stringsafeDebugger(value)); //Compact version!
+						snprintf(debugger_memoryaccess_line,sizeof(debugger_memoryaccess_line),"RealRAM(%c):%08" SPRINTF_x_UINT32 "=%02x(%c)",(type&LOGMEMORYACCESS_PREFETCH)?'p':'r', (uint_32)address,value,stringsafeDebugger(value)); //Compact version!
 						safestrcat_text("; ");
 						safestrcat_text(debugger_memoryaccess_line); //Add the line!
 					}
@@ -1044,11 +1044,11 @@ OPTINLINE void debugger_autolog()
 			{
 				if ((EMULATED_CPU>CPU_80286) || (DEBUGGER_LOG==DEBUGGERLOG_ALWAYS_COMMONLOGFORMAT) || (DEBUGGER_LOG==DEBUGGERLOG_ALWAYS_DURINGSKIPSTEP_COMMONLOGFORMAT) || (DEBUGGER_LOG==DEBUGGERLOG_DEBUGGING_COMMONLOGFORMAT)) //Newer? Use 32-bits addressing when newer or Common log format!
 				{
-					snprintf(executedinstruction,sizeof(executedinstruction),"%04x:%08x %s",REGD_CS(debuggerregisters),REGD_EIP(debuggerregisters),fullcmd); //Log command, 32-bit disassembler style!
+					snprintf(executedinstruction,sizeof(executedinstruction),"%04x:%08" SPRINTF_x_UINT32 " %s",REGD_CS(debuggerregisters),REGD_EIP(debuggerregisters),fullcmd); //Log command, 32-bit disassembler style!
 				}
 				else //16-bits offset?
 				{
-					snprintf(executedinstruction,sizeof(executedinstruction),"%04x:%04x %s",REGD_CS(debuggerregisters),REGD_EIP(debuggerregisters),fullcmd); //Log command, 32-bit disassembler style!
+					snprintf(executedinstruction,sizeof(executedinstruction),"%04x:%04" SPRINTF_x_UINT32 " %s",REGD_CS(debuggerregisters),REGD_EIP(debuggerregisters),fullcmd); //Log command, 32-bit disassembler style!
 				}
 			}
 			if ((DEBUGGER_LOG!=DEBUGGERLOG_ALWAYS_SINGLELINE) && (DEBUGGER_LOG!=DEBUGGERLOG_DEBUGGING_SINGLELINE) && (DEBUGGER_LOG!=DEBUGGERLOG_ALWAYS_SINGLELINE_SIMPLIFIED) && (DEBUGGER_LOG!=DEBUGGERLOG_DEBUGGING_SINGLELINE_SIMPLIFIED) && (DEBUGGER_LOG!=DEBUGGERLOG_ALWAYS_COMMONLOGFORMAT) && (DEBUGGER_LOG!=DEBUGGERLOG_ALWAYS_DURINGSKIPSTEP_COMMONLOGFORMAT) && (DEBUGGER_LOG!=DEBUGGERLOG_DEBUGGING_COMMONLOGFORMAT)) //Not single line?
@@ -1077,7 +1077,7 @@ OPTINLINE void debugger_autolog()
 					}
 					else //Normal full log?
 					{
-						snprintf(statelog,sizeof(statelog),"BIU T%u: EU&BIU cycles: %u, Operation cycles: %u, HW interrupt cycles: %u, Prefix cycles: %u, Exception cycles: %u, Prefetching cycles: %u, BIU prefetching cycles(1 each): %u, BIU DMA cycles: %u",
+						snprintf(statelog,sizeof(statelog),"BIU T%u: EU&BIU cycles: %" SPRINTF_u_UINT32 ", Operation cycles: %u, HW interrupt cycles: %u, Prefix cycles: %u, Exception cycles: %u, Prefetching cycles: %u, BIU prefetching cycles(1 each): %u, BIU DMA cycles: %u",
 							(BIU[activeCPU].TState+1), //Current T-state!
 							CPU[activeCPU].cycles, //Cycles executed by the BIU!
 							CPU[activeCPU].cycles_OP, //Total number of cycles for an operation!
@@ -1104,7 +1104,7 @@ OPTINLINE void debugger_autolog()
 							}
 							else //Normal full log?
 							{
-								snprintf(statelog,sizeof(statelog),"DMA %s: EU&BIU cycles: %u, Operation cycles: %u, HW interrupt cycles: %u, Prefix cycles: %u, Exception cycles: %u, Prefetching cycles: %u, BIU prefetching cycles(1 each): %u, BIU DMA cycles: %u",
+								snprintf(statelog,sizeof(statelog),"DMA %s: EU&BIU cycles: %" SPRINTF_u_UINT32 ", Operation cycles: %u, HW interrupt cycles: %u, Prefix cycles: %u, Exception cycles: %u, Prefetching cycles: %u, BIU prefetching cycles(1 each): %u, BIU DMA cycles: %u",
 									DMA_States_text[DMA_S], //Current S-state!
 									CPU[activeCPU].cycles, //Cycles executed by the BIU!
 									CPU[activeCPU].cycles_OP, //Total number of cycles for an operation!
@@ -1125,7 +1125,7 @@ OPTINLINE void debugger_autolog()
 							}
 							else //Normal full log?
 							{
-								snprintf(statelog,sizeof(statelog),"BIU W: EU&BIU cycles: %u, Operation cycles: %u, HW interrupt cycles: %u, Prefix cycles: %u, Exception cycles: %u, Prefetching cycles: %u, BIU prefetching cycles(1 each): %u, BIU DMA cycles: %u",
+								snprintf(statelog,sizeof(statelog),"BIU W: EU&BIU cycles: %" SPRINTF_u_UINT32 ", Operation cycles: %u, HW interrupt cycles: %u, Prefix cycles: %u, Exception cycles: %u, Prefetching cycles: %u, BIU prefetching cycles(1 each): %u, BIU DMA cycles: %u",
 									CPU[activeCPU].cycles, //Cycles executed by the BIU!
 									CPU[activeCPU].cycles_OP, //Total number of cycles for an operation!
 									CPU[activeCPU].cycles_HWOP, //Total number of cycles for an hardware interrupt!

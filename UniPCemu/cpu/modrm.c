@@ -1137,7 +1137,7 @@ uint_32 modrm_SIB_reg(MODRM_PARAMS *params, byte reg, byte mod, uint_32 disp32, 
 		{
 			if (mod==MOD_MEM) //We're disp32 instead?
 			{
-				if (unlikely(CPU[activeCPU].cpudebugger)) snprintf(result,resultsize,"%08X",disp32);
+				if (unlikely(CPU[activeCPU].cpudebugger)) snprintf(result,resultsize,"%08" SPRINTF_X_UINT32,disp32);
 				return 0; //Disp32 instead! This is handled by the scaled index only! This way, we prevent it from doubling the value instead of only a single time.
 			}
 			else //EBP!
@@ -1411,7 +1411,7 @@ void modrm_decode32(MODRM_PARAMS *params, MODRM_PTR *result, byte whichregister)
 			result->segmentregister_index = CPU_segment_index(useSS?CPU_SEGMENT_SS:CPU_SEGMENT_DS);
 			break;
 		case MODRM_MEM_DISP32: //EBP->32-bit Displacement-Only mode?
-			if (unlikely(CPU[activeCPU].cpudebugger)) snprintf(textnr,sizeof(textnr),"%08X",params->displacement.dword); //Text!
+			if (unlikely(CPU[activeCPU].cpudebugger)) snprintf(textnr,sizeof(textnr),"%08" SPRINTF_X_UINT32,params->displacement.dword); //Text!
 			if (unlikely(CPU[activeCPU].cpudebugger)) snprintf(result->text,sizeof(result->text),"%s %s:[%s]",modrm_sizes[params->size],CPU_textsegment(CPU_SEGMENT_DS),textnr);
 			result->mem_segment = CPU_segment(CPU_SEGMENT_DS);
 			result->mem_offset = params->displacement.dword; //Give addr (Displacement Only)!
@@ -1507,7 +1507,7 @@ void modrm_decode32(MODRM_PARAMS *params, MODRM_PTR *result, byte whichregister)
 		}
 		break;
 	case MOD_MEM_DISP32: //[register+DISP32]
-		if (unlikely(CPU[activeCPU].cpudebugger)) snprintf(textnr,sizeof(textnr),"%08X",params->displacement.dword); //Text!
+		if (unlikely(CPU[activeCPU].cpudebugger)) snprintf(textnr,sizeof(textnr),"%08" SPRINTF_X_UINT32,params->displacement.dword); //Text!
 		switch (reg) //Which register?
 		{
 		case MODRM_MEM_EAX: //EAX?
