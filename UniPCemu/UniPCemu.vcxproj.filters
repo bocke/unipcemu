@@ -1058,6 +1058,12 @@
     <ClInclude Include="headers\cpu\cpu_OP80786.h">
       <Filter>Header Files\cpu</Filter>
     </ClInclude>
+    <ClInclude Include="..\commonemuframework\headers\types_vita.h">
+      <Filter>Header Files\common headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\commonemuframework\headers\types_switch.h">
+      <Filter>Header Files\common headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="UniPCemu.ico">

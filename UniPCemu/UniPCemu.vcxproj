@@ -300,6 +300,8 @@
     <ClInclude Include="..\commonemuframework\headers\types_base.h" />
     <ClInclude Include="..\commonemuframework\headers\types_linux.h" />
     <ClInclude Include="..\commonemuframework\headers\types_psp.h" />
+    <ClInclude Include="..\commonemuframework\headers\types_switch.h" />
+    <ClInclude Include="..\commonemuframework\headers\types_vita.h" />
     <ClInclude Include="..\commonemuframework\headers\types_win.h" />
     <ClInclude Include="headers\basicio\cueimage.h" />
     <ClInclude Include="headers\basicio\dskimage.h" />
