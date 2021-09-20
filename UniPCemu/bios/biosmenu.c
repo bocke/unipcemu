@@ -4868,7 +4868,7 @@ setJoysticktext: //For fixing it!
 	}
 
 #ifndef SDL2
-#if !defined(IS_PSP) && !defined(ANDROID)
+#if !defined(IS_PSP) && !defined(ANDROID) && !defined(IS_VITA) && !defined(IS_SWITCH)
 	optioninfo[advancedoptions] = 3; //Reconnect joystick
 	safestrcpy(menuoptions[advancedoptions++],sizeof(menuoptions[0]), "Detect joystick"); //Detect the new joystick!
 #endif
