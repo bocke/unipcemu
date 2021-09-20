@@ -1,6 +1,8 @@
 #Define our default building directory and executable name/title for all output files!
 BUILD_NAME = UniPCemu
 BUILD_DEFINE = UNIPCEMU
+#PS Vita homebrew ID
+VITAID = SFHB0001
 
 #Build encrypted prx
 BUILD_PRX = 1
