@@ -559,7 +559,11 @@ void BIOS_DetectStorage() //Auto-Detect the current storage to use, on start onl
 					#ifdef IS_LINUX
 					safestrcpy(UniPCEmu_root_dir, sizeof(UniPCEmu_root_dir), "~/UniPCemu"); //Default path!
 					#else
+					#ifdef IS_VITA
+					safestrcpy(UniPCEmu_root_dir, sizeof(UniPCEmu_root_dir), "ux0:/data/Superfury/UniPCemu"); //CWD!
+					#else
 					safestrcpy(UniPCEmu_root_dir, sizeof(UniPCEmu_root_dir), "."); //CWD!
+					#endif
 					#endif
 				}
 			}
@@ -568,7 +572,11 @@ void BIOS_DetectStorage() //Auto-Detect the current storage to use, on start onl
 				#ifdef IS_LINUX
 				safestrcpy(UniPCEmu_root_dir, sizeof(UniPCEmu_root_dir), "~/UniPCemu");
 				#else
+				#ifdef IS_VITA
+				safestrcpy(UniPCEmu_root_dir, sizeof(UniPCEmu_root_dir), "ux0:/data/Superfury/UniPCemu"); //CWD!
+				#else
 				safestrcpy(UniPCEmu_root_dir, sizeof(UniPCEmu_root_dir), "."); //CWD!
+				#endif
 				#endif
 			}
 		}
@@ -605,7 +613,11 @@ void BIOS_DetectStorage() //Auto-Detect the current storage to use, on start onl
 			#ifdef IS_LINUX
 			safestrcpy(UniPCEmu_root_dir, sizeof(UniPCEmu_root_dir), "~/UniPCemu");
 			#else
+			#ifdef IS_VITA
+			safestrcpy(UniPCEmu_root_dir, sizeof(UniPCEmu_root_dir), "ux0:/data/Superfury/UniPCemu"); //CWD!
+			#else
 			safestrcpy(UniPCEmu_root_dir, sizeof(UniPCEmu_root_dir), "."); //CWD!
+			#endif
 			#endif
 		}
 		recursive_mkdir(UniPCEmu_root_dir); //Make sure our directory exists, if it doesn't yet!
