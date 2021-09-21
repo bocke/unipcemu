@@ -440,7 +440,7 @@ byte is_writablepath(char *path)
 	return 0; //We're not writable!
 }
 
-#if defined(ANDROID) || defined(IS_LINUX)
+#if defined(ANDROID) || defined(IS_LINUX) || defined(IS_VITA) || defined(IS_SWITCH)
 byte is_textcharacter(char c)
 {
 	if ((c>='a') && (c<='z')) return 1; //Text!
@@ -487,7 +487,7 @@ byte is_textcharacter(char c)
 }
 #endif
 
-#if defined(IS_LINUX) && !defined(ANDROID)
+#if (defined(IS_LINUX) && !defined(ANDROID)) || defined(IS_VITA) || defined(IS_SWITCH)
 static void recursive_mkdir(const char *dir) {
         char tmp[256];
         char *p = NULL;
@@ -594,7 +594,9 @@ void BIOS_DetectStorage() //Auto-Detect the current storage to use, on start onl
 		}
 		else
 		{
+			#ifdef IS_LINUX
 			handleLinuxBasePathSDL:
+			#endif
 			//SDL1.2.x on linux?
 			#ifdef IS_LINUX
 			safestrcpy(UniPCEmu_root_dir, sizeof(UniPCEmu_root_dir), "~/UniPCemu");

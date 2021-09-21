@@ -2998,75 +2998,6 @@ errorOutFormat_restore: //Error out on formatting and restore the file!
 	return 0; //Invalid IMD file!
 }
 
-//Our accurate time support:
-
-typedef struct
-{
-	uint_64 year;
-	byte month;
-	byte day;
-	byte hour;
-	byte minute;
-	byte second;
-	byte s100; //100th seconds(use either this or microseconds, since they both give the same time, only this one is rounded down!)
-	byte s10000; //10000th seconds!
-	uint_64 us; //Microseconds?
-	byte dst;
-	byte weekday;
-} accuratetime;
-
-//Our accuratetime epoch support!
-
-//Epoch time values for supported OS!
-#define EPOCH_YR 1970
-#define SECS_DAY (3600*24)
-#define YEAR0 0
-//Is this a leap year?
-#define LEAPYEAR(year) ( (year % 4 == 0 && year % 100 != 0) || ( year % 400 == 0))
-//What is the size of this year in days?
-#define YEARSIZE(year) (LEAPYEAR(year)?366:365)
-
-byte _IMD_ytab[2][12] = { //Days within months!
-	{ 31,28,31,30,31,30,31,31,30,31,30,31 }, //Normal year
-	{ 31,29,31,30,31,30,31,31,30,31,30,31 } //Leap year
-};
-OPTINLINE byte epochtoaccuratetime_IMD(UniversalTimeOfDay* curtime, accuratetime* datetime)
-{
-	//More accurate timing than default!
-	datetime->us = curtime->tv_usec;
-	datetime->s100 = (byte)(curtime->tv_usec / 10000); //10000us=1/100 second!
-	datetime->s10000 = (byte)((curtime->tv_usec % 10000) / 100); //100us=1/10000th second!
-
-	//Further is directly taken from the http://stackoverflow.com/questions/1692184/converting-epoch-time-to-real-date-time gmtime source code.
-	uint_64 dayclock, dayno;
-	uint_32 year = EPOCH_YR;
-
-	dayclock = (uint_64)curtime->tv_sec % SECS_DAY;
-	dayno = (uint_64)curtime->tv_sec / SECS_DAY;
-
-	datetime->second = dayclock % 60;
-	datetime->minute = (byte)((dayclock % 3600) / 60);
-	datetime->hour = (byte)(dayclock / 3600);
-	datetime->weekday = (dayno + 4) % 7;       /* day 0 was a thursday */
-	for (; dayno >= (unsigned long)YEARSIZE(year);)
-	{
-		dayno -= YEARSIZE(year);
-		year++;
-	}
-	datetime->year = year - YEAR0;
-	datetime->day = (byte)dayno;
-	datetime->month = 0;
-	while (dayno >= _IMD_ytab[LEAPYEAR(year)][datetime->month]) {
-		dayno -= _IMD_ytab[LEAPYEAR(year)][datetime->month];
-		++datetime->month;
-	}
-	++datetime->month; //We're one month further(months start at one, not zero)!
-	datetime->day = (byte)(dayno + 1);
-	datetime->dst = 0;
-
-	return 1; //Always successfully converted!
-}
-
 extern char diskpath[256]; //Disk path!
 
 byte generateIMDImage(char* filename, byte tracks, byte heads, byte MFM, byte speed, int percentagex, int percentagey)
@@ -3113,7 +3044,7 @@ byte generateIMDImage(char* filename, byte tracks, byte heads, byte MFM, byte sp
 	//First, the identifier!
 	if (getUniversalTimeOfDay(&tp) == 0) //Time gotten?
 	{
-		if (epochtoaccuratetime_IMD(&tp, &currenttime)) //Converted?
+		if (epochtoaccuratetime(&tp, &currenttime)) //Converted?
 		{
 			safestrcpy(identifierp, sizeof(identifier), ""); //Clear it!
 			safescatnprintf(identifierp, sizeof(identifier), "IMD 1.18: %02i/%02i/%04i %02i:%02i:%02i\r\n", currenttime.month, currenttime.day, currenttime.year, currenttime.hour, currenttime.minute, currenttime.second); //Set the header accordingly!
