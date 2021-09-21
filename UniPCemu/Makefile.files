@@ -2,7 +2,9 @@
 BUILD_NAME = UniPCemu
 BUILD_DEFINE = UNIPCEMU
 #PS Vita homebrew ID
-VITAID = SFHB0001
+VITAID = SFHB00001
+#Switch homebrew ID
+SWITCHID = SFHB00001
 
 #Build encrypted prx
 BUILD_PRX = 1
