@@ -22,6 +22,8 @@ This README would normally document whatever steps are necessary to get your app
 	- Run the configure script to configure and build the Makefile required for the project.
 	- Run make linux [re]build [SDL2] [SDL[2]_net] [x64] [pcap], with the optional parts being between brackets(SDL2+, SDL(2)_net for network support, x64 for 64-bit compilation is required. All others depend on the libraries to use).
 	- Run (with sudo for installation rights) the above command, replacing [re]build with install to install the application for usage.
+- For Playstation Vita (VitaSDK):
+	- Run make vita [re]build [SDL2] [SDL[2]_net] (depends on SDL(2) without or without SDL(2)_net)
 - For Visual C++:
 	- Open the projects within the VisualC subfolders(the solution file) and compile SDL2 and SDL2main. Also compile the SDL2_net project when used(after compiling SDL2 itself).
 		- Add the paths **C:\SDL\SDL1.2.15\include** to both SDL 1.2 Win32 and x64 target include directories, as well as **C:\SDL\SDL1.2.15\VisualC\$(Platform)\$(Configuration)** to both Win32 and x64 target library directories.
