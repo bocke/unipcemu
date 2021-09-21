@@ -565,7 +565,11 @@ void BIOS_DetectStorage() //Auto-Detect the current storage to use, on start onl
 			}
 			else //Fallback to default path?
 			{
+				#ifdef IS_LINUX
 				safestrcpy(UniPCEmu_root_dir, sizeof(UniPCEmu_root_dir), "~/UniPCemu");
+				#else
+				safestrcpy(UniPCEmu_root_dir, sizeof(UniPCEmu_root_dir), "."); //CWD!
+				#endif
 			}
 		}
 		recursive_mkdir(UniPCEmu_root_dir); //Make sure our directory exists, if it doesn't yet!
