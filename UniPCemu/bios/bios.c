@@ -395,7 +395,7 @@ byte* getarchclockingmode() //Get the memory field for the current architecture!
 
 void BIOS_updateDirectories()
 {
-#if defined(ANDROID) || defined(IS_LINUX)
+#if defined(ANDROID) || defined(IS_LINUX) || defined(IS_VITA) || defined(IS_SWITCH)
 	safestrcpy(diskpath,sizeof(diskpath),UniPCEmu_root_dir); //Root dir!
 	safestrcat(diskpath,sizeof(diskpath),"/");
 	safestrcpy(soundfontpath,sizeof(soundfontpath),diskpath); //Clone!
@@ -509,7 +509,7 @@ static void recursive_mkdir(const char *dir) {
 
 void BIOS_DetectStorage() //Auto-Detect the current storage to use, on start only!
 {
-	#if defined(ANDROID) || defined(IS_LINUX)
+	#if defined(ANDROID) || defined(IS_LINUX) || defined(IS_VITA) || defined(IS_SWITCH)
 		#ifndef ANDROID
 		#ifdef SDL2
 		char* base_path;
@@ -556,15 +556,19 @@ void BIOS_DetectStorage() //Auto-Detect the current storage to use, on start onl
 				}
 				else //Default length?
 				{
+					#ifdef IS_LINUX
 					safestrcpy(UniPCEmu_root_dir, sizeof(UniPCEmu_root_dir), "~/UniPCemu"); //Default path!
+					#else
+					safestrcpy(UniPCemu_root_dir, sizeof(UniPCEmu_root_dir), "."); //CWD!
+					#endif
 				}
-				recursive_mkdir(UniPCEmu_root_dir); //Make sure our directory exists, if it doesn't yet!
 			}
 			else //Fallback to default path?
 			{
 				safestrcpy(UniPCEmu_root_dir, sizeof(UniPCEmu_root_dir), "~/UniPCemu");
 			}
 		}
+		recursive_mkdir(UniPCEmu_root_dir); //Make sure our directory exists, if it doesn't yet!
 		#else
 		char* linuxpath = SDL_getenv("UNIPCEMU");
 		if (linuxpath) //Linux path specified?
@@ -582,7 +586,9 @@ void BIOS_DetectStorage() //Auto-Detect the current storage to use, on start onl
 			{
 				if (strcmp(UniPCEmu_root_dir, ".") != 0) //Not CWD?
 				{
+					#ifdef IS_LINUX
 					goto handleLinuxBasePathSDL; //Fallback!
+					#endif
 				}
 			}
 		}
@@ -590,8 +596,13 @@ void BIOS_DetectStorage() //Auto-Detect the current storage to use, on start onl
 		{
 			handleLinuxBasePathSDL:
 			//SDL1.2.x on linux?
+			#ifdef IS_LINUX
 			safestrcpy(UniPCEmu_root_dir, sizeof(UniPCEmu_root_dir), "~/UniPCemu");
+			#else
+			safestrcpy(UniPCemu_root_dir, sizeof(UniPCEmu_root_dir), "."); //CWD!
+			#endif
 		}
+		recursive_mkdir(UniPCEmu_root_dir); //Make sure our directory exists, if it doesn't yet!
 		#endif
 		#endif
 		BIGFILE *f;
