@@ -40,7 +40,7 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 #include "headers/hardware/i430fx.h" //i430fx support!
 
 #ifdef IS_SWITCH
-#include <unistd.h> //Required for getcwd()
+#include <sys/unistd.h> //Required for getcwd()
 #endif
 
 //Are we disabled?
