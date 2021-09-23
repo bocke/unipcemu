@@ -39,6 +39,10 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 #include "headers/hardware/floppy.h" //Floppy disk support!
 #include "headers/hardware/i430fx.h" //i430fx support!
 
+#ifdef IS_SWITCH
+#include <unistd.h> //Required for getcwd()
+#endif
+
 //Are we disabled?
 #define __HW_DISABLED 0
 
@@ -562,6 +566,9 @@ void BIOS_DetectStorage() //Auto-Detect the current storage to use, on start onl
 					#ifdef IS_VITA
 					safestrcpy(UniPCEmu_root_dir, sizeof(UniPCEmu_root_dir), "ux0:/data/Superfury/UniPCemu"); //CWD!
 					#else
+					#ifdef IS_SWITCH
+					if (getcwd(&UniPCEmu_root_dir[0],sizeof(UniPCEmu_root_dir))==NULL)
+					#endif
 					safestrcpy(UniPCEmu_root_dir, sizeof(UniPCEmu_root_dir), "."); //CWD!
 					#endif
 					#endif
@@ -575,6 +582,9 @@ void BIOS_DetectStorage() //Auto-Detect the current storage to use, on start onl
 				#ifdef IS_VITA
 				safestrcpy(UniPCEmu_root_dir, sizeof(UniPCEmu_root_dir), "ux0:/data/Superfury/UniPCemu"); //CWD!
 				#else
+				#ifdef IS_SWITCH
+				if (getcwd(&UniPCEmu_root_dir[0],sizeof(UniPCEmu_root_dir))==NULL)
+				#endif
 				safestrcpy(UniPCEmu_root_dir, sizeof(UniPCEmu_root_dir), "."); //CWD!
 				#endif
 				#endif
@@ -616,6 +626,9 @@ void BIOS_DetectStorage() //Auto-Detect the current storage to use, on start onl
 			#ifdef IS_VITA
 			safestrcpy(UniPCEmu_root_dir, sizeof(UniPCEmu_root_dir), "ux0:/data/Superfury/UniPCemu"); //CWD!
 			#else
+			#ifdef IS_SWITCH
+			if (getcwd(&UniPCEmu_root_dir[0],sizeof(UniPCEmu_root_dir))==NULL)
+			#endif
 			safestrcpy(UniPCEmu_root_dir, sizeof(UniPCEmu_root_dir), "."); //CWD!
 			#endif
 			#endif
