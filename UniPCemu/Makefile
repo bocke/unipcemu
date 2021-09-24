@@ -33,7 +33,7 @@ prefix = /usr
 endif
 
 ifeq (,$(ROOTPATH))
-ROOTPATH = .
+ROOTPATH = $(shell pwd)
 endif
 
 #Support multi platform builds, also the list of used files:
