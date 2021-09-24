@@ -45,7 +45,7 @@ void halt_modrm(char *message, ...) //Unknown modr/m?
 	raiseError("modrm","Modr/m error: %s",buffer); //Shut the adress and opcode!
 	debugger_screen(); //Show debugger info!
 //EMU_Shutdown(1); //Shut down the emulator!
-	sleep(); //Wait forever!
+	dosleep(); //Wait forever!
 }
 
 extern char debugger_command_text[256]; //Current command!

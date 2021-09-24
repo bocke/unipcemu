@@ -57,7 +57,7 @@ void DoDebugFiles() //Do the debug files!
 	if (!opendirlist(&dir,curdir,&direntry[0],&isfile,1))
     {
 		GPU_EMU_printscreen(0,GPU_TEXTSURFACE_HEIGHT-1,"Error: verification directory was not found. (debug)");
-		sleep(); //Wait forever!
+		dosleep(); //Wait forever!
 	}
 	/* print all the files and directories within directory */
 

@@ -198,5 +198,5 @@ void dosoundtest()
 	#endif
 doshutdown:
 	exit(0); //Quit the application!
-	sleep(); //Wait forever!
+	dosleep(); //Wait forever!
 }
