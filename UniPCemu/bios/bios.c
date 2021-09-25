@@ -636,6 +636,15 @@ void BIOS_DetectStorage() //Auto-Detect the current storage to use, on start onl
 		recursive_mkdir(UniPCEmu_root_dir); //Make sure our directory exists, if it doesn't yet!
 		#endif
 		#endif
+
+		#ifdef IS_SWITCH
+		if (strcmp(UniPCEmu_root_dir, "/") == 0) //Invalid path to use?
+		{
+			safe_strcat(UniPCEmu_root_dir, sizeof(UniPCEmu_root_dir), "Superfury/UniPCemu"); //Proper directory to use!
+			recursive_mkdir(UniPCEmu_root_dir); //Make sure our directory exists, if it doesn't yet!
+		}
+		#endif
+
 		BIGFILE *f;
 		byte is_redirected=0;
 		is_redirected = 0; //Init redirect status for main directory!
