@@ -5,6 +5,8 @@ BUILD_DEFINE = UNIPCEMU
 VITAID = SFHB00001
 #Switch homebrew ID
 SWITCHID = SFHB00001
+#Switch icon
+ICON = UniPCemu_switch.jpg
 
 #Build encrypted prx
 BUILD_PRX = 1
