@@ -436,7 +436,7 @@ void stepDROPlayer(DOUBLE timepassed)
 				nextinstruction: //Execute next instruction!
 				//Check for stopping the song!			
 				lock(LOCK_INPUT);
-				if (psp_keypressed(BUTTON_CIRCLE) || psp_keypressed(BUTTON_STOP)) //Circle/stop pressed? Request to stop playback!
+				if (psp_keypressed(BUTTON_CANCEL) || psp_keypressed(BUTTON_STOP)) //Circle/stop pressed? Request to stop playback!
 				{
 					droplayer->stoprunning |= 2; //Set termination flag to request a termination by pressing!
 				}
@@ -464,7 +464,7 @@ void stepDROPlayer(DOUBLE timepassed)
 		{
 			//Check for stopping the song!			
 			lock(LOCK_INPUT);
-			if (psp_keypressed(BUTTON_CIRCLE) || psp_keypressed(BUTTON_STOP)) //Circle/stop pressed? Request to stop playback!
+			if (psp_keypressed(BUTTON_CANCEL) || psp_keypressed(BUTTON_STOP)) //Circle/stop pressed? Request to stop playback!
 			{
 				droplayer->stoprunning |= 2; //Set termination flag to request a termination by pressing!
 			}
