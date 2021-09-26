@@ -1305,7 +1305,7 @@ byte MMU_INTERNAL_directrb_realaddr(uint_64 realaddress, byte index) //Read with
 	*/
 	if (likely(MMU_IO_readhandler(realaddress, (word)index))) //Normal memory address?
 	{
-		performdirectread: //Force a direct read when possible!
+		//performdirectread: //Force a direct read when possible!
 		if (unlikely(MMU_INTERNAL_directrb(realaddress, index, &memory_dataread))) //Read the data from memory (and port I/O)!		
 		{
 			haveMRUreadaddresstype = 0; //Don't have it anymore!
