@@ -30,6 +30,7 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 #include "headers/cpu/cpu.h" //NMI support!
 #include "headers/hardware/vga/vga_vramtext.h" //Extended text mode support!
 #include "headers/hardware/pic.h" //IRQ support!
+#include "headers/mmu/mmuhandler.h" //Memory mapping support!
 
 //Log unhandled (S)VGA accesses on the ET34k emulation?
 //#define LOG_UNHANDLED_SVGA_ACCESSES
@@ -195,12 +196,14 @@ byte Tseng34K_writeIO(word port, byte val)
 	case 0x46E8: //Video subsystem enable register?
 		if (((et4k_reg(et34kdata, 3d4, 34) & 8) == 0) && (getActiveVGA()->enable_SVGA == 1)) return 0; //Undefined on ET4000!
 		SETBITS(getActiveVGA()->registers->VGA_enabled, 0, 1,(val & 8) ? 1 : 0); //RAM enabled?
+		MMU_mappingupdated(); //A memory mapping has been updated?
 		VGA_calcprecalcs(getActiveVGA(), WHEREUPDATED_MISCOUTPUTREGISTER); //Updated index!
 		return 1; //OK
 		break;
 	case 0x3C3: //Video subsystem enable register in VGA mode?
 		if ((et4k_reg(et34kdata, 3d4, 34) & 8) && (getActiveVGA()->enable_SVGA == 1)) return 2; //Undefined on ET4000!
 		SETBITS(getActiveVGA()->registers->VGA_enabled,1,1,(val & 1)); //RAM enabled?
+		MMU_mappingupdated(); //A memory mapping has been updated?
 		VGA_calcprecalcs(getActiveVGA(), WHEREUPDATED_MISCOUTPUTREGISTER); //Updated index!
 		return 1; //OK
 		break;

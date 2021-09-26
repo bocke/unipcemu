@@ -23,6 +23,7 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 #include "headers/hardware/ports.h" //Ports!
 #include "headers/cpu/cpu.h" //NMI support!
 #include "headers/hardware/pic.h" //Interrupt lowering support!
+#include "headers/mmu/mmuhandler.h" //MMU mapping has been updated?
 
 /*
 
@@ -601,6 +602,7 @@ byte PORT_writeVGA(word port, byte value) //Write to a port/register!
 		if (getActiveVGA()->enable_SVGA < 3) //VGA+?
 		{
 			SETBITS(getActiveVGA()->registers->VGA_enabled, 1, 1, (value & 1)); //RAM and I/O enabled?
+			MMU_mappingupdated(); //A memory mapping has been updated?
 			VGA_calcprecalcs(getActiveVGA(),WHEREUPDATED_MISCOUTPUTREGISTER); //Updated index!
 			ok = 1;
 		}

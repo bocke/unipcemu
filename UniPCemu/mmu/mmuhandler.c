@@ -540,6 +540,9 @@ byte emulateCompaqMMURegisters = 0; //Emulate Compaq MMU registers?
 
 void writeCompaqMMUregister(uint_32 originaladdress, byte value); //Prototype for below!
 
+byte haveMRUreadaddresstype = 0;
+uint_64 MRUreadaddress; //Most recently read address block!
+
 void resetMMU()
 {
 	void *memorycheckdummy;
@@ -614,6 +617,12 @@ resetmmu:
 	{
 		MMU_seti430fx(); //Enable the i430fx-required mapping!
 	}
+	haveMRUreadaddresstype = 0; //Not cached anything yet!
+}
+
+void MMU_mappingupdated() //A memory mapping has been updated?
+{
+	haveMRUreadaddresstype = 0; //Make sure we use memory correctly!
 }
 
 extern byte BIU_cachedmemorysize[MAXCPUS]; //For the BIU to flush it's cache!
@@ -1288,10 +1297,16 @@ byte MMUbuffer_pending = 0; //Anything pending?
 //Direct memory access with Memory mapped I/O (for the CPU).
 byte MMU_INTERNAL_directrb_realaddr(uint_64 realaddress, byte index) //Read without segment/offset translation&protection (from system/interrupt)!
 {
+	if (likely(haveMRUreadaddresstype && (MRUreadaddress == (realaddress & ~(0xFFFULL))))) //Same block as before?
+	{
+		goto performdirectread; //Perform a direct read!
+	}
 	if (likely(MMU_IO_readhandler(realaddress, (word)index))) //Normal memory address?
 	{
+		performdirectread: //Force a direct read when possible!
 		if (unlikely(MMU_INTERNAL_directrb(realaddress, index, &memory_dataread))) //Read the data from memory (and port I/O)!		
 		{
+			haveMRUreadaddresstype = 0; //Don't have it anymore!
 			if (likely((is_XT == 0) || (EMULATED_CPU >= CPU_80286))) //To give NOT for detecting memory on AT only?
 			{
 				memory_dataread = 0xFF; //Give the last data read/written by the BUS!
@@ -1305,6 +1320,15 @@ byte MMU_INTERNAL_directrb_realaddr(uint_64 realaddress, byte index) //Read with
 				memory_datasize = 1; //Only 1 byte long!
 			}
 		}
+		else //Cache it's translation!
+		{
+			haveMRUreadaddresstype = 1; //Have it's type!
+			MRUreadaddress = (realaddress & (~(0xFFFULL))); //Cache the address block!
+		}
+	}
+	else //Was mapped ROM or external RAM?
+	{
+		haveMRUreadaddresstype = 0; //Was not direct memory anymore!
 	}
 //Are we debugging?
 #ifdef LOG_HIGH_MEMORY
