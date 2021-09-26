@@ -62,6 +62,7 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 #include "headers/cpu/easyregs.h" //Easy register support!
 #include "headers/hardware/modem.h" //Connection support!
 #include "headers/emu/emu_misc.h" //converthex2int support!
+#include "gitcommitversion.h" //Git version support!
 
 extern byte diagnosticsportoutput; //Diagnostics port output!
 
@@ -252,6 +253,7 @@ void BIOS_gamingModeButtonsJoystickEnable(); //Gaming Mode Joystick Enable
 void BIOS_modemListenPort(); //Modem Listen Port
 void BIOS_analogMinRange(); //Analog minimum range
 void BIOS_CPUDebuggerMenu(); //CPU debugger menu!
+void BIOS_versionInformation(); //Version information!
 
 //First, global handler!
 Handler BIOS_Menus[] =
@@ -351,6 +353,7 @@ Handler BIOS_Menus[] =
 	,BIOS_modemListenPort //Modem listen port is #92!
 	,BIOS_analogMinRange //Analog minimum range is #93!
 	,BIOS_CPUDebuggerMenu //CPU debugger menu is #94!
+	,BIOS_versionInformation //Version information is #95!
 };
 
 //Not implemented?
@@ -947,6 +950,17 @@ int ExecuteMenu(int numitems, int startrow, int allowspecs, word *stat)
 			} while (++cur<MIN(numitems,MENU_MAXITEMS));
 			EMU_unlocktext();
 		}
+	}
+	while ((key == BUTTON_CONFIRM) || (key == BUTTON_START)) //Wait for the key to release something!
+	{
+		if (shuttingdown()) //Cancel?
+		{
+			option = BIOSMENU_SPEC_CANCEL;
+			break;
+		}
+		lock(LOCK_INPUT);
+		key = psp_inputkeydelay(BIOS_INPUTDELAY); //Input a key with delay!
+		unlock(LOCK_INPUT);
 	}
 	return option; //Give the chosen option!
 }
@@ -2663,6 +2677,11 @@ void BIOS_MainMenu() //Shows the main menu to process!
 		safestrcpy(menuoptions[advancedoptions++],sizeof(menuoptions[0]),"Load Setting defaults"); //Load defaults option!
 	}
 
+	#if defined(IS_PSP) || defined(IS_VITA) || defined(IS_SWITCH)
+	optioninfo[advancedoptions] = 7; //Version information option!
+	safestrcpy(menuoptions[advancedoptions++], sizeof(menuoptions[0]), "Version information"); //Version information option!
+	#endif
+
 	int menuresult = ExecuteMenu(advancedoptions,4,BIOSMENU_SPEC_LR|BIOSMENU_SPEC_RETURN,&Menu_Stat); //Plain menu, allow L&R triggers!
 
 	switch (menuresult) //What option has been chosen?
@@ -2674,6 +2693,7 @@ void BIOS_MainMenu() //Shows the main menu to process!
 	case 4:
 	case 5:
 	case 6:
+	case 7:
 		switch (optioninfo[menuresult]) //What option is chosen?
 		{
 		case 0: //Save&Quit?
@@ -2712,6 +2732,9 @@ void BIOS_MainMenu() //Shows the main menu to process!
 			BIOS_Menu = -1; //Quit!
 			BIOS_SaveStat = 0; //Discard changes!
 			reboot_needed |= 2; //We need a reboot!
+			break;
+		case 7: //Show version
+			BIOS_Menu = 95; //Goto version information!
 			break;
 		default:
 			break;
@@ -2843,6 +2866,37 @@ FILEPOS ImageGenerator_GetImageSize(byte x, byte y) //Retrieve the size, or 0 fo
 		}
 	}
 	return 0; //No size: cancel!
+}
+
+void BIOS_WaitForInput() //Retrieve the size, or 0 for none!
+{
+	int key = 0;
+	lock(LOCK_INPUT);
+	key = psp_inputkeydelay(BIOS_INPUTDELAY);
+	unlock(LOCK_INPUT);
+	while ((key & (BUTTON_CONFIRM | BUTTON_START)) > 0) //Pressed? Wait for release!
+	{
+		lock(LOCK_INPUT);
+		key = psp_inputkeydelay(BIOS_INPUTDELAY);
+		unlock(LOCK_INPUT);
+	}
+	for (;;) //Get input; break on error!
+	{
+		lock(LOCK_INPUT);
+		key = psp_inputkeydelay(BIOS_INPUTDELAY); //Input key!
+		unlock(LOCK_INPUT);
+		if (key > 0)
+		{
+			while (key > 0) //Wait for release!
+			{
+				lock(LOCK_INPUT);
+				key = psp_inputkeydelay(BIOS_INPUTDELAY); //Input key!
+				unlock(LOCK_INPUT);
+			}
+			return;
+		}
+		else if (shuttingdown()) break; //Cancel because of shutdown?
+	}
 }
 
 extern byte input_buffer_shift; //Ctrl-Shift-Alt Status for the pressed key!
@@ -10083,4 +10137,22 @@ void BIOS_nullModem()
 		break;
 	}
 	BIOS_Menu = 8; //Return to Advanced Menu!	
+}
+
+void BIOS_versionInformation()
+{
+	BIOS_Title("Version information");
+	EMU_locktext();
+	EMU_textcolor(BIOS_ATTR_INACTIVE); //We're using inactive color for label!
+	GPU_EMU_printscreen(0, 4, "Version information:"); //Show selection init!
+	GPU_EMU_printscreen(0, 5, "Build version: ");
+#ifdef GITVERSION
+	GPU_EMU_printscreen(0, 7, "Build %s", GITVERSION); //Show the version information!
+#else
+	//No version information available?
+	GPU_EMU_printscreen(0, 7, "Built without version information!");
+#endif
+	EMU_unlocktext();
+	BIOS_WaitForInput(); //Wait for any input!
+	BIOS_Menu = 0; //Return to Main Menu!	
 }
