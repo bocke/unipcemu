@@ -4,7 +4,7 @@ BUILD_DEFINE = UNIPCEMU
 #PS Vita homebrew ID
 VITAID = SFHB00001
 #Switch homebrew ID
-SWITCHID = SFHB00001
+SWITCHID = 0x0105346484230000
 #Switch icon
 ICON = UniPCemu_switch.jpg
 
