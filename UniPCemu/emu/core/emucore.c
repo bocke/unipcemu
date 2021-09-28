@@ -1378,6 +1378,7 @@ OPTINLINE byte coreHandler()
 					}
 					CPU[activeCPU].cpudebugger = needdebugger(); //Debugging information required? Refresh in case of external activation!
 					MMU_logging = debugger_is_logging; //Are we logging?
+					MMU_updatedebugger();
 				}
 
 				#ifdef LOG_BOGUS

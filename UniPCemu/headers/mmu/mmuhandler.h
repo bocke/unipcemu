@@ -92,7 +92,7 @@ void MMU_calcIndexPrecalcs(); //Calculate the index precalcs!
 void MMU_RAMlayoutupdated(); //Layout updated!
 
 void MMU_mappingupdated(); //A mapping for a MMU device has been updated?
-
+void MMU_updatedebugger(); //Update the debugger being used or not!
 //Define below to enable all memory caching in all MMU units and registered handlers.
 #define USE_MEMORY_CACHING
 

@@ -161,6 +161,7 @@ int runromverify(char *filename, char *resultfile) //Run&verify ROM!
 		{
 			CPU[activeCPU].cpudebugger = needdebugger(); //Debugging?
 			MMU_logging = debugger_is_logging; //Are we logging?
+			MMU_updatedebugger();
 		}
 		HWINT_saved = 0; //No HW interrupt by default!
 		CPU_beforeexec(); //Everything before the execution!
