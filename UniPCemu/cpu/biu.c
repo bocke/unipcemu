@@ -434,19 +434,20 @@ OPTINLINE byte BIU_directrb(uint_64 realaddress, word index)
 		//Normal memory access!
 		result = MMU_INTERNAL_directrb_realaddr(realaddress, (index & 0xFF)); //Read from MMU/hardware!
 
-		if (unlikely(MMU_logging == 1) && ((index & 0x100) == 0)) //To log?
-		{
-			debugger_logmemoryaccess(0, originaladdr, result, LOGMEMORYACCESS_PAGED | (((index & 0x20) >> 5) << LOGMEMORYACCESS_PREFETCHBITSHIFT)); //Log it!
-		}
 		BIU_cachedmemoryaddr[activeCPU] = memory_dataaddr; //The address that's cached now!
 		BIU_cachedmemoryread[activeCPU] = memory_dataread; //What has been read!
-		if (unlikely((memory_datasize > 1) && (MMU_waitstateactive==0))) //Valid to cache? Not waiting for a result?
+		if (unlikely((memory_datasize > 1) && (MMU_waitstateactive == 0))) //Valid to cache? Not waiting for a result?
 		{
 			BIU_cachedmemorysize[activeCPU] = memory_datasize; //How much has been read!
 		}
 		else
 		{
 			BIU_cachedmemorysize[activeCPU] = 0; //Invalidate the local cache!
+		}
+
+		if (unlikely(MMU_logging == 1) && ((index & 0x100) == 0)) //To log?
+		{
+			debugger_logmemoryaccess(0, originaladdr, result, LOGMEMORYACCESS_PAGED | (((index & 0x20) >> 5) << LOGMEMORYACCESS_PREFETCHBITSHIFT)); //Log it!
 		}
 	}
 
