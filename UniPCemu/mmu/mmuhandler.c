@@ -1057,19 +1057,12 @@ typedef byte(*MMU_INTERNAL_directrb_handler)(uint_64 realaddress, word index, ui
 MMU_INTERNAL_directrb_handler MMU_INTERNAL_directrb_handlers[2] = { MMU_INTERNAL_directrb_nodebugger, MMU_INTERNAL_directrb_debugger }; //Debugging and non-debugging handlers to use!
 MMU_INTERNAL_directrb_handler MMU_INTERNAL_directrb_curhandler = &MMU_INTERNAL_directrb_nodebugger;
 
+#define is_debugging (MMU_logging == 1)
 void MMU_updatedebugger()
 {
-	#define is_debugging (MMU_logging == 1)
 	MMU_INTERNAL_directrb_curhandler = MMU_INTERNAL_directrb_handlers[(is_debugging)&1]; //Update the current debugging method used!
 }
-OPTINLINE byte MMU_INTERNAL_directrb(uint_64 realaddress, word index, uint_32 *result)
-{
-	if (likely(MMU_INTERNAL_directrb_curhandler(realaddress, index, result)==0)) //Give the debugger or non-debugger result!
-	{
-		return 0; //Give the result that's gotten!
-	}
-	return 1; //No response!
-}
+#define MMU_INTERNAL_directrb(realaddress, index, result) MMU_INTERNAL_directrb_curhandler(realaddress, index, result)
 
 //Cache invalidation behaviour!
 extern uint_64 BIU_cachedmemoryaddr[MAXCPUS];
@@ -1310,13 +1303,11 @@ byte MMU_INTERNAL_directrb_realaddr(uint_64 realaddress, byte index) //Read with
 		haveMRUreadaddresstype = 0; //Was not direct memory anymore!
 	}
 //Are we debugging?
-	#define is_debugging (MMU_logging == 1)
 	if (unlikely(is_debugging)) //To log?
 	{
 		debugger_logmemoryaccess(0,realaddress,memory_dataread,LOGMEMORYACCESS_DIRECT|(((index&0x20)>>5)<<LOGMEMORYACCESS_PREFETCHBITSHIFT)); //Log it!
 	}
 	return memory_dataread;
-#undef is_debugging
 }
 
 void MMU_INTERNAL_directwb_realaddr(uint_64 realaddress, byte val, byte index) //Write without segment/offset translation&protection (from system/interrupt)!
@@ -1362,7 +1353,6 @@ void MMU_INTERNAL_directwb_realaddr(uint_64 realaddress, byte val, byte index) /
 	{
 		MMU_INTERNAL_directwb(realaddress, val, index); //Set data in real memory!
 	}
-#undef is_debugging
 }
 
 void flushMMU() //Flush MMU writes!
