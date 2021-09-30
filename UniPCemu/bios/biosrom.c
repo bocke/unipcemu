@@ -1164,30 +1164,42 @@ byte OPTROM_readhandler(uint_32 offset, byte index)    /* A pointer to a handler
 				if (likely((index & 3) == 0))
 				{
 					temp = temppos; //Backup address!
-					temppos &= ~3; //Round down to the dword address!
-					if (likely(((temppos | 3) < ROMsize))) //Enough to read a dword?
+					temppos &= ~7; //Round down to the dword address!
+					if (likely(((temppos | 7) < ROMsize))) //Enough to read a dword?
 					{
-						memory_dataread = SDL_SwapLE32(*((uint_32*)(&srcROM[temppos]))); //Read the data from the ROM!
-						memory_datasize = temppos = 4 - (temp - temppos); //What is read from the whole dword!
-						memory_dataread >>= ((4 - temppos) << 3); //Discard the bytes that are not to be read(before the requested address)!
+						memory_dataread = SDL_SwapLE64(*((uint_64*)(&srcROM[temppos]))); //Read the data from the ROM!
+						memory_datasize = temppos = 8 - (temp - temppos); //What is read from the whole dword!
+						memory_dataread >>= ((8 - temppos) << 3); //Discard the bytes that are not to be read(before the requested address)!
 						return 1; //Done: we've been read!
 					}
 					else
 					{
 						temppos = temp; //Restore the original address!
-						temppos &= ~1; //Round down to the word address!
-						if (likely(((temppos | 1) < ROMsize))) //Enough to read a word, aligned?
+						temppos &= ~3; //Round down to the dword address!
+						if (likely(((temppos | 3) < ROMsize))) //Enough to read a dword?
 						{
-							memory_dataread = SDL_SwapLE16(*((word*)(&srcROM[temppos]))); //Read the data from the ROM!
-							memory_datasize = temppos = 2 - (temp - temppos); //What is read from the whole word!
-							memory_dataread >>= ((2 - temppos) << 3); //Discard the bytes that are not to be read(before the requested address)!
-							return 1; //Done: we've been read!				
+							memory_dataread = SDL_SwapLE32(*((uint_32*)(&srcROM[temppos]))); //Read the data from the ROM!
+							memory_datasize = temppos = 4 - (temp - temppos); //What is read from the whole dword!
+							memory_dataread >>= ((4 - temppos) << 3); //Discard the bytes that are not to be read(before the requested address)!
+							return 1; //Done: we've been read!
 						}
-						else //Enough to read a byte only?
+						else
 						{
-							memory_dataread = srcROM[temp]; //Read the data from the ROM!
-							memory_datasize = 1; //Only 1 byte!
-							return 1; //Done: we've been read!				
+							temppos = temp; //Restore the original address!
+							temppos &= ~1; //Round down to the word address!
+							if (likely(((temppos | 1) < ROMsize))) //Enough to read a word, aligned?
+							{
+								memory_dataread = SDL_SwapLE16(*((word*)(&srcROM[temppos]))); //Read the data from the ROM!
+								memory_datasize = temppos = 2 - (temp - temppos); //What is read from the whole word!
+								memory_dataread >>= ((2 - temppos) << 3); //Discard the bytes that are not to be read(before the requested address)!
+								return 1; //Done: we've been read!				
+							}
+							else //Enough to read a byte only?
+							{
+								memory_dataread = srcROM[temp]; //Read the data from the ROM!
+								memory_datasize = 1; //Only 1 byte!
+								return 1; //Done: we've been read!				
+							}
 						}
 					}
 				}
@@ -1211,30 +1223,42 @@ byte OPTROM_readhandler(uint_32 offset, byte index)    /* A pointer to a handler
 			if (likely((index & 3) == 0))
 			{
 				temp = basepos; //Backup address!
-				basepos &= ~3; //Round down to the dword address!
-				if (likely(((basepos | 3) < BIOS_custom_VGAROM_size))) //Enough to read a dword?
+				basepos &= ~7; //Round down to the dword address!
+				if (likely(((basepos | 7) < BIOS_custom_VGAROM_size))) //Enough to read a dword?
 				{
-					memory_dataread = SDL_SwapLE32(*((uint_32*)(&BIOS_custom_VGAROM[basepos]))); //Read the data from the ROM!
-					memory_datasize = basepos = 4 - (temp - basepos); //What is read from the whole dword!
-					memory_dataread >>= ((4 - basepos) << 3); //Discard the bytes that are not to be read(before the requested address)!
+					memory_dataread = SDL_SwapLE64(*((uint_64*)(&BIOS_custom_VGAROM[basepos]))); //Read the data from the ROM!
+					memory_datasize = basepos = 8 - (temp - basepos); //What is read from the whole dword!
+					memory_dataread >>= ((8 - basepos) << 3); //Discard the bytes that are not to be read(before the requested address)!
 					return 1; //Done: we've been read!
 				}
 				else
 				{
 					basepos = temp; //Restore the original address!
-					basepos &= ~1; //Round down to the word address!
-					if (likely(((basepos | 1) < BIOS_custom_VGAROM_size))) //Enough to read a word, aligned?
+					basepos &= ~3; //Round down to the dword address!
+					if (likely(((basepos | 3) < BIOS_custom_VGAROM_size))) //Enough to read a dword?
 					{
-						memory_dataread = SDL_SwapLE16(*((word*)(&BIOS_custom_VGAROM[basepos]))); //Read the data from the ROM!
-						memory_datasize = basepos = 2 - (temp - basepos); //What is read from the whole word!
-						memory_dataread >>= ((2 - basepos) << 3); //Discard the bytes that are not to be read(before the requested address)!
-						return 1; //Done: we've been read!				
+						memory_dataread = SDL_SwapLE32(*((uint_32*)(&BIOS_custom_VGAROM[basepos]))); //Read the data from the ROM!
+						memory_datasize = basepos = 4 - (temp - basepos); //What is read from the whole dword!
+						memory_dataread >>= ((4 - basepos) << 3); //Discard the bytes that are not to be read(before the requested address)!
+						return 1; //Done: we've been read!
 					}
-					else //Enough to read a byte only?
+					else
 					{
-						memory_dataread = BIOS_custom_VGAROM[temp]; //Read the data from the ROM!
-						memory_datasize = 1; //Only 1 byte!
-						return 1; //Done: we've been read!				
+						basepos = temp; //Restore the original address!
+						basepos &= ~1; //Round down to the word address!
+						if (likely(((basepos | 1) < BIOS_custom_VGAROM_size))) //Enough to read a word, aligned?
+						{
+							memory_dataread = SDL_SwapLE16(*((word*)(&BIOS_custom_VGAROM[basepos]))); //Read the data from the ROM!
+							memory_datasize = basepos = 2 - (temp - basepos); //What is read from the whole word!
+							memory_dataread >>= ((2 - basepos) << 3); //Discard the bytes that are not to be read(before the requested address)!
+							return 1; //Done: we've been read!				
+						}
+						else //Enough to read a byte only?
+						{
+							memory_dataread = BIOS_custom_VGAROM[temp]; //Read the data from the ROM!
+							memory_datasize = 1; //Only 1 byte!
+							return 1; //Done: we've been read!				
+						}
 					}
 				}
 			}
@@ -1693,30 +1717,42 @@ byte BIOS_readhandler(uint_32 offset, byte index) /* A pointer to a handler func
 				if (likely((index & 3) == 0)) //First byte?
 				{
 					temp = tempoffset; //Backup address!
-					tempoffset &= ~3; //Round down to the dword address!
-					if (likely(((tempoffset | 3) < BIOS_custom_ROM_size))) //Enough to read a dword?
+					tempoffset &= ~7; //Round down to the qword address!
+					if (likely(((tempoffset | 7) < BIOS_custom_ROM_size))) //Enough to read a dword?
 					{
-						memory_dataread = SDL_SwapLE32(*((uint_32*)(&BIOS_custom_ROM[tempoffset]))); //Read the data from the ROM!
-						memory_datasize = tempoffset = 4 - (temp - tempoffset); //What is read from the whole dword!
-						memory_dataread >>= ((4 - tempoffset) << 3); //Discard the bytes that are not to be read(before the requested address)!
+						memory_dataread = SDL_SwapLE64(*((uint_64*)(&BIOS_custom_ROM[tempoffset]))); //Read the data from the ROM!
+						memory_datasize = tempoffset = 8 - (temp - tempoffset); //What is read from the whole dword!
+						memory_dataread >>= ((8 - tempoffset) << 3); //Discard the bytes that are not to be read(before the requested address)!
 						return 1; //Done: we've been read!
 					}
 					else
 					{
 						tempoffset = temp; //Restore the original address!
-						tempoffset &= ~1; //Round down to the word address!
-						if (likely(((tempoffset | 1) < BIOS_custom_ROM_size))) //Enough to read a word, aligned?
+						tempoffset &= ~3; //Round down to the dword address!
+						if (likely(((tempoffset | 3) < BIOS_custom_ROM_size))) //Enough to read a dword?
 						{
-							memory_dataread = SDL_SwapLE16(*((word*)(&BIOS_custom_ROM[tempoffset]))); //Read the data from the ROM!
-							memory_datasize = tempoffset = 2 - (temp - tempoffset); //What is read from the whole word!
-							memory_dataread >>= ((2 - tempoffset) << 3); //Discard the bytes that are not to be read(before the requested address)!
-							return 1; //Done: we've been read!				
+							memory_dataread = SDL_SwapLE32(*((uint_32*)(&BIOS_custom_ROM[tempoffset]))); //Read the data from the ROM!
+							memory_datasize = tempoffset = 4 - (temp - tempoffset); //What is read from the whole dword!
+							memory_dataread >>= ((4 - tempoffset) << 3); //Discard the bytes that are not to be read(before the requested address)!
+							return 1; //Done: we've been read!
 						}
-						else //Enough to read a byte only?
+						else
 						{
-							memory_dataread = BIOS_custom_ROM[temp]; //Read the data from the ROM!
-							memory_datasize = 1; //Only 1 byte!
-							return 1; //Done: we've been read!				
+							tempoffset = temp; //Restore the original address!
+							tempoffset &= ~1; //Round down to the word address!
+							if (likely(((tempoffset | 1) < BIOS_custom_ROM_size))) //Enough to read a word, aligned?
+							{
+								memory_dataread = SDL_SwapLE16(*((word*)(&BIOS_custom_ROM[tempoffset]))); //Read the data from the ROM!
+								memory_datasize = tempoffset = 2 - (temp - tempoffset); //What is read from the whole word!
+								memory_dataread >>= ((2 - tempoffset) << 3); //Discard the bytes that are not to be read(before the requested address)!
+								return 1; //Done: we've been read!				
+							}
+							else //Enough to read a byte only?
+							{
+								memory_dataread = BIOS_custom_ROM[temp]; //Read the data from the ROM!
+								memory_datasize = 1; //Only 1 byte!
+								return 1; //Done: we've been read!				
+							}
 						}
 					}
 				}
@@ -1756,30 +1792,42 @@ byte BIOS_readhandler(uint_32 offset, byte index) /* A pointer to a handler func
 			if (likely((index & 3) == 0))
 			{
 				temp = tempoffset; //Backup address!
-				tempoffset &= ~3; //Round down to the dword address!
-				if (likely(((tempoffset | 3) < BIOS_custom_ROM_size))) //Enough to read a dword?
+				tempoffset &= ~7; //Round down to the dword address!
+				if (likely(((tempoffset | 7) < BIOS_custom_ROM_size))) //Enough to read a dword?
 				{
-					memory_dataread = SDL_SwapLE32(*((uint_32*)(&BIOS_custom_ROM[tempoffset]))); //Read the data from the ROM!
-					memory_datasize = tempoffset = 4 - (temp - tempoffset); //What is read from the whole dword!
-					memory_dataread >>= ((4 - tempoffset) << 3); //Discard the bytes that are not to be read(before the requested address)!
+					memory_dataread = SDL_SwapLE64(*((uint_64*)(&BIOS_custom_ROM[tempoffset]))); //Read the data from the ROM!
+					memory_datasize = tempoffset = 8 - (temp - tempoffset); //What is read from the whole dword!
+					memory_dataread >>= ((8 - tempoffset) << 3); //Discard the bytes that are not to be read(before the requested address)!
 					return 1; //Done: we've been read!
 				}
 				else
 				{
 					tempoffset = temp; //Restore the original address!
-					tempoffset &= ~1; //Round down to the word address!
-					if (likely(((tempoffset | 1) < BIOS_custom_ROM_size))) //Enough to read a word, aligned?
+					tempoffset &= ~3; //Round down to the dword address!
+					if (likely(((tempoffset | 3) < BIOS_custom_ROM_size))) //Enough to read a dword?
 					{
-						memory_dataread = SDL_SwapLE16(*((word*)(&BIOS_custom_ROM[tempoffset]))); //Read the data from the ROM!
-						memory_datasize = tempoffset = 2 - (temp - tempoffset); //What is read from the whole word!
-						memory_dataread >>= ((2 - tempoffset) << 3); //Discard the bytes that are not to be read(before the requested address)!
-						return 1; //Done: we've been read!				
+						memory_dataread = SDL_SwapLE32(*((uint_32*)(&BIOS_custom_ROM[tempoffset]))); //Read the data from the ROM!
+						memory_datasize = tempoffset = 4 - (temp - tempoffset); //What is read from the whole dword!
+						memory_dataread >>= ((4 - tempoffset) << 3); //Discard the bytes that are not to be read(before the requested address)!
+						return 1; //Done: we've been read!
 					}
-					else //Enough to read a byte only?
+					else
 					{
-						memory_dataread = BIOS_custom_ROM[temp]; //Read the data from the ROM!
-						memory_datasize = 1; //Only 1 byte!
-						return 1; //Done: we've been read!				
+						tempoffset = temp; //Restore the original address!
+						tempoffset &= ~1; //Round down to the word address!
+						if (likely(((tempoffset | 1) < BIOS_custom_ROM_size))) //Enough to read a word, aligned?
+						{
+							memory_dataread = SDL_SwapLE16(*((word*)(&BIOS_custom_ROM[tempoffset]))); //Read the data from the ROM!
+							memory_datasize = tempoffset = 2 - (temp - tempoffset); //What is read from the whole word!
+							memory_dataread >>= ((2 - tempoffset) << 3); //Discard the bytes that are not to be read(before the requested address)!
+							return 1; //Done: we've been read!				
+						}
+						else //Enough to read a byte only?
+						{
+							memory_dataread = BIOS_custom_ROM[temp]; //Read the data from the ROM!
+							memory_datasize = 1; //Only 1 byte!
+							return 1; //Done: we've been read!				
+						}
 					}
 				}
 			}
@@ -1813,30 +1861,42 @@ byte BIOS_readhandler(uint_32 offset, byte index) /* A pointer to a handler func
 				if (likely((index & 3) == 0))
 				{
 					temp = tempoffset; //Backup address!
-					tempoffset &= ~3; //Round down to the dword address!
-					if (likely(((tempoffset | 3) < BIOS_ROM_size[segment]))) //Enough to read a dword?
+					tempoffset &= ~7; //Round down to the dword address!
+					if (likely(((tempoffset | 7) < BIOS_ROM_size[segment]))) //Enough to read a dword?
 					{
-						memory_dataread = SDL_SwapLE32(*((uint_32*)(&BIOS_ROMS[segment][tempoffset]))); //Read the data from the ROM!
-						memory_datasize = tempoffset = 4 - (temp - tempoffset); //What is read from the whole dword!
-						memory_dataread >>= ((4 - tempoffset) << 3); //Discard the bytes that are not to be read(before the requested address)!
+						memory_dataread = SDL_SwapLE64(*((uint_64*)(&BIOS_ROMS[segment][tempoffset]))); //Read the data from the ROM!
+						memory_datasize = tempoffset = 8 - (temp - tempoffset); //What is read from the whole dword!
+						memory_dataread >>= ((8 - tempoffset) << 3); //Discard the bytes that are not to be read(before the requested address)!
 						return 1; //Done: we've been read!
 					}
 					else
 					{
 						tempoffset = temp; //Restore the original address!
-						tempoffset &= ~1; //Round down to the word address!
-						if (likely(((tempoffset | 1) < BIOS_combinedROM_size))) //Enough to read a word, aligned?
+						tempoffset &= ~3; //Round down to the dword address!
+						if (likely(((tempoffset | 3) < BIOS_ROM_size[segment]))) //Enough to read a dword?
 						{
-							memory_dataread = SDL_SwapLE16(*((word*)(&BIOS_ROMS[segment][tempoffset]))); //Read the data from the ROM!
-							memory_datasize = tempoffset = 2 - (temp - tempoffset); //What is read from the whole word!
-							memory_dataread >>= ((2 - tempoffset) << 3); //Discard the bytes that are not to be read(before the requested address)!
-							return 1; //Done: we've been read!				
+							memory_dataread = SDL_SwapLE32(*((uint_32*)(&BIOS_ROMS[segment][tempoffset]))); //Read the data from the ROM!
+							memory_datasize = tempoffset = 4 - (temp - tempoffset); //What is read from the whole dword!
+							memory_dataread >>= ((4 - tempoffset) << 3); //Discard the bytes that are not to be read(before the requested address)!
+							return 1; //Done: we've been read!
 						}
-						else //Enough to read a byte only?
+						else
 						{
-							memory_dataread = BIOS_ROMS[segment][temp]; //Read the data from the ROM!
-							memory_datasize = 1; //Only 1 byte!
-							return 1; //Done: we've been read!				
+							tempoffset = temp; //Restore the original address!
+							tempoffset &= ~1; //Round down to the word address!
+							if (likely(((tempoffset | 1) < BIOS_combinedROM_size))) //Enough to read a word, aligned?
+							{
+								memory_dataread = SDL_SwapLE16(*((word*)(&BIOS_ROMS[segment][tempoffset]))); //Read the data from the ROM!
+								memory_datasize = tempoffset = 2 - (temp - tempoffset); //What is read from the whole word!
+								memory_dataread >>= ((2 - tempoffset) << 3); //Discard the bytes that are not to be read(before the requested address)!
+								return 1; //Done: we've been read!				
+							}
+							else //Enough to read a byte only?
+							{
+								memory_dataread = BIOS_ROMS[segment][temp]; //Read the data from the ROM!
+								memory_datasize = 1; //Only 1 byte!
+								return 1; //Done: we've been read!				
+							}
 						}
 					}
 				}
@@ -1867,30 +1927,42 @@ byte BIOS_readhandler(uint_32 offset, byte index) /* A pointer to a handler func
 				if ((index & 3) == 0)
 				{
 					temp = tempoffset; //Backup address!
-					tempoffset &= ~3; //Round down to the dword address!
-					if (likely(((tempoffset | 3) < BIOS_combinedROM_size))) //Enough to read a dword?
+					tempoffset &= ~7; //Round down to the dword address!
+					if (likely(((tempoffset | 7) < BIOS_combinedROM_size))) //Enough to read a dword?
 					{
-						memory_dataread = SDL_SwapLE32(*((uint_32*)(&BIOS_combinedROM[tempoffset]))); //Read the data from the ROM!
-						memory_datasize = tempoffset = 4 - (temp - tempoffset); //What is read from the whole dword!
-						memory_dataread >>= ((4 - tempoffset) << 3); //Discard the bytes that are not to be read(before the requested address)!
+						memory_dataread = SDL_SwapLE64(*((uint_64*)(&BIOS_combinedROM[tempoffset]))); //Read the data from the ROM!
+						memory_datasize = tempoffset = 8 - (temp - tempoffset); //What is read from the whole dword!
+						memory_dataread >>= ((8 - tempoffset) << 3); //Discard the bytes that are not to be read(before the requested address)!
 						return 1; //Done: we've been read!
 					}
 					else
 					{
 						tempoffset = temp; //Restore the original address!
-						tempoffset &= ~1; //Round down to the word address!
-						if (likely(((tempoffset | 1) < BIOS_combinedROM_size))) //Enough to read a word, aligned?
+						tempoffset &= ~3; //Round down to the dword address!
+						if (likely(((tempoffset | 3) < BIOS_combinedROM_size))) //Enough to read a dword?
 						{
-							memory_dataread = SDL_SwapLE16(*((word*)(&BIOS_combinedROM[tempoffset]))); //Read the data from the ROM!
-							memory_datasize = tempoffset = 2 - (temp - tempoffset); //What is read from the whole word!
-							memory_dataread >>= ((2 - tempoffset) << 3); //Discard the bytes that are not to be read(before the requested address)!
-							return 1; //Done: we've been read!				
+							memory_dataread = SDL_SwapLE32(*((uint_32*)(&BIOS_combinedROM[tempoffset]))); //Read the data from the ROM!
+							memory_datasize = tempoffset = 4 - (temp - tempoffset); //What is read from the whole dword!
+							memory_dataread >>= ((4 - tempoffset) << 3); //Discard the bytes that are not to be read(before the requested address)!
+							return 1; //Done: we've been read!
 						}
-						else //Enough to read a byte only?
+						else
 						{
-							memory_dataread = BIOS_combinedROM[temp]; //Read the data from the ROM!
-							memory_datasize = 1; //Only 1 byte!
-							return 1; //Done: we've been read!				
+							tempoffset = temp; //Restore the original address!
+							tempoffset &= ~1; //Round down to the word address!
+							if (likely(((tempoffset | 1) < BIOS_combinedROM_size))) //Enough to read a word, aligned?
+							{
+								memory_dataread = SDL_SwapLE16(*((word*)(&BIOS_combinedROM[tempoffset]))); //Read the data from the ROM!
+								memory_datasize = tempoffset = 2 - (temp - tempoffset); //What is read from the whole word!
+								memory_dataread >>= ((2 - tempoffset) << 3); //Discard the bytes that are not to be read(before the requested address)!
+								return 1; //Done: we've been read!				
+							}
+							else //Enough to read a byte only?
+							{
+								memory_dataread = BIOS_combinedROM[temp]; //Read the data from the ROM!
+								memory_datasize = 1; //Only 1 byte!
+								return 1; //Done: we've been read!				
+							}
 						}
 					}
 				}

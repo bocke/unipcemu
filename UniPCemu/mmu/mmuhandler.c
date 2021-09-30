@@ -977,30 +977,42 @@ byte MMU_INTERNAL_directrb_nodebugger(uint_64 realaddress, word index, uint_64 *
 		if (likely((index & 3) == 0))
 		{
 			temp = realaddress; //Backup address!
-			realaddress &= ~3; //Round down to the dword address!
-			if (likely((((realaddress & MMU_BLOCKALIGNMENT) | 3) <= MMU_BLOCKALIGNMENT))) //Enough to read a dword?
+			realaddress &= ~7; //Round down to the dword address!
+			if (likely((((realaddress & MMU_BLOCKALIGNMENT) | 7) <= MMU_BLOCKALIGNMENT))) //Enough to read a dword?
 			{
-				*result = SDL_SwapLE32(*((uint_32*)&memorymapinfo[precalcval].cache[realaddress & MMU_BLOCKALIGNMENT])); //Read the data from the ROM!
-				memory_datasize = realaddress = 4 - (temp - realaddress); //What is read from the whole dword!
-				*result >>= ((4 - realaddress) << 3); //Discard the bytes that are not to be read(before the requested address)!
+				*result = SDL_SwapLE64(*((uint_64*)&memorymapinfo[precalcval].cache[realaddress & MMU_BLOCKALIGNMENT])); //Read the data from the ROM!
+				memory_datasize = realaddress = 8 - (temp - realaddress); //What is read from the whole dword!
+				*result >>= ((8 - realaddress) << 3); //Discard the bytes that are not to be read(before the requested address)!
 				memory_dataaddr = originaladdress; //What is the cached data address!
 			}
 			else
 			{
 				realaddress = temp; //Restore the original address!
-				realaddress &= ~1; //Round down to the word address!
-				if (likely((((realaddress & MMU_BLOCKALIGNMENT) | 1) <= MMU_BLOCKALIGNMENT))) //Enough to read a word, aligned?
+				realaddress &= ~3; //Round down to the dword address!
+				if (likely((((realaddress & MMU_BLOCKALIGNMENT) | 3) <= MMU_BLOCKALIGNMENT))) //Enough to read a dword?
 				{
-					*result = SDL_SwapLE16(*((word*)(&memorymapinfo[precalcval].cache[realaddress & MMU_BLOCKALIGNMENT]))); //Read the data from the ROM!
-					memory_datasize = realaddress = 2 - (temp - realaddress); //What is read from the whole word!
-					*result >>= ((2 - realaddress) << 3); //Discard the bytes that are not to be read(before the requested address)!
+					*result = SDL_SwapLE32(*((uint_32*)&memorymapinfo[precalcval].cache[realaddress & MMU_BLOCKALIGNMENT])); //Read the data from the ROM!
+					memory_datasize = realaddress = 4 - (temp - realaddress); //What is read from the whole dword!
+					*result >>= ((4 - realaddress) << 3); //Discard the bytes that are not to be read(before the requested address)!
 					memory_dataaddr = originaladdress; //What is the cached data address!
 				}
-				else //Enough to read a byte only?
+				else
 				{
-					*result = memorymapinfo[precalcval].cache[temp & MMU_BLOCKALIGNMENT]; //Read the data from the ROM!
-					memory_dataaddr = originaladdress; //What is the cached data address!
-					memory_datasize = 1; //Only 1 byte!
+					realaddress = temp; //Restore the original address!
+					realaddress &= ~1; //Round down to the word address!
+					if (likely((((realaddress & MMU_BLOCKALIGNMENT) | 1) <= MMU_BLOCKALIGNMENT))) //Enough to read a word, aligned?
+					{
+						*result = SDL_SwapLE16(*((word*)(&memorymapinfo[precalcval].cache[realaddress & MMU_BLOCKALIGNMENT]))); //Read the data from the ROM!
+						memory_datasize = realaddress = 2 - (temp - realaddress); //What is read from the whole word!
+						*result >>= ((2 - realaddress) << 3); //Discard the bytes that are not to be read(before the requested address)!
+						memory_dataaddr = originaladdress; //What is the cached data address!
+					}
+					else //Enough to read a byte only?
+					{
+						*result = memorymapinfo[precalcval].cache[temp & MMU_BLOCKALIGNMENT]; //Read the data from the ROM!
+						memory_dataaddr = originaladdress; //What is the cached data address!
+						memory_datasize = 1; //Only 1 byte!
+					}
 				}
 			}
 		}
