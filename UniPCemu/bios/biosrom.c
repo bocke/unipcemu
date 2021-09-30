@@ -1106,7 +1106,7 @@ void BIOS_finishROMs()
 
 byte BIOSROM_DisableLowMemory = 0; //Disable low-memory mapping of the BIOS and OPTROMs! Disable mapping of low memory locations E0000-FFFFF used on the Compaq Deskpro 386.
 
-extern uint_32 memory_dataread;
+extern uint_64 memory_dataread;
 extern byte memory_datasize; //The size of the data that has been read!
 byte OPTROM_readhandler(uint_32 offset, byte index)    /* A pointer to a handler function */
 {
@@ -1276,7 +1276,7 @@ void BIOSROM_updateTimers(DOUBLE timepassed)
 
 
 extern uint_64 BIU_cachedmemoryaddr[MAXCPUS];
-extern uint_32 BIU_cachedmemoryread[MAXCPUS];
+extern uint_64 BIU_cachedmemoryread[MAXCPUS];
 extern byte BIU_cachedmemorysize[MAXCPUS]; //To invalidate the BIU cache!
 extern byte memory_datawrittensize; //How many bytes have been written to memory during a write!
 

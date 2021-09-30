@@ -51,7 +51,7 @@ byte readEMSMem(uint_32 address, byte *value)
 }
 
 extern uint_64 BIU_cachedmemoryaddr[MAXCPUS];
-extern uint_32 BIU_cachedmemoryread[MAXCPUS];
+extern uint_64 BIU_cachedmemoryread[MAXCPUS];
 extern byte BIU_cachedmemorysize[MAXCPUS]; //To invalidate the BIU cache!
 extern byte memory_datasize; //The size of the data that has been read!
 byte writeEMSMem(uint_32 address, byte value)

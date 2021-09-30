@@ -380,11 +380,11 @@ extern uint_64 effectivecpuaddresspins; //What address pins are supported?
 
 //Some cached memory line!
 uint_64 BIU_cachedmemoryaddr[MAXCPUS] = { 0,0 };
-uint_32 BIU_cachedmemoryread[MAXCPUS] = { 0,0 };
+uint_64 BIU_cachedmemoryread[MAXCPUS] = { 0,0 };
 byte BIU_cachedmemorysize[MAXCPUS] = { 0,0 };
 
 extern uint_64 memory_dataaddr; //The data address that's cached!
-extern uint_32 memory_dataread;
+extern uint_64 memory_dataread;
 extern byte memory_datasize; //The size of the data that has been read!
 
 void BIU_terminatemem()

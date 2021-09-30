@@ -615,7 +615,7 @@ byte extVGA_isnotVRAM(uint_32 offset)
 
 byte MMUblock; //What block is addressed for MMU0-2?
 byte bit8read;
-extern uint_32 memory_dataread;
+extern uint_64 memory_dataread;
 extern byte memory_datasize; //The size of the data that has been read!
 byte VGAmemIO_rb(uint_32 offset)
 {

@@ -306,7 +306,7 @@ OPTINLINE byte MMU_IO_writehandler(uint_64 offset, byte value, word index)
 
 //Reading only!
 uint_64 memory_dataaddr = 0; //The data address that's cached!
-uint_32 memory_dataread = 0;
+uint_64 memory_dataread = 0;
 byte memory_datasize = 0; //The size of the data that has been read!
 OPTINLINE byte MMU_IO_readhandler(uint_64 offset, word index)
 {
@@ -897,7 +897,7 @@ void MMU_seti430fx()
 BUShandler bushandler = NULL; //Remember the last access?
 
 //Direct memory access (for the entire emulator)
-byte MMU_INTERNAL_directrb_debugger(uint_64 realaddress, word index, uint_32 *result) //Direct read from real memory (with real data direct)!
+byte MMU_INTERNAL_directrb_debugger(uint_64 realaddress, word index, uint_64 *result) //Direct read from real memory (with real data direct)!
 {
 	uint_64 originaladdress = realaddress; //Original address!
 	byte precalcval;
@@ -933,7 +933,7 @@ specialreadcycledebugger:
 	return 0; //Give existant memory!
 }
 
-byte MMU_directrb_hwdebugger(uint_64 realaddress, word index, uint_32* result) //Direct read from real memory (with real data direct)!
+byte MMU_directrb_hwdebugger(uint_64 realaddress, word index, uint_64* result) //Direct read from real memory (with real data direct)!
 {
 	byte precalcval;
 	if (unlikely(emulateCompaqMMURegisters && (realaddress == 0x80C00000))) //Compaq special register?
@@ -953,7 +953,7 @@ specialreadcycledebuggerd:
 	return 0; //Give existant memory!
 }
 
-byte MMU_INTERNAL_directrb_nodebugger(uint_64 realaddress, word index, uint_32 *result) //Direct read from real memory (with real data direct)!
+byte MMU_INTERNAL_directrb_nodebugger(uint_64 realaddress, word index, uint_64 *result) //Direct read from real memory (with real data direct)!
 {
 	uint_64 originaladdress = realaddress,temp; //Original address!
 	byte nonexistant = 0;
@@ -1053,7 +1053,7 @@ void MMU_calcIndexPrecalcs()
 	}
 }
 
-typedef byte(*MMU_INTERNAL_directrb_handler)(uint_64 realaddress, word index, uint_32 *result); //A memory data read handler!
+typedef byte(*MMU_INTERNAL_directrb_handler)(uint_64 realaddress, word index, uint_64 *result); //A memory data read handler!
 MMU_INTERNAL_directrb_handler MMU_INTERNAL_directrb_handlers[2] = { MMU_INTERNAL_directrb_nodebugger, MMU_INTERNAL_directrb_debugger }; //Debugging and non-debugging handlers to use!
 MMU_INTERNAL_directrb_handler MMU_INTERNAL_directrb_curhandler = &MMU_INTERNAL_directrb_nodebugger;
 
@@ -1066,7 +1066,7 @@ void MMU_updatedebugger()
 
 //Cache invalidation behaviour!
 extern uint_64 BIU_cachedmemoryaddr[MAXCPUS];
-extern uint_32 BIU_cachedmemoryread[MAXCPUS];
+extern uint_64 BIU_cachedmemoryread[MAXCPUS];
 extern byte BIU_cachedmemorysize[MAXCPUS];
 
 OPTINLINE void MMU_INTERNAL_directwb(uint_64 realaddress, byte value, word index) //Direct write to real memory (with real data direct)!
@@ -1180,7 +1180,7 @@ OPTINLINE void MMU_INTERNAL_directwb(uint_64 realaddress, byte value, word index
 word MMU_INTERNAL_directrw(uint_64 realaddress, word index) //Direct read from real memory (with real data direct)!
 {
 	word result;
-	uint_32 temp;
+	uint_64 temp;
 	if (MMU_INTERNAL_directrb(realaddress, index, &temp)) //Get data, wrap arround!
 	{
 		if (likely((is_XT == 0) || (EMULATED_CPU >= CPU_80286))) //To give NOT for detecting memory on AT only?
@@ -1439,7 +1439,7 @@ void MMU_resetaddr()
 //Direct memory access routines (used by DMA)!
 byte memory_directrb(uint_64 realaddress) //Direct read from real memory (with real data direct)!
 {
-	uint_32 result;
+	uint_64 result;
 	if (unlikely(MMU_INTERNAL_directrb(realaddress, 0x100, &result)))
 	{
 		if (likely((is_XT == 0) || (EMULATED_CPU >= CPU_80286))) //To give NOT for detecting memory on AT only?

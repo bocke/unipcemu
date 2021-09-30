@@ -1239,7 +1239,7 @@ void debugger_screen() //Show debugger info on-screen!
 	int memoryx, memoryy;
 	int tablebasex, tablebasey;
 	uint_32 effectiveaddress;
-	uint_32 effectivememorydata;
+	uint_64 effectivememorydata;
 	uint_64 physicaladdress;
 	if (frameratesurface) //We can show?
 	{

@@ -1878,7 +1878,7 @@ byte APIC_memIO_wb(uint_32 offset, byte value)
 	return 1; //Data has been written!
 }
 
-extern uint_32 memory_dataread;
+extern uint_64 memory_dataread;
 extern byte memory_datasize; //The size of the data that has been read!
 byte APIC_memIO_rb(uint_32 offset, byte index)
 {
