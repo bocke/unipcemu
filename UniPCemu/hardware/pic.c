@@ -1878,7 +1878,7 @@ byte APIC_memIO_wb(uint_32 offset, byte value)
 	return 1; //Data has been written!
 }
 
-extern uint_64 memory_dataread;
+extern uint_64 memory_dataread[2];
 extern byte memory_datasize; //The size of the data that has been read!
 byte APIC_memIO_rb(uint_32 offset, byte index)
 {
@@ -2112,9 +2112,9 @@ byte APIC_memIO_rb(uint_32 offset, byte index)
 		tempoffset &= ~3; //Round down to the dword address!
 		if (likely(((tempoffset | 3) < 0x1000))) //Enough to read a dword?
 		{
-			memory_dataread = SDL_SwapLE32(*((uint_32*)(&converter16.value32))); //Read the data from the result!
+			memory_dataread[0] = SDL_SwapLE32(*((uint_32*)(&converter16.value32))); //Read the data from the result!
 			memory_datasize = tempoffset = 4 - (temp - tempoffset); //What is read from the whole dword!
-			memory_dataread >>= ((4 - tempoffset) << 3); //Discard the bytes that are not to be read(before the requested address)!
+			memory_dataread[0] >>= ((4 - tempoffset) << 3); //Discard the bytes that are not to be read(before the requested address)!
 			return 1; //Done: we've been read!
 		}
 		else
@@ -2124,14 +2124,14 @@ byte APIC_memIO_rb(uint_32 offset, byte index)
 			if (likely(((tempoffset | 1) < 0x1000))) //Enough to read a word, aligned?
 			{
 				converter16.value32 >>= ((offset&2)<<3); //Take the lower or upper word correctly to read!
-				memory_dataread = SDL_SwapLE16(*((word*)(&converter16.value16))); //Read the data from the result!
+				memory_dataread[0] = SDL_SwapLE16(*((word*)(&converter16.value16))); //Read the data from the result!
 				memory_datasize = tempoffset = 2 - (temp - tempoffset); //What is read from the whole word!
-				memory_dataread >>= ((2 - tempoffset) << 3); //Discard the bytes that are not to be read(before the requested address)!
+				memory_dataread[0] >>= ((2 - tempoffset) << 3); //Discard the bytes that are not to be read(before the requested address)!
 				return 1; //Done: we've been read!
 			}
 			else //Enough to read a byte only?
 			{
-				memory_dataread = converter16.value32>>((tempoffset&3)<<3); //Read the data from the result!
+				memory_dataread[0] = converter16.value32>>((tempoffset&3)<<3); //Read the data from the result!
 				memory_datasize = 1; //Only 1 byte!
 				return 1; //Done: we've been read!
 			}
@@ -2140,7 +2140,7 @@ byte APIC_memIO_rb(uint_32 offset, byte index)
 	else //Enough to read a byte only?
 	#endif
 	{
-		memory_dataread = converter16.value32>>((tempoffset&3)<<3); //Read the data from the ROM, reversed!
+		memory_dataread[0] = converter16.value32>>((tempoffset&3)<<3); //Read the data from the ROM, reversed!
 		memory_datasize = 1; //Only 1 byte!
 		return 1; //Done: we've been read!				
 	}

@@ -380,11 +380,11 @@ extern uint_64 effectivecpuaddresspins; //What address pins are supported?
 
 //Some cached memory line!
 uint_64 BIU_cachedmemoryaddr[MAXCPUS] = { 0,0 };
-uint_64 BIU_cachedmemoryread[MAXCPUS] = { 0,0 };
+uint_64 BIU_cachedmemoryread[MAXCPUS][2] = { {0,0}, {0,0} };
 byte BIU_cachedmemorysize[MAXCPUS] = { 0,0 };
 
 extern uint_64 memory_dataaddr; //The data address that's cached!
-extern uint_64 memory_dataread;
+extern uint_64 memory_dataread[2];
 extern byte memory_datasize; //The size of the data that has been read!
 
 void BIU_terminatemem()
@@ -426,7 +426,7 @@ OPTINLINE byte BIU_directrb(uint_64 realaddress, word index)
 		}
 		//We're the same address block that's already loaded!
 		cachedmemorybyte <<= 3; //Make it a multiple of 8 bits!
-		result = BIU_cachedmemoryread[activeCPU] >> cachedmemorybyte; //Read the data from the local cache!
+		result = BIU_cachedmemoryread[activeCPU][cachedmemorybyte>>6] >> (cachedmemorybyte&0x3F); //Read the data from the local cache!
 	}
 	else //Start uncached read!
 	{
@@ -435,7 +435,8 @@ OPTINLINE byte BIU_directrb(uint_64 realaddress, word index)
 		result = MMU_INTERNAL_directrb_realaddr(realaddress, (index & 0xFF)); //Read from MMU/hardware!
 
 		BIU_cachedmemoryaddr[activeCPU] = memory_dataaddr; //The address that's cached now!
-		BIU_cachedmemoryread[activeCPU] = memory_dataread; //What has been read!
+		BIU_cachedmemoryread[activeCPU][0] = memory_dataread[0]; //What has been read!
+		BIU_cachedmemoryread[activeCPU][1] = memory_dataread[1]; //What has been read!
 		if (unlikely((memory_datasize > 1) && (MMU_waitstateactive == 0))) //Valid to cache? Not waiting for a result?
 		{
 			BIU_cachedmemorysize[activeCPU] = memory_datasize; //How much has been read!
@@ -1126,7 +1127,7 @@ OPTINLINE byte BIU_processRequests(byte memory_waitstates, byte bus_waitstates)
 					{
 						if (useIPSclock && (BIU[activeCPU].newtransfer_size == BIU_cachedmemorysize[activeCPU]) && (BIU_cachedmemorysize[activeCPU] > 1) && (BIU_cachedmemoryaddr[activeCPU] == physicaladdress)) //Data already fully read in IPS clocking mode?
 						{
-							BIU[activeCPU].currentresult = BIU_cachedmemoryread[activeCPU]; //What was read?
+							BIU[activeCPU].currentresult = BIU_cachedmemoryread[activeCPU][0]; //What was read?
 							if (BIU_response(BIU[activeCPU].currentresult)) //Result given? We're giving OK!
 							{
 								BIU_terminatemem(); //Terminate memory access!
