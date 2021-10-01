@@ -40,7 +40,7 @@ extern BIOS_Settings_TYPE BIOS_Settings; //Settings!
 #define __HW_DISABLED 0
 
 //What bits to take as a memory block to be translated and used(rounds memory down)?
-#define MMU_BLOCKALIGNMENT 0xF
+#define MMU_BLOCKALIGNMENT 0x1F
 
 //Log invalid memory accesses?
 //#define LOG_INVALID_MEMORY
