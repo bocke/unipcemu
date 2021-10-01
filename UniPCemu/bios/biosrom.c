@@ -25,6 +25,7 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 #include "headers/cpu/paging.h" //Paging support for address decoding (for Turbo XT BIOS detection)!
 #include "headers/support/locks.h" //Locking support!
 #include "headers/fopen64.h" //64-bit fopen support!
+#include "headers/emu/emu_misc.h" //For 128-bit shifting support!
 
 //Comment this define to disable logging
 //#define __ENABLE_LOGGING

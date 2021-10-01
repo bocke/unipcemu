@@ -34,6 +34,7 @@ along with UniPCemu.  If not, see <https://www.gnu.org/licenses/>.
 #include "headers/hardware/i430fx.h" //i430fx motherboard support!
 #include "headers/hardware/pic.h" //APIC support!
 #include "headers/cpu/cpu.h" //Emulated CPU support!
+#include "headers/emu/emu_misc.h" //For 128-bit shifting support!
 
 extern BIOS_Settings_TYPE BIOS_Settings; //Settings!
 
