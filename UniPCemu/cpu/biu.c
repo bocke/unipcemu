@@ -201,7 +201,7 @@ void CPU_flushPIQ(int_64 destaddr) //Flush the PIQ! Returns 0 without abort, 1 w
 //Internal helper functions for requests and responses!
 OPTINLINE byte BIU_haveRequest() //BIU: Does the BIU have a request?
 {
-	return ((fifobuffer_freesize(BIU[activeCPU].requests)==0) && (fifobuffer_freesize(BIU[activeCPU].responses)==BIU[activeCPU].responses->size)); //Do we have a request and enough size for a response?
+	return ((fifobuffer_freesize(BIU[activeCPU].requests)==0) && (fifobuffer_freesize(BIU[activeCPU].responses)==fifobuffer_size(BIU[activeCPU].responses))); //Do we have a request and enough size for a response?
 }
 
 OPTINLINE byte BIU_readRequest(uint_32 *requesttype, uint_64 *payload1, uint_64 *payload2) //BIU: Read a request to process!
@@ -675,20 +675,16 @@ void BIU_dosboxTick()
 		BIU[activeCPU].PIQ_checked = BIUsize; //Check off any that we have verified!
 
 		MMU_resetaddr(); //Reset the address error line for trying some I/O!
-		if ((EMULATED_CPU>=CPU_80286) && BIUsize) //Can we limit what we fetch, instead of the entire prefetch buffer?
+		if ((EMULATED_CPU>=CPU_80286) && BIUsize2 && BIUsize) //Can we limit what we fetch, instead of the entire prefetch buffer?
 		{
-			if (unlikely((BIU[activeCPU].PIQ->size-BIUsize2)>=instructionlimit[EMULATED_CPU - CPU_80286])) //Already buffered enough?
+			if (unlikely((fifobuffer_size(BIU[activeCPU].PIQ)-BIUsize2)>=instructionlimit[EMULATED_CPU - CPU_80286])) //Already buffered enough?
 			{
 				BIUsize2 = 0; //Don't buffer more, enough is buffered!
 			}
 			else //Not buffered enough to the limit yet?
 			{
-				BIUsize2 = MIN(instructionlimit[EMULATED_CPU - CPU_80286]-(BIU[activeCPU].PIQ->size-BIUsize2),BIUsize); //Limit by what we can use for an instruction!
+				BIUsize2 = MIN(instructionlimit[EMULATED_CPU - CPU_80286]-(fifobuffer_size(BIU[activeCPU].PIQ)-BIUsize2),BIUsize2); //Limit by what we can use for an instruction!
 			}
-		}
-		else
-		{
-			BIUsize2 = BIUsize; //How much to try buffering!
 		}
 		for (;BIUsize2 && (MMU_invaddr()==0);)
 		{
@@ -806,7 +802,7 @@ byte CPU_readOPw(word *result, byte singlefetch) //Reads the operation (word) at
 			{
 				BIU_dosboxTick(); //Tick like DOSBox does(fill the PIQ up as much as possible without cycle timing)!
 			}
-			if (fifobuffer_freesize(BIU[activeCPU].PIQ)<(BIU[activeCPU].PIQ->size-1)) //Enough free to read the entire part?
+			if (fifobuffer_freesize(BIU[activeCPU].PIQ)<(fifobuffer_size(BIU[activeCPU].PIQ)-1)) //Enough free to read the entire part?
 			{
 				if (CPU_readOP(&BIU[activeCPU].temp,0)) return 1; //Read OPcode!
 				if (CPU[activeCPU].faultraised) return 1; //Abort on fault!
@@ -856,7 +852,7 @@ byte CPU_readOPdw(uint_32 *result, byte singlefetch) //Reads the operation (32-b
 			{
 				BIU_dosboxTick(); //Tick like DOSBox does(fill the PIQ up as much as possible without cycle timing)!
 			}
-			if (fifobuffer_freesize(BIU[activeCPU].PIQ)<(BIU[activeCPU].PIQ->size-3)) //Enough free to read the entire part?
+			if (fifobuffer_freesize(BIU[activeCPU].PIQ)<(fifobuffer_size(BIU[activeCPU].PIQ)-3)) //Enough free to read the entire part?
 			{
 				if (CPU_readOPw(&BIU[activeCPU].resultw1,0)) return 1; //Read OPcode!
 				if (CPU[activeCPU].faultraised) return 1; //Abort on fault!
