@@ -675,7 +675,7 @@ void BIU_dosboxTick()
 		BIU[activeCPU].PIQ_checked = BIUsize; //Check off any that we have verified!
 
 		MMU_resetaddr(); //Reset the address error line for trying some I/O!
-		if ((EMULATED_CPU>=CPU_80286) && BIUsize2 && BIUsize) //Can we limit what we fetch, instead of the entire prefetch buffer?
+		if ((EMULATED_CPU>=CPU_80286) && BIUsize2) //Can we limit what we fetch, instead of the entire prefetch buffer?
 		{
 			if (unlikely((fifobuffer_size(BIU[activeCPU].PIQ)-BIUsize2)>=instructionlimit[EMULATED_CPU - CPU_80286])) //Already buffered enough?
 			{
