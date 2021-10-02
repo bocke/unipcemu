@@ -463,21 +463,24 @@ byte checkMMUaccess32(sword segdesc, word segment, uint_64 offset, word readflag
 			return result; //Give the result!
 		}
 	}
-	//Paging, byte granularity faults!
-	if ((result = checkMMUaccess(segdesc, segment, offset+3, (readflags|0x100), CPL, is_offset16, subbyte|3)) != 0) //Upper bound!
+	else //Using paging?
 	{
-		//Byte boundary check for paging!
-		if ((result = checkMMUaccess(segdesc, segment, offset+1, readflags, CPL, is_offset16, subbyte|1)) != 0) //Upper bound!
+		//Paging, byte granularity faults!
+		if ((result = checkMMUaccess(segdesc, segment, offset + 3, (readflags | 0x100), CPL, is_offset16, subbyte | 3)) != 0) //Upper bound!
 		{
-			return result; //Give the result!
-		}
-		if ((result = checkMMUaccess(segdesc, segment, offset+2, readflags, CPL, is_offset16, subbyte|2)) != 0) //Upper bound!
-		{
-			return result; //Give the result!
-		}
-		if ((result = checkMMUaccess(segdesc, segment, offset+3, readflags, CPL, is_offset16, subbyte|3)) != 0) //Upper bound!
-		{
-			return result; //Give the result!
+			//Byte boundary check for paging!
+			if ((result = checkMMUaccess(segdesc, segment, offset + 1, readflags, CPL, is_offset16, subbyte | 1)) != 0) //Upper bound!
+			{
+				return result; //Give the result!
+			}
+			if ((result = checkMMUaccess(segdesc, segment, offset + 2, readflags, CPL, is_offset16, subbyte | 2)) != 0) //Upper bound!
+			{
+				return result; //Give the result!
+			}
+			if ((result = checkMMUaccess(segdesc, segment, offset + 3, readflags, CPL, is_offset16, subbyte | 3)) != 0) //Upper bound!
+			{
+				return result; //Give the result!
+			}
 		}
 	}
 	return 0; //OK!
