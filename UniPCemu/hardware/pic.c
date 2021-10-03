@@ -1541,9 +1541,9 @@ extern uint_32 i440fx_ioapic_base_mask;
 extern uint_32 i440fx_ioapic_base_match;
 
 extern byte memory_datawrittensize; //How many bytes have been written to memory during a write!
-extern uint_64 BIU_cachedmemoryaddr[MAXCPUS];
-extern byte BIU_cachedmemorysize[MAXCPUS];
-extern byte memory_datasize; //The size of the data that has been read!
+extern uint_64 BIU_cachedmemoryaddr[MAXCPUS][2];
+extern byte BIU_cachedmemorysize[MAXCPUS][2];
+extern byte memory_datasize[2]; //The size of the data that has been read!
 byte APIC_memIO_wb(uint_32 offset, byte value)
 {
 	byte is_internalexternalAPIC;
@@ -1863,15 +1863,25 @@ byte APIC_memIO_wb(uint_32 offset, byte value)
 		}
 	}
 
-	if (unlikely(isoverlappingw((uint_64)offset, 1, (uint_64)BIU_cachedmemoryaddr[0], BIU_cachedmemorysize[0]))) //Cached?
+	if (unlikely(isoverlappingw((uint_64)offset, 1, (uint_64)BIU_cachedmemoryaddr[0][0], BIU_cachedmemorysize[0][0]))) //Cached?
 	{
-		memory_datasize = 0; //Invalidate the read cache to re-read memory!
-		BIU_cachedmemorysize[0] = 0; //Invalidate the BIU cache as well!
+		memory_datasize[0] = 0; //Invalidate the read cache to re-read memory!
+		BIU_cachedmemorysize[0][0] = 0; //Invalidate the BIU cache as well!
 	}
-	if (unlikely(isoverlappingw((uint_64)offset, 1, (uint_64)BIU_cachedmemoryaddr[1], BIU_cachedmemorysize[1]))) //Cached?
+	if (unlikely(isoverlappingw((uint_64)offset, 1, (uint_64)BIU_cachedmemoryaddr[1][0], BIU_cachedmemorysize[1][0]))) //Cached?
 	{
-		memory_datasize = 0; //Invalidate the read cache to re-read memory!
-		BIU_cachedmemorysize[1] = 0; //Invalidate the BIU cache as well!
+		memory_datasize[0] = 0; //Invalidate the read cache to re-read memory!
+		BIU_cachedmemorysize[1][0] = 0; //Invalidate the BIU cache as well!
+	}
+	if (unlikely(isoverlappingw((uint_64)offset, 1, (uint_64)BIU_cachedmemoryaddr[0][1], BIU_cachedmemorysize[0][1]))) //Cached?
+	{
+		memory_datasize[1] = 0; //Invalidate the read cache to re-read memory!
+		BIU_cachedmemorysize[0][1] = 0; //Invalidate the BIU cache as well!
+	}
+	if (unlikely(isoverlappingw((uint_64)offset, 1, (uint_64)BIU_cachedmemoryaddr[1][1], BIU_cachedmemorysize[1][1]))) //Cached?
+	{
+		memory_datasize[1] = 0; //Invalidate the read cache to re-read memory!
+		BIU_cachedmemorysize[1][1] = 0; //Invalidate the BIU cache as well!
 	}
 
 	memory_datawrittensize = 1; //Only 1 byte written!
@@ -1879,7 +1889,7 @@ byte APIC_memIO_wb(uint_32 offset, byte value)
 }
 
 extern uint_64 memory_dataread[2];
-extern byte memory_datasize; //The size of the data that has been read!
+extern byte memory_datasize[2]; //The size of the data that has been read!
 byte APIC_memIO_rb(uint_32 offset, byte index)
 {
 	byte uncachableaddr;
@@ -2113,7 +2123,7 @@ byte APIC_memIO_rb(uint_32 offset, byte index)
 		if (likely(((tempoffset | 3) < 0x1000))) //Enough to read a dword?
 		{
 			memory_dataread[0] = SDL_SwapLE32(*((uint_32*)(&converter16.value32))); //Read the data from the result!
-			memory_datasize = tempoffset = 4 - (temp - tempoffset); //What is read from the whole dword!
+			memory_datasize[(index >> 5) & 1] = tempoffset = 4 - (temp - tempoffset); //What is read from the whole dword!
 			memory_dataread[0] >>= ((4 - tempoffset) << 3); //Discard the bytes that are not to be read(before the requested address)!
 			return 1; //Done: we've been read!
 		}
@@ -2125,14 +2135,14 @@ byte APIC_memIO_rb(uint_32 offset, byte index)
 			{
 				converter16.value32 >>= ((offset&2)<<3); //Take the lower or upper word correctly to read!
 				memory_dataread[0] = SDL_SwapLE16(*((word*)(&converter16.value16))); //Read the data from the result!
-				memory_datasize = tempoffset = 2 - (temp - tempoffset); //What is read from the whole word!
+				memory_datasize[(index >> 5) & 1] = tempoffset = 2 - (temp - tempoffset); //What is read from the whole word!
 				memory_dataread[0] >>= ((2 - tempoffset) << 3); //Discard the bytes that are not to be read(before the requested address)!
 				return 1; //Done: we've been read!
 			}
 			else //Enough to read a byte only?
 			{
 				memory_dataread[0] = converter16.value32>>((tempoffset&3)<<3); //Read the data from the result!
-				memory_datasize = 1; //Only 1 byte!
+				memory_datasize[(index >> 5) & 1] = 1; //Only 1 byte!
 				return 1; //Done: we've been read!
 			}
 		}
@@ -2141,7 +2151,7 @@ byte APIC_memIO_rb(uint_32 offset, byte index)
 	#endif
 	{
 		memory_dataread[0] = converter16.value32>>((tempoffset&3)<<3); //Read the data from the ROM, reversed!
-		memory_datasize = 1; //Only 1 byte!
+		memory_datasize[(index >> 5) & 1] = 1; //Only 1 byte!
 		return 1; //Done: we've been read!				
 	}
 	return 0; //Not implemented yet!

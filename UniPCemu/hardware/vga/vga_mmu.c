@@ -616,8 +616,8 @@ byte extVGA_isnotVRAM(uint_32 offset)
 byte MMUblock; //What block is addressed for MMU0-2?
 byte bit8read;
 extern uint_64 memory_dataread[2];
-extern byte memory_datasize; //The size of the data that has been read!
-byte VGAmemIO_rb(uint_32 offset)
+extern byte memory_datasize[2]; //The size of the data that has been read!
+byte VGAmemIO_rb(uint_32 offset, byte index)
 {
 	if (unlikely(is_A000VRAM(offset))) //VRAM and within range?
 	{
@@ -635,7 +635,7 @@ byte VGAmemIO_rb(uint_32 offset)
 				if (Tseng4k_readMMUregister(offset, &bit8read))
 				{
 					memory_dataread[0] = bit8read; //What is read!
-					memory_datasize = 1; //Only 1 byte chunks can be read!
+					memory_datasize[(index >> 5) & 1] = 1; //Only 1 byte chunks can be read!
 					return 1; //Handled!
 				}
 			}
@@ -649,13 +649,13 @@ byte VGAmemIO_rb(uint_32 offset)
 						if (Tseng4k_readMMUaccelerator(2, offset, &bit8read)) //Read?
 						{
 							memory_dataread[0] = bit8read; //What is read!
-							memory_datasize = 1; //Only 1 byte chunks can be read!
+							memory_datasize[(index >> 5) & 1] = 1; //Only 1 byte chunks can be read!
 							return 1; //G
 						}
 						else //Floating bus?
 						{
 							memory_dataread[0] = 0xFF; //Unsupported!
-							memory_datasize = 1; //Only 1 byte chunks can be read!
+							memory_datasize[(index >> 5) & 1] = 1; //Only 1 byte chunks can be read!
 							return 1; //Unsupported!
 						}
 					}
@@ -678,13 +678,13 @@ byte VGAmemIO_rb(uint_32 offset)
 						if (Tseng4k_readMMUaccelerator(1, offset, &bit8read)) //Read?
 						{
 							memory_dataread[0] = bit8read; //What is read!
-							memory_datasize = 1; //Only 1 byte chunks can be read!
+							memory_datasize[(index >> 5) & 1] = 1; //Only 1 byte chunks can be read!
 							return 1; //G
 						}
 						else //Floating bus?
 						{
 							memory_dataread[0] = 0xFF; //Unsupported!
-							memory_datasize = 1; //Only 1 byte chunks can be read!
+							memory_datasize[(index >> 5) & 1] = 1; //Only 1 byte chunks can be read!
 							return 1; //Unsupported!
 						}
 					}
@@ -706,13 +706,13 @@ byte VGAmemIO_rb(uint_32 offset)
 						if (Tseng4k_readMMUaccelerator(0, offset, &bit8read)) //Read?
 						{
 							memory_dataread[0] = bit8read; //What is read!
-							memory_datasize = 1; //Only 1 byte chunks can be read!
+							memory_datasize[(index >> 5) & 1] = 1; //Only 1 byte chunks can be read!
 							return 1; //G
 						}
 						else //Floating bus?
 						{
 							memory_dataread[0] = 0xFF; //Unsupported!
-							memory_datasize = 1; //Only 1 byte chunks can be read!
+							memory_datasize[(index >> 5) & 1] = 1; //Only 1 byte chunks can be read!
 							return 1; //Unsupported!
 						}
 					}
@@ -748,7 +748,7 @@ byte VGAmemIO_rb(uint_32 offset)
 		{
 			memory_dataread[0] = getActiveVGA()->CGAMDAShadowRAM[offset]; //Read from shadow RAM!
 		}
-		memory_datasize = 1; //Only 1 byte chunks can be read!
+		memory_datasize[(index >> 5) & 1] = 1; //Only 1 byte chunks can be read!
 		return 1; //Read!
 	}
 	return 0; //Not read!

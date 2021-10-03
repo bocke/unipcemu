@@ -50,10 +50,10 @@ byte readEMSMem(uint_32 address, byte *value)
 	return 1; //We're mapped!
 }
 
-extern uint_64 BIU_cachedmemoryaddr[MAXCPUS];
+extern uint_64 BIU_cachedmemoryaddr[MAXCPUS][2];
 extern uint_64 BIU_cachedmemoryread[MAXCPUS];
-extern byte BIU_cachedmemorysize[MAXCPUS]; //To invalidate the BIU cache!
-extern byte memory_datasize; //The size of the data that has been read!
+extern byte BIU_cachedmemorysize[MAXCPUS][2]; //To invalidate the BIU cache!
+extern byte memory_datasize[2]; //The size of the data that has been read!
 byte writeEMSMem(uint_32 address, byte value)
 {
 	byte block;
@@ -68,15 +68,25 @@ byte writeEMSMem(uint_32 address, byte value)
 	memoryaddress |= address; //The address of the byte in memory!
 	if (memoryaddress >= EMS_size) return 0; //Out of range?
 	EMS[memoryaddress] = value; //Set the byte in memory!
-	if (unlikely(BIU_cachedmemorysize[0] && (BIU_cachedmemoryaddr[0] <= originaladdress) && ((BIU_cachedmemoryaddr[0] + BIU_cachedmemorysize[0]) > originaladdress))) //Matched an active read cache(allowing self-modifying code)?
+	if (unlikely(BIU_cachedmemorysize[0][0] && (BIU_cachedmemoryaddr[0][0] <= originaladdress) && ((BIU_cachedmemoryaddr[0][0] + BIU_cachedmemorysize[0][0]) > originaladdress))) //Matched an active read cache(allowing self-modifying code)?
 	{
-		memory_datasize = 0; //Invalidate the read cache to re-read memory!
-		BIU_cachedmemorysize[0] = 0; //Invalidate the BIU cache as well!
+		memory_datasize[0] = 0; //Invalidate the read cache to re-read memory!
+		BIU_cachedmemorysize[0][0] = 0; //Invalidate the BIU cache as well!
 	}
-	if (unlikely(BIU_cachedmemorysize[1] && (BIU_cachedmemoryaddr[1] <= originaladdress) && ((BIU_cachedmemoryaddr[1] + BIU_cachedmemorysize[1]) > originaladdress))) //Matched an active read cache(allowing self-modifying code)?
+	if (unlikely(BIU_cachedmemorysize[1][0] && (BIU_cachedmemoryaddr[1][0] <= originaladdress) && ((BIU_cachedmemoryaddr[1][0] + BIU_cachedmemorysize[1][0]) > originaladdress))) //Matched an active read cache(allowing self-modifying code)?
 	{
-		memory_datasize = 0; //Invalidate the read cache to re-read memory!
-		BIU_cachedmemorysize[1] = 0; //Invalidate the BIU cache as well!
+		memory_datasize[0] = 0; //Invalidate the read cache to re-read memory!
+		BIU_cachedmemorysize[1][0] = 0; //Invalidate the BIU cache as well!
+	}
+	if (unlikely(BIU_cachedmemorysize[0][1] && (BIU_cachedmemoryaddr[0][1] <= originaladdress) && ((BIU_cachedmemoryaddr[0][1] + BIU_cachedmemorysize[0][1]) > originaladdress))) //Matched an active read cache(allowing self-modifying code)?
+	{
+		memory_datasize[1] = 0; //Invalidate the read cache to re-read memory!
+		BIU_cachedmemorysize[0][1] = 0; //Invalidate the BIU cache as well!
+	}
+	if (unlikely(BIU_cachedmemorysize[1][1] && (BIU_cachedmemoryaddr[1][1] <= originaladdress) && ((BIU_cachedmemoryaddr[1][1] + BIU_cachedmemorysize[1][1]) > originaladdress))) //Matched an active read cache(allowing self-modifying code)?
+	{
+		memory_datasize[1] = 0; //Invalidate the read cache to re-read memory!
+		BIU_cachedmemorysize[1][1] = 0; //Invalidate the BIU cache as well!
 	}
 	return 1; //We're mapped!
 }

@@ -1108,7 +1108,7 @@ void BIOS_finishROMs()
 byte BIOSROM_DisableLowMemory = 0; //Disable low-memory mapping of the BIOS and OPTROMs! Disable mapping of low memory locations E0000-FFFFF used on the Compaq Deskpro 386.
 
 extern uint_64 memory_dataread[2];
-extern byte memory_datasize; //The size of the data that has been read!
+extern byte memory_datasize[2]; //The size of the data that has been read!
 byte OPTROM_readhandler(uint_32 offset, byte index)    /* A pointer to a handler function */
 {
 	byte* srcROM;
@@ -1170,7 +1170,7 @@ byte OPTROM_readhandler(uint_32 offset, byte index)    /* A pointer to a handler
 					{
 						memory_dataread[0] = SDL_SwapLE64(*((uint_64*)(&srcROM[temppos]))); //Read the data from the ROM!
 						memory_dataread[1] = SDL_SwapLE64(*((uint_64*)(&srcROM[temppos+8]))); //Read the data from the ROM!
-						memory_datasize = temppos = 16 - (temp - temppos); //What is read from the whole dword!
+						memory_datasize[(index >> 5) & 1] = temppos = 16 - (temp - temppos); //What is read from the whole dword!
 						shiftr128(&memory_dataread[1],&memory_dataread[0],((16 - temppos) << 3)); //Discard the bytes that are not to be read(before the requested address)!
 						return 1; //Done: we've been read!
 					}
@@ -1181,7 +1181,7 @@ byte OPTROM_readhandler(uint_32 offset, byte index)    /* A pointer to a handler
 						if (likely(((temppos | 7) < ROMsize))) //Enough to read a dword?
 						{
 							memory_dataread[0] = SDL_SwapLE64(*((uint_64*)(&srcROM[temppos]))); //Read the data from the ROM!
-							memory_datasize = temppos = 8 - (temp - temppos); //What is read from the whole dword!
+							memory_datasize[(index >> 5) & 1] = temppos = 8 - (temp - temppos); //What is read from the whole dword!
 							memory_dataread[0] >>= ((8 - temppos) << 3); //Discard the bytes that are not to be read(before the requested address)!
 							return 1; //Done: we've been read!
 						}
@@ -1192,7 +1192,7 @@ byte OPTROM_readhandler(uint_32 offset, byte index)    /* A pointer to a handler
 							if (likely(((temppos | 3) < ROMsize))) //Enough to read a dword?
 							{
 								memory_dataread[0] = SDL_SwapLE32(*((uint_32*)(&srcROM[temppos]))); //Read the data from the ROM!
-								memory_datasize = temppos = 4 - (temp - temppos); //What is read from the whole dword!
+								memory_datasize[(index >> 5) & 1] = temppos = 4 - (temp - temppos); //What is read from the whole dword!
 								memory_dataread[0] >>= ((4 - temppos) << 3); //Discard the bytes that are not to be read(before the requested address)!
 								return 1; //Done: we've been read!
 							}
@@ -1203,14 +1203,14 @@ byte OPTROM_readhandler(uint_32 offset, byte index)    /* A pointer to a handler
 								if (likely(((temppos | 1) < ROMsize))) //Enough to read a word, aligned?
 								{
 									memory_dataread[0] = SDL_SwapLE16(*((word*)(&srcROM[temppos]))); //Read the data from the ROM!
-									memory_datasize = temppos = 2 - (temp - temppos); //What is read from the whole word!
+									memory_datasize[(index >> 5) & 1] = temppos = 2 - (temp - temppos); //What is read from the whole word!
 									memory_dataread[0] >>= ((2 - temppos) << 3); //Discard the bytes that are not to be read(before the requested address)!
 									return 1; //Done: we've been read!				
 								}
 								else //Enough to read a byte only?
 								{
 									memory_dataread[0] = srcROM[temp]; //Read the data from the ROM!
-									memory_datasize = 1; //Only 1 byte!
+									memory_datasize[(index >> 5) & 1] = 1; //Only 1 byte!
 									return 1; //Done: we've been read!				
 								}
 							}
@@ -1221,7 +1221,7 @@ byte OPTROM_readhandler(uint_32 offset, byte index)    /* A pointer to a handler
 				#endif
 				{
 					memory_dataread[0] = OPT_ROMS[i][temppos]; //Read the data from the ROM, reversed!
-					memory_datasize = 1; //Only 1 byte!
+					memory_datasize[(index >> 5) & 1] = 1; //Only 1 byte!
 					return 1; //Done: we've been read!				
 				}
 			}
@@ -1242,7 +1242,7 @@ byte OPTROM_readhandler(uint_32 offset, byte index)    /* A pointer to a handler
 				{
 					memory_dataread[0] = SDL_SwapLE64(*((uint_64*)(&BIOS_custom_VGAROM[basepos]))); //Read the data from the ROM!
 					memory_dataread[1] = SDL_SwapLE64(*((uint_64*)(&BIOS_custom_VGAROM[basepos+8]))); //Read the data from the ROM!
-					memory_datasize = basepos = 16 - (temp - basepos); //What is read from the whole dword!
+					memory_datasize[(index >> 5) & 1] = basepos = 16 - (temp - basepos); //What is read from the whole dword!
 					shiftr128(&memory_dataread[1],&memory_dataread[0],((16 - basepos) << 3)); //Discard the bytes that are not to be read(before the requested address)!
 					return 1; //Done: we've been read!
 				}
@@ -1253,7 +1253,7 @@ byte OPTROM_readhandler(uint_32 offset, byte index)    /* A pointer to a handler
 					if (likely(((basepos | 7) < BIOS_custom_VGAROM_size))) //Enough to read a dword?
 					{
 						memory_dataread[0] = SDL_SwapLE64(*((uint_64*)(&BIOS_custom_VGAROM[basepos]))); //Read the data from the ROM!
-						memory_datasize = basepos = 8 - (temp - basepos); //What is read from the whole dword!
+						memory_datasize[(index >> 5) & 1] = basepos = 8 - (temp - basepos); //What is read from the whole dword!
 						memory_dataread[0] >>= ((8 - basepos) << 3); //Discard the bytes that are not to be read(before the requested address)!
 						return 1; //Done: we've been read!
 					}
@@ -1264,7 +1264,7 @@ byte OPTROM_readhandler(uint_32 offset, byte index)    /* A pointer to a handler
 						if (likely(((basepos | 3) < BIOS_custom_VGAROM_size))) //Enough to read a dword?
 						{
 							memory_dataread[0] = SDL_SwapLE32(*((uint_32*)(&BIOS_custom_VGAROM[basepos]))); //Read the data from the ROM!
-							memory_datasize = basepos = 4 - (temp - basepos); //What is read from the whole dword!
+							memory_datasize[(index >> 5) & 1] = basepos = 4 - (temp - basepos); //What is read from the whole dword!
 							memory_dataread[0] >>= ((4 - basepos) << 3); //Discard the bytes that are not to be read(before the requested address)!
 							return 1; //Done: we've been read!
 						}
@@ -1275,14 +1275,14 @@ byte OPTROM_readhandler(uint_32 offset, byte index)    /* A pointer to a handler
 							if (likely(((basepos | 1) < BIOS_custom_VGAROM_size))) //Enough to read a word, aligned?
 							{
 								memory_dataread[0] = SDL_SwapLE16(*((word*)(&BIOS_custom_VGAROM[basepos]))); //Read the data from the ROM!
-								memory_datasize = basepos = 2 - (temp - basepos); //What is read from the whole word!
+								memory_datasize[(index >> 5) & 1] = basepos = 2 - (temp - basepos); //What is read from the whole word!
 								memory_dataread[0] >>= ((2 - basepos) << 3); //Discard the bytes that are not to be read(before the requested address)!
 								return 1; //Done: we've been read!				
 							}
 							else //Enough to read a byte only?
 							{
 								memory_dataread[0] = BIOS_custom_VGAROM[temp]; //Read the data from the ROM!
-								memory_datasize = 1; //Only 1 byte!
+								memory_datasize[(index >> 5) & 1] = 1; //Only 1 byte!
 								return 1; //Done: we've been read!				
 							}
 						}
@@ -1293,7 +1293,7 @@ byte OPTROM_readhandler(uint_32 offset, byte index)    /* A pointer to a handler
 			#endif
 			{
 				memory_dataread[0] = BIOS_custom_VGAROM[basepos]; //Read the data from the ROM, reversed!
-				memory_datasize = 1; //Only 1 byte!
+				memory_datasize[(index >> 5) & 1] = 1; //Only 1 byte!
 				return 1; //Done: we've been read!				
 			}
 			return 1;
@@ -1326,9 +1326,9 @@ void BIOSROM_updateTimers(DOUBLE timepassed)
 }
 
 
-extern uint_64 BIU_cachedmemoryaddr[MAXCPUS];
-extern uint_64 BIU_cachedmemoryread[MAXCPUS];
-extern byte BIU_cachedmemorysize[MAXCPUS]; //To invalidate the BIU cache!
+extern uint_64 BIU_cachedmemoryaddr[MAXCPUS][2];
+extern uint_64 BIU_cachedmemoryread[MAXCPUS][2];
+extern byte BIU_cachedmemorysize[MAXCPUS][2]; //To invalidate the BIU cache!
 extern byte memory_datawrittensize; //How many bytes have been written to memory during a write!
 
 byte OPTROM_writehandler(uint_32 offset, byte value)    /* A pointer to a handler function */
@@ -1511,15 +1511,25 @@ byte OPTROM_writehandler(uint_32 offset, byte value)    /* A pointer to a handle
 					emufclose64(f); //Close the file!
 					OPT_ROMS[i][OPTROM_address] = value; //Write the data to the ROM in memory!
 					OPT_ROMS_shadow[i][ROMaddress] = value; //Write the data to the shadow ROM in memory!
-					if (unlikely(BIU_cachedmemorysize[0] && (BIU_cachedmemoryaddr[0] <= offset) && ((BIU_cachedmemoryaddr[0] + BIU_cachedmemorysize[0]) > offset))) //Matched an active read cache(allowing self-modifying code)?
+					if (unlikely(BIU_cachedmemorysize[0][0] && (BIU_cachedmemoryaddr[0][0] <= offset) && ((BIU_cachedmemoryaddr[0][0] + BIU_cachedmemorysize[0][0]) > offset))) //Matched an active read cache(allowing self-modifying code)?
 					{
-						memory_datasize = 0; //Only 1 byte invalidated!
-						BIU_cachedmemorysize[0] = 0; //Make sure that the BIU has an updated copy of this in it's cache!
+						memory_datasize[0] = 0; //Only 1 byte invalidated!
+						BIU_cachedmemorysize[0][0] = 0; //Make sure that the BIU has an updated copy of this in it's cache!
 					}
-					if (unlikely(BIU_cachedmemorysize[1] && (BIU_cachedmemoryaddr[1] <= offset) && ((BIU_cachedmemoryaddr[1] + BIU_cachedmemorysize[1]) > offset))) //Matched an active read cache(allowing self-modifying code)?
+					if (unlikely(BIU_cachedmemorysize[1][0] && (BIU_cachedmemoryaddr[1][0] <= offset) && ((BIU_cachedmemoryaddr[1][0] + BIU_cachedmemorysize[1][0]) > offset))) //Matched an active read cache(allowing self-modifying code)?
 					{
-						memory_datasize = 0; //Only 1 byte invalidated!
-						BIU_cachedmemorysize[1] = 0; //Make sure that the BIU has an updated copy of this in it's cache!
+						memory_datasize[0] = 0; //Only 1 byte invalidated!
+						BIU_cachedmemorysize[1][0] = 0; //Make sure that the BIU has an updated copy of this in it's cache!
+					}
+					if (unlikely(BIU_cachedmemorysize[0][1] && (BIU_cachedmemoryaddr[0][1] <= offset) && ((BIU_cachedmemoryaddr[0][1] + BIU_cachedmemorysize[0][1]) > offset))) //Matched an active read cache(allowing self-modifying code)?
+					{
+						memory_datasize[1] = 0; //Only 1 byte invalidated!
+						BIU_cachedmemorysize[0][1] = 0; //Make sure that the BIU has an updated copy of this in it's cache!
+					}
+					if (unlikely(BIU_cachedmemorysize[1][1] && (BIU_cachedmemoryaddr[1][1] <= offset) && ((BIU_cachedmemoryaddr[1][1] + BIU_cachedmemorysize[1][1]) > offset))) //Matched an active read cache(allowing self-modifying code)?
+					{
+						memory_datasize[1] = 0; //Only 1 byte invalidated!
+						BIU_cachedmemorysize[1][1] = 0; //Make sure that the BIU has an updated copy of this in it's cache!
 					}
 					if (OPTROM_pending55_0AAA[i] && ((OPTROM_location[i]>>32)>0x0AAA)) //Pending write and within ROM range?
 					{
@@ -1749,7 +1759,7 @@ byte BIOS_readhandler(uint_32 offset, byte index) /* A pointer to a handler func
 					{
 						memory_dataread[0] = SDL_SwapLE64(*((uint_64*)(&BIOS_custom_ROM[tempoffset]))); //Read the data from the ROM!
 						memory_dataread[1] = SDL_SwapLE64(*((uint_64*)(&BIOS_custom_ROM[tempoffset+8]))); //Read the data from the ROM!
-						memory_datasize = tempoffset = 16 - (temp - tempoffset); //What is read from the whole dword!
+						memory_datasize[(index >> 5) & 1] = tempoffset = 16 - (temp - tempoffset); //What is read from the whole dword!
 						shiftr128(&memory_dataread[1],&memory_dataread[0],((16 - tempoffset) << 3)); //Discard the bytes that are not to be read(before the requested address)!
 						return 1; //Done: we've been read!
 					}
@@ -1760,7 +1770,7 @@ byte BIOS_readhandler(uint_32 offset, byte index) /* A pointer to a handler func
 						if (likely(((tempoffset | 7) < BIOS_custom_ROM_size))) //Enough to read a dword?
 						{
 							memory_dataread[0] = SDL_SwapLE64(*((uint_64*)(&BIOS_custom_ROM[tempoffset]))); //Read the data from the ROM!
-							memory_datasize = tempoffset = 8 - (temp - tempoffset); //What is read from the whole dword!
+							memory_datasize[(index >> 5) & 1] = tempoffset = 8 - (temp - tempoffset); //What is read from the whole dword!
 							memory_dataread[0] >>= ((8 - tempoffset) << 3); //Discard the bytes that are not to be read(before the requested address)!
 							return 1; //Done: we've been read!
 						}
@@ -1771,7 +1781,7 @@ byte BIOS_readhandler(uint_32 offset, byte index) /* A pointer to a handler func
 							if (likely(((tempoffset | 3) < BIOS_custom_ROM_size))) //Enough to read a dword?
 							{
 								memory_dataread[0] = SDL_SwapLE32(*((uint_32*)(&BIOS_custom_ROM[tempoffset]))); //Read the data from the ROM!
-								memory_datasize = tempoffset = 4 - (temp - tempoffset); //What is read from the whole dword!
+								memory_datasize[(index >> 5) & 1] = tempoffset = 4 - (temp - tempoffset); //What is read from the whole dword!
 								memory_dataread[0] >>= ((4 - tempoffset) << 3); //Discard the bytes that are not to be read(before the requested address)!
 								return 1; //Done: we've been read!
 							}
@@ -1782,14 +1792,14 @@ byte BIOS_readhandler(uint_32 offset, byte index) /* A pointer to a handler func
 								if (likely(((tempoffset | 1) < BIOS_custom_ROM_size))) //Enough to read a word, aligned?
 								{
 									memory_dataread[0] = SDL_SwapLE16(*((word*)(&BIOS_custom_ROM[tempoffset]))); //Read the data from the ROM!
-									memory_datasize = tempoffset = 2 - (temp - tempoffset); //What is read from the whole word!
+									memory_datasize[(index >> 5) & 1] = tempoffset = 2 - (temp - tempoffset); //What is read from the whole word!
 									memory_dataread[0] >>= ((2 - tempoffset) << 3); //Discard the bytes that are not to be read(before the requested address)!
 									return 1; //Done: we've been read!				
 								}
 								else //Enough to read a byte only?
 								{
 									memory_dataread[0] = BIOS_custom_ROM[temp]; //Read the data from the ROM!
-									memory_datasize = 1; //Only 1 byte!
+									memory_datasize[(index >> 5) & 1] = 1; //Only 1 byte!
 									return 1; //Done: we've been read!				
 								}
 							}
@@ -1800,7 +1810,7 @@ byte BIOS_readhandler(uint_32 offset, byte index) /* A pointer to a handler func
 				#endif
 				{
 					memory_dataread[0] = BIOS_custom_ROM[tempoffset]; //Read the data from the ROM, reversed!
-					memory_datasize = 1; //Only 1 byte!
+					memory_datasize[(index >> 5) & 1] = 1; //Only 1 byte!
 					return 1; //Done: we've been read!				
 				}
 			}
@@ -1821,7 +1831,7 @@ byte BIOS_readhandler(uint_32 offset, byte index) /* A pointer to a handler func
 				if (BIOS_flash_read8(BIOS_custom_ROM, tempoffset, &flashresult)) //Flash override?
 				{
 					memory_dataread[0] = flashresult; //Read the data from the ROM, reversed!
-					memory_datasize = 1; //Only 1 byte!
+					memory_datasize[(index >> 5) & 1] = 1; //Only 1 byte!
 					return 1; //Done: we've been read!
 				}
 			}
@@ -1837,7 +1847,7 @@ byte BIOS_readhandler(uint_32 offset, byte index) /* A pointer to a handler func
 				{
 					memory_dataread[0] = SDL_SwapLE64(*((uint_64*)(&BIOS_custom_ROM[tempoffset]))); //Read the data from the ROM!
 					memory_dataread[1] = SDL_SwapLE64(*((uint_64*)(&BIOS_custom_ROM[tempoffset+8]))); //Read the data from the ROM!
-					memory_datasize = tempoffset = 16 - (temp - tempoffset); //What is read from the whole dword!
+					memory_datasize[(index >> 5) & 1] = tempoffset = 16 - (temp - tempoffset); //What is read from the whole dword!
 					shiftr128(&memory_dataread[1],&memory_dataread[0],((16 - tempoffset) << 3)); //Discard the bytes that are not to be read(before the requested address)!
 					return 1; //Done: we've been read!
 				}
@@ -1848,7 +1858,7 @@ byte BIOS_readhandler(uint_32 offset, byte index) /* A pointer to a handler func
 					if (likely(((tempoffset | 7) < BIOS_custom_ROM_size))) //Enough to read a dword?
 					{
 						memory_dataread[0] = SDL_SwapLE64(*((uint_64*)(&BIOS_custom_ROM[tempoffset]))); //Read the data from the ROM!
-						memory_datasize = tempoffset = 8 - (temp - tempoffset); //What is read from the whole dword!
+						memory_datasize[(index >> 5) & 1] = tempoffset = 8 - (temp - tempoffset); //What is read from the whole dword!
 						memory_dataread[0] >>= ((8 - tempoffset) << 3); //Discard the bytes that are not to be read(before the requested address)!
 						return 1; //Done: we've been read!
 					}
@@ -1859,7 +1869,7 @@ byte BIOS_readhandler(uint_32 offset, byte index) /* A pointer to a handler func
 						if (likely(((tempoffset | 3) < BIOS_custom_ROM_size))) //Enough to read a dword?
 						{
 							memory_dataread[0] = SDL_SwapLE32(*((uint_32*)(&BIOS_custom_ROM[tempoffset]))); //Read the data from the ROM!
-							memory_datasize = tempoffset = 4 - (temp - tempoffset); //What is read from the whole dword!
+							memory_datasize[(index >> 5) & 1] = tempoffset = 4 - (temp - tempoffset); //What is read from the whole dword!
 							memory_dataread[0] >>= ((4 - tempoffset) << 3); //Discard the bytes that are not to be read(before the requested address)!
 							return 1; //Done: we've been read!
 						}
@@ -1870,14 +1880,14 @@ byte BIOS_readhandler(uint_32 offset, byte index) /* A pointer to a handler func
 							if (likely(((tempoffset | 1) < BIOS_custom_ROM_size))) //Enough to read a word, aligned?
 							{
 								memory_dataread[0] = SDL_SwapLE16(*((word*)(&BIOS_custom_ROM[tempoffset]))); //Read the data from the ROM!
-								memory_datasize = tempoffset = 2 - (temp - tempoffset); //What is read from the whole word!
+								memory_datasize[(index >> 5) & 1] = tempoffset = 2 - (temp - tempoffset); //What is read from the whole word!
 								memory_dataread[0] >>= ((2 - tempoffset) << 3); //Discard the bytes that are not to be read(before the requested address)!
 								return 1; //Done: we've been read!				
 							}
 							else //Enough to read a byte only?
 							{
 								memory_dataread[0] = BIOS_custom_ROM[temp]; //Read the data from the ROM!
-								memory_datasize = 1; //Only 1 byte!
+								memory_datasize[(index >> 5) & 1] = 1; //Only 1 byte!
 								return 1; //Done: we've been read!				
 							}
 						}
@@ -1888,7 +1898,7 @@ byte BIOS_readhandler(uint_32 offset, byte index) /* A pointer to a handler func
 			#endif
 			{
 				memory_dataread[0] = BIOS_custom_ROM[tempoffset]; //Read the data from the ROM, reversed!
-				memory_datasize = 1; //Only 1 byte!
+				memory_datasize[(index >> 5) & 1] = 1; //Only 1 byte!
 				return 1; //Done: we've been read!				
 			}
 		}
@@ -1919,7 +1929,7 @@ byte BIOS_readhandler(uint_32 offset, byte index) /* A pointer to a handler func
 					{
 						memory_dataread[0] = SDL_SwapLE64(*((uint_64*)(&BIOS_ROMS[segment][tempoffset]))); //Read the data from the ROM!
 						memory_dataread[1] = SDL_SwapLE64(*((uint_64*)(&BIOS_ROMS[segment][tempoffset+8]))); //Read the data from the ROM!
-						memory_datasize = tempoffset = 16 - (temp - tempoffset); //What is read from the whole dword!
+						memory_datasize[(index >> 5) & 1] = tempoffset = 16 - (temp - tempoffset); //What is read from the whole dword!
 						shiftr128(&memory_dataread[1],&memory_dataread[0],((16 - tempoffset) << 3)); //Discard the bytes that are not to be read(before the requested address)!
 						return 1; //Done: we've been read!
 					}
@@ -1930,7 +1940,7 @@ byte BIOS_readhandler(uint_32 offset, byte index) /* A pointer to a handler func
 						if (likely(((tempoffset | 7) < BIOS_ROM_size[segment]))) //Enough to read a dword?
 						{
 							memory_dataread[0] = SDL_SwapLE64(*((uint_64*)(&BIOS_ROMS[segment][tempoffset]))); //Read the data from the ROM!
-							memory_datasize = tempoffset = 8 - (temp - tempoffset); //What is read from the whole dword!
+							memory_datasize[(index >> 5) & 1] = tempoffset = 8 - (temp - tempoffset); //What is read from the whole dword!
 							memory_dataread[0] >>= ((8 - tempoffset) << 3); //Discard the bytes that are not to be read(before the requested address)!
 							return 1; //Done: we've been read!
 						}
@@ -1941,7 +1951,7 @@ byte BIOS_readhandler(uint_32 offset, byte index) /* A pointer to a handler func
 							if (likely(((tempoffset | 3) < BIOS_ROM_size[segment]))) //Enough to read a dword?
 							{
 								memory_dataread[0] = SDL_SwapLE32(*((uint_32*)(&BIOS_ROMS[segment][tempoffset]))); //Read the data from the ROM!
-								memory_datasize = tempoffset = 4 - (temp - tempoffset); //What is read from the whole dword!
+								memory_datasize[(index >> 5) & 1] = tempoffset = 4 - (temp - tempoffset); //What is read from the whole dword!
 								memory_dataread[0] >>= ((4 - tempoffset) << 3); //Discard the bytes that are not to be read(before the requested address)!
 								return 1; //Done: we've been read!
 							}
@@ -1952,14 +1962,14 @@ byte BIOS_readhandler(uint_32 offset, byte index) /* A pointer to a handler func
 								if (likely(((tempoffset | 1) < BIOS_combinedROM_size))) //Enough to read a word, aligned?
 								{
 									memory_dataread[0] = SDL_SwapLE16(*((word*)(&BIOS_ROMS[segment][tempoffset]))); //Read the data from the ROM!
-									memory_datasize = tempoffset = 2 - (temp - tempoffset); //What is read from the whole word!
+									memory_datasize[(index >> 5) & 1] = tempoffset = 2 - (temp - tempoffset); //What is read from the whole word!
 									memory_dataread[0] >>= ((2 - tempoffset) << 3); //Discard the bytes that are not to be read(before the requested address)!
 									return 1; //Done: we've been read!				
 								}
 								else //Enough to read a byte only?
 								{
 									memory_dataread[0] = BIOS_ROMS[segment][temp]; //Read the data from the ROM!
-									memory_datasize = 1; //Only 1 byte!
+									memory_datasize[(index >> 5) & 1] = 1; //Only 1 byte!
 									return 1; //Done: we've been read!				
 								}
 							}
@@ -1970,7 +1980,7 @@ byte BIOS_readhandler(uint_32 offset, byte index) /* A pointer to a handler func
 				#endif
 				{
 					memory_dataread[0] = BIOS_ROMS[segment][tempoffset]; //Read the data from the ROM, reversed!
-					memory_datasize = 1; //Only 1 byte!
+					memory_datasize[(index >> 5) & 1] = 1; //Only 1 byte!
 					return 1; //Done: we've been read!				
 				}
 			}
@@ -1998,7 +2008,7 @@ byte BIOS_readhandler(uint_32 offset, byte index) /* A pointer to a handler func
 					{
 						memory_dataread[0] = SDL_SwapLE64(*((uint_64*)(&BIOS_combinedROM[tempoffset]))); //Read the data from the ROM!
 						memory_dataread[1] = SDL_SwapLE64(*((uint_64*)(&BIOS_combinedROM[tempoffset+8]))); //Read the data from the ROM!
-						memory_datasize = tempoffset = 16 - (temp - tempoffset); //What is read from the whole dword!
+						memory_datasize[(index >> 5) & 1] = tempoffset = 16 - (temp - tempoffset); //What is read from the whole dword!
 						shiftr128(&memory_dataread[1],&memory_dataread[0],((16 - tempoffset) << 3)); //Discard the bytes that are not to be read(before the requested address)!
 						return 1; //Done: we've been read!
 					}
@@ -2009,7 +2019,7 @@ byte BIOS_readhandler(uint_32 offset, byte index) /* A pointer to a handler func
 						if (likely(((tempoffset | 7) < BIOS_combinedROM_size))) //Enough to read a dword?
 						{
 							memory_dataread[0] = SDL_SwapLE64(*((uint_64*)(&BIOS_combinedROM[tempoffset]))); //Read the data from the ROM!
-							memory_datasize = tempoffset = 8 - (temp - tempoffset); //What is read from the whole dword!
+							memory_datasize[(index >> 5) & 1] = tempoffset = 8 - (temp - tempoffset); //What is read from the whole dword!
 							memory_dataread[0] >>= ((8 - tempoffset) << 3); //Discard the bytes that are not to be read(before the requested address)!
 							return 1; //Done: we've been read!
 						}
@@ -2020,7 +2030,7 @@ byte BIOS_readhandler(uint_32 offset, byte index) /* A pointer to a handler func
 							if (likely(((tempoffset | 3) < BIOS_combinedROM_size))) //Enough to read a dword?
 							{
 								memory_dataread[0] = SDL_SwapLE32(*((uint_32*)(&BIOS_combinedROM[tempoffset]))); //Read the data from the ROM!
-								memory_datasize = tempoffset = 4 - (temp - tempoffset); //What is read from the whole dword!
+								memory_datasize[(index >> 5) & 1] = tempoffset = 4 - (temp - tempoffset); //What is read from the whole dword!
 								memory_dataread[0] >>= ((4 - tempoffset) << 3); //Discard the bytes that are not to be read(before the requested address)!
 								return 1; //Done: we've been read!
 							}
@@ -2031,14 +2041,14 @@ byte BIOS_readhandler(uint_32 offset, byte index) /* A pointer to a handler func
 								if (likely(((tempoffset | 1) < BIOS_combinedROM_size))) //Enough to read a word, aligned?
 								{
 									memory_dataread[0] = SDL_SwapLE16(*((word*)(&BIOS_combinedROM[tempoffset]))); //Read the data from the ROM!
-									memory_datasize = tempoffset = 2 - (temp - tempoffset); //What is read from the whole word!
+									memory_datasize[(index >> 5) & 1] = tempoffset = 2 - (temp - tempoffset); //What is read from the whole word!
 									memory_dataread[0] >>= ((2 - tempoffset) << 3); //Discard the bytes that are not to be read(before the requested address)!
 									return 1; //Done: we've been read!				
 								}
 								else //Enough to read a byte only?
 								{
 									memory_dataread[0] = BIOS_combinedROM[temp]; //Read the data from the ROM!
-									memory_datasize = 1; //Only 1 byte!
+									memory_datasize[(index >> 5) & 1] = 1; //Only 1 byte!
 									return 1; //Done: we've been read!				
 								}
 							}
@@ -2049,7 +2059,7 @@ byte BIOS_readhandler(uint_32 offset, byte index) /* A pointer to a handler func
 				#endif
 				{
 					memory_dataread[0] = BIOS_combinedROM[tempoffset]; //Read the data from the ROM, reversed!
-					memory_datasize = 1; //Only 1 byte!
+					memory_datasize[(index >> 5) & 1] = 1; //Only 1 byte!
 					return 1; //Done: we've been read!				
 				}
 			}

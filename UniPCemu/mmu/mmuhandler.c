@@ -306,16 +306,16 @@ OPTINLINE byte MMU_IO_writehandler(uint_64 offset, byte value, word index)
 }
 
 //Reading only!
-uint_64 memory_dataaddr = 0; //The data address that's cached!
+uint_64 memory_dataaddr[2] = { 0,0 }; //The data address that's cached!
 uint_64 memory_dataread[2] = { 0,0 };
-byte memory_datasize = 0; //The size of the data that has been read!
+byte memory_datasize[2] = { 0,0 }; //The size of the data that has been read!
 OPTINLINE byte MMU_IO_readhandler(uint_64 offset, word index)
 {
 	byte dataread;
 	MMU_RHANDLER *list; //Current list item!
 	MMU_RHANDLER current; //Current handler!
-	memory_datasize = 0; //Default to a size of invalid!
-	memory_dataaddr = offset; //What address has been cached!
+	memory_datasize[(index >> 5) & 1] = 0; //Default to a size of invalid!
+	memory_dataaddr[(index >> 5) & 1] = offset; //What address has been cached!
 
 	if (likely((offset & 0xFFFFFFFF00000000ULL) == 0)) //32-bit address?
 	{
@@ -361,7 +361,7 @@ OPTINLINE byte MMU_IO_readhandler(uint_64 offset, word index)
 	forceROMaccess:
 	if (likely((offset & 0xFFFFFFFF00000000ULL) == 0))
 	{
-		if (VGAmemIO_rb((uint_32)offset)) return 0; //Video responded!
+		if (VGAmemIO_rb((uint_32)offset, index)) return 0; //Video responded!
 		if (BIOS_readhandler((uint_32)offset, index)) return 0; //BIOS responded!
 		current = *(list = &MMUHANDLER.readhandlers[0]); //Start of our list!
 		if (likely(current == NULL))
@@ -372,8 +372,8 @@ OPTINLINE byte MMU_IO_readhandler(uint_64 offset, word index)
 				{
 					//Give the last data read/written by the BUS!
 					memory_dataread[0] = 0xFF; //What is read!
-					memory_dataaddr = offset; //What address!
-					memory_datasize = 1; //1 byte only!
+					memory_dataaddr[(index >> 5) & 1] = offset; //What address!
+					memory_datasize[(index >> 5) & 1] = 1; //1 byte only!
 					return 0; //Abort searching: we're processed!
 				}
 			}
@@ -383,8 +383,8 @@ OPTINLINE byte MMU_IO_readhandler(uint_64 offset, word index)
 		{
 			if (unlikely(current((uint_32)offset,&dataread))) //Success reading?
 			{
-				memory_dataaddr = offset; //What address!
-				memory_datasize = 1; //Only 1 byte!
+				memory_dataaddr[(index >> 5) & 1] = offset; //What address!
+				memory_datasize[(index >> 5) & 1] = 1; //Only 1 byte!
 				memory_dataread[0] = dataread; //What has been read?
 				return 0; //Abort searching: we're processed!
 			}
@@ -398,8 +398,8 @@ OPTINLINE byte MMU_IO_readhandler(uint_64 offset, word index)
 		{
 			//Give the last data read/written by the BUS!
 			memory_dataread[0] = 0xFF; //What is read!
-			memory_dataaddr = offset; //What address!
-			memory_datasize = 1; //1 byte only!
+			memory_dataaddr[(index >> 5) & 1] = offset; //What address!
+			memory_datasize[(index >> 5) & 1] = 1; //1 byte only!
 			return 0; //Abort searching: we're processed!
 		}
 	}
@@ -623,7 +623,7 @@ void MMU_mappingupdated() //A memory mapping has been updated?
 	haveMRUreadaddresstype = 0; //Make sure we use memory correctly!
 }
 
-extern byte BIU_cachedmemorysize[MAXCPUS]; //For the BIU to flush it's cache!
+extern byte BIU_cachedmemorysize[MAXCPUS][2]; //For the BIU to flush it's cache!
 
 void MMU_RAMlayoutupdated()
 {
@@ -632,13 +632,13 @@ void MMU_RAMlayoutupdated()
 	//Invalidate CPU caches
 	if (unlikely(BIU_cachedmemorysize[0])) //Matched an active read cache(allowing self-modifying code)?
 	{
-		memory_datasize = 0; //Invalidate the read cache to re-read memory!
-		BIU_cachedmemorysize[0] = 0; //Invalidate the BIU cache as well!
+		memory_datasize[0] = memory_datasize[1] = 0; //Invalidate the read cache to re-read memory!
+		BIU_cachedmemorysize[0][0] = BIU_cachedmemorysize[0][1] = 0; //Invalidate the BIU cache as well!
 	}
 	if (unlikely(BIU_cachedmemorysize[1])) //Matched an active read cache(allowing self-modifying code)?
 	{
-		memory_datasize = 0; //Invalidate the read cache to re-read memory!
-		BIU_cachedmemorysize[1] = 0; //Invalidate the BIU cache as well!
+		memory_datasize[0] = memory_datasize[1] = 0; //Invalidate the read cache to re-read memory!
+		BIU_cachedmemorysize[1][0] = BIU_cachedmemorysize[1][1] = 0; //Invalidate the BIU cache as well!
 	}
 }
 
@@ -877,9 +877,9 @@ void writeCompaqMMUregister(uint_32 originaladdress, byte value)
 	MoveLowMemoryHigh = 7; //Move all memory blocks high when needed?
 	MMU.maxsize = MMU.size - (0x100000 - 0xA0000); //Limit the memory size!
 	MMU_updatemaxsize(); //updated the maximum size!
-	memory_datasize = 0; //Invalidate the read cache!
-	BIU_cachedmemorysize[0] = 0; //Make the BIU properly aware by flushing it's caches!
-	BIU_cachedmemorysize[1] = 0; //Make the BIU properly aware by flushing it's caches!
+	memory_datasize[0] = memory_datasize[1] = 0; //Invalidate the read cache!
+	BIU_cachedmemorysize[0][0] = BIU_cachedmemorysize[0][1] = 0; //Make the BIU properly aware by flushing it's caches!
+	BIU_cachedmemorysize[1][0] = BIU_cachedmemorysize[1][1] = 0; //Make the BIU properly aware by flushing it's caches!
 }
 
 void MMU_seti430fx()
@@ -889,9 +889,9 @@ void MMU_seti430fx()
 	MoveLowMemoryHigh = 6; //Move all memory blocks high when needed? Leave the low memory block in place!
 	MMU.maxsize = MMU.size; //Don't limit the memory size!
 	MMU_updatemaxsize(); //updated the maximum size!
-	memory_datasize = 0; //Invalidate the read cache!
-	BIU_cachedmemorysize[0] = 0; //Make the BIU properly aware by flushing it's caches!
-	BIU_cachedmemorysize[1] = 0; //Make the BIU properly aware by flushing it's caches!
+	memory_datasize[0] = memory_datasize[1] = 0; //Invalidate the read cache!
+	BIU_cachedmemorysize[0][0] = BIU_cachedmemorysize[0][1] = 0; //Make the BIU properly aware by flushing it's caches!
+	BIU_cachedmemorysize[1][0] = BIU_cachedmemorysize[1][1] = 0; //Make the BIU properly aware by flushing it's caches!
 	i430fx_MMUready(); //MMU is ready!
 }
 
@@ -906,8 +906,8 @@ byte MMU_INTERNAL_directrb_debugger(uint_64 realaddress, word index, uint_64 *re
 	if (unlikely(emulateCompaqMMURegisters && (realaddress == 0x80C00000))) //Compaq special register?
 	{
 		*result = readCompaqMMURegister(); //Read the Compaq MMU register!
-		memory_dataaddr = originaladdress; //What is the cached data address!
-		memory_datasize = 1; //1 byte only!
+		memory_dataaddr[(index >> 5) & 1] = originaladdress; //What is the cached data address!
+		memory_datasize[(index >> 5) & 1] = 1; //1 byte only!
 		goto specialreadcycledebugger; //Apply the special read cycle!
 	}
 	precalcval = index_readprecalcs[index]; //Lookup the precalc val!
@@ -922,8 +922,8 @@ byte MMU_INTERNAL_directrb_debugger(uint_64 realaddress, word index, uint_64 *re
 	}
 
 	*result = memorymapinfo[precalcval].cache[realaddress & MMU_BLOCKALIGNMENT]; //Get data from memory!
-	memory_dataaddr = originaladdress; //What is the cached data address!
-	memory_datasize = 1; //1 byte only!
+	memory_dataaddr[(index >> 5) & 1] = originaladdress; //What is the cached data address!
+	memory_datasize[(index >> 5) & 1] = 1; //1 byte only!
 	debugger_logmemoryaccess(0, (uint_32)((ptrnum)&memorymapinfo[precalcval].cache[realaddress & MMU_BLOCKALIGNMENT]-(ptrnum)MMU.memory), *result, LOGMEMORYACCESS_RAM_LOGMMUALL | (((index & 0x20) >> 5) << LOGMEMORYACCESS_PREFETCHBITSHIFT)); //Log it!
 specialreadcycledebugger:
 	debugger_logmemoryaccess(0, originaladdress, *result, LOGMEMORYACCESS_RAM | (((index & 0x20) >> 5) << LOGMEMORYACCESS_PREFETCHBITSHIFT)); //Log it!
@@ -962,8 +962,8 @@ byte MMU_INTERNAL_directrb_nodebugger(uint_64 realaddress, word index, uint_64 *
 	if (unlikely(emulateCompaqMMURegisters && (realaddress == 0x80C00000))) //Compaq special register?
 	{
 		*result = readCompaqMMURegister(); //Read the Compaq MMU register!
-		memory_dataaddr = originaladdress; //What is the cached data address!
-		memory_datasize = 1; //1 byte only!
+		memory_dataaddr[(index >> 5) & 1] = originaladdress; //What is the cached data address!
+		memory_datasize[(index >> 5) & 1] = 1; //1 byte only!
 		goto specialreadcycle; //Apply the special read cycle!
 	}
 	precalcval = index_readprecalcs[index]; //Lookup the precalc val!
@@ -984,9 +984,9 @@ byte MMU_INTERNAL_directrb_nodebugger(uint_64 realaddress, word index, uint_64 *
 			{
 				*result = SDL_SwapLE64(*((uint_64*)&memorymapinfo[precalcval].cache[realaddress & MMU_BLOCKALIGNMENT])); //Read the data from the ROM!
 				*result2 = SDL_SwapLE64(*((uint_64*)&memorymapinfo[precalcval].cache[(realaddress+8) & MMU_BLOCKALIGNMENT])); //Read the data from the ROM!
-				memory_datasize = realaddress = 16 - (temp - realaddress); //What is read from the whole dword!
+				memory_datasize[(index >> 5) & 1] = realaddress = 16 - (temp - realaddress); //What is read from the whole dword!
 				shiftr128(result2,result,((16 - realaddress) << 3)); //Discard the bytes that are not to be read(before the requested address)!
-				memory_dataaddr = originaladdress; //What is the cached data address!
+				memory_dataaddr[(index >> 5) & 1] = originaladdress; //What is the cached data address!
 			}
 			else
 			{
@@ -996,9 +996,9 @@ byte MMU_INTERNAL_directrb_nodebugger(uint_64 realaddress, word index, uint_64 *
 				{
 					*result = SDL_SwapLE64(*((uint_64*)&memorymapinfo[precalcval].cache[realaddress & MMU_BLOCKALIGNMENT])); //Read the data from the ROM!
 					*result2 = 0; //Nothing there!
-					memory_datasize = realaddress = 8 - (temp - realaddress); //What is read from the whole dword!
+					memory_datasize[(index >> 5) & 1] = realaddress = 8 - (temp - realaddress); //What is read from the whole dword!
 					*result >>= ((8 - realaddress) << 3); //Discard the bytes that are not to be read(before the requested address)!
-					memory_dataaddr = originaladdress; //What is the cached data address!
+					memory_dataaddr[(index >> 5) & 1] = originaladdress; //What is the cached data address!
 				}
 				else
 				{
@@ -1007,9 +1007,9 @@ byte MMU_INTERNAL_directrb_nodebugger(uint_64 realaddress, word index, uint_64 *
 					if (likely((((realaddress & MMU_BLOCKALIGNMENT) | 3) <= MMU_BLOCKALIGNMENT))) //Enough to read a dword?
 					{
 						*result = SDL_SwapLE32(*((uint_32*)&memorymapinfo[precalcval].cache[realaddress & MMU_BLOCKALIGNMENT])); //Read the data from the ROM!
-						memory_datasize = realaddress = 4 - (temp - realaddress); //What is read from the whole dword!
+						memory_datasize[(index >> 5) & 1] = realaddress = 4 - (temp - realaddress); //What is read from the whole dword!
 						*result >>= ((4 - realaddress) << 3); //Discard the bytes that are not to be read(before the requested address)!
-						memory_dataaddr = originaladdress; //What is the cached data address!
+						memory_dataaddr[(index >> 5) & 1] = originaladdress; //What is the cached data address!
 					}
 					else
 					{
@@ -1018,15 +1018,15 @@ byte MMU_INTERNAL_directrb_nodebugger(uint_64 realaddress, word index, uint_64 *
 						if (likely((((realaddress & MMU_BLOCKALIGNMENT) | 1) <= MMU_BLOCKALIGNMENT))) //Enough to read a word, aligned?
 						{
 							*result = SDL_SwapLE16(*((word*)(&memorymapinfo[precalcval].cache[realaddress & MMU_BLOCKALIGNMENT]))); //Read the data from the ROM!
-							memory_datasize = realaddress = 2 - (temp - realaddress); //What is read from the whole word!
+							memory_datasize[(index >> 5) & 1] = realaddress = 2 - (temp - realaddress); //What is read from the whole word!
 							*result >>= ((2 - realaddress) << 3); //Discard the bytes that are not to be read(before the requested address)!
-							memory_dataaddr = originaladdress; //What is the cached data address!
+							memory_dataaddr[(index >> 5) & 1] = originaladdress; //What is the cached data address!
 						}
 						else //Enough to read a byte only?
 						{
 							*result = memorymapinfo[precalcval].cache[temp & MMU_BLOCKALIGNMENT]; //Read the data from the ROM!
-							memory_dataaddr = originaladdress; //What is the cached data address!
-							memory_datasize = 1; //Only 1 byte!
+							memory_dataaddr[(index >> 5) & 1] = originaladdress; //What is the cached data address!
+							memory_datasize[(index >> 5) & 1] = 1; //Only 1 byte!
 						}
 					}
 				}
@@ -1036,15 +1036,15 @@ byte MMU_INTERNAL_directrb_nodebugger(uint_64 realaddress, word index, uint_64 *
 		#endif
 		{
 			*result = memorymapinfo[precalcval].cache[realaddress & MMU_BLOCKALIGNMENT]; //Get data from memory!
-			memory_dataaddr = originaladdress; //What is the cached data address!
-			memory_datasize = 1; //1 byte only!
+			memory_dataaddr[(index >> 5) & 1] = originaladdress; //What is the cached data address!
+			memory_datasize[(index >> 5) & 1] = 1; //1 byte only!
 		}
 	}
 	else //Not cacheable?
 	{
 		*result = memorymapinfo[precalcval].cache[realaddress & MMU_BLOCKALIGNMENT]; //Get data from memory!
-		memory_dataaddr = originaladdress; //What is the cached data address!
-		memory_datasize = 1; //1 byte only!
+		memory_dataaddr[(index >> 5) & 1] = originaladdress; //What is the cached data address!
+		memory_datasize[(index >> 5) & 1] = 1; //1 byte only!
 	}
 	if (unlikely(doDRAM_access)) //DRAM access?
 	{
@@ -1093,9 +1093,9 @@ void MMU_updatedebugger()
 #define MMU_INTERNAL_directrb(realaddress, index, result, result2) MMU_INTERNAL_directrb_curhandler(realaddress, index, result, result2)
 
 //Cache invalidation behaviour!
-extern uint_64 BIU_cachedmemoryaddr[MAXCPUS];
-extern uint_64 BIU_cachedmemoryread[MAXCPUS];
-extern byte BIU_cachedmemorysize[MAXCPUS];
+extern uint_64 BIU_cachedmemoryaddr[MAXCPUS][2];
+extern uint_64 BIU_cachedmemoryread[MAXCPUS][2];
+extern byte BIU_cachedmemorysize[MAXCPUS][2];
 
 OPTINLINE void MMU_INTERNAL_directwb(uint_64 realaddress, byte value, word index) //Direct write to real memory (with real data direct)!
 {
@@ -1106,15 +1106,25 @@ OPTINLINE void MMU_INTERNAL_directwb(uint_64 realaddress, byte value, word index
 	if (unlikely(emulateCompaqMMURegisters && (is_i430fx==0) && (realaddress==0x80C00000))) //Compaq special register?
 	{
 		writeCompaqMMUregister((uint_32)originaladdress, value); //Update the Compaq MMU register!
-		if (unlikely(BIU_cachedmemorysize[0] && (BIU_cachedmemoryaddr[0] <= originaladdress) && ((BIU_cachedmemoryaddr[0] + BIU_cachedmemorysize[0]) > originaladdress))) //Matched an active read cache(allowing self-modifying code)?
+		if (unlikely(BIU_cachedmemorysize[0][0] && (BIU_cachedmemoryaddr[0][0] <= originaladdress) && ((BIU_cachedmemoryaddr[0][0] + BIU_cachedmemorysize[0][0]) > originaladdress))) //Matched an active read cache(allowing self-modifying code)?
 		{
-			memory_datasize = 0; //Invalidate the read cache to re-read memory!
-			BIU_cachedmemorysize[0] = 0; //Invalidate the BIU cache as well!
+			memory_datasize[0] = 0; //Invalidate the read cache to re-read memory!
+			BIU_cachedmemorysize[0][0] = 0; //Invalidate the BIU cache as well!
 		}
-		if (unlikely(BIU_cachedmemorysize[1] && (BIU_cachedmemoryaddr[1] <= originaladdress) && ((BIU_cachedmemoryaddr[1] + BIU_cachedmemorysize[1]) > originaladdress))) //Matched an active read cache(allowing self-modifying code)?
+		if (unlikely(BIU_cachedmemorysize[1][0] && (BIU_cachedmemoryaddr[1][0] <= originaladdress) && ((BIU_cachedmemoryaddr[1][0] + BIU_cachedmemorysize[1][0]) > originaladdress))) //Matched an active read cache(allowing self-modifying code)?
 		{
-			memory_datasize = 0; //Invalidate the read cache to re-read memory!
-			BIU_cachedmemorysize[1] = 0; //Invalidate the BIU cache as well!
+			memory_datasize[0] = 0; //Invalidate the read cache to re-read memory!
+			BIU_cachedmemorysize[1][0] = 0; //Invalidate the BIU cache as well!
+		}
+		if (unlikely(BIU_cachedmemorysize[0][1] && (BIU_cachedmemoryaddr[0][1] <= originaladdress) && ((BIU_cachedmemoryaddr[0][1] + BIU_cachedmemorysize[0][1]) > originaladdress))) //Matched an active read cache(allowing self-modifying code)?
+		{
+			memory_datasize[1] = 0; //Invalidate the read cache to re-read memory!
+			BIU_cachedmemorysize[0][1] = 0; //Invalidate the BIU cache as well!
+		}
+		if (unlikely(BIU_cachedmemorysize[1][1] && (BIU_cachedmemoryaddr[1][1] <= originaladdress) && ((BIU_cachedmemoryaddr[1][1] + BIU_cachedmemorysize[1][1]) > originaladdress))) //Matched an active read cache(allowing self-modifying code)?
+		{
+			memory_datasize[1] = 0; //Invalidate the read cache to re-read memory!
+			BIU_cachedmemorysize[1][1] = 0; //Invalidate the BIU cache as well!
 		}
 		memory_datawrittensize = 1; //Only 1 byte written!
 		return; //Count as a memory mapped register!
@@ -1123,15 +1133,25 @@ OPTINLINE void MMU_INTERNAL_directwb(uint_64 realaddress, byte value, word index
 	{
 		bushandler((byte)index, value); //Update the bus handler!
 	}
-	if (unlikely(BIU_cachedmemorysize[0] && (BIU_cachedmemoryaddr[0] <= originaladdress) && ((BIU_cachedmemoryaddr[0]+BIU_cachedmemorysize[0])>originaladdress))) //Matched an active read cache(allowing self-modifying code)?
+	if (unlikely(BIU_cachedmemorysize[0][0] && (BIU_cachedmemoryaddr[0][0] <= originaladdress) && ((BIU_cachedmemoryaddr[0][0]+BIU_cachedmemorysize[0][0])>originaladdress))) //Matched an active read cache(allowing self-modifying code)?
 	{
-		memory_datasize = 0; //Invalidate the read cache to re-read memory!
-		BIU_cachedmemorysize[0] = 0; //Invalidate the BIU cache as well!
+		memory_datasize[0] = 0; //Invalidate the read cache to re-read memory!
+		BIU_cachedmemorysize[0][0] = 0; //Invalidate the BIU cache as well!
 	}
-	if (unlikely(BIU_cachedmemorysize[1] && (BIU_cachedmemoryaddr[1] <= originaladdress) && ((BIU_cachedmemoryaddr[1] + BIU_cachedmemorysize[1]) > originaladdress))) //Matched an active read cache(allowing self-modifying code)?
+	if (unlikely(BIU_cachedmemorysize[1][0] && (BIU_cachedmemoryaddr[1][0] <= originaladdress) && ((BIU_cachedmemoryaddr[1][0] + BIU_cachedmemorysize[1][0]) > originaladdress))) //Matched an active read cache(allowing self-modifying code)?
 	{
-		memory_datasize = 0; //Invalidate the read cache to re-read memory!
-		BIU_cachedmemorysize[1] = 0; //Invalidate the BIU cache as well!
+		memory_datasize[0] = 0; //Invalidate the read cache to re-read memory!
+		BIU_cachedmemorysize[1][0] = 0; //Invalidate the BIU cache as well!
+	}
+	if (unlikely(BIU_cachedmemorysize[0][1] && (BIU_cachedmemoryaddr[0][1] <= originaladdress) && ((BIU_cachedmemoryaddr[0][1] + BIU_cachedmemorysize[0][1]) > originaladdress))) //Matched an active read cache(allowing self-modifying code)?
+	{
+		memory_datasize[1] = 0; //Invalidate the read cache to re-read memory!
+		BIU_cachedmemorysize[0][1] = 0; //Invalidate the BIU cache as well!
+	}
+	if (unlikely(BIU_cachedmemorysize[1][1] && (BIU_cachedmemoryaddr[1][1] <= originaladdress) && ((BIU_cachedmemoryaddr[1][1] + BIU_cachedmemorysize[1][1]) > originaladdress))) //Matched an active read cache(allowing self-modifying code)?
+	{
+		memory_datasize[1] = 0; //Invalidate the read cache to re-read memory!
+		BIU_cachedmemorysize[1][1] = 0; //Invalidate the BIU cache as well!
 	}
 	precalcval = index_writeprecalcs[index]; //Lookup the precalc val!
 	if (unlikely(applyMemoryHoles(realaddress,precalcval))) //Overflow/invalid location?
@@ -1149,15 +1169,25 @@ OPTINLINE void MMU_INTERNAL_directwb(uint_64 realaddress, byte value, word index
 		{
 			*((uint_32*)&memorymapinfo[precalcval].cache[realaddress & MMU_BLOCKALIGNMENT]) = SDL_SwapLE32(memory_datawrite); //Write the data to the ROM!
 			memory_datawrittensize = 4; //Full dword written!
-			if (unlikely(isoverlappingw((uint_64)originaladdress,4,(uint_64)BIU_cachedmemoryaddr[0],BIU_cachedmemorysize[0]))) //Cached?
+			if (unlikely(isoverlappingw((uint_64)originaladdress,4,(uint_64)BIU_cachedmemoryaddr[0][0],BIU_cachedmemorysize[0][0]))) //Cached?
 			{
-				memory_datasize = 0; //Invalidate the read cache to re-read memory!
-				BIU_cachedmemorysize[0] = 0; //Invalidate the BIU cache as well!
+				memory_datasize[0] = 0; //Invalidate the read cache to re-read memory!
+				BIU_cachedmemorysize[0][0] = 0; //Invalidate the BIU cache as well!
 			}
-			if (unlikely(isoverlappingw((uint_64)originaladdress, 4, (uint_64)BIU_cachedmemoryaddr[1], BIU_cachedmemorysize[1]))) //Cached?
+			if (unlikely(isoverlappingw((uint_64)originaladdress, 4, (uint_64)BIU_cachedmemoryaddr[1][0], BIU_cachedmemorysize[1][0]))) //Cached?
 			{
-				memory_datasize = 0; //Invalidate the read cache to re-read memory!
-				BIU_cachedmemorysize[1] = 0; //Invalidate the BIU cache as well!
+				memory_datasize[0] = 0; //Invalidate the read cache to re-read memory!
+				BIU_cachedmemorysize[1][0] = 0; //Invalidate the BIU cache as well!
+			}
+			if (unlikely(isoverlappingw((uint_64)originaladdress, 4, (uint_64)BIU_cachedmemoryaddr[0][1], BIU_cachedmemorysize[0][1]))) //Cached?
+			{
+				memory_datasize[1] = 0; //Invalidate the read cache to re-read memory!
+				BIU_cachedmemorysize[0][1] = 0; //Invalidate the BIU cache as well!
+			}
+			if (unlikely(isoverlappingw((uint_64)originaladdress, 4, (uint_64)BIU_cachedmemoryaddr[1][1], BIU_cachedmemorysize[1][1]))) //Cached?
+			{
+				memory_datasize[1] = 0; //Invalidate the read cache to re-read memory!
+				BIU_cachedmemorysize[1][1] = 0; //Invalidate the BIU cache as well!
 			}
 		}
 		else
@@ -1166,15 +1196,25 @@ OPTINLINE void MMU_INTERNAL_directwb(uint_64 realaddress, byte value, word index
 			{
 				*((word*)(&memorymapinfo[precalcval].cache[realaddress & MMU_BLOCKALIGNMENT])) = SDL_SwapLE16(memory_datawrite); //Read the data from the ROM!
 				memory_datawrittensize = 2; //Full word written!
-				if (unlikely(BIU_cachedmemorysize[0] && (BIU_cachedmemoryaddr[0] <= (originaladdress + 1)) && ((BIU_cachedmemoryaddr[0] + BIU_cachedmemorysize[0]) > (originaladdress + 1)))) //Matched an active read cache(allowing self-modifying code)?
+				if (unlikely(BIU_cachedmemorysize[0][0] && (BIU_cachedmemoryaddr[0][0] <= (originaladdress + 1)) && ((BIU_cachedmemoryaddr[0][0] + BIU_cachedmemorysize[0][0]) > (originaladdress + 1)))) //Matched an active read cache(allowing self-modifying code)?
 				{
-					memory_datasize = 0; //Invalidate the read cache to re-read memory!
-					BIU_cachedmemorysize[0] = 0; //Invalidate the BIU cache as well!
+					memory_datasize[0] = 0; //Invalidate the read cache to re-read memory!
+					BIU_cachedmemorysize[0][0] = 0; //Invalidate the BIU cache as well!
 				}
-				if (unlikely(BIU_cachedmemorysize[1] && (BIU_cachedmemoryaddr[1] <= (originaladdress + 1)) && ((BIU_cachedmemoryaddr[1] + BIU_cachedmemorysize[1]) > (originaladdress + 1)))) //Matched an active read cache(allowing self-modifying code)?
+				if (unlikely(BIU_cachedmemorysize[1][0] && (BIU_cachedmemoryaddr[1][0] <= (originaladdress + 1)) && ((BIU_cachedmemoryaddr[1][0] + BIU_cachedmemorysize[1][0]) > (originaladdress + 1)))) //Matched an active read cache(allowing self-modifying code)?
 				{
-					memory_datasize = 0; //Invalidate the read cache to re-read memory!
-					BIU_cachedmemorysize[1] = 0; //Invalidate the BIU cache as well!
+					memory_datasize[0] = 0; //Invalidate the read cache to re-read memory!
+					BIU_cachedmemorysize[1][0] = 0; //Invalidate the BIU cache as well!
+				}
+				if (unlikely(BIU_cachedmemorysize[0][1] && (BIU_cachedmemoryaddr[0][1] <= (originaladdress + 1)) && ((BIU_cachedmemoryaddr[0][1] + BIU_cachedmemorysize[0][1]) > (originaladdress + 1)))) //Matched an active read cache(allowing self-modifying code)?
+				{
+					memory_datasize[1] = 0; //Invalidate the read cache to re-read memory!
+					BIU_cachedmemorysize[0][1] = 0; //Invalidate the BIU cache as well!
+				}
+				if (unlikely(BIU_cachedmemorysize[1][1] && (BIU_cachedmemoryaddr[1][1] <= (originaladdress + 1)) && ((BIU_cachedmemoryaddr[1][1] + BIU_cachedmemorysize[1][1]) > (originaladdress + 1)))) //Matched an active read cache(allowing self-modifying code)?
+				{
+					memory_datasize[1] = 0; //Invalidate the read cache to re-read memory!
+					BIU_cachedmemorysize[1][1] = 0; //Invalidate the BIU cache as well!
 				}
 			}
 			else //Enough to read a byte only?
@@ -1215,15 +1255,15 @@ word MMU_INTERNAL_directrw(uint_64 realaddress, word index) //Direct read from r
 		{
 			temp = 0xFF; //Give the last data read/written by the BUS!
 			memory_dataread[0] = temp; //What is read!
-			memory_dataaddr = realaddress; //What address!
-			memory_datasize = 1; //1 byte only!
+			memory_dataaddr[(index >> 5) & 1] = realaddress; //What address!
+			memory_datasize[(index >> 5) & 1] = 1; //1 byte only!
 		}
 		else
 		{
 			temp = (byte)(mem_BUSValue >> ((index & 3) << 3)); //Give the last data read/written by the BUS!
 			memory_dataread[0] = temp; //What is read!
-			memory_dataaddr = realaddress; //What address!
-			memory_datasize = 1; //1 byte only!
+			memory_dataaddr[(index >> 5) & 1] = realaddress; //What address!
+			memory_datasize[(index >> 5) & 1] = 1; //1 byte only!
 		}
 	}
 	result = temp; //The low byte too!
@@ -1232,23 +1272,23 @@ word MMU_INTERNAL_directrw(uint_64 realaddress, word index) //Direct read from r
 		if (likely((is_XT == 0) || (EMULATED_CPU >= CPU_80286))) //To give NOT for detecting memory on AT only?
 		{
 			temp = 0xFF; //Give the last data read/written by the BUS!
-			memory_dataaddr = realaddress; //What address!
+			memory_dataaddr[(index >> 5) & 1] = realaddress; //What address!
 			memory_dataread[0] = temp; //What is read!
-			memory_datasize = 1; //1 byte only!
+			memory_datasize[(index >> 5) & 1] = 1; //1 byte only!
 		}
 		else
 		{
 			temp = (byte)(mem_BUSValue >> ((index & 3) << 3)); //Give the last data read/written by the BUS!
-			memory_dataaddr = realaddress; //What address!
-			memory_datasize = 1; //1 byte only!
+			memory_dataaddr[(index >> 5) & 1] = realaddress; //What address!
+			memory_datasize[(index >> 5) & 1] = 1; //1 byte only!
 		}
 	}
 	result |= (temp << 8); //Higher byte!
 	memory_dataread[0] = result;
 	#ifdef USE_MEMORY_CACHING
-	memory_datasize = 2; //How much is read!
+	memory_datasize[(index >> 5) & 1] = 2; //How much is read!
 	#else
-	memory_datasize = 1; //How much is read!
+	memory_datasize[(index >> 5) & 1] = 1; //How much is read!
 	#endif
 	return result; //Give the result!
 }
@@ -1308,14 +1348,14 @@ byte MMU_INTERNAL_directrb_realaddr(uint_64 realaddress, byte index) //Read with
 			if (likely((is_XT == 0) || (EMULATED_CPU >= CPU_80286))) //To give NOT for detecting memory on AT only?
 			{
 				memory_dataread[0] = 0xFF; //Give the last data read/written by the BUS!
-				memory_dataaddr = realaddress; //What address!
-				memory_datasize = 1; //Only 1 byte long!
+				memory_dataaddr[(index >> 5) & 1] = realaddress; //What address!
+				memory_datasize[(index >> 5) & 1] = 1; //Only 1 byte long!
 			}
 			else
 			{
 				memory_dataread[0] = (byte)(mem_BUSValue >> ((index & 3) << 3)); //Give the last data read/written by the BUS!
-				memory_dataaddr = realaddress; //What address!
-				memory_datasize = 1; //Only 1 byte long!
+				memory_dataaddr[(index >> 5) & 1] = realaddress; //What address!
+				memory_datasize[(index >> 5) & 1] = 1; //Only 1 byte long!
 			}
 		}
 		else //Cache it's translation!

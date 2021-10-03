@@ -494,7 +494,7 @@ byte VGAmemIO_wb(uint_32 offset, byte value);
 void CGAMDA_doWriteRAMrefresh(uint_32 offset);
 
 //Support for the MMU to call directly!
-byte VGAmemIO_rb(uint_32 offset);
+byte VGAmemIO_rb(uint_32 offset, byte index);
 byte VGAmemIO_wb(uint_32 offset, byte value);
 byte extVGA_isnotVRAM(uint_32 offset); //Isn't VRAM?
 

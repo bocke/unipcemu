@@ -379,13 +379,13 @@ extern MMU_type MMU; //MMU support!
 extern uint_64 effectivecpuaddresspins; //What address pins are supported?
 
 //Some cached memory line!
-uint_64 BIU_cachedmemoryaddr[MAXCPUS] = { 0,0 };
-uint_64 BIU_cachedmemoryread[MAXCPUS][2] = { {0,0}, {0,0} };
-byte BIU_cachedmemorysize[MAXCPUS] = { 0,0 };
+uint_64 BIU_cachedmemoryaddr[MAXCPUS][2] = { {0,0},{0,0} };
+uint_64 BIU_cachedmemoryread[MAXCPUS][2][2] = { {{0,0},{0,0}}, {{0,0},{0,0}} };
+byte BIU_cachedmemorysize[MAXCPUS][2] = { {0,0},{0,0} };
 
-extern uint_64 memory_dataaddr; //The data address that's cached!
+extern uint_64 memory_dataaddr[2]; //The data address that's cached!
 extern uint_64 memory_dataread[2];
-extern byte memory_datasize; //The size of the data that has been read!
+extern byte memory_datasize[2]; //The size of the data that has been read!
 
 void BIU_terminatemem()
 {
@@ -406,27 +406,29 @@ OPTINLINE byte BIU_directrb(uint_64 realaddress, word index)
 	INLINEREGISTER uint_64 cachedmemorybyte;
 	uint_64 originaladdr;
 	byte result;
+	INLINEREGISTER byte isprefetch;
+	isprefetch = ((index & 0x20) >> 5); //Prefetvh?
 	//Apply A20!
 	realaddress &= effectivecpuaddresspins; //Only 20-bits address is available on a XT without newer CPU! Only 24-bits is available on a AT!
 	originaladdr = realaddress; //Save the address before the A20 is modified!
 	realaddress &= (MMU.wraparround | (CompaqWrapping[(realaddress >> 20)] << 20)); //Apply A20, when to be applied, including Compaq-style wrapping!
 
-	if (likely(BIU_cachedmemorysize[activeCPU])) //Anything left cached?
+	if (likely(BIU_cachedmemorysize[activeCPU][isprefetch])) //Anything left cached?
 	{
 		//First, validate the cache itself!
-		if (unlikely((BIU_cachedmemorysize[activeCPU] != memory_datasize) || (BIU_cachedmemoryaddr[activeCPU] != memory_dataaddr))) //Not cached properly or different address in the memory cache?
+		if (unlikely((BIU_cachedmemorysize[activeCPU][isprefetch] != memory_datasize[isprefetch]) || (BIU_cachedmemoryaddr[activeCPU][isprefetch] != memory_dataaddr[isprefetch]))) //Not cached properly or different address in the memory cache?
 		{
 			goto uncachedread; //Uncached read!
 		}
 		//Now, validate the active address!
-		cachedmemorybyte = (realaddress - BIU_cachedmemoryaddr[activeCPU]); //What byte in the cache are we?
-		if (unlikely((cachedmemorybyte >= BIU_cachedmemorysize[activeCPU]) || (realaddress < BIU_cachedmemoryaddr[activeCPU]))) //Past or before what's cached?
+		cachedmemorybyte = (realaddress - BIU_cachedmemoryaddr[activeCPU][isprefetch]); //What byte in the cache are we?
+		if (unlikely((cachedmemorybyte >= BIU_cachedmemorysize[activeCPU][isprefetch]) || (realaddress < BIU_cachedmemoryaddr[activeCPU][isprefetch]))) //Past or before what's cached?
 		{
 			goto uncachedread; //Uncached read!
 		}
 		//We're the same address block that's already loaded!
 		cachedmemorybyte <<= 3; //Make it a multiple of 8 bits!
-		result = BIU_cachedmemoryread[activeCPU][cachedmemorybyte>>6] >> (cachedmemorybyte&0x3F); //Read the data from the local cache!
+		result = BIU_cachedmemoryread[activeCPU][cachedmemorybyte>>6][isprefetch] >> (cachedmemorybyte&0x3F); //Read the data from the local cache!
 	}
 	else //Start uncached read!
 	{
@@ -434,16 +436,16 @@ OPTINLINE byte BIU_directrb(uint_64 realaddress, word index)
 		//Normal memory access!
 		result = MMU_INTERNAL_directrb_realaddr(realaddress, (index & 0xFF)); //Read from MMU/hardware!
 
-		BIU_cachedmemoryaddr[activeCPU] = memory_dataaddr; //The address that's cached now!
-		BIU_cachedmemoryread[activeCPU][0] = memory_dataread[0]; //What has been read!
-		BIU_cachedmemoryread[activeCPU][1] = memory_dataread[1]; //What has been read!
-		if (unlikely((memory_datasize > 1) && (MMU_waitstateactive == 0))) //Valid to cache? Not waiting for a result?
+		BIU_cachedmemoryaddr[activeCPU][isprefetch] = memory_dataaddr[isprefetch]; //The address that's cached now!
+		BIU_cachedmemoryread[activeCPU][0][isprefetch] = memory_dataread[0]; //What has been read!
+		BIU_cachedmemoryread[activeCPU][1][isprefetch] = memory_dataread[1]; //What has been read!
+		if (unlikely((memory_datasize[isprefetch] > 1) && (MMU_waitstateactive == 0))) //Valid to cache? Not waiting for a result?
 		{
-			BIU_cachedmemorysize[activeCPU] = memory_datasize; //How much has been read!
+			BIU_cachedmemorysize[activeCPU][isprefetch] = memory_datasize[isprefetch]; //How much has been read!
 		}
 		else
 		{
-			BIU_cachedmemorysize[activeCPU] = 0; //Invalidate the local cache!
+			BIU_cachedmemorysize[activeCPU][isprefetch] = 0; //Invalidate the local cache!
 		}
 
 		if (unlikely(MMU_logging == 1) && ((index & 0x100) == 0)) //To log?
@@ -1125,9 +1127,9 @@ OPTINLINE byte BIU_processRequests(byte memory_waitstates, byte bus_waitstates)
 					}
 					else
 					{
-						if (useIPSclock && (BIU[activeCPU].newtransfer_size == BIU_cachedmemorysize[activeCPU]) && (BIU_cachedmemorysize[activeCPU] > 1) && (BIU_cachedmemoryaddr[activeCPU] == physicaladdress)) //Data already fully read in IPS clocking mode?
+						if (useIPSclock && (BIU[activeCPU].newtransfer_size) && (BIU[activeCPU].newtransfer_size <= BIU_cachedmemorysize[activeCPU][0]) && (BIU_cachedmemorysize[activeCPU][0] > 1) && (BIU_cachedmemoryaddr[activeCPU][0] == physicaladdress)) //Data already fully read in IPS clocking mode?
 						{
-							BIU[activeCPU].currentresult = BIU_cachedmemoryread[activeCPU][0]; //What was read?
+							BIU[activeCPU].currentresult = BIU_cachedmemoryread[activeCPU][0][0]; //What was read?
 							if (BIU_response(BIU[activeCPU].currentresult)) //Result given? We're giving OK!
 							{
 								BIU_terminatemem(); //Terminate memory access!
