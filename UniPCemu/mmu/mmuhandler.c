@@ -908,14 +908,14 @@ void MMU_seti430fx()
 BUShandler bushandler = NULL; //Remember the last access?
 
 //Direct memory access (for the entire emulator)
-byte MMU_INTERNAL_directrb_debugger(uint_64 realaddress, word index, uint_64 *result, uint_64 *result2) //Direct read from real memory (with real data direct)!
+byte MMU_INTERNAL_directrb_debugger(uint_64 realaddress, word index) //Direct read from real memory (with real data direct)!
 {
 	uint_64 originaladdress = realaddress; //Original address!
 	byte precalcval;
 	byte nonexistant = 0;
 	if (unlikely(emulateCompaqMMURegisters && (realaddress == 0x80C00000))) //Compaq special register?
 	{
-		*result = readCompaqMMURegister(); //Read the Compaq MMU register!
+		memory_dataread[0] = readCompaqMMURegister(); //Read the Compaq MMU register!
 		memory_dataaddr[(index >> 5) & 1] = originaladdress; //What is the cached data address!
 		memory_datasize[(index >> 5) & 1] = 1; //1 byte only!
 		goto specialreadcycledebugger; //Apply the special read cycle!
@@ -931,7 +931,7 @@ byte MMU_INTERNAL_directrb_debugger(uint_64 realaddress, word index, uint_64 *re
 		doDRAM_access(originaladdress); //Tick the DRAM!
 	}
 
-	*result = memorymapinfo[precalcval].cache[realaddress & MMU_BLOCKALIGNMENT]; //Get data from memory!
+	memory_dataread[0] = memorymapinfo[precalcval].cache[realaddress & MMU_BLOCKALIGNMENT]; //Get data from memory!
 	memory_dataaddr[(index >> 5) & 1] = originaladdress; //What is the cached data address!
 	memory_datasize[(index >> 5) & 1] = 1; //1 byte only!
 	debugger_logmemoryaccess(0, (uint_32)((ptrnum)&memorymapinfo[precalcval].cache[realaddress & MMU_BLOCKALIGNMENT]-(ptrnum)MMU.memory), *result, LOGMEMORYACCESS_RAM_LOGMMUALL | (((index & 0x20) >> 5) << LOGMEMORYACCESS_PREFETCHBITSHIFT)); //Log it!
@@ -939,7 +939,7 @@ specialreadcycledebugger:
 	debugger_logmemoryaccess(0, originaladdress, *result, LOGMEMORYACCESS_RAM | (((index & 0x20) >> 5) << LOGMEMORYACCESS_PREFETCHBITSHIFT)); //Log it!
 	if (unlikely((index != 0xFF) && bushandler)) //Don't ignore BUS?
 	{
-		bushandler((byte)index, *result); //Update the bus!
+		bushandler((byte)index, memory_dataread[0]); //Update the bus!
 	}
 	return 0; //Give existant memory!
 }
@@ -964,14 +964,14 @@ specialreadcycledebuggerd:
 	return 0; //Give existant memory!
 }
 
-byte MMU_INTERNAL_directrb_nodebugger(uint_64 realaddress, word index, uint_64 *result, uint_64 *result2) //Direct read from real memory (with real data direct)!
+byte MMU_INTERNAL_directrb_nodebugger(uint_64 realaddress, word index) //Direct read from real memory (with real data direct)!
 {
 	uint_64 originaladdress = realaddress,temp; //Original address!
 	byte nonexistant = 0;
 	byte precalcval;
 	if (unlikely(emulateCompaqMMURegisters && (realaddress == 0x80C00000))) //Compaq special register?
 	{
-		*result = readCompaqMMURegister(); //Read the Compaq MMU register!
+		memory_dataread[0] = readCompaqMMURegister(); //Read the Compaq MMU register!
 		memory_dataaddr[(index >> 5) & 1] = originaladdress; //What is the cached data address!
 		memory_datasize[(index >> 5) & 1] = 1; //1 byte only!
 		goto specialreadcycle; //Apply the special read cycle!
@@ -992,8 +992,8 @@ byte MMU_INTERNAL_directrb_nodebugger(uint_64 realaddress, word index, uint_64 *
 			realaddress &= ~0xF; //Round down to the double qword address!
 			if (likely((((realaddress & MMU_BLOCKALIGNMENT) | 0xF) <= MMU_BLOCKALIGNMENT))) //Enough to read a dword?
 			{
-				*result = SDL_SwapLE64(*((uint_64*)&memorymapinfo[precalcval].cache[realaddress & MMU_BLOCKALIGNMENT])); //Read the data from the ROM!
-				*result2 = SDL_SwapLE64(*((uint_64*)&memorymapinfo[precalcval].cache[(realaddress+8) & MMU_BLOCKALIGNMENT])); //Read the data from the ROM!
+				memory_dataread[0] = SDL_SwapLE64(*((uint_64*)&memorymapinfo[precalcval].cache[realaddress & MMU_BLOCKALIGNMENT])); //Read the data from the ROM!
+				memory_dataread[1] = SDL_SwapLE64(*((uint_64*)&memorymapinfo[precalcval].cache[(realaddress+8) & MMU_BLOCKALIGNMENT])); //Read the data from the ROM!
 				memory_datasize[(index >> 5) & 1] = realaddress = 16 - (temp - realaddress); //What is read from the whole dword!
 				shiftr128(result2,result,((16 - realaddress) << 3)); //Discard the bytes that are not to be read(before the requested address)!
 				memory_dataaddr[(index >> 5) & 1] = originaladdress; //What is the cached data address!
@@ -1004,8 +1004,8 @@ byte MMU_INTERNAL_directrb_nodebugger(uint_64 realaddress, word index, uint_64 *
 				realaddress &= ~7; //Round down to the dword address!
 				if (likely((((realaddress & MMU_BLOCKALIGNMENT) | 7) <= MMU_BLOCKALIGNMENT))) //Enough to read a dword?
 				{
-					*result = SDL_SwapLE64(*((uint_64*)&memorymapinfo[precalcval].cache[realaddress & MMU_BLOCKALIGNMENT])); //Read the data from the ROM!
-					*result2 = 0; //Nothing there!
+					memory_dataread[0] = SDL_SwapLE64(*((uint_64*)&memorymapinfo[precalcval].cache[realaddress & MMU_BLOCKALIGNMENT])); //Read the data from the ROM!
+					memory_dataread[1] = 0; //Nothing there!
 					memory_datasize[(index >> 5) & 1] = realaddress = 8 - (temp - realaddress); //What is read from the whole dword!
 					*result >>= ((8 - realaddress) << 3); //Discard the bytes that are not to be read(before the requested address)!
 					memory_dataaddr[(index >> 5) & 1] = originaladdress; //What is the cached data address!
@@ -1016,9 +1016,9 @@ byte MMU_INTERNAL_directrb_nodebugger(uint_64 realaddress, word index, uint_64 *
 					realaddress &= ~3; //Round down to the dword address!
 					if (likely((((realaddress & MMU_BLOCKALIGNMENT) | 3) <= MMU_BLOCKALIGNMENT))) //Enough to read a dword?
 					{
-						*result = SDL_SwapLE32(*((uint_32*)&memorymapinfo[precalcval].cache[realaddress & MMU_BLOCKALIGNMENT])); //Read the data from the ROM!
+						memory_dataread[0] = SDL_SwapLE32(*((uint_32*)&memorymapinfo[precalcval].cache[realaddress & MMU_BLOCKALIGNMENT])); //Read the data from the ROM!
 						memory_datasize[(index >> 5) & 1] = realaddress = 4 - (temp - realaddress); //What is read from the whole dword!
-						*result >>= ((4 - realaddress) << 3); //Discard the bytes that are not to be read(before the requested address)!
+						memory_dataread[0] >>= ((4 - realaddress) << 3); //Discard the bytes that are not to be read(before the requested address)!
 						memory_dataaddr[(index >> 5) & 1] = originaladdress; //What is the cached data address!
 					}
 					else
@@ -1027,14 +1027,14 @@ byte MMU_INTERNAL_directrb_nodebugger(uint_64 realaddress, word index, uint_64 *
 						realaddress &= ~1; //Round down to the word address!
 						if (likely((((realaddress & MMU_BLOCKALIGNMENT) | 1) <= MMU_BLOCKALIGNMENT))) //Enough to read a word, aligned?
 						{
-							*result = SDL_SwapLE16(*((word*)(&memorymapinfo[precalcval].cache[realaddress & MMU_BLOCKALIGNMENT]))); //Read the data from the ROM!
+							memory_dataread[0] = SDL_SwapLE16(*((word*)(&memorymapinfo[precalcval].cache[realaddress & MMU_BLOCKALIGNMENT]))); //Read the data from the ROM!
 							memory_datasize[(index >> 5) & 1] = realaddress = 2 - (temp - realaddress); //What is read from the whole word!
-							*result >>= ((2 - realaddress) << 3); //Discard the bytes that are not to be read(before the requested address)!
+							memory_dataread[0] >>= ((2 - realaddress) << 3); //Discard the bytes that are not to be read(before the requested address)!
 							memory_dataaddr[(index >> 5) & 1] = originaladdress; //What is the cached data address!
 						}
 						else //Enough to read a byte only?
 						{
-							*result = memorymapinfo[precalcval].cache[temp & MMU_BLOCKALIGNMENT]; //Read the data from the ROM!
+							memory_dataread[0] = memorymapinfo[precalcval].cache[temp & MMU_BLOCKALIGNMENT]; //Read the data from the ROM!
 							memory_dataaddr[(index >> 5) & 1] = originaladdress; //What is the cached data address!
 							memory_datasize[(index >> 5) & 1] = 1; //Only 1 byte!
 						}
@@ -1045,14 +1045,14 @@ byte MMU_INTERNAL_directrb_nodebugger(uint_64 realaddress, word index, uint_64 *
 		else //Single, unaligned read?
 		#endif
 		{
-			*result = memorymapinfo[precalcval].cache[realaddress & MMU_BLOCKALIGNMENT]; //Get data from memory!
+			memory_dataread[0] = memorymapinfo[precalcval].cache[realaddress & MMU_BLOCKALIGNMENT]; //Get data from memory!
 			memory_dataaddr[(index >> 5) & 1] = originaladdress; //What is the cached data address!
 			memory_datasize[(index >> 5) & 1] = 1; //1 byte only!
 		}
 	}
 	else //Not cacheable?
 	{
-		*result = memorymapinfo[precalcval].cache[realaddress & MMU_BLOCKALIGNMENT]; //Get data from memory!
+		memory_dataread[0] = memorymapinfo[precalcval].cache[realaddress & MMU_BLOCKALIGNMENT]; //Get data from memory!
 		memory_dataaddr[(index >> 5) & 1] = originaladdress; //What is the cached data address!
 		memory_datasize[(index >> 5) & 1] = 1; //1 byte only!
 	}
@@ -1063,7 +1063,7 @@ byte MMU_INTERNAL_directrb_nodebugger(uint_64 realaddress, word index, uint_64 *
 specialreadcycle:
 	if (unlikely((index != 0xFF) && bushandler)) //Don't ignore BUS?
 	{
-		bushandler((byte)index, *result); //Update the bus!
+		bushandler((byte)index, memory_dataread[0]); //Update the bus!
 	}
 	return 0; //Give existant memory!
 }
@@ -1091,7 +1091,7 @@ void MMU_calcIndexPrecalcs()
 	}
 }
 
-typedef byte(*MMU_INTERNAL_directrb_handler)(uint_64 realaddress, word index, uint_64 *result, uint_64 *result2); //A memory data read handler!
+typedef byte(*MMU_INTERNAL_directrb_handler)(uint_64 realaddress, word index); //A memory data read handler!
 MMU_INTERNAL_directrb_handler MMU_INTERNAL_directrb_handlers[2] = { MMU_INTERNAL_directrb_nodebugger, MMU_INTERNAL_directrb_debugger }; //Debugging and non-debugging handlers to use!
 MMU_INTERNAL_directrb_handler MMU_INTERNAL_directrb_curhandler = &MMU_INTERNAL_directrb_nodebugger;
 
@@ -1100,7 +1100,7 @@ void MMU_updatedebugger()
 {
 	MMU_INTERNAL_directrb_curhandler = MMU_INTERNAL_directrb_handlers[(is_debugging)&1]; //Update the current debugging method used!
 }
-#define MMU_INTERNAL_directrb(realaddress, index, result, result2) MMU_INTERNAL_directrb_curhandler(realaddress, index, result, result2)
+#define MMU_INTERNAL_directrb(realaddress, index) MMU_INTERNAL_directrb_curhandler(realaddress, index)
 
 //Cache invalidation behaviour!
 extern uint_64 BIU_cachedmemoryaddr[MAXCPUS][2];
@@ -1259,7 +1259,7 @@ word MMU_INTERNAL_directrw(uint_64 realaddress, word index) //Direct read from r
 {
 	word result;
 	uint_64 temp, temp2;
-	if (MMU_INTERNAL_directrb(realaddress, index, &temp, &temp2)) //Get data, wrap arround!
+	if (MMU_INTERNAL_directrb(realaddress, index)) //Get data, wrap arround!
 	{
 		if (likely((is_XT == 0) || (EMULATED_CPU >= CPU_80286))) //To give NOT for detecting memory on AT only?
 		{
@@ -1276,8 +1276,12 @@ word MMU_INTERNAL_directrw(uint_64 realaddress, word index) //Direct read from r
 			memory_datasize[(index >> 5) & 1] = 1; //1 byte only!
 		}
 	}
+	else
+	{
+		temp = memory_dataread[0];
+	}
 	result = temp; //The low byte too!
-	if (MMU_INTERNAL_directrb(realaddress + 1, index | 1, &temp, &temp2))
+	if (MMU_INTERNAL_directrb(realaddress + 1, index | 1))
 	{
 		if (likely((is_XT == 0) || (EMULATED_CPU >= CPU_80286))) //To give NOT for detecting memory on AT only?
 		{
@@ -1292,6 +1296,10 @@ word MMU_INTERNAL_directrw(uint_64 realaddress, word index) //Direct read from r
 			memory_dataaddr[(index >> 5) & 1] = realaddress; //What address!
 			memory_datasize[(index >> 5) & 1] = 1; //1 byte only!
 		}
+	}
+	else
+	{
+		temp = memory_dataread[0];
 	}
 	result |= (temp << 8); //Higher byte!
 	memory_dataread[0] = result;
@@ -1352,7 +1360,7 @@ byte MMU_INTERNAL_directrb_realaddr(uint_64 realaddress, byte index) //Read with
 	if (likely(MMU_IO_readhandler(realaddress, (word)index))) //Normal memory address?
 	{
 		performdirectread: //Force a direct read when possible!
-		if (unlikely(MMU_INTERNAL_directrb(realaddress, index, &memory_dataread[0], &memory_dataread[1]))) //Read the data from memory (and port I/O)!		
+		if (unlikely(MMU_INTERNAL_directrb(realaddress, index))) //Read the data from memory (and port I/O)!		
 		{
 			haveMRUreadaddresstype = 0; //Don't have it anymore!
 			if (likely((is_XT == 0) || (EMULATED_CPU >= CPU_80286))) //To give NOT for detecting memory on AT only?
@@ -1518,7 +1526,7 @@ void MMU_resetaddr()
 byte memory_directrb(uint_64 realaddress) //Direct read from real memory (with real data direct)!
 {
 	uint_64 result,result2;
-	if (unlikely(MMU_INTERNAL_directrb(realaddress, 0x100, &result, &result2)))
+	if (unlikely(MMU_INTERNAL_directrb(realaddress, 0x100)))
 	{
 		if (likely((is_XT == 0) || (EMULATED_CPU >= CPU_80286))) //To give NOT for detecting memory on AT only?
 		{
@@ -1528,6 +1536,10 @@ byte memory_directrb(uint_64 realaddress) //Direct read from real memory (with r
 		{
 			result = (byte)(mem_BUSValue >> ((0 & 3) << 3)); //Give the last data read/written by the BUS!
 		}
+	}
+	else
+	{
+		result = memory_dataread[0];
 	}
 	return result; //Give the result!
 }
