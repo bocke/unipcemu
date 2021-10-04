@@ -1129,7 +1129,7 @@ OPTINLINE byte BIU_processRequests(byte memory_waitstates, byte bus_waitstates)
 					{
 						if (useIPSclock && (BIU[activeCPU].newtransfer_size) && (BIU[activeCPU].newtransfer_size <= BIU_cachedmemorysize[activeCPU][0]) && (BIU_cachedmemorysize[activeCPU][0] > 1) && (BIU_cachedmemoryaddr[activeCPU][0] == physicaladdress)) //Data already fully read in IPS clocking mode?
 						{
-							BIU[activeCPU].currentresult = BIU_cachedmemoryread[activeCPU][0][0]; //What was read?
+							BIU[activeCPU].currentresult = (BIU_cachedmemoryread[activeCPU][0][0]&(0xFFFFFFFFULL>>(32-(BIU[activeCPU].newtransfer_size<<3)))); //What was read?
 							if (BIU_response(BIU[activeCPU].currentresult)) //Result given? We're giving OK!
 							{
 								BIU_terminatemem(); //Terminate memory access!
