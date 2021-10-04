@@ -934,9 +934,9 @@ byte MMU_INTERNAL_directrb_debugger(uint_64 realaddress, word index) //Direct re
 	memory_dataread[0] = memorymapinfo[precalcval].cache[realaddress & MMU_BLOCKALIGNMENT]; //Get data from memory!
 	memory_dataaddr[(index >> 5) & 1] = originaladdress; //What is the cached data address!
 	memory_datasize[(index >> 5) & 1] = 1; //1 byte only!
-	debugger_logmemoryaccess(0, (uint_32)((ptrnum)&memorymapinfo[precalcval].cache[realaddress & MMU_BLOCKALIGNMENT]-(ptrnum)MMU.memory), *result, LOGMEMORYACCESS_RAM_LOGMMUALL | (((index & 0x20) >> 5) << LOGMEMORYACCESS_PREFETCHBITSHIFT)); //Log it!
+	debugger_logmemoryaccess(0, (uint_32)((ptrnum)&memorymapinfo[precalcval].cache[realaddress & MMU_BLOCKALIGNMENT]-(ptrnum)MMU.memory), memory_dataread[0], LOGMEMORYACCESS_RAM_LOGMMUALL | (((index & 0x20) >> 5) << LOGMEMORYACCESS_PREFETCHBITSHIFT)); //Log it!
 specialreadcycledebugger:
-	debugger_logmemoryaccess(0, originaladdress, *result, LOGMEMORYACCESS_RAM | (((index & 0x20) >> 5) << LOGMEMORYACCESS_PREFETCHBITSHIFT)); //Log it!
+	debugger_logmemoryaccess(0, originaladdress, memory_dataread[0], LOGMEMORYACCESS_RAM | (((index & 0x20) >> 5) << LOGMEMORYACCESS_PREFETCHBITSHIFT)); //Log it!
 	if (unlikely((index != 0xFF) && bushandler)) //Don't ignore BUS?
 	{
 		bushandler((byte)index, memory_dataread[0]); //Update the bus!
@@ -995,7 +995,7 @@ byte MMU_INTERNAL_directrb_nodebugger(uint_64 realaddress, word index) //Direct 
 				memory_dataread[0] = SDL_SwapLE64(*((uint_64*)&memorymapinfo[precalcval].cache[realaddress & MMU_BLOCKALIGNMENT])); //Read the data from the ROM!
 				memory_dataread[1] = SDL_SwapLE64(*((uint_64*)&memorymapinfo[precalcval].cache[(realaddress+8) & MMU_BLOCKALIGNMENT])); //Read the data from the ROM!
 				memory_datasize[(index >> 5) & 1] = realaddress = 16 - (temp - realaddress); //What is read from the whole dword!
-				shiftr128(result2,result,((16 - realaddress) << 3)); //Discard the bytes that are not to be read(before the requested address)!
+				shiftr128(&memory_dataread[1],&memory_dataread[0],((16 - realaddress) << 3)); //Discard the bytes that are not to be read(before the requested address)!
 				memory_dataaddr[(index >> 5) & 1] = originaladdress; //What is the cached data address!
 			}
 			else
@@ -1007,7 +1007,7 @@ byte MMU_INTERNAL_directrb_nodebugger(uint_64 realaddress, word index) //Direct 
 					memory_dataread[0] = SDL_SwapLE64(*((uint_64*)&memorymapinfo[precalcval].cache[realaddress & MMU_BLOCKALIGNMENT])); //Read the data from the ROM!
 					memory_dataread[1] = 0; //Nothing there!
 					memory_datasize[(index >> 5) & 1] = realaddress = 8 - (temp - realaddress); //What is read from the whole dword!
-					*result >>= ((8 - realaddress) << 3); //Discard the bytes that are not to be read(before the requested address)!
+					memory_dataread[0] >>= ((8 - realaddress) << 3); //Discard the bytes that are not to be read(before the requested address)!
 					memory_dataaddr[(index >> 5) & 1] = originaladdress; //What is the cached data address!
 				}
 				else
