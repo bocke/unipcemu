@@ -44,6 +44,7 @@ typedef struct
 	byte index; //What index is said entry?
 	void *prev, *next; //Previous and next pointers!
 	byte allocated; //Are we allocated?
+	byte entrynr; //Literal entry number to use!
 } TLB_ptr;
 
 typedef struct
@@ -52,6 +53,7 @@ typedef struct
 	TLB_ptr TLB_listnodes[64]; //All nodes for all TLB entries!
 	TLB_ptr *TLB_freelist_head[16], *TLB_freelist_tail[16]; //Head and tail of the free list!
 	TLB_ptr *TLB_usedlist_head[16], *TLB_usedlist_tail[16]; //Head and tail of the used list!
+	byte TLB_usedlist_index[(1024*1024)+(1024*2)];
 } CPU_TLB; //A TLB to use for the CPU!
 
 void Paging_clearTLB(); //Clears the TLB for further fetching!
