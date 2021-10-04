@@ -637,12 +637,12 @@ void MMU_RAMlayoutupdated()
 	}
 	if (unlikely(BIU_cachedmemorysize[0][1])) //Matched an active read cache(allowing self-modifying code)?
 	{
-		memory_datasize[0] = 0; //Invalidate the read cache to re-read memory!
+		memory_datasize[1] = 0; //Invalidate the read cache to re-read memory!
 		BIU_cachedmemorysize[0][1] = 0; //Invalidate the BIU cache as well!
 	}
 	if (unlikely(BIU_cachedmemorysize[1][0])) //Matched an active read cache(allowing self-modifying code)?
 	{
-		memory_datasize[1] = 0; //Invalidate the read cache to re-read memory!
+		memory_datasize[0] = 0; //Invalidate the read cache to re-read memory!
 		BIU_cachedmemorysize[1][0] = 0; //Invalidate the BIU cache as well!
 	}
 	if (unlikely(BIU_cachedmemorysize[1][1])) //Matched an active read cache(allowing self-modifying code)?
