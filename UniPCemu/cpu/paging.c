@@ -176,7 +176,7 @@ byte verifyCPL(byte iswrite, byte userlevel, byte PDERW, byte PDEUS, byte PTERW,
 	return 1; //OK: verified!
 }
 
-byte getusedTLBindex(byte S, uint_32 logicaladdress)
+uint_32 getusedTLBindex(byte S, uint_32 logicaladdress)
 {
 	if (S) //2 or 4 MB page?
 	{
