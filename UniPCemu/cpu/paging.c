@@ -890,6 +890,10 @@ OPTINLINE TLBEntry *Paging_oldestTLB(byte S, sbyte set) //Find a TLB to be used/
 	whichentry = (set*indexsize)+3; //Which one?
 
 	CPU[activeCPU].mostrecentTAGvalid = 0; //Invalidate to be sure!
+	if (((TLB_ptr*)CPU[activeCPU].Paging_TLB.TLB[whichentry].TLB_listnode)->allocated) //Allocated?
+	{
+		CPU[activeCPU].Paging_TLB.TLB_usedlist_index[getusedTLBindex(S, listentry->entry->TAG & listentry->entry->addrmask)] = 0; //Replacing, so deallocated now!
+	}
 	return &CPU[activeCPU].Paging_TLB.TLB[whichentry]; //Safety: return the final entry! Shouldn't happen under normal circumstances.
 }
 
