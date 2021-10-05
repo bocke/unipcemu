@@ -865,7 +865,7 @@ OPTINLINE void Paging_setNewestTLB(sbyte set, TLB_ptr *listitem) //Tick an TLB e
 	}
 }
 
-OPTINLINE TLBEntry *Paging_oldestTLB(sbyte set) //Find a TLB to be used/overwritten!
+OPTINLINE TLBEntry *Paging_oldestTLB(byte S, sbyte set) //Find a TLB to be used/overwritten!
 {
 	TLB_ptr *listentry;
 	if (CPU[activeCPU].Paging_TLB.TLB_freelist_head[set]) //Anything not allocated yet?
@@ -881,6 +881,7 @@ OPTINLINE TLBEntry *Paging_oldestTLB(sbyte set) //Find a TLB to be used/overwrit
 		{
 			listentry = CPU[activeCPU].Paging_TLB.TLB_usedlist_tail[set]; //What entry to take: the LRU!
 			Paging_setNewestTLB(set, listentry); //This is the newest TLB now!
+			CPU[activeCPU].Paging_TLB.TLB_usedlist_index[getusedTLBindex(S, listentry->entry->TAG & listentry->entry->addrmask)] = 0; //Replacing, so deallocated now!
 			return listentry->entry; //What index is the LRU!
 		}
 	}
@@ -1005,7 +1006,7 @@ void Paging_writeTLB(sbyte TLB_way, uint_32 logicaladdress, byte W, byte U, byte
 				entry = 0; //Not found!
 			}
 		}
-		else
+		else //Nothing allocated yet?
 		{
 			entry = 0; //Not found!
 		}
@@ -1013,8 +1014,7 @@ void Paging_writeTLB(sbyte TLB_way, uint_32 logicaladdress, byte W, byte U, byte
 	//We reach here from the loop when nothing is found in the allocated list!
 	if (unlikely(entry == 0)) //Not found? Take the LRU!
 	{
-		curentry = Paging_oldestTLB(TLB_set); //Get the oldest/unused TLB!
-		CPU[activeCPU].Paging_TLB.TLB_usedlist_index[getusedTLBindex(S, curentry->TAG & curentry->addrmask)] = 0; //Replacing, so deallocated now!
+		curentry = Paging_oldestTLB(S, TLB_set); //Get the oldest/unused TLB!
 	}
 	//Fill the found entry with our (new) data!
 	curentry->data = result; //The result for the lookup!
