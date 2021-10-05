@@ -988,6 +988,10 @@ void Paging_writeTLB(sbyte TLB_way, uint_32 logicaladdress, byte W, byte U, byte
 		curentry = effectiveentry->entry; //The entry to use!
 		//Mark us MRU!
 		Paging_setNewestTLB(TLB_set, effectiveentry); //We're the newest TLB now!
+		if (effectiveentry->allocated) //Already allocated?
+		{
+			CPU[activeCPU].Paging_TLB.TLB_usedlist_index[getusedTLBindex(S, curentry->TAG & curentry->addrmask)] = 0; //Replacing, so deallocated now!
+		}
 	}
 	else //Try and find the way!
 	{
