@@ -45,6 +45,7 @@ typedef struct
 	void *prev, *next; //Previous and next pointers!
 	byte allocated; //Are we allocated?
 	byte entrynr; //Literal entry number to use!
+	uint_32 memoryindex; //The memory index used!
 } TLB_ptr;
 
 typedef struct
