@@ -1147,12 +1147,26 @@ void Paging_clearTLB()
 
 void Paging_initTLB()
 {
+	INLINEREGISTER byte TLB_set;
+	INLINEREGISTER TLB_ptr* curentry;
+	//Clear any used list entries first!
+	for (TLB_set = 0; TLB_set < 8; ++TLB_set) //Process all possible sets!
+	{
+		curentry = CPU[activeCPU].Paging_TLB.TLB_usedlist_head[TLB_set]; //What TLB entry to apply?
+		for (; curentry;) //Check all entries that are allocated!
+		{
+			if (curentry->allocated) //Allocated?
+			{
+				CPU[activeCPU].Paging_TLB.TLB_usedlist_index[curentry->memoryindex] = 0; //Clear the memory allocation!
+			}
+			curentry = (TLB_ptr*)(curentry->next); //Next entry to check, if any!
+		}
+	}
 	PagingTLB_initlists(); //Initialize the TLB lists to become empty!
 	CPU[activeCPU].mostrecentTAGvalid = 0; //Invalidate to be sure!
 	PagingTLB_clearlists(); //Initialize the TLB lists to become empty!
 	effectivemappageHandler = (EMULATED_CPU >= CPU_PENTIUM) ? &mappagePSE : &mappagenonPSE; //Use either a PSE or non-PSE paging handler!
 	BIU_recheckmemory(); //Recheck anything that's fetching from now on!
-	memset(&CPU[activeCPU].Paging_TLB.TLB_usedlist_index, 0, sizeof(CPU[activeCPU].Paging_TLB.TLB_usedlist_index)); //Clear the used list!
 }
 
 void Paging_TestRegisterWritten(byte TR)
