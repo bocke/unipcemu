@@ -895,7 +895,7 @@ OPTINLINE TLBEntry *Paging_oldestTLB(byte S, sbyte set) //Find a TLB to be used/
 	{
 		CPU[activeCPU].Paging_TLB.TLB_usedlist_index[getusedTLBindex(S, listentry->entry->TAG & listentry->entry->addrmask)] = 0; //Replacing, so deallocated now!
 	}
-	return &listentry->entry //Safety: return the final entry! Shouldn't happen under normal circumstances.
+	return listentry->entry; //Safety: return the final entry! Shouldn't happen under normal circumstances.
 }
 
 //W=Writable, U=User, D=Dirty
