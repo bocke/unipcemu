@@ -1155,10 +1155,7 @@ void Paging_initTLB()
 		curentry = CPU[activeCPU].Paging_TLB.TLB_usedlist_head[TLB_set]; //What TLB entry to apply?
 		for (; curentry;) //Check all entries that are allocated!
 		{
-			if (curentry->allocated) //Allocated?
-			{
-				CPU[activeCPU].Paging_TLB.TLB_usedlist_index[curentry->memoryindex] = 0; //Clear the memory allocation!
-			}
+			CPU[activeCPU].Paging_TLB.TLB_usedlist_index[curentry->memoryindex] = 0; //Clear the memory allocation!
 			curentry = (TLB_ptr*)(curentry->next); //Next entry to check, if any!
 		}
 	}
