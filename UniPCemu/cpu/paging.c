@@ -931,7 +931,7 @@ void Paging_freeOppositeTLB(uint_32 logicaladdress, byte W, byte U, byte D, byte
 		if (unlikely((effectiveentry->entry->TAG & searchmask) == TAGMASKED)) //Match for our own entry?
 		{
 			nextentry = (TLB_ptr *)(effectiveentry->next); //The next entry to check! Prefetch it, because it will be cleared during the freeing!
-			CPU[activeCPU].Paging_TLB.TLB_usedlist_index[getusedTLBindex((~S)&1, effectiveentry->entry->TAG&effectiveentry->entry->addrmask)] = 0; //Deallocated!
+			CPU[activeCPU].Paging_TLB.TLB_usedlist_index[getusedTLBindex(S, effectiveentry->entry->TAG&effectiveentry->entry->addrmask)] = 0; //Deallocated!
 			effectiveentry->entry->TAG = 0; //Clear the entry to unused!
 			freeTLB(TLB_set, effectiveentry); //Free this entry from the TLB!
 			effectiveentry = nextentry; //Process the next entry in the list from the prefetch, because the effectiveentry has it's value cleared!
