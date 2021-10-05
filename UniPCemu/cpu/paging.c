@@ -1112,7 +1112,7 @@ void Paging_Invalidate(uint_32 logicaladdress) //Invalidate a single address!
 			nextentry = (TLB_ptr *)(curentry->next); //Next entry saved!
 			if (Paging_matchTLBaddress(logicaladdress, curentry->entry->TAG, curentry->entry->addrmask)) //Matched and allocated?
 			{
-				CPU[activeCPU].Paging_TLB.TLB_usedlist_index[getusedTLBindex((TLB_set >= 8) ? 1 : 0, curentry->entry->TAG & curentry->entry->addrmask)] = 0; //Replaced, so deallocated now!
+				CPU[activeCPU].Paging_TLB.TLB_usedlist_index[getusedTLBindex((TLB_set >= 4) ? 1 : 0, curentry->entry->TAG & curentry->entry->addrmask)] = 0; //Replaced, so deallocated now!
 				curentry->entry->TAG = 0; //Clear the entry to unused!
 				freeTLB(TLB_set, curentry); //Free this entry from the TLB!
 			}
@@ -1134,7 +1134,7 @@ void Paging_clearTLB()
 			nextentry = (TLB_ptr *)(curentry->next); //Next entry saved!
 			if (curentry->entry->isglobal==0) //Not global?
 			{
-				CPU[activeCPU].Paging_TLB.TLB_usedlist_index[getusedTLBindex((TLB_set>=8)?1:0, curentry->entry->TAG & curentry->entry->addrmask)] = 0; //Replaced, so deallocated now!
+				CPU[activeCPU].Paging_TLB.TLB_usedlist_index[getusedTLBindex((TLB_set>=4)?1:0, curentry->entry->TAG & curentry->entry->addrmask)] = 0; //Replaced, so deallocated now!
 				curentry->entry->TAG = 0; //Clear the entry to unused!
 				freeTLB(TLB_set, curentry); //Free this entry from the TLB!
 			}
