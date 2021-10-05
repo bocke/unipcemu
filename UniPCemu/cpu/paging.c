@@ -996,19 +996,12 @@ void Paging_writeTLB(sbyte TLB_way, uint_32 logicaladdress, byte W, byte U, byte
 	else //Try and find the way!
 	{
 		effectiveentry = getUsedTLBentry(S,logicaladdress&addrmask); //The entry to try!
-		if (effectiveentry)
+		if (effectiveentry) //If we found ourselves, always overwrite!
 		{
-			if ((effectiveentry->entry->TAG & searchmask) == TAGMASKED) //Match for our own entry?
-			{
-				curentry = effectiveentry->entry; //The entry to use!
-				Paging_setNewestTLB(TLB_set, effectiveentry); //We're the newest TLB now!
-				entry = 1; //Reuse our own entry! We're found!
-				CPU[activeCPU].Paging_TLB.TLB_usedlist_index[getusedTLBindex(S, curentry->TAG & curentry->addrmask)] = 0; //Replacing, so deallocated now!
-			}
-			else
-			{
-				entry = 0; //Not found!
-			}
+			curentry = effectiveentry->entry; //The entry to use!
+			Paging_setNewestTLB(TLB_set, effectiveentry); //We're the newest TLB now!
+			entry = 1; //Reuse our own entry! We're found!
+			CPU[activeCPU].Paging_TLB.TLB_usedlist_index[getusedTLBindex(S, curentry->TAG & curentry->addrmask)] = 0; //Replacing, so deallocated now!
 		}
 		else //Nothing allocated yet?
 		{
