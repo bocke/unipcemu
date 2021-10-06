@@ -176,11 +176,11 @@ byte verifyCPL(byte iswrite, byte userlevel, byte PDERW, byte PDEUS, byte PTERW,
 	return 1; //OK: verified!
 }
 
-uint_32 getusedTLBindex(byte S, uint_32 logicaladdress)
+OPTINLINE uint_32 getusedTLBindex(byte S, uint_32 logicaladdress)
 {
 	if (S) //2 or 4 MB page?
 	{
-		return (1024 * 1024) + (logicaladdress >> ((((CPU[activeCPU].registers->CR4 & 0x20) && (EMULATED_CPU >= CPU_PENTIUMPRO)) ? 21 : 22))); //PAE 2MB or plain 4MB large page index!
+		return (1024 * 1024) + (logicaladdress >> (22-(((CPU[activeCPU].registers->CR4 & 0x20) && (EMULATED_CPU >= CPU_PENTIUMPRO))&1) )); //PAE 2MB or plain 4MB large page index!
 	}
 	else //4KB?
 	{
@@ -188,7 +188,162 @@ uint_32 getusedTLBindex(byte S, uint_32 logicaladdress)
 	}
 }
 
-void Paging_freeOppositeTLB(uint_32 logicaladdress, byte W, byte U, byte D, byte S);
+OPTINLINE TLB_ptr* getUsedTLBentry(byte S, uint_32 logicaladdress) //The entry to try!
+{
+	INLINEREGISTER byte entry;
+	entry = CPU[activeCPU].Paging_TLB.TLB_usedlist_index[getusedTLBindex(S, logicaladdress)]; //What entry, if known!
+	if (entry) //Allocated?
+	{
+		return &CPU[activeCPU].Paging_TLB.TLB_listnodes[entry - 1]; //The TLB!
+	}
+	return NULL; //Not found!
+}
+
+OPTINLINE byte Paging_TLBSet(uint_32 logicaladdress, byte S) //Automatic set determination when using a set number <0!
+{
+	//The set is determined by the lower 3 bits of the entry(according to the i486 programmer's reference manual), the memory block!
+	//Assume that 4MB entries do the same, but on a larger scale(10 times as large, due to 10 times more logical address bits being covered)!
+	return (((logicaladdress >> ((S << 3) | (S << 1))) & 0x7000) >> 12) | (S << 3);
+}
+
+//Move a TLB entry index from an old list to a new list!
+OPTINLINE void Paging_moveListItem(TLB_ptr* listitem, TLB_ptr** newlist_head, TLB_ptr** newlist_tail, TLB_ptr** oldlist_head, TLB_ptr** oldlist_tail)
+{
+	if (likely(*newlist_head == listitem)) return; //Don't do anything when it's already at the correct spot!
+
+	//First, remove us from the old head list!
+	if (listitem->prev) //Do we have anything before us?
+	{
+		((TLB_ptr*)listitem->prev)->next = listitem->next; //Remove us from the previous item of the list!
+	}
+	else //We're the head, so remove us from the list!
+	{
+		*oldlist_head = listitem->next; //Remove us from the head of the list and assign the new head!
+	}
+
+	if (listitem->next) //Did we have a next item?
+	{
+		((TLB_ptr*)listitem->next)->prev = listitem->prev; //Remove us from the next item of the list!
+	}
+	else //We're the tail?
+	{
+		*oldlist_tail = listitem->prev; //Remove us from the tail of the list and assign the new tail!
+	}
+
+	listitem->next = NULL; //We don't have a next!
+	listitem->prev = NULL; //We don't have a previous!
+
+	/* Now, we're removed from the old list and a newly unmapped item! */
+
+	//Now, insert us into the start of the new list!
+	if (*newlist_head) //Anything in the new list already?
+	{
+		(*newlist_head)->prev = listitem; //We're at the start of the new list, so point the head to us, us to the head and make us the new head!
+		listitem->next = *newlist_head; //Our next is the old head!
+		*newlist_head = listitem; //We're the new head!
+	}
+	else //We're the new list?
+	{
+		*newlist_head = listitem; //We're the new head!
+		*newlist_tail = listitem; //We're the new tail!
+	}
+}
+
+OPTINLINE TLB_ptr* allocTLB(sbyte set) //Allocate a TLB entry!
+{
+	TLB_ptr* result;
+	if (CPU[activeCPU].Paging_TLB.TLB_freelist_head[set]) //Anything available?
+	{
+		result = CPU[activeCPU].Paging_TLB.TLB_freelist_head[set]; //What item are we allocating, take it from the free list!
+		//Now take the item from the pool and move it to the used list!
+		CPU[activeCPU].Paging_TLB.TLB_freelist_head[set]->allocated = 1; //We're allocated now!
+		Paging_moveListItem(result, //What item to take!
+			&CPU[activeCPU].Paging_TLB.TLB_usedlist_head[set], //destination head
+			&CPU[activeCPU].Paging_TLB.TLB_usedlist_tail[set], //destination tail
+			&CPU[activeCPU].Paging_TLB.TLB_freelist_head[set], //source head
+			&CPU[activeCPU].Paging_TLB.TLB_freelist_tail[set]); //source tail
+		return result; //Give the result!
+	}
+	return NULL; //Nothing to allocate!
+}
+
+
+OPTINLINE void freeTLB(sbyte set, TLB_ptr* listitem) //Make an entry available again!
+{
+	if (listitem->allocated) //Are we allocated at all?
+	{
+		listitem->allocated = 0; //Mark us as freed!
+		CPU[activeCPU].Paging_TLB.TLB_usedlist_index[listitem->memoryindex] = 0; //Deallocated!
+		listitem->entry->TAG = 0; //Clear the entry to unused!
+		Paging_moveListItem(listitem, //What item to take!
+			&CPU[activeCPU].Paging_TLB.TLB_freelist_head[set], //destination head
+			&CPU[activeCPU].Paging_TLB.TLB_freelist_tail[set], //destination tail
+			&CPU[activeCPU].Paging_TLB.TLB_usedlist_head[set], //source head
+			&CPU[activeCPU].Paging_TLB.TLB_usedlist_tail[set]); //source tail
+	}
+}
+
+OPTINLINE void Paging_setNewestTLB(sbyte set, TLB_ptr* listitem) //Tick an TLB entry for making it the most recently used!
+{
+	if (listitem->allocated) //Are we allocated at all?
+	{
+		Paging_moveListItem(listitem,
+			&CPU[activeCPU].Paging_TLB.TLB_usedlist_head[set],
+			&CPU[activeCPU].Paging_TLB.TLB_usedlist_tail[set],
+			&CPU[activeCPU].Paging_TLB.TLB_usedlist_head[set],
+			&CPU[activeCPU].Paging_TLB.TLB_usedlist_tail[set]); //Move us to the start of the TLB used list to mark us as the most recently accessed!
+	}
+	else //We're not allocated, but marked as newest? Allocate us!
+	{
+		//Now take the item from the pool and move it to the used list!
+		listitem->allocated = 1; //We're allocated now!
+		Paging_moveListItem(listitem, //What item to take!
+			&CPU[activeCPU].Paging_TLB.TLB_usedlist_head[set], //destination head
+			&CPU[activeCPU].Paging_TLB.TLB_usedlist_tail[set], //destination tail
+			&CPU[activeCPU].Paging_TLB.TLB_freelist_head[set], //source head
+			&CPU[activeCPU].Paging_TLB.TLB_freelist_tail[set]); //source tail
+	}
+}
+
+//RWDirtyMask: mask for ignoring set bits in the tag, use them otherwise!
+OPTINLINE byte Paging_readTLB(byte* TLB_way, uint_32 logicaladdress, uint_32 LWUDS, byte S, uint_32 WDMask, uint_64* result, uint_32* passthroughmask, byte updateAges)
+{
+	INLINEREGISTER uint_32 TAG, TAGMask;
+	INLINEREGISTER TLB_ptr* curentry;
+	sbyte TLB_set;
+	TLB_set = Paging_TLBSet(logicaladdress, S); //Auto set?
+	curentry = CPU[activeCPU].Paging_TLB.TLB_usedlist_head[TLB_set]; //What TLB entry to apply?
+	if (unlikely(curentry == NULL)) //No valid entries to search?
+	{
+		return 0; //Not found!
+	}
+	//Valid list, so search through it!
+	curentry = getUsedTLBentry(S, logicaladdress); //The entry to try!
+	if (likely(curentry)) //Check all entries that are allocated!
+	{
+		TAGMask = ~WDMask; //Store for fast usage to mask the tag bits unused off!
+		TAGMask &= curentry->entry->addrmaskset; //The full search mask, with the address width(KB vs MB) applied!
+		TAG = LWUDS; //Generate a TAG!
+		TAG &= TAGMask; //Premask the search tag for faster comparison!
+		if (likely((curentry->entry->TAG & TAGMask) == TAG)) //Found and allocated?
+		{
+			*result = curentry->entry->data; //Give the stored data!
+			*passthroughmask = curentry->entry->passthroughmask; //What bits to pass through!
+			Paging_setNewestTLB(TLB_set, curentry); //Set us as the newest TLB!
+
+			if (unlikely(TLB_way)) //Requested way?
+			{
+				*TLB_way = curentry->index; //The way found!; //What way was found!
+			}
+			return 1; //Found!
+		}
+		//Otherwise, allocated, but invalid for use for this case.
+	}
+	return 0; //Not found to be valid to use for this case!
+}
+
+void Paging_freeOppositeTLB(uint_32 logicaladdress, byte W, byte U, byte D, byte S); //To free the opposite TLB when writing the TLB!
+void Paging_writeTLB(sbyte TLB_way, uint_32 logicaladdress, byte W, byte U, byte D, byte S, byte G, uint_32 passthroughmask, byte is2M, uint_64 result); //To actually commit a TLB entry!
 
 //isPrefetch: bit 0=set during prefetches, bit 1=Code read when set, bit 2=Suppress faults
 byte isvalidpage(uint_32 address, byte iswrite, byte CPL, byte isPrefetch) //Do we have paging without error? userlevel=CPL usually.
@@ -697,13 +852,6 @@ uint_64 mappagePSE(uint_32 address, byte iswrite, byte CPL) //Maps a page to rea
 
 mappageHandler effectivemappageHandler = &mappagenonPSE; //Default to the non-PSE paging handler!
 
-OPTINLINE byte Paging_TLBSet(uint_32 logicaladdress, byte S) //Automatic set determination when using a set number <0!
-{
-	//The set is determined by the lower 3 bits of the entry(according to the i486 programmer's reference manual), the memory block!
-	//Assume that 4MB entries do the same, but on a larger scale(10 times as large, due to 10 times more logical address bits being covered)!
-	return (((logicaladdress>>((S<<3)|(S<<1)))&0x7000)>>12)|(S<<3);
-}
-
 OPTINLINE void PagingTLB_initlists()
 {
 	byte set; //What set?
@@ -711,7 +859,6 @@ OPTINLINE void PagingTLB_initlists()
 	byte setsize;
 	byte indexsize;
 	byte whichentry;
-	CPU[activeCPU].mostrecentTAGvalid = 0; //Invalidate to be sure!
 	setsize = /*(8<<((EMULATED_CPU>=CPU_80486)?1:0))*/ 16;
 	indexsize = /*(8>>((EMULATED_CPU>=CPU_80486)?1:0))*/ 4;
 	for (set = 0; set < setsize; ++set) //process all sets!
@@ -736,7 +883,6 @@ OPTINLINE void PagingTLB_clearlists()
 	byte setsize;
 	byte indexsize;
 	byte whichentry;
-	CPU[activeCPU].mostrecentTAGvalid = 0; //Invalidate to be sure!
 	setsize = /*(8<<((EMULATED_CPU>=CPU_80486)?1:0)) =*/ 16;
 	indexsize = /*(8>>((EMULATED_CPU>=CPU_80486)?1:0))*/ 4;
 	for (set = 0; set < setsize; ++set) //process all sets!
@@ -765,108 +911,6 @@ OPTINLINE void PagingTLB_clearlists()
 	}
 }
 
-//Move a TLB entry index from an old list to a new list!
-OPTINLINE void Paging_moveListItem(TLB_ptr *listitem, TLB_ptr **newlist_head, TLB_ptr **newlist_tail, TLB_ptr **oldlist_head, TLB_ptr **oldlist_tail)
-{
-	if (likely(*newlist_head == listitem)) return; //Don't do anything when it's already at the correct spot!
-
-	//First, remove us from the old head list!
-	if (listitem->prev) //Do we have anything before us?
-	{
-		((TLB_ptr *)listitem->prev)->next = listitem->next; //Remove us from the previous item of the list!
-	}
-	else //We're the head, so remove us from the list!
-	{
-		*oldlist_head = listitem->next; //Remove us from the head of the list and assign the new head!
-	}
-
-	if (listitem->next) //Did we have a next item?
-	{
-		((TLB_ptr *)listitem->next)->prev = listitem->prev; //Remove us from the next item of the list!
-	}
-	else //We're the tail?
-	{
-		*oldlist_tail = listitem->prev; //Remove us from the tail of the list and assign the new tail!
-	}
-
-	listitem->next = NULL; //We don't have a next!
-	listitem->prev = NULL; //We don't have a previous!
-
-	/* Now, we're removed from the old list and a newly unmapped item! */
-
-	//Now, insert us into the start of the new list!
-	if (*newlist_head) //Anything in the new list already?
-	{
-		(*newlist_head)->prev = listitem; //We're at the start of the new list, so point the head to us, us to the head and make us the new head!
-		listitem->next = *newlist_head; //Our next is the old head!
-		*newlist_head = listitem; //We're the new head!
-	}
-	else //We're the new list?
-	{
-		*newlist_head = listitem; //We're the new head!
-		*newlist_tail = listitem; //We're the new tail!
-	}
-}
-
-OPTINLINE TLB_ptr *allocTLB(sbyte set) //Allocate a TLB entry!
-{
-	TLB_ptr *result;
-	if (CPU[activeCPU].Paging_TLB.TLB_freelist_head[set]) //Anything available?
-	{
-		CPU[activeCPU].mostrecentTAGvalid = 0; //Invalidate to be sure!
-		result = CPU[activeCPU].Paging_TLB.TLB_freelist_head[set]; //What item are we allocating, take it from the free list!
-		//Now take the item from the pool and move it to the used list!
-		CPU[activeCPU].Paging_TLB.TLB_freelist_head[set]->allocated = 1; //We're allocated now!
-		Paging_moveListItem(result, //What item to take!
-			&CPU[activeCPU].Paging_TLB.TLB_usedlist_head[set], //destination head
-			&CPU[activeCPU].Paging_TLB.TLB_usedlist_tail[set], //destination tail
-			&CPU[activeCPU].Paging_TLB.TLB_freelist_head[set], //source head
-			&CPU[activeCPU].Paging_TLB.TLB_freelist_tail[set]); //source tail
-		return result; //Give the result!
-	}
-	return NULL; //Nothing to allocate!
-}
-
-
-OPTINLINE void freeTLB(sbyte set, TLB_ptr *listitem) //Make an entry available again!
-{
-	if (listitem->allocated) //Are we allocated at all?
-	{
-		CPU[activeCPU].mostrecentTAGvalid = 0; //Invalidate last read TLB to be sure!
-		listitem->allocated = 0; //Mark us as freed!
-		CPU[activeCPU].Paging_TLB.TLB_usedlist_index[listitem->memoryindex] = 0; //Deallocated!
-		listitem->entry->TAG = 0; //Clear the entry to unused!
-		Paging_moveListItem(listitem, //What item to take!
-			&CPU[activeCPU].Paging_TLB.TLB_freelist_head[set], //destination head
-			&CPU[activeCPU].Paging_TLB.TLB_freelist_tail[set], //destination tail
-			&CPU[activeCPU].Paging_TLB.TLB_usedlist_head[set], //source head
-			&CPU[activeCPU].Paging_TLB.TLB_usedlist_tail[set]); //source tail
-	}
-}
-
-OPTINLINE void Paging_setNewestTLB(sbyte set, TLB_ptr *listitem) //Tick an TLB entry for making it the most recently used!
-{
-	CPU[activeCPU].mostrecentTAGvalid = 0; //Invalidate to be sure!
-	if (listitem->allocated) //Are we allocated at all?
-	{
-		Paging_moveListItem(listitem,
-			&CPU[activeCPU].Paging_TLB.TLB_usedlist_head[set],
-			&CPU[activeCPU].Paging_TLB.TLB_usedlist_tail[set],
-			&CPU[activeCPU].Paging_TLB.TLB_usedlist_head[set],
-			&CPU[activeCPU].Paging_TLB.TLB_usedlist_tail[set]); //Move us to the start of the TLB used list to mark us as the most recently accessed!
-	}
-	else //We're not allocated, but marked as newest? Allocate us!
-	{
-		//Now take the item from the pool and move it to the used list!
-		listitem->allocated = 1; //We're allocated now!
-		Paging_moveListItem(listitem, //What item to take!
-			&CPU[activeCPU].Paging_TLB.TLB_usedlist_head[set], //destination head
-			&CPU[activeCPU].Paging_TLB.TLB_usedlist_tail[set], //destination tail
-			&CPU[activeCPU].Paging_TLB.TLB_freelist_head[set], //source head
-			&CPU[activeCPU].Paging_TLB.TLB_freelist_tail[set]); //source tail
-	}
-}
-
 OPTINLINE TLBEntry *Paging_oldestTLB(byte S, sbyte set) //Find a TLB to be used/overwritten!
 {
 	TLB_ptr *listentry;
@@ -891,7 +935,6 @@ OPTINLINE TLBEntry *Paging_oldestTLB(byte S, sbyte set) //Find a TLB to be used/
 	indexsize = /*(8>>((EMULATED_CPU>=CPU_80486)?1:0))*/ 4;
 	whichentry = (set*indexsize)+3; //Which one?
 
-	CPU[activeCPU].mostrecentTAGvalid = 0; //Invalidate to be sure!
 	listentry = (TLB_ptr*)CPU[activeCPU].Paging_TLB.TLB[whichentry].TLB_listnode; //The list entry!
 	if (listentry->allocated) //Allocated?
 	{
@@ -901,10 +944,74 @@ OPTINLINE TLBEntry *Paging_oldestTLB(byte S, sbyte set) //Find a TLB to be used/
 }
 
 //W=Writable, U=User, D=Dirty
-
-OPTINLINE byte Paging_matchTLBaddress(uint_32 logicaladdress, uint_32 TAG, uint_32 TAGmask)
+void Paging_writeTLB(sbyte TLB_way, uint_32 logicaladdress, byte W, byte U, byte D, byte S, byte G, uint_32 passthroughmask, byte is2M, uint_64 result)
 {
-	return (((logicaladdress & TAGmask) | 1) == ((TAG & TAGmask) | (TAG & 1))); //The used TAG matches on address and availability only! Ignore US/RW!
+	INLINEREGISTER TLBEntry* curentry = NULL;
+	INLINEREGISTER TLB_ptr* effectiveentry;
+	INLINEREGISTER uint_32 TAG, TAGMASKED;
+	uint_32 addrmask, searchmask;
+	sbyte TLB_set;
+	byte indexsize;
+	byte whichentry;
+	byte entry;
+	TLB_set = Paging_TLBSet(logicaladdress, S); //Auto set?
+	//Calculate and store the address mask for matching!
+	addrmask = (~S) & 1; //Mask to 1 bit only. Become 0 when using 4MB(don't clear the high 10 bits), 1 for 4KB(clear the high 10 bits)!
+	addrmask = 0x3FF >> ((addrmask << 3) | (addrmask << 1)); //Shift off the 4MB bits when using 4KB pages!
+	addrmask >>= is2M; //2MB pages instead of 4MB pages?
+	addrmask <<= 12; //Shift to page size addition of bits(12 bits)!
+	addrmask |= 0xFFF; //Fill with the 4KB page mask to get a 4KB or 4MB page mask!
+	addrmask = ~addrmask; //Negate the frame mask for a page mask!
+	TAG = Paging_generateTAG(logicaladdress, W, U, D, S); //Generate a TAG!
+	searchmask = (0x11 | addrmask); //Search mask is S-bit, P-bit and linear address bits!
+	TAGMASKED = (TAG & searchmask); //Masked tag for fast lookup! Match P/U/W/S/address only! Thus dirty updates the existing entry, while other bit changing create a new entry!
+	entry = 0; //Init for entry search not found!
+	effectiveentry = CPU[activeCPU].Paging_TLB.TLB_usedlist_head[TLB_set]; //The first entry to verify, in order of MRU to LRU!
+	if (TLB_way >= 0) //Way specified?
+	{
+		//Take way #n!
+		entry = 1; //Force found!
+		indexsize = /*(8>>((EMULATED_CPU>=CPU_80486)?1:0))*/ 4;
+		whichentry = (TLB_set * indexsize) + TLB_way; //Which one?
+		effectiveentry = &CPU[activeCPU].Paging_TLB.TLB_listnodes[whichentry]; //What entry are we?
+		curentry = effectiveentry->entry; //The entry to use!
+		//Mark us MRU!
+		Paging_setNewestTLB(TLB_set, effectiveentry); //We're the newest TLB now!
+		if (effectiveentry->allocated) //Already allocated?
+		{
+			CPU[activeCPU].Paging_TLB.TLB_usedlist_index[effectiveentry->memoryindex] = 0; //Replacing, so deallocated now!
+		}
+	}
+	else //Try and find the way!
+	{
+		effectiveentry = getUsedTLBentry(S, logicaladdress); //The entry to try!
+		if (effectiveentry) //If we found ourselves, always overwrite!
+		{
+			curentry = effectiveentry->entry; //The entry to use!
+			Paging_setNewestTLB(TLB_set, effectiveentry); //We're the newest TLB now!
+			entry = 1; //Reuse our own entry! We're found!
+			CPU[activeCPU].Paging_TLB.TLB_usedlist_index[effectiveentry->memoryindex] = 0; //Replacing, so deallocated now!
+		}
+		else //Nothing allocated yet?
+		{
+			entry = 0; //Not found!
+		}
+	}
+	//We reach here from the loop when nothing is found in the allocated list!
+	if (unlikely(entry == 0)) //Not found? Take the LRU!
+	{
+		curentry = Paging_oldestTLB(S, TLB_set); //Get the oldest/unused TLB!
+	}
+	//Fill the found entry with our (new) data!
+	curentry->data = result; //The result for the lookup!
+	curentry->TAG = TAG; //The TAG to find it by!
+	((TLB_ptr*)curentry->TLB_listnode)->memoryindex = getusedTLBindex(S, logicaladdress); //Save the memory index we're using when allocating!
+	CPU[activeCPU].Paging_TLB.TLB_usedlist_index[((TLB_ptr*)curentry->TLB_listnode)->memoryindex] = ((((TLB_ptr*)curentry->TLB_listnode)->entrynr) + 1); //Allocated!
+	curentry->addrmask = addrmask; //Save the address mask for matching a TLB entry after it's stored!
+	curentry->addrmaskset = (addrmask | 0xFFF); //Save the address mask for matching a TLB entry after it's stored!
+	curentry->passthroughmask = passthroughmask; //Save the passthrough mask for giving a physical address!
+	curentry->isglobal = G; //Global or not!
+	BIU_recheckmemory(); //Recheck anything that's fetching from now on!
 }
 
 //Build for age entry!
@@ -949,88 +1056,6 @@ void Paging_freeOppositeTLB(uint_32 logicaladdress, byte W, byte U, byte D, byte
 	}
 }
 
-TLB_ptr *getUsedTLBentry(byte S, uint_32 logicaladdress) //The entry to try!
-{
-	byte entry;
-	entry = CPU[activeCPU].Paging_TLB.TLB_usedlist_index[getusedTLBindex(S, logicaladdress)]; //What entry, if known!
-	if (entry) //Allocated?
-	{
-		return &CPU[activeCPU].Paging_TLB.TLB_listnodes[entry-1]; //The TLB!
-	}
-	return NULL; //Not found!
-}
-
-void Paging_writeTLB(sbyte TLB_way, uint_32 logicaladdress, byte W, byte U, byte D, byte S, byte G, uint_32 passthroughmask, byte is2M, uint_64 result)
-{
-	INLINEREGISTER TLBEntry *curentry=NULL;
-	INLINEREGISTER TLB_ptr *effectiveentry;
-	INLINEREGISTER uint_32 TAG,TAGMASKED;
-	uint_32 addrmask, searchmask;
-	sbyte TLB_set;
-	byte indexsize;
-	byte whichentry;
-	byte entry;
-	TLB_set = Paging_TLBSet(logicaladdress,S); //Auto set?
-	//Calculate and store the address mask for matching!
-	addrmask = (~S) & 1; //Mask to 1 bit only. Become 0 when using 4MB(don't clear the high 10 bits), 1 for 4KB(clear the high 10 bits)!
-	addrmask = 0x3FF >> ((addrmask << 3) | (addrmask << 1)); //Shift off the 4MB bits when using 4KB pages!
-	addrmask >>= is2M; //2MB pages instead of 4MB pages?
-	addrmask <<= 12; //Shift to page size addition of bits(12 bits)!
-	addrmask |= 0xFFF; //Fill with the 4KB page mask to get a 4KB or 4MB page mask!
-	addrmask = ~addrmask; //Negate the frame mask for a page mask!
-	TAG = Paging_generateTAG(logicaladdress, W, U, D, S); //Generate a TAG!
-	searchmask = (0x11 | addrmask); //Search mask is S-bit, P-bit and linear address bits!
-	TAGMASKED = (TAG&searchmask); //Masked tag for fast lookup! Match P/U/W/S/address only! Thus dirty updates the existing entry, while other bit changing create a new entry!
-	entry = 0; //Init for entry search not found!
-	effectiveentry = CPU[activeCPU].Paging_TLB.TLB_usedlist_head[TLB_set]; //The first entry to verify, in order of MRU to LRU!
-	if (TLB_way>=0) //Way specified?
-	{
-		//Take way #n!
-		entry = 1; //Force found!
-		indexsize = /*(8>>((EMULATED_CPU>=CPU_80486)?1:0))*/ 4;
-		whichentry = (TLB_set*indexsize)+TLB_way; //Which one?
-		effectiveentry = &CPU[activeCPU].Paging_TLB.TLB_listnodes[whichentry]; //What entry are we?
-		curentry = effectiveentry->entry; //The entry to use!
-		//Mark us MRU!
-		Paging_setNewestTLB(TLB_set, effectiveentry); //We're the newest TLB now!
-		if (effectiveentry->allocated) //Already allocated?
-		{
-			CPU[activeCPU].Paging_TLB.TLB_usedlist_index[effectiveentry->memoryindex] = 0; //Replacing, so deallocated now!
-		}
-	}
-	else //Try and find the way!
-	{
-		effectiveentry = getUsedTLBentry(S,logicaladdress&addrmask); //The entry to try!
-		if (effectiveentry) //If we found ourselves, always overwrite!
-		{
-			curentry = effectiveentry->entry; //The entry to use!
-			Paging_setNewestTLB(TLB_set, effectiveentry); //We're the newest TLB now!
-			entry = 1; //Reuse our own entry! We're found!
-			CPU[activeCPU].Paging_TLB.TLB_usedlist_index[effectiveentry->memoryindex] = 0; //Replacing, so deallocated now!
-		}
-		else //Nothing allocated yet?
-		{
-			entry = 0; //Not found!
-		}
-	}
-	//We reach here from the loop when nothing is found in the allocated list!
-	if (unlikely(entry == 0)) //Not found? Take the LRU!
-	{
-		curentry = Paging_oldestTLB(S, TLB_set); //Get the oldest/unused TLB!
-	}
-	//Fill the found entry with our (new) data!
-	curentry->data = result; //The result for the lookup!
-	curentry->TAG = TAG; //The TAG to find it by!
-	((TLB_ptr*)curentry->TLB_listnode)->memoryindex = getusedTLBindex(S, logicaladdress); //Save the memory index we're using when allocating!
-	CPU[activeCPU].Paging_TLB.TLB_usedlist_index[((TLB_ptr*)curentry->TLB_listnode)->memoryindex] = ((((TLB_ptr *)curentry->TLB_listnode)->entrynr)+1); //Allocated!
-	curentry->addrmask = addrmask; //Save the address mask for matching a TLB entry after it's stored!
-	curentry->addrmaskset = (addrmask|0xFFF); //Save the address mask for matching a TLB entry after it's stored!
-	curentry->passthroughmask = passthroughmask; //Save the passthrough mask for giving a physical address!
-	curentry->isglobal = G; //Global or not!
-	CPU[activeCPU].mostrecentTAGvalid = 0; //Invalidate to be sure!
-	BIU_recheckmemory(); //Recheck anything that's fetching from now on!
-}
-
 void Paging_debuggerTLB(sbyte TLB_way, uint_32 logicaladdress, byte W, byte U, byte D, byte S, byte G, uint_32 passthroughmask, byte is2M, uint_64 result, TLBEntry *curentry)
 {
 	INLINEREGISTER uint_32 TAG;
@@ -1054,53 +1079,9 @@ void Paging_debuggerTLB(sbyte TLB_way, uint_32 logicaladdress, byte W, byte U, b
 	curentry->isglobal = G; //Global or not!
 }
 
-//RWDirtyMask: mask for ignoring set bits in the tag, use them otherwise!
-byte Paging_readTLB(byte *TLB_way, uint_32 logicaladdress, uint_32 LWUDS, byte S, uint_32 WDMask, uint_64 *result, uint_32 *passthroughmask, byte updateAges)
+OPTINLINE byte Paging_matchTLBaddress(uint_32 logicaladdress, uint_32 TAG, uint_32 TAGmask)
 {
-	INLINEREGISTER uint_32 TAG, TAGMask;
-	INLINEREGISTER TLB_ptr *curentry;
-	sbyte TLB_set;
-	TLB_set = Paging_TLBSet(logicaladdress,S); //Auto set?
-	curentry = CPU[activeCPU].Paging_TLB.TLB_usedlist_head[TLB_set]; //What TLB entry to apply?
-	if (likely(curentry)) //Valid entries to search?
-	{
-		TAGMask = ~WDMask; //Store for fast usage to mask the tag bits unused off!
-		TAGMask &= curentry->entry->addrmaskset; //The full search mask, with the address width(KB vs MB) applied!
-		TAG = LWUDS; //Generate a TAG!
-		TAG &= TAGMask; //Premask the search tag for faster comparison!
-
-		if (likely((CPU[activeCPU].mostrecentTAGread==TAG) && (CPU[activeCPU].mostrecentTAGmask==TAGMask) && CPU[activeCPU].mostrecentTAGvalid)) //Same tag read again(and no extra action needed)?
-		{
-			*result = CPU[activeCPU].mostrecentTAGresult; //Give the most recent result!
-			*passthroughmask = CPU[activeCPU].mostrecentTAGpassthroughmask; //Give the most recent passthrough bitmask!
-			if (unlikely(TLB_way)) //Requested way?
-			{
-				*TLB_way = CPU[activeCPU].mostrecentTAGway; //What way was found!
-			}
-			return 1; //Found!
-		}
-
-		curentry = getUsedTLBentry(S, logicaladdress&curentry->entry->addrmask); //The entry to try!
-		if (curentry) //Check all entries that are allocated!
-		{
-			if (likely((curentry->entry->TAG&TAGMask) == TAG)) //Found and allocated?
-			{
-				CPU[activeCPU].mostrecentTAGread = TAG; //Most recent tag that has been read!
-				CPU[activeCPU].mostrecentTAGmask = TAGMask; //What to count!
-				*result = CPU[activeCPU].mostrecentTAGresult = curentry->entry->data; //Give the stored data!
-				*passthroughmask = CPU[activeCPU].mostrecentTAGpassthroughmask = curentry->entry->passthroughmask; //What bits to pass through!
-				Paging_setNewestTLB(TLB_set, curentry); //Set us as the newest TLB!
-				CPU[activeCPU].mostrecentTAGway = curentry->index; //The way found!
-				if (unlikely(TLB_way)) //Requested way?
-				{
-					*TLB_way = CPU[activeCPU].mostrecentTAGway; //What way was found!
-				}
-				CPU[activeCPU].mostrecentTAGvalid = 1; //Valid tag in the cache!
-				return 1; //Found!
-			}
-		}
-	}
-	return 0; //Not found!
+	return (((logicaladdress & TAGmask) | 1) == ((TAG & TAGmask) | (TAG & 1))); //The used TAG matches on address and availability only! Ignore US/RW!
 }
 
 void Paging_Invalidate(uint_32 logicaladdress) //Invalidate a single address!
@@ -1141,7 +1122,6 @@ void Paging_clearTLB()
 		}
 	}
 	//Finish up!
-	CPU[activeCPU].mostrecentTAGvalid = 0; //Invalidate to be sure!
 	BIU_recheckmemory(); //Recheck anything that's fetching from now on!
 }
 
@@ -1160,7 +1140,6 @@ void Paging_initTLB()
 		}
 	}
 	PagingTLB_initlists(); //Initialize the TLB lists to become empty!
-	CPU[activeCPU].mostrecentTAGvalid = 0; //Invalidate to be sure!
 	PagingTLB_clearlists(); //Initialize the TLB lists to become empty!
 	effectivemappageHandler = (EMULATED_CPU >= CPU_PENTIUM) ? &mappagePSE : &mappagenonPSE; //Use either a PSE or non-PSE paging handler!
 	BIU_recheckmemory(); //Recheck anything that's fetching from now on!

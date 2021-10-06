@@ -1131,14 +1131,6 @@ typedef struct
 	byte portrights_error;
 	byte portExceptionResult; //Init to 0xFF?
 	word PFflags;
-	//Small little cache for the most recent tags that are read!
-	byte mostrecentTAGvalid; //Invalid tag to cache!
-	sbyte mostrecentTAGway; //Most recent tag read way!
-	uint_32 mostrecentTAGread; //Most recent read tag in the TLB!
-	uint_32 mostrecentTAGmask; //Most recent read tag mask in the TLB!
-	uint_64 mostrecentTAGresult; //The result of the most recent tag read!
-	uint_32 mostrecentTAGpassthroughmask; //The result of the most recent tag read!
-	//Continuing on...
 	MODRM_PARAMS params; //For getting all params for the CPU!
 	byte MODRM_src0; //What source is our modr/m? (1/2)
 	byte MODRM_src1; //What source is our modr/m? (1/2)
