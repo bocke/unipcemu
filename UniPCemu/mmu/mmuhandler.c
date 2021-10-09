@@ -1258,7 +1258,7 @@ OPTINLINE void MMU_INTERNAL_directwb(uint_64 realaddress, byte value, word index
 word MMU_INTERNAL_directrw(uint_64 realaddress, word index) //Direct read from real memory (with real data direct)!
 {
 	word result;
-	uint_64 temp, temp2;
+	uint_64 temp;
 	if (MMU_INTERNAL_directrb(realaddress, index)) //Get data, wrap arround!
 	{
 		if (likely((is_XT == 0) || (EMULATED_CPU >= CPU_80286))) //To give NOT for detecting memory on AT only?
@@ -1525,7 +1525,7 @@ void MMU_resetaddr()
 //Direct memory access routines (used by DMA)!
 byte memory_directrb(uint_64 realaddress) //Direct read from real memory (with real data direct)!
 {
-	uint_64 result,result2;
+	uint_64 result;
 	if (unlikely(MMU_INTERNAL_directrb(realaddress, 0x100)))
 	{
 		if (likely((is_XT == 0) || (EMULATED_CPU >= CPU_80286))) //To give NOT for detecting memory on AT only?
