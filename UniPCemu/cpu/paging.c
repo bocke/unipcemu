@@ -948,8 +948,8 @@ void Paging_writeTLB(sbyte TLB_way, uint_32 logicaladdress, byte W, byte U, byte
 {
 	INLINEREGISTER TLBEntry* curentry = NULL;
 	INLINEREGISTER TLB_ptr* effectiveentry;
-	INLINEREGISTER uint_32 TAG, TAGMASKED;
-	uint_32 addrmask, searchmask;
+	INLINEREGISTER uint_32 TAG;
+	uint_32 addrmask;
 	sbyte TLB_set;
 	byte indexsize;
 	byte whichentry;
@@ -963,8 +963,6 @@ void Paging_writeTLB(sbyte TLB_way, uint_32 logicaladdress, byte W, byte U, byte
 	addrmask |= 0xFFF; //Fill with the 4KB page mask to get a 4KB or 4MB page mask!
 	addrmask = ~addrmask; //Negate the frame mask for a page mask!
 	TAG = Paging_generateTAG(logicaladdress, W, U, D, S); //Generate a TAG!
-	searchmask = (0x11 | addrmask); //Search mask is S-bit, P-bit and linear address bits!
-	TAGMASKED = (TAG & searchmask); //Masked tag for fast lookup! Match P/U/W/S/address only! Thus dirty updates the existing entry, while other bit changing create a new entry!
 	entry = 0; //Init for entry search not found!
 	effectiveentry = CPU[activeCPU].Paging_TLB.TLB_usedlist_head[TLB_set]; //The first entry to verify, in order of MRU to LRU!
 	if (TLB_way >= 0) //Way specified?
