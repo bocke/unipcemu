@@ -1905,6 +1905,7 @@ byte BIOS_readhandler(uint_32 offset, byte index) /* A pointer to a handler func
 		else //Custom ROM, but nothing to give? Give 0x00!
 		{
 			memory_dataread[0] = 0x00; //Dummy value for the ROM!
+			memory_datasize[(index >> 5) & 1] = 1; //Only 1 byte!
 			return 1; //Abort!
 		}
 		tempoffset = basepos; //Restore the temporary offset!
