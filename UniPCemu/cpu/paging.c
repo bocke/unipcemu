@@ -192,11 +192,7 @@ OPTINLINE TLB_ptr* getUsedTLBentry(byte S, uint_32 logicaladdress) //The entry t
 {
 	INLINEREGISTER byte entry;
 	entry = CPU[activeCPU].Paging_TLB.TLB_usedlist_index[getusedTLBindex(S, logicaladdress)]; //What entry, if known!
-	if (entry) //Allocated?
-	{
-		return &CPU[activeCPU].Paging_TLB.TLB_listnodes[entry - 1]; //The TLB!
-	}
-	return NULL; //Not found!
+	return CPU[activeCPU].Paging_TLB.TLB_usedlist_indexes[entry]; //Give the used TLB entry, if any (NULL for not found)!
 }
 
 OPTINLINE byte Paging_TLBSet(uint_32 logicaladdress, byte S) //Automatic set determination when using a set number <0!
@@ -1125,6 +1121,7 @@ void Paging_clearTLB()
 
 void Paging_initTLB()
 {
+	INLINEREGISTER word i;
 	INLINEREGISTER byte TLB_set;
 	INLINEREGISTER TLB_ptr* curentry;
 	//Clear any used list entries first!
@@ -1136,6 +1133,11 @@ void Paging_initTLB()
 			CPU[activeCPU].Paging_TLB.TLB_usedlist_index[curentry->memoryindex] = 0; //Clear the memory allocation!
 			curentry = (TLB_ptr*)(curentry->next); //Next entry to check, if any!
 		}
+	}
+	//Load the used list indexes lookup table!
+	for (i=0;i<256;++i) //Precalculate the lookup tables!
+	{
+		CPU[activeCPU].Paging_TLB.TLB_usedlist_indexes[i] = ((i && (i<=NUMITEMS(CPU[activeCPU].Paging_TLB.TLB_listnodes)))?&CPU[activeCPU].Paging_TLB.TLB_listnodes[entry - 1]:NULL); //The TLB entry, if available!
 	}
 	PagingTLB_initlists(); //Initialize the TLB lists to become empty!
 	PagingTLB_clearlists(); //Initialize the TLB lists to become empty!
