@@ -1137,7 +1137,7 @@ void Paging_initTLB()
 	//Load the used list indexes lookup table!
 	for (i=0;i<256;++i) //Precalculate the lookup tables!
 	{
-		CPU[activeCPU].Paging_TLB.TLB_usedlist_indexes[i] = ((i && (i<=NUMITEMS(CPU[activeCPU].Paging_TLB.TLB_listnodes)))?&CPU[activeCPU].Paging_TLB.TLB_listnodes[entry - 1]:NULL); //The TLB entry, if available!
+		CPU[activeCPU].Paging_TLB.TLB_usedlist_indexes[i] = ((i && (i<=NUMITEMS(CPU[activeCPU].Paging_TLB.TLB_listnodes)))?&CPU[activeCPU].Paging_TLB.TLB_listnodes[i - 1]:NULL); //The TLB entry, if available!
 	}
 	PagingTLB_initlists(); //Initialize the TLB lists to become empty!
 	PagingTLB_clearlists(); //Initialize the TLB lists to become empty!
