@@ -56,6 +56,7 @@ typedef struct
 	TLB_ptr *TLB_usedlist_head[16], *TLB_usedlist_tail[16]; //Head and tail of the used list!
 	byte TLB_usedlist_index[(1024*1024)+(1024*2)];
 	TLB_ptr *TLB_usedlist_indexes[256]; //Simple lookup table for the values in the TLB_usedlist_index table.
+	byte PAEenabled; //PAE pages are enabled?
 } CPU_TLB; //A TLB to use for the CPU!
 
 void Paging_clearTLB(); //Clears the TLB for further fetching!

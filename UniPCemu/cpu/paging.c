@@ -182,7 +182,7 @@ OPTINLINE uint_32 getusedTLBindex(byte S, uint_32 logicaladdress)
 	INLINEREGISTER byte is4K,S2; //Is a 4KB page(is4K) or large(S2) page? Flipped of S bit(is4K) or unflipped. Both 1 bit wide!
 	is4K = !S; //Flipped S bit means 4KB page!
 	S2 = !is4K; //S bit!
-	result = 22 - ((S2&((CPU[activeCPU].registers->CR4 & 0x20) && (EMULATED_CPU >= CPU_PENTIUMPRO))) + (is4K<<3) + (is4K<<1)); //How much bits less than 22 page bits for the table index base bit (1 extra bit for 2MB entries. 10 extra bits for 4KB entries).
+	result = 22 - ((S2&CPU[activeCPU].Paging_TLB.PAEenabled) | (is4K<<3) | (is4K<<1)); //How much bits less than 22 page bits for the table index base bit (1 extra bit for 2MB entries. 10 extra bits for 4KB entries).
 	result = logicaladdress>>result; //Shift the page number to it's location!
 	result += (S2<<20); //Base address within the lookup table (1MB for 4MB/2MB or 0 for 4KB)!
 	return result; //Give the result!
@@ -433,7 +433,7 @@ byte isvalidpage(uint_32 address, byte iswrite, byte CPL, byte isPrefetch) //Do 
 	}
 	#endif
 
-	if ((CPU[activeCPU].registers->CR4 & 0x20) && (EMULATED_CPU >= CPU_PENTIUMPRO)) //PAE enabled?
+	if (CPU[activeCPU].Paging_TLB.PAEenabled) //PAE enabled?
 	{
 		PDPT = (uint_64)memory_BIUdirectrdw(CR3_PAEPDBR + ((DIR>>8) << 3)); //Read the page directory entry low!
 		PDPT |= ((uint_64)memory_BIUdirectrdw(CR3_PAEPDBR + (((DIR >> 8) << 3)|4)))<<32; //Read the page directory entry high!
@@ -648,7 +648,7 @@ byte CPU_paging_translateaddr(uint_32 address, byte CPL, uint_64 *physaddr) //Do
 	isG = 0; //Default: no Global enabled!
 	useG = ((EMULATED_CPU >= CPU_PENTIUMPRO) & ((CPU[activeCPU].registers->CR4 & 0x80) >> 7)); //Global emulated and enabled?
 
-	if ((CPU[activeCPU].registers->CR4 & 0x20) && (EMULATED_CPU >= CPU_PENTIUMPRO)) //PAE enabled?
+	if (CPU[activeCPU].Paging_TLB.PAEenabled) //PAE enabled?
 	{
 		PDPT = (uint_64)memory_BIUdirectrdw(CR3_PAEPDBR + ((DIR >> 8) << 3)); //Read the page directory entry low!
 		PDPT |= ((uint_64)memory_BIUdirectrdw(CR3_PAEPDBR + (((DIR >> 8) << 3) | 4))) << 32; //Read the page directory entry high!
@@ -1124,6 +1124,7 @@ void Paging_initTLB()
 	INLINEREGISTER word i;
 	INLINEREGISTER byte TLB_set;
 	INLINEREGISTER TLB_ptr* curentry;
+	CPU[activeCPU].Paging_TLB.PAEenabled = ((CPU[activeCPU].registers->CR4 & 0x20) && (EMULATED_CPU >= CPU_PENTIUMPRO)); //Is PAE enabled?
 	//Clear any used list entries first!
 	for (TLB_set = 0; TLB_set < 8; ++TLB_set) //Process all possible sets!
 	{
