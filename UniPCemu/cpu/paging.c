@@ -306,13 +306,6 @@ OPTINLINE byte Paging_readTLB(byte* TLB_way, uint_32 logicaladdress, uint_32 LWU
 {
 	INLINEREGISTER uint_32 TAG, TAGMask;
 	INLINEREGISTER TLB_ptr* curentry;
-	sbyte TLB_set;
-	TLB_set = Paging_TLBSet(logicaladdress, S); //Auto set?
-	curentry = CPU[activeCPU].Paging_TLB.TLB_usedlist_head[TLB_set]; //What TLB entry to apply?
-	if (unlikely(curentry == NULL)) //No valid entries to search?
-	{
-		return 0; //Not found!
-	}
 	//Valid list, so search through it!
 	curentry = getUsedTLBentry(S, logicaladdress); //The entry to try!
 	if (likely(curentry)) //Check all entries that are allocated!
@@ -325,7 +318,7 @@ OPTINLINE byte Paging_readTLB(byte* TLB_way, uint_32 logicaladdress, uint_32 LWU
 		{
 			*result = curentry->entry->data; //Give the stored data!
 			*passthroughmask = curentry->entry->passthroughmask; //What bits to pass through!
-			Paging_setNewestTLB(TLB_set, curentry); //Set us as the newest TLB!
+			Paging_setNewestTLB(Paging_TLBSet(logicaladdress, S), curentry); //Set us as the newest TLB!
 
 			if (unlikely(TLB_way)) //Requested way?
 			{
