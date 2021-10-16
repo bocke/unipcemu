@@ -181,7 +181,7 @@ OPTINLINE uint_32 getusedTLBindex(byte S, uint_32 logicaladdress)
 	INLINEREGISTER uint_32 result;
 	INLINEREGISTER byte is4K,S2; //Is a 4KB page(is4K) or large(S2) page? Flipped of S bit(is4K) or unflipped. Both 1 bit wide!
 	is4K = !S; //Flipped S bit means 4KB page!
-	S2 = !is4K; //S bit!
+	S2 = (is4K^1); //S bit!
 	result = 22 - ((S2&CPU[activeCPU].Paging_TLB.PAEenabled) | (is4K<<3) | (is4K<<1)); //How much bits less than 22 page bits for the table index base bit (1 extra bit for 2MB entries. 10 extra bits for 4KB entries).
 	result = logicaladdress>>result; //Shift the page number to it's location!
 	result += (S2<<20); //Base address within the lookup table (1MB for 4MB/2MB or 0 for 4KB)!
