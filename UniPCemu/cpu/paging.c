@@ -318,12 +318,11 @@ OPTINLINE byte Paging_readTLB(byte* TLB_way, uint_32 logicaladdress, uint_32 LWU
 		{
 			*result = curentry->entry->data; //Give the stored data!
 			*passthroughmask = curentry->entry->passthroughmask; //What bits to pass through!
-			Paging_setNewestTLB(Paging_TLBSet(logicaladdress, S), curentry); //Set us as the newest TLB!
-
 			if (unlikely(TLB_way)) //Requested way?
 			{
 				*TLB_way = curentry->index; //The way found!; //What way was found!
 			}
+			Paging_setNewestTLB(Paging_TLBSet(logicaladdress, S), curentry); //Set us as the newest TLB!
 			return 1; //Found!
 		}
 		//Otherwise, allocated, but invalid for use for this case.
