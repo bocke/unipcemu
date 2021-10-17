@@ -176,17 +176,20 @@ byte verifyCPL(byte iswrite, byte userlevel, byte PDERW, byte PDEUS, byte PTERW,
 	return 1; //OK: verified!
 }
 
-OPTINLINE uint_32 getusedTLBindex(byte S, uint_32 logicaladdress)
+uint_32 getusedTLBindex(byte S, uint_32 logicaladdress)
 {
-	INLINEREGISTER uint_32 result,result2;
+	INLINEREGISTER uint_32 base;
 	INLINEREGISTER byte is4K,S2; //Is a 4KB page(is4K) or large(S2) page? Flipped of S bit(is4K) or unflipped. Both 1 bit wide!
-	is4K = !S; //Flipped S bit means 4KB page!
-	S2 = (is4K^1); //S bit!
-	result2 = (S2 << 20); //Base address within the lookup table (1MB for 4MB/2MB or 0 for 4KB)!
-	S2 &= CPU[activeCPU].Paging_TLB.PAEenabled; //Only apply one extra displacement of 2MB pages when PAE is enabled!
-	result = 22 - (S2 | (is4K<<3) | (is4K<<1)); //How much bits less than 22 page bits for the table index base bit (1 extra bit for 2MB entries. 10 extra bits for 4KB entries).
-	result = result2 + (logicaladdress>>result); //Shift the page number to it's location and add it's used base address in the table!
-	return result; //Give the result!
+	is4K = !S; //Flipped S bit means 4KB page! Perform NOT instead of XOR to guarantee a 1-bit value to use!
+	S2 = (is4K^1); //S bit, which doubles as a 2MB/4MB identifier for the base adddress and to be combined with PAE being enabled for adding 1 bit to the table index bits for looking up!
+	base = (S2 << 20); //Base address within the lookup table (1MB for 4MB/2MB or 0 for 4KB)!
+	S2 &= CPU[activeCPU].Paging_TLB.PAEenabled; //Only apply one extra displacement bit of 2MB pages when PAE is enabled!
+	is4K <<= 1; //Shift to the base position to become +0(not 4K page) or +2(4K page)!
+	S2 |= is4K; //How much bits less than 22 page bits for the table index base bit (1 extra bit for 2MB entries. 10 extra bits for 4KB entries).
+	is4K <<= 2; //Shift to the base position to become +0(not 4K page) or +8(4K page)!
+	S2 |= is4K; //Add +8 to +2 if 4K to become 10 bits to shift for 4K pages, otherwise 0(for 4M/2M pages)!
+	//The amount of bits to shift to obtain the frame number in out table is 22 for 4MB, 21 for 2MB, 12 for 4KB. Thus 22-S2. 
+	return base + (logicaladdress>>(22 - S2)); //Shift the page number to it's location and add it's used base address in the table!
 }
 
 OPTINLINE TLB_ptr* getUsedTLBentry(byte S, uint_32 logicaladdress) //The entry to try!
