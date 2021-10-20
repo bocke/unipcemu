@@ -195,12 +195,10 @@ uint_32 getusedTLBindex(byte S, uint_32 logicaladdress)
 #define getUsedTLBentry(S,logicaladdress) CPU[activeCPU].Paging_TLB.TLB_usedlist_indexes[CPU[activeCPU].Paging_TLB.TLB_usedlist_index[getusedTLBindex(S, logicaladdress)]]
 //Give the used TLB entry, if any (NULL for not found)!
 
-OPTINLINE byte Paging_TLBSet(uint_32 logicaladdress, byte S) //Automatic set determination when using a set number <0!
-{
-	//The set is determined by the lower 3 bits of the entry(according to the i486 programmer's reference manual), the memory block!
-	//Assume that 4MB entries do the same, but on a larger scale(10 times as large, due to 10 times more logical address bits being covered)!
-	return (((logicaladdress >> ((S << 3) | (S << 1))) & 0x7000) >> 12) | (S << 3);
-}
+//Automatic set determination when using a set number <0!
+#define Paging_TLBSet(logicaladdress,S) ((((logicaladdress >> ((S << 3) | (S << 1))) & 0x7000) >> 12) | (S << 3))
+//The set is determined by the lower 3 bits of the entry(according to the i486 programmer's reference manual), the memory block!
+//Assume that 4MB entries do the same, but on a larger scale(10 times as large, due to 10 times more logical address bits being covered)!
 
 //Move a TLB entry index from an old list to a new list!
 OPTINLINE void Paging_moveListItem(TLB_ptr* listitem, TLB_ptr** newlist_head, TLB_ptr** newlist_tail, TLB_ptr** oldlist_head, TLB_ptr** oldlist_tail)
