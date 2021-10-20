@@ -176,7 +176,7 @@ byte verifyCPL(byte iswrite, byte userlevel, byte PDERW, byte PDEUS, byte PTERW,
 	return 1; //OK: verified!
 }
 
-uint_32 getusedTLBindex(byte S, uint_32 logicaladdress)
+OPTINLINE uint_32 getusedTLBindex(byte S, uint_32 logicaladdress)
 {
 	INLINEREGISTER uint_32 base;
 	INLINEREGISTER byte is4K,S2; //Is a 4KB page(is4K) or large(S2) page? Flipped of S bit(is4K) or unflipped. Both 1 bit wide!
