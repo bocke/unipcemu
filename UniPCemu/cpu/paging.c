@@ -192,10 +192,8 @@ uint_32 getusedTLBindex(byte S, uint_32 logicaladdress)
 	return base + (logicaladdress>>(22 - S2)); //Shift the page number to it's location and add it's used base address in the table!
 }
 
-OPTINLINE TLB_ptr* getUsedTLBentry(byte S, uint_32 logicaladdress) //The entry to try!
-{
-	return CPU[activeCPU].Paging_TLB.TLB_usedlist_indexes[CPU[activeCPU].Paging_TLB.TLB_usedlist_index[getusedTLBindex(S, logicaladdress)]]; //Give the used TLB entry, if any (NULL for not found)!
-}
+#define getUsedTLBentry(S,logicaladdress) CPU[activeCPU].Paging_TLB.TLB_usedlist_indexes[CPU[activeCPU].Paging_TLB.TLB_usedlist_index[getusedTLBindex(S, logicaladdress)]]
+//Give the used TLB entry, if any (NULL for not found)!
 
 OPTINLINE byte Paging_TLBSet(uint_32 logicaladdress, byte S) //Automatic set determination when using a set number <0!
 {
