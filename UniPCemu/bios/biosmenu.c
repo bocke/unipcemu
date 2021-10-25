@@ -4187,7 +4187,7 @@ void BIOS_ExecutionMode()
 	safestrcpy(itemlist[EXECUTIONMODE_TEST],sizeof(itemlist[0]), "Run debug directory files, else TESTROM.DAT at 0000:0000"); //Set filename from options!
 	safestrcpy(itemlist[EXECUTIONMODE_TESTROM],sizeof(itemlist[0]), "Run TESTROM.DAT at 0000:0000"); //Set filename from options!
 	safestrcpy(itemlist[EXECUTIONMODE_VIDEOCARD],sizeof(itemlist[0]), "Debug video card output"); //Set filename from options!
-	safestrcpy(itemlist[EXECUTIONMODE_BIOS],sizeof(itemlist[0]), "Load BIOS from ROM directory as BIOSROM.u* and OPTROM.*"); //Set filename from options!
+	safestrcpy(itemlist[EXECUTIONMODE_BIOS],sizeof(itemlist[0]), "Load BIOS from ROM directory as BIOSROM.U* and OPTROM.*"); //Set filename from options!
 	safestrcpy(itemlist[EXECUTIONMODE_SOUND],sizeof(itemlist[0]), "Run sound test"); //Debug sound test!
 
 	int current = 0;
